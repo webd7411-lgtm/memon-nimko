@@ -105,7 +105,8 @@ body {
 </button>
 
 <div class="label">
-  <div class="brand-name">Bin Sultan</div>
+  <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 45px; margin-bottom: 3px;">
+  <div class="brand-name">Memon Nimko</div>
   <div class="barcode-block">
     {!! DNS1D::getBarcodeSVG($product->barcode_path, 'C128', 1.6, 23, 'black', false) !!}
   </div>

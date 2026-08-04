@@ -190,7 +190,8 @@
 
   <div class="receipt" id="receipt">
     <div class="center">
-      <h1 class="title">Bin Sultan</h1>
+      <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+      <h1 class="title">Memon Nimko</h1>
       <div class="subtitle">Sweet & Bakers</div>
       <div class="muted">Latifabad no 6 Near Shadman Hall  Hyderabad</div>
       <div class="muted">Phone: 022786661</div>

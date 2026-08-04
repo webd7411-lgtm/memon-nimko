@@ -42,7 +42,8 @@
     </div>
 
     <div class="header">
-        <h2>Bin Sultan Sweets</h2>
+        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 4px;">
+        <h2>Memon Nimkos</h2>
         <p>Table Bill / Order Summary</p>
     </div>
 
@@ -93,7 +94,7 @@
     <div class="divider"></div>
 
     <div class="footer">
-        <p>*** Bin Sultan Sweets ***</p>
+        <p>*** Memon Nimkos ***</p>
         <p style="font-size:10px;margin:2px 0;">Bill Date: {{ $sale->created_at->format('d-M-Y h:i A') }}</p>
         <p style="font-size:10px;margin:2px 0;">Order stays running — Pay later to complete</p>
     </div>

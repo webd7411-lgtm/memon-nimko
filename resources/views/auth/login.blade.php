@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login | Bin Sultan Sweets & Bakers</title>
+    <title>Login | Memon Nimko</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,7 +41,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('{{ asset("assets/images/hero_bakery.png") }}');
+            background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('{{ asset("assets/images/memon_nimko_hero.png") }}');
             background-size: cover;
             background-position: center;
             z-index: -1;
@@ -202,7 +202,7 @@
     <div class="login-wrapper">
         <div class="login-card">
             <div class="brand-header">
-                <h2>Bin Sultan<span>.</span></h2>
+                <h2>Memon Nimko<span>.</span></h2>
                 <p>Bakery Management System</p>
             </div>
 

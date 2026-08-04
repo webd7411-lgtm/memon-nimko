@@ -2,7 +2,7 @@
 
     <footer>
         <div class="footer-area">
-            <p>&copy; Copyright 2025. All right reserved. Bin Sultan.</p>
+            <p>&copy; Copyright 2025. All right reserved. {{ \App\Models\Setting::where('key','software_name')->value('value') ?? 'Memon Nimko' }}.</p>
         </div>
     </footer>
     </div>

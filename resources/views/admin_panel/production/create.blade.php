@@ -398,8 +398,9 @@ select.pc-fld {
                   <th style="width:28%;">Product</th>
                   <th style="width:12%;">Code</th>
                   <th style="width:8%;">Unit</th>
-                  <th style="width:16%;">Entered Qty (KG/Pc)</th>
-                  <th style="width:18%;">Note</th>
+                  <th style="width:12%;">Entered Qty (KG/Pc)</th>
+                  <th style="width:12%;">Cost (Rs)</th>
+                  <th style="width:12%;">Note</th>
                   <th style="width:70px;">Action</th>
                 </tr>
               </thead>
@@ -429,6 +430,7 @@ select.pc-fld {
                     <input type="number" step="0.001" name="qty[]" class="pc-tbl-fld qty-input" required min="0.001">
                     <small class="pc-conv conversion-display"></small>
                   </td>
+                  <td><input type="number" step="0.01" min="0" name="item_cost[]" class="pc-tbl-fld item-cost" value="0" placeholder="0"></td>
                   <td><input type="text" name="item_note[]" class="pc-tbl-fld"></td>
                   <td>
                     <button type="button" class="pc-act-remove remove-row" title="Remove row">
@@ -445,12 +447,57 @@ select.pc-fld {
             <button type="button" class="pc-act-add" id="addRow">
               <i class="bi bi-plus-circle"></i>Add More
             </button>
-            <div class="ms-auto">
+            <div class="ms-auto d-flex align-items-center gap-3">
+              <span style="font-size:.85rem;font-weight:600;color:var(--pc-text-sec);">Total Cost: <strong id="totalProdCost" style="color:var(--pc-accent);font-size:1rem;">Rs 0</strong></span>
               <button type="submit" class="pc-act-submit">
                 <i class="bi bi-floppy"></i>Save Entry
               </button>
             </div>
           </div>
+
+          {{-- ═══ RAW MATERIAL USAGE ═══ --}}
+          <hr style="border-color:var(--pc-border);margin:1.5rem 0;">
+          <h5 style="font-weight:700;font-size:.95rem;color:var(--pc-text);margin-bottom:1rem;">
+            <i class="bi bi-box-seam me-1" style="color:var(--pc-accent);"></i>Raw Materials Consumed
+          </h5>
+          <div class="pc-tbl-wrap mb-3">
+            <table class="pc-tbl">
+              <thead>
+                <tr>
+                  <th style="width:35%;">Raw Material</th>
+                  <th style="width:20%;">Qty Used</th>
+                  <th style="width:20%;">Cost/Unit (Rs)</th>
+                  <th style="width:20%;">Total Cost</th>
+                  <th style="width:50px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="rmUsageBody">
+                <tr class="rm-row manual-rm-row" id="rmManualTemplate" style="display:none;">
+                  <td>
+                    <select name="rm_id[]" class="pc-tbl-fld" style="width:100%;">
+                      <option value="">Select Raw Material...</option>
+                      @foreach($rawMaterials as $rm)
+                      <option value="{{ $rm->id }}" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}">
+                        {{ $rm->name }} ({{ $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
+                      </option>
+                      @endforeach
+                    </select>
+                  </td>
+                  <td><input type="number" step="0.01" name="rm_qty[]" class="pc-tbl-fld rm-qty" value="0" min="0"></td>
+                  <td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-tbl-fld rm-cost" value="0" placeholder="0"></td>
+                  <td><span class="rm-total fw-bold" style="font-size:.88rem;color:var(--pc-text);">0</span></td>
+                  <td>
+                    <button type="button" class="pc-act-remove remove-rm-row" title="Remove">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button type="button" class="pc-act-add" id="addRmRow">
+            <i class="bi bi-plus-circle"></i>Add More Raw Material
+          </button>
 
         </form>
       </div>
@@ -465,12 +512,58 @@ select.pc-fld {
 $(document).ready(function() {
   $('.select2').select2({ width: '100%', placeholder: 'Select product...' });
 
+  // Update production item cost display
+  function calcTotalCost() {
+    var total = 0;
+    $('.item-cost').each(function() { total += parseFloat($(this).val()) || 0; });
+    $('.rm-row').each(function() {
+      var qty = parseFloat($(this).find('.rm-qty').val()) || 0;
+      var cost = parseFloat($(this).find('.rm-cost').val()) || 0;
+      $(this).find('.rm-total').text((qty * cost).toLocaleString());
+      total += qty * cost;
+    });
+    $('#totalProdCost').text('Rs ' + total.toLocaleString());
+  }
+
+  $(document).on('input', '.item-cost', calcTotalCost);
+  $(document).on('input', '.rm-qty, .rm-cost', function() {
+    calcTotalCost();
+  });
+
+  // Auto-fill rm_cost from data-cost on RM select change
+  $(document).on('change', '#rmUsageBody select[name="rm_id[]"]', function() {
+    var cost = $(this).find(':selected').data('cost') || 0;
+    $(this).closest('tr').find('.rm-cost').val(cost);
+    calcTotalCost();
+  });
+
+  // Raw material row - add
+  $('#addRmRow').click(function() {
+    var tmpl = document.getElementById('rmManualTemplate');
+    var newRow = tmpl.cloneNode(true);
+    newRow.style.display = '';
+    newRow.className = 'rm-row manual-rm-row';
+    newRow.id = '';
+    newRow.querySelectorAll('input').forEach(function(el) { el.value = ''; el.readOnly = false; });
+    newRow.querySelector('select').disabled = false;
+    newRow.querySelector('.rm-total').textContent = '0';
+    document.getElementById('rmUsageBody').appendChild(newRow);
+  });
+
+  $(document).on('click', '.remove-rm-row', function() {
+    if ($('#rmUsageBody tr').length > 1) {
+      $(this).closest('tr').remove();
+      calcTotalCost();
+    }
+  });
+
   $(document).on('change', '.product-select', function() {
     let opt = $(this).find(':selected');
     let row = $(this).closest('tr');
     row.find('.code-display').val(opt.data('code'));
     row.find('.unit-display').val(opt.data('unit'));
     updateConversion(row);
+    loadBomForRow(row);
 
     let productId = $(this).val();
     let variantSelect = row.find('.variant-select');
@@ -504,8 +597,55 @@ $(document).ready(function() {
     }
   });
 
+  function loadBomForRow(row) {
+    var productId = row.find('.product-select').val();
+    var qty = parseFloat(row.find('.qty-input').val()) || 1;
+    if (!productId) return;
+
+    // Remove old BOM rows
+    document.querySelectorAll('#rmUsageBody .bom-row').forEach(function(el) { el.remove(); });
+
+    // Abort previous request if still running
+    if (window._bomAjax) window._bomAjax.abort();
+    window._bomAjax = $.ajax({
+      url: '/products/' + productId + '/bom-raw-materials',
+      type: 'GET',
+      success: function(bom) {
+        if (!bom || bom.length === 0) return;
+        var tbody = document.getElementById('rmUsageBody');
+        var opts = '';
+        @foreach($rawMaterials as $rm)
+        opts += '<option value="{{ $rm->id }}" data-cost="{{ $rm->lastPurchaseCost() }}">{{ $rm->name }} ({{ $rm->unit }})</option>';
+        @endforeach
+
+        bom.forEach(function(item) {
+          var tr = document.createElement('tr');
+          tr.className = 'rm-row bom-row';
+          tr.innerHTML = '<td><select name="rm_id[]" class="pc-tbl-fld" style="width:100%;pointer-events:none;background:#f0f0f0;" tabindex="-1">' +
+            '<option value="">Select...</option>' + opts + '</select></td>' +
+            '<td><input type="number" step="0.01" name="rm_qty[]" class="pc-tbl-fld rm-qty" value="' + (parseFloat(item.qty_per_unit) * qty).toFixed(2) + '" min="0" readonly></td>' +
+            '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-tbl-fld rm-cost" value="0" placeholder="0" readonly></td>' +
+            '<td><span class="rm-total fw-bold" style="font-size:.88rem;color:var(--pc-text);">0</span></td>' +
+            '<td><button type="button" class="pc-act-remove remove-rm-row" title="Remove"><i class="bi bi-x-lg"></i></button></td>';
+          tbody.insertBefore(tr, tbody.firstChild);
+          var sel = tr.querySelector('select');
+          if (sel) sel.value = item.raw_material_id || '';
+          var inp = tr.querySelector('input[name="rm_cost[]"]');
+          if (inp && sel) {
+            var c = parseFloat(sel.options[sel.selectedIndex]?.dataset?.cost) || 0;
+            inp.value = c.toFixed(2);
+            var qtyInp = tr.querySelector('input[name="rm_qty[]"]');
+            tr.querySelector('.rm-total').textContent = (parseFloat(qtyInp?.value || 0) * c).toLocaleString();
+          }
+        });
+        calcTotalCost();
+      }
+    });
+  }
+
   $(document).on('input', '.qty-input', function() {
     updateConversion($(this).closest('tr'));
+    loadBomForRow($(this).closest('tr'));
   });
 
   function updateConversion(row) {
@@ -528,10 +668,12 @@ $(document).ready(function() {
     newRow.find('.select2-container').remove();
     $('#productionItems').append(newRow);
     newRow.find('.select2').select2({ width: '100%' });
+    calcTotalCost();
   });
 
   $(document).on('click', '.remove-row', function() {
     if ($('#productionItems tr').length > 1) $(this).closest('tr').remove();
+    calcTotalCost();
   });
 });
 </script>

@@ -25,6 +25,7 @@
 </head>
 <body>
     <div class="header">
+        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
         <h1>VENDOR LEDGER</h1>
         <p>Generated: {{ now()->format('d-M-Y h:i A') }}</p>
     </div>
@@ -91,7 +92,7 @@
     </table>
 
     <div class="footer">
-        Bin Sultan Sweet — Vendor Ledger Report
+        Memon Nimko — Vendor Ledger Report
     </div>
 </body>
 </html>

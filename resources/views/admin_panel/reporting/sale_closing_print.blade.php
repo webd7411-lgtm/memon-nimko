@@ -37,7 +37,8 @@
     </div>
 
     <div class="header">
-        <h2>Bin Sultan Sweets</h2>
+        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+        <h2>Memon Nimkos</h2>
         <p>Sale Closing Report</p>
         <p>Period: {{ $startDate }} to {{ $endDate }}</p>
         <p>User: {{ $userName }}</p>
@@ -93,7 +94,7 @@
     <p style="text-align: center; font-size: 10px; margin: 0;">Generated on: {{ date('d-M-Y H:i A') }}</p>
 
     <div class="footer">
-        <p>*** Bin Sultan Sweets ***</p>
+        <p>*** Memon Nimkos ***</p>
         <p style="font-size: 11px; font-weight: normal; margin: 2px 0;">Develop By: ProWave Software Solutions</p>
     </div>
 

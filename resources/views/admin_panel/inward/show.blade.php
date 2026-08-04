@@ -117,7 +117,8 @@
         </div>
 
         <div class="header">
-            <h1>Bin Sultan</h1>
+            <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
+            <h1>Memon Nimko</h1>
             <p>Sweet & Bakers</p>
             <p>Chandni Market, Salahuddin Road, Cantt Hyderabad</p>
             <p>Phone: +92 327 9226901</p>
@@ -219,7 +220,7 @@
 
         <div class="footer">
             This is a system-generated receipt — No signature required. <br>
-            Thank you —Bin Sultan Sweets & Bakers
+            Thank you —Memon Nimko
         </div>
     </div>
 

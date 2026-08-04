@@ -31,7 +31,8 @@
 
 <div id="receipt">
 
-    <div class="center bold">Bin Sultan Sweets & Bakers </div>
+    <div class="center"><img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px;"></div>
+    <div class="center bold">Memon Nimko </div>
     <div class="center">Customer Payment Receipt</div>
     <div class="center">{{ now()->format('d-m-Y h:i A') }}</div>
 
@@ -82,7 +83,7 @@
     <div class="line"></div>
 
     <div class="center">
-        Paid To <strong>Bin Sultan Sweets & Bakers </strong>
+        Paid To <strong>Memon Nimko </strong>
     </div>
     <div class="center">Thank You</div>
 

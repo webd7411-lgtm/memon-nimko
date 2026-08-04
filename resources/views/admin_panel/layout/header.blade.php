@@ -5,7 +5,7 @@
             <div class="container d-flex flex-row h-100 align-items-center">
                 <div class="text-center rt_nav_wrapper d-flex align-items-center">
                     <a class="nav_logo rt_logo" href="index.html">
-                        <img src="{{ asset('assets/images/loglo.png') }}" alt="logo" /></a>
+                        <img src="{{ asset('assets/images/logo.png') }}" alt="logo" /></a>
                 </div>
                 <div class="nav_wrapper_main d-flex align-items-center justify-content-between flex-grow-1">
                     <ul class="navbar-nav navbar-nav-right mr-0 ml-auto">
@@ -89,6 +89,7 @@
                                         @can('Purchase')
                                         <li><a href="{{ route('Purchase.home') }}"><i class="fas fa-shopping-cart"></i> Purchase</a></li>
                                         <li><a href="{{ route('production.index') }}"><i class="fas fa-industry"></i> Own Production</a></li>
+                                        <li><a href="{{ route('raw-materials.index') }}"><i class="fas fa-database"></i> Raw Materials</a></li>
                                         <li><a href="{{ route('stock-adjustment.index') }}"><i class="fas fa-sliders-h"></i> Stock Adjustment</a></li>
                                         @endcan
                                         @can('Purchase Return')
@@ -332,6 +333,15 @@
                         <a href="{{ route('cashbook') }}" class="nav-link">
                             <i class="menu_icon fas fa-users-cog"></i>
                             <span class="menu-title">CashBook</span>
+                        </a>
+                    </li>
+                    @endif
+
+                    @if (auth()->user()->email === 'admin@admin.com')
+                    <li class="nav-item">
+                        <a href="{{ route('settings.index') }}" class="nav-link">
+                            <i class="menu_icon fas fa-cog"></i>
+                            <span class="menu-title">Settings</span>
                         </a>
                     </li>
                     @endif

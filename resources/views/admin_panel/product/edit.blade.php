@@ -437,6 +437,55 @@
                                                 <i class="la la-save"></i> Update Product
                                             </button>
                                         </div>
+
+                                        {{-- BOM INSIDE PRODUCT FORM --}}
+                                        <div class="container-fluid px-3 px-md-4 py-3 mt-4">
+                                            <div class="bakery-card p-4">
+                                                <h4 style="font-weight:700;margin-bottom:1rem;"><i class="fas fa-clipboard-list me-2" style="color:#2b7fff;"></i> Bill of Materials (Recipe)</h4>
+                                                <p class="text-muted mb-3" style="font-size:.85rem;">Define how much raw material is needed per unit of this product.</p>
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered" id="bomTable">
+                                                        <thead class="bg-light">
+                                                            <tr>
+                                                                <th width="45%">Raw Material</th>
+                                                                <th width="35%">Qty per Unit</th>
+                                                                <th width="20%">Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="bomBody">
+                                                            @forelse($product->bom as $bom)
+                                                            <tr>
+                                                                <td>
+                                                                    <select name="raw_material_id[]" class="form-control" required>
+                                                                        <option value="">Select...</option>
+                                                                        @foreach($rawMaterials as $rm)
+                                                                        <option value="{{ $rm->id }}" {{ $bom->raw_material_id == $rm->id ? 'selected' : '' }}>{{ $rm->name }} ({{ $rm->unit }})</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </td>
+                                                                <td><input type="number" step="0.001" min="0" name="qty_per_unit[]" class="form-control" value="{{ $bom->qty_per_unit }}" required></td>
+                                                                <td><button type="button" class="btn btn-danger btn-sm remove-bom-row"><i class="fas fa-times"></i></button></td>
+                                                            </tr>
+                                                            @empty
+                                                            <tr>
+                                                                <td>
+                                                                    <select name="raw_material_id[]" class="form-control" required>
+                                                                        <option value="">Select...</option>
+                                                                        @foreach($rawMaterials as $rm)
+                                                                        <option value="{{ $rm->id }}">{{ $rm->name }} ({{ $rm->unit }})</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </td>
+                                                                <td><input type="number" step="0.001" min="0" name="qty_per_unit[]" class="form-control" value="0" required></td>
+                                                                <td><button type="button" class="btn btn-danger btn-sm remove-bom-row"><i class="fas fa-times"></i></button></td>
+                                                            </tr>
+                                                            @endforelse
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <button type="button" class="btn btn-success btn-sm mb-3" id="addBomRow"><i class="fas fa-plus"></i> Add Raw Material</button>
+                                            </div>
+                                        </div>
                                     </form>
 
                                 </div>
@@ -535,8 +584,8 @@
             </div>
         </div>
     </div>
-@endsection
 
+@endsection
 
 
 @section('scripts')
@@ -661,6 +710,16 @@ $(document).ready(function() {
                         placeholder="0" step="0.01" value="${data.stock_qty || 0}" ${data.id ? 'readonly' : ''}>
                 </div>
             </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold"><i class="la la-barcode"></i> Barcode</label>
+                    <div class="input-group">
+                        <input type="text" name="variant_barcode[]" class="form-control variant-barcode-input"
+                            placeholder="6-digit barcode" value="${data.barcode_path || ''}">
+                        <button type="button" class="btn btn-primary btn-sm variant-barcode-btn"><i class="la la-barcode"></i></button>
+                    </div>
+                </div>
+            </div>
         `;
 
         container.appendChild(row);
@@ -725,13 +784,18 @@ $(document).ready(function() {
         });
     })();
 
-    // Barcode generation
-    document.getElementById('generateBarcodeBtn').addEventListener('click', function() {
-        let currentValue = document.getElementById('barcodeInput').value.trim();
+    // Barcode generation (per variant)
+    function generateVariantBarcode(inputEl) {
+        let currentValue = inputEl.value.trim();
         let url = currentValue !== "" ? '/generate-barcode-image?code=' + currentValue : '{{ route("generate-barcode-image") }}';
         fetch(url).then(res => { if (!res.ok) throw new Error('Server error'); return res.json(); }).then(data => {
-            document.getElementById('barcodeInput').value = data.barcode_number;
+            inputEl.value = data.barcode_number;
         }).catch(err => console.error('Barcode error:', err));
+    }
+
+    $(document).on('click', '.variant-barcode-btn', function() {
+        const row = $(this).closest('.variant-row');
+        generateVariantBarcode(row.find('.variant-barcode-input')[0]);
     });
 
     // Image preview
@@ -776,6 +840,18 @@ $(document).ready(function() {
         } else {
             $('#subcategory-dropdown').empty().append('<option selected value="">Select Subcategory</option>');
         }
+    });
+
+    // BOM - add row
+    $('#addBomRow').click(function() {
+        var row = $('#bomBody tr:first').clone();
+        row.find('select').val('');
+        row.find('input').val('0');
+        $('#bomBody').append(row);
+    });
+
+    $(document).on('click', '.remove-bom-row', function() {
+        if ($('#bomBody tr').length > 1) $(this).closest('tr').remove();
     });
 </script>
 

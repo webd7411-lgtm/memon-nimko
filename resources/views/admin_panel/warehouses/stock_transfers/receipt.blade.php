@@ -156,7 +156,7 @@
     h2 {
       margin: 0 0 4px;
       font-size: 18px;
-      /* 🔥 Bin Sultan BIG */
+      /* 🔥 Memon Nimko BIG */
       font-weight: 900;
       /* 🔥 EXTRA BOLD */
       letter-spacing: 1px;
@@ -367,7 +367,8 @@
         </a>
       </div>
       <div class="center">
-        <h2 class="bold">Bin Sultan</h2>
+        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+        <h2 class="bold">Memon Nimko</h2>
       </div>
       <div class="meta">
         <div class="label">Invoice ID:</div>

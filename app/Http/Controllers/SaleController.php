@@ -800,7 +800,7 @@ class SaleController extends Controller
                 $combined_variant_ids[] = $vId;
 
                 // Use pre-fetched stock 
-                // In Bin Sultan POS, we deduct stock for BOTH final sale and save_token
+                // In Memon Nimko POS, we deduct stock for BOTH final sale and save_token
                 // Default branch/warehouse to 1 for POS for now
                 $stockQuery = Stock::where('product_id', $product_id)
                                    ->where('branch_id', 1)

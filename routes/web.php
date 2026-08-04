@@ -33,6 +33,8 @@ use App\Http\Controllers\WarehouseStockController;
 use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\RawMaterialController;
 
 /*
     |--------------------------------------------------------------------------
@@ -69,6 +71,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Settings
+    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::post('/settings/update', [SettingController::class, 'update'])->name('settings.update');
+
     route::get('/category', [CategoryController::class, 'index'])->name('Category.home')->middleware('permission:Category');
     Route::get('/category/delete/{id}', [CategoryController::class, 'delete'])->name('delete.category');
     route::post('/category/stote', [CategoryController::class, 'store'])->name("store.category");
@@ -93,6 +99,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/Product', [ProductController::class, 'product'])->name('product')->middleware('permission:Products');
     // Route::get('/Product', [ProductController::class, 'product'])->name('product')->middleware('permission:View Product');
     Route::get('/create_prodcut', [ProductController::class, 'view_store'])->name('store');
+    Route::get('/create_product', [ProductController::class, 'view_store'])->name('product.create');
     // Route::get('/create_prodcut', [ProductController::class, 'view_store'])->name('store')->middleware('permission:Create Product');
     Route::post('/store-product', [ProductController::class, 'store_product'])->name('store-product');
     Route::put('/product/update/{id}', [ProductController::class, 'update'])->name('product.update');
@@ -106,6 +113,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/bulk-edit', [ProductController::class, 'bulkEdit'])->name('products.bulk-edit');
     Route::post('/products/bulk-update', [ProductController::class, 'bulkUpdate'])->name('products.bulk-update');
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('products.edit');
+    Route::get('/products/{id}/bom', [ProductController::class, 'getBom'])->name('products.bom');
+    Route::post('/products/bom/store', [ProductController::class, 'storeBom'])->name('products.bom.store');
+    Route::get('/products/{id}/bom-raw-materials', [ProductionController::class, 'getBomRawMaterials'])->name('products.bom.raw-materials');
 
     Route::prefix('discount')->group(function () {
         Route::get('/', [DiscountController::class, 'index'])->name('discount.index')->middleware('permission:Discount Products');
@@ -214,6 +224,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/production/{id}/edit', [ProductionController::class, 'edit'])->name('production.edit');
     Route::put('/production/{id}', [ProductionController::class, 'update'])->name('production.update');
     Route::get('/production/{id}/gatepass', [ProductionController::class, 'gatepass'])->name('production.gatepass');
+
+    // Raw Material Routes
+    Route::get('/raw-materials', [RawMaterialController::class, 'index'])->name('raw-materials.index');
+    Route::post('/raw-materials/store', [RawMaterialController::class, 'storeRawMaterial'])->name('raw-materials.store');
+    Route::get('/raw-materials/delete/{id}', [RawMaterialController::class, 'deleteRawMaterial'])->name('raw-materials.delete');
+    Route::post('/raw-materials/purchase/store', [RawMaterialController::class, 'storePurchase'])->name('raw-materials.purchase.store');
+    Route::get('/raw-materials/purchase/delete/{id}', [RawMaterialController::class, 'deletePurchase'])->name('raw-materials.purchase.delete');
+    Route::get('/raw-materials/stock', [RawMaterialController::class, 'getStock'])->name('raw-materials.stock');
 
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
     Route::get('/purchase/{id}/invoice', [PurchaseController::class, 'Invoice'])->name('purchase.invoice');

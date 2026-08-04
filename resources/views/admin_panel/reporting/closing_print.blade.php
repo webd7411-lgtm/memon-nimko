@@ -69,7 +69,8 @@ table tbody tr:last-child td { border-bottom: none; }
 
 <div class="receipt">
   <div class="center">
-    <div class="brand">Bin Sultan</div>
+    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+    <div class="brand">Memon Nimko</div>
     <div class="address" style="font-size:11px;margin-bottom:1px;">Sweets & Bakers</div>
     <div class="address">Latifabad no 6 Near Shadman Hall Hyderabad</div>
     <div class="address">Ph: 022 2786661</div>

@@ -289,12 +289,17 @@
     {{-- ═══ HEADER ═══ --}}
     <div class="pc-hdr">
       <div class="d-flex align-items-center gap-3">
-        <h2><i class="bi bi-gear-wide-connected"></i>Production History</h2>
-        <span class="hdr-badge d-none d-sm-inline">{{ count($entries) }} Records</span>
+        <h2><i class="bi bi-gear-wide-connected"></i>Own Production & Recipe Batch System</h2>
+        <span class="hdr-badge d-none d-sm-inline">{{ count($entries) }} Batches Record</span>
       </div>
-      <a href="{{ route('production.create') }}" class="pc-btn pc-btn-primary mt-2 mt-md-0">
-        <i class="bi bi-plus-circle"></i>New Production
-      </a>
+      <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+        <a href="{{ route('raw-materials.index') }}" class="pc-btn" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2);">
+          <i class="bi bi-box-seam me-1"></i>Raw Materials Inventory
+        </a>
+        <a href="{{ route('production.create') }}" class="pc-btn pc-btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>New Production Entry
+        </a>
+      </div>
     </div>
 
     @if(session('success'))
@@ -303,6 +308,54 @@
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     @endif
+
+    {{-- ═══ KPI STAT CARDS ═══ --}}
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="pc-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid var(--pc-accent);">
+          <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#eef2ff;color:var(--pc-accent);width:48px;height:48px;">
+            <i class="bi bi-layers-fill fs-5"></i>
+          </div>
+          <div>
+            <span class="d-block text-muted small fw-semibold" style="font-size:.75rem;text-transform:uppercase;">Total Batches</span>
+            <strong class="fs-5 text-dark">{{ count($entries) }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="pc-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid var(--pc-success);">
+          <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#ecfdf5;color:var(--pc-success);width:48px;height:48px;">
+            <i class="bi bi-currency-dollar fs-5"></i>
+          </div>
+          <div>
+            <span class="d-block text-muted small fw-semibold" style="font-size:.75rem;text-transform:uppercase;">Total Production Cost</span>
+            <strong class="fs-5 text-dark">Rs {{ number_format($entries->sum('production_cost') ?? 0, 0) }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="pc-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid var(--pc-warning);">
+          <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#fffbeb;color:var(--pc-warning);width:48px;height:48px;">
+            <i class="bi bi-calendar2-check fs-5"></i>
+          </div>
+          <div>
+            <span class="d-block text-muted small fw-semibold" style="font-size:.75rem;text-transform:uppercase;">Today's Batches</span>
+            <strong class="fs-5 text-dark">{{ $entries->filter(fn($e) => \Carbon\Carbon::parse($e->production_date)->isToday())->count() }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="pc-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid #8b5cf6;">
+          <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#f3e8ff;color:#8b5cf6;width:48px;height:48px;">
+            <i class="bi bi-box2-heart fs-5"></i>
+          </div>
+          <div>
+            <span class="d-block text-muted small fw-semibold" style="font-size:.75rem;text-transform:uppercase;">Finished Items</span>
+            <strong class="fs-5 text-dark">{{ $entries->sum('items_count') }} Items</strong>
+          </div>
+        </div>
+      </div>
+    </div>
 
     {{-- ═══ TABLE CARD ═══ --}}
     <div class="pc-card">
@@ -315,6 +368,7 @@
                 <th>Date</th>
                 <th>Source</th>
                 <th>Items</th>
+                <th>Cost (Rs)</th>
                 <th>Notes</th>
                 <th>Created By</th>
                 <th style="width:170px;">Actions</th>
@@ -338,6 +392,7 @@
                     <small><i class="bi bi-box-seam"></i> {{ $e->items_count }} items</small>
                   </div>
                 </td>
+                <td style="font-weight:700;color:var(--pc-accent);">Rs {{ number_format($e->production_cost ?? 0, 0) }}</td>
                 <td class="pc-notes">{{ $e->notes ?? '-' }}</td>
                 <td><span class="pc-user">{{ $e->user_name ?? 'System' }}</span></td>
                 <td>
@@ -353,7 +408,7 @@
               </tr>
               @empty
               <tr>
-                <td colspan="7" class="pc-empty">
+                <td colspan="8" class="pc-empty">
                   <i class="bi bi-inbox"></i>
                   <span>No production entries found.</span>
                 </td>

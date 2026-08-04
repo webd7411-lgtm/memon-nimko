@@ -186,7 +186,7 @@
     @endif
 
     <div class="footer">
-        Bin Sultan Sweet — System Reports &bull; Page 1 of 1
+        Memon Nimko — System Reports &bull; Page 1 of 1
     </div>
 </body>
 </html>

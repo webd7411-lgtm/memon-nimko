@@ -582,7 +582,7 @@
             <h5 class="modal-title"><i class="bi bi-plus-circle me-1"></i>Add Product</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
-          <form action="{{ route('store-product') }}" method="POST">
+          <form action="/store-product" method="POST">
             @csrf
             <div class="modal-body">
               <div class="row">

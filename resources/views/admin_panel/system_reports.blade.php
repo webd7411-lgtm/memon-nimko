@@ -405,6 +405,60 @@
         </div>
     </div>
 
+    {{-- PROFIT / LOSS CARDS --}}
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card border-accent-5">
+                <div>
+                    <div class="stat-label">Net Sales</div>
+                    <div class="stat-value" style="font-size:20px;">Rs {{ number_format($netSales, 0) }}</div>
+                    <div class="stat-sub">Sales - Returns</div>
+                </div>
+                <div class="stat-icon" style="background:#ecfdf5;color:#10b981;">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card border-accent-1">
+                <div>
+                    <div class="stat-label">Net Purchases</div>
+                    <div class="stat-value" style="font-size:20px;">Rs {{ number_format($netPurchases, 0) }}</div>
+                    <div class="stat-sub">Purchases - Returns</div>
+                </div>
+                <div class="stat-icon" style="background:#eef2ff;color:#4f46e5;">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card border-accent-3">
+                <div>
+                    <div class="stat-label">Total Expenses</div>
+                    <div class="stat-value" style="font-size:20px;">Rs {{ number_format($totalExpenses, 0) }}</div>
+                    <div class="stat-sub">Operating expenses</div>
+                </div>
+                <div class="stat-icon" style="background:#fef2f2;color:#ef4444;">
+                    <i class="fas fa-receipt"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card" style="{{ $grossProfit >= 0 ? 'border-left:4px solid #10b981;' : 'border-left:4px solid #ef4444;' }}">
+                <div>
+                    <div class="stat-label">{{ $grossProfit >= 0 ? 'Net Profit' : 'Net Loss' }}</div>
+                    <div class="stat-value" style="font-size:20px;{{ $grossProfit >= 0 ? 'color:#10b981;' : 'color:#ef4444;' }}">
+                        Rs {{ number_format(abs($grossProfit), 0) }}
+                    </div>
+                    <div class="stat-sub">{{ $grossProfit >= 0 ? 'Net Sales - Purchases - Expenses' : 'Loss incurred' }}</div>
+                </div>
+                <div class="stat-icon" style="background:{{ $grossProfit >= 0 ? '#ecfdf5' : '#fef2f2' }};color:{{ $grossProfit >= 0 ? '#10b981' : '#ef4444' }};">
+                    <i class="fas fa-{{ $grossProfit >= 0 ? 'arrow-trend-up' : 'arrow-trend-down' }}"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- CHARTS ROW --}}
     <div class="row g-3 mb-4">
         <div class="col-lg-6">
@@ -440,6 +494,35 @@
                 </div>
                 <div class="chart-wrapper">
                     <div id="purchaseReportChart" style="height:380px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="glass-card chart-container">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title"><i class="fas fa-chart-pie me-2" style="color:#8b5cf6;"></i>Profit / Loss Breakdown</div>
+                        <div class="chart-sub">Revenue vs Cost vs Expense</div>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <div id="profitLossChart" style="height:350px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="glass-card chart-container">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title"><i class="fas fa-scale-balanced me-2" style="color:#f59e0b;"></i>Financial Summary</div>
+                        <div class="chart-sub">Complete financial overview</div>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <div id="summaryChart" style="height:350px;"></div>
                 </div>
             </div>
         </div>
@@ -813,6 +896,65 @@
         if (expenseChart) expenseChart.destroy();
         expenseChart = new ApexCharts(document.querySelector("#expenseAccountChart"), options);
         expenseChart.render();
+    });
+
+    // ===================== PROFIT / LOSS PIE CHART =====================
+    document.addEventListener('DOMContentLoaded', function() {
+        const netSales = {{ $netSales }};
+        const netPurchases = {{ $netPurchases }};
+        const totalExpenses = {{ $totalExpenses }};
+
+        new ApexCharts(document.querySelector('#profitLossChart'), {
+            chart: { type: 'donut', height: 350, background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            series: [netSales, netPurchases, totalExpenses],
+            labels: ['Net Sales', 'Net Purchases', 'Total Expenses'],
+            colors: ['#10b981', '#4f46e5', '#ef4444'],
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: true,
+                            name: { show: true, fontSize: '14px', fontWeight: 700 },
+                            value: { show: true, fontSize: '16px', fontWeight: 800, formatter: val => 'Rs ' + parseInt(val).toLocaleString() }
+                        }
+                    }
+                }
+            },
+            dataLabels: { enabled: false },
+            legend: { position: 'bottom', fontSize: '13px', fontWeight: 600, labels: { colors: '#64748b' } },
+            tooltip: { theme: 'light', y: { formatter: val => 'Rs ' + val.toLocaleString() } }
+        }).render();
+    });
+
+    // ===================== SUMMARY BAR CHART =====================
+    document.addEventListener('DOMContentLoaded', function() {
+        const summaryData = [
+            { name: 'Net Sales', data: [{{ $netSales }}] },
+            { name: 'Net Purchases', data: [{{ $netPurchases }}] },
+            { name: 'Total Expenses', data: [{{ $totalExpenses }}] },
+            { name: '{{ $grossProfit >= 0 ? "Net Profit" : "Net Loss" }}', data: [{{ abs($grossProfit) }}] }
+        ];
+
+        new ApexCharts(document.querySelector('#summaryChart'), {
+            chart: { type: 'bar', height: 350, toolbar: { show: false }, foreColor: '#94a3b8', background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            series: summaryData,
+            xaxis: {
+                categories: ['This Month'],
+                labels: { style: { colors: '#64748b', fontSize: '13px', fontWeight: 600 } },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                labels: { style: { colors: '#94a3b8', fontWeight: 600 }, formatter: val => 'Rs ' + val.toLocaleString() }
+            },
+            dataLabels: { enabled: true, style: { fontSize: '12px', fontWeight: 700 }, formatter: val => 'Rs ' + val.toLocaleString() },
+            plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 8, distributed: true } },
+            colors: ['#10b981', '#4f46e5', '#ef4444', '{{ $grossProfit >= 0 ? "#f59e0b" : "#ef4444" }}'],
+            legend: { show: true, position: 'bottom', fontSize: '13px', fontWeight: 600, labels: { colors: '#64748b' } },
+            tooltip: { theme: 'light', y: { formatter: val => 'Rs ' + val.toLocaleString() } },
+            grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } }
+        }).render();
     });
 </script>
 @endsection

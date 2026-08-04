@@ -23,7 +23,8 @@ class HomeController extends Controller
         if ($usertype == 'user') {
             return view('user_panel.dashboard', compact('userId'));
         } elseif ($usertype == 'admin') {
-            return view('admin_panel.dashboard');
+            $data = $this->getReportData(now()->startOfMonth()->format('Y-m-d'), now()->endOfMonth()->format('Y-m-d'));
+            return view('admin_panel.dashboard', $data);
         } else {
             return redirect()->back()->with('error', 'Unauthorized access');
         }
@@ -40,6 +41,10 @@ class HomeController extends Controller
         $totalPurchaseReturns = 0;
         $totalSales = 0;
         $totalSalesReturns = 0;
+        $totalExpenses = 0;
+        $netSales = 0;
+        $netPurchases = 0;
+        $grossProfit = 0;
 
         $salesChartStats = [
             'daily' => ['categories' => [], 'series' => []],
@@ -210,6 +215,12 @@ class HomeController extends Controller
         if ($startDate && $endDate) {
              $startObj = Carbon::parse($startDate)->startOfMonth();
              $endObj   = Carbon::parse($endDate)->endOfMonth();
+
+             // Total Expenses
+             $totalExpenses = DB::table('expense_vouchers')
+                ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')])
+                ->sum('total_amount');
+
              $expenseRaw = DB::table('expense_vouchers')
                 ->join('accounts', 'expense_vouchers.party_id', '=', 'accounts.id')
                 ->join('account_heads', 'accounts.head_id', '=', 'account_heads.id')
@@ -226,11 +237,17 @@ class HomeController extends Controller
                     'series' => [['name' => 'Expense', 'data' => $rows->pluck('total_expense')]]
                 ];
             }
+
+            // Profit/Loss Calculation
+            $netSales = $totalSales - $totalSalesReturns;
+            $netPurchases = $totalPurchases - $totalPurchaseReturns;
+            $grossProfit = $netSales - $netPurchases - $totalExpenses;
         }
 
         return compact(
             'categoryCount', 'subcategoryCount', 'productCount', 'customerscount',
             'totalPurchases', 'totalPurchaseReturns', 'totalSales', 'totalSalesReturns',
+            'totalExpenses', 'netSales', 'netPurchases', 'grossProfit',
             'salesChartStats', 'purchaseChartStats',
             'categoryProductChart', 'lowStockChart', 'categorySubChart', 'expenseChartData',
             'labels', 'salesData', 'purchaseData'

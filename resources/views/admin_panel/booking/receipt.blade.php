@@ -250,7 +250,8 @@
     </div>
     <!-- Header -->
     <div class="center">
-      <div class="store-name">Bin Sultan</div>
+      <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+      <div class="store-name">Memon Nimko</div>
       <div class="store-info">Sweet & Bakers</div>
       <div class="store-info">A-16/B Block-D Unit No. 6 Latifabad, Hyderabad</div>
       <div class="store-info">Phone: 0334 2615888</div>

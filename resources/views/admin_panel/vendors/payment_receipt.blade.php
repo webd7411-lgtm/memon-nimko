@@ -56,8 +56,12 @@
 
     <div id="receipt">
 
+        <div class="center">
+            <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px;">
+        </div>
+
         <div class="center bold">
-            Bin Sultan Sweets & Bakers 
+            Memon Nimko 
         </div>
 
         <div class="center">
@@ -117,7 +121,7 @@
         <div class="line"></div>
 
         <div class="center">
-            Paid by <strong>Bin Sultan Sweets & Bakers </strong>
+            Paid by <strong>Memon Nimko </strong>
         </div>
 
         <div class="center">

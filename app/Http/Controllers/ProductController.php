@@ -9,6 +9,8 @@ use App\Models\Subcategory;
 use App\Models\ProductDiscount;
 use App\Models\Brand;
 use App\Models\Unit;
+use App\Models\ProductRawMaterialBom;
+use App\Models\RawMaterial;
 use Illuminate\Support\Facades\DB;
 // use App\Models\Size;
 use Carbon\Carbon;
@@ -98,7 +100,8 @@ class ProductController extends Controller
         $categories = Category::select('id', 'name')->get();
         $units = Unit::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->get();
-        return view('admin_panel.product.create', compact('categories', 'units', 'brands'));
+        $rawMaterials = RawMaterial::orderBy('name')->get();
+        return view('admin_panel.product.create', compact('categories', 'units', 'brands', 'rawMaterials'));
     }
 
     public function getSubcategories($category_id)
@@ -148,11 +151,12 @@ class ProductController extends Controller
         ]);
     }
 
-    /** Check uniqueness across products & discounts */
+    /** Check uniqueness across products & discounts & variants */
     private function codeExists(string $code): bool
     {
         return Product::where('barcode_path', $code)->exists()
-            || ProductDiscount::where('discount_code', $code)->exists();
+            || ProductDiscount::where('discount_code', $code)->exists()
+            || ProductVariant::where('barcode_path', $code)->exists();
     }
 
 
@@ -233,6 +237,7 @@ class ProductController extends Controller
             $variantWholesalePrices = $request->input('variant_wholesale_price', []);
             $variantCostPrices = $request->input('variant_cost_price', []);
             $variantStocks = $request->input('variant_stock', []);
+            $variantBarcodes = $request->input('variant_barcode', []);
             $variantDefault = $request->input('variant_default', 0); // index of default variant
 
             $totalStock = 0;
@@ -263,6 +268,7 @@ class ProductController extends Controller
                     $variant = ProductVariant::create([
                         'product_id'      => $product->id,
                         'variant_name'    => $vName,
+                        'barcode_path'    => $variantBarcodes[$index] ?? null,
                         'size_label'      => $sizeLabel,
                         'size_value'      => $dbSizeValue,
                         'size_unit'       => $sizeUnit,
@@ -313,8 +319,22 @@ class ProductController extends Controller
                 ]);
             }
 
+            // --- Save BOM (Bill of Materials) ---
+            $rmIds = $request->input('raw_material_id', []);
+            $qtys = $request->input('qty_per_unit', []);
+            foreach ($rmIds as $i => $rmId) {
+                $qty = (float)($qtys[$i] ?? 0);
+                if ($rmId && $qty > 0) {
+                    ProductRawMaterialBom::create([
+                        'product_id' => $product->id,
+                        'raw_material_id' => $rmId,
+                        'qty_per_unit' => $qty,
+                    ]);
+                }
+            }
+
             DB::commit();
-            return redirect('Product')->with('success', 'Product created successfully with variants!');
+            return redirect('Product')->with('success', 'Product created successfully with variants and recipe BOM!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', 'Error creating product: ' . $e->getMessage());
@@ -388,6 +408,7 @@ class ProductController extends Controller
             $variantPrices = $request->input('variant_price', []);
             $variantCostPrices = $request->input('variant_cost_price', []);
             $variantStocks = $request->input('variant_stock', []);
+            $variantBarcodes = $request->input('variant_barcode', []);
             $variantDefault = $request->input('variant_default', 0);
 
             // 1. Delete removed variants and their stocks
@@ -425,6 +446,7 @@ class ProductController extends Controller
                     $variantData = [
                         'product_id'      => $product->id,
                         'variant_name'    => $vName,
+                        'barcode_path'    => $variantBarcodes[$index] ?? null,
                         'size_label'      => $sizeLabel,
                         'size_value'      => $dbSizeValue,
                         'size_unit'       => $sizeUnit,
@@ -469,6 +491,21 @@ class ProductController extends Controller
                 ]);
             }
 
+            // --- Sync BOM (Bill of Materials) ---
+            ProductRawMaterialBom::where('product_id', $product->id)->delete();
+            $rmIds = $request->input('raw_material_id', []);
+            $qtys = $request->input('qty_per_unit', []);
+            foreach ($rmIds as $i => $rmId) {
+                $qty = (float)($qtys[$i] ?? 0);
+                if ($rmId && $qty > 0) {
+                    ProductRawMaterialBom::create([
+                        'product_id' => $product->id,
+                        'raw_material_id' => $rmId,
+                        'qty_per_unit' => $qty,
+                    ]);
+                }
+            }
+
             DB::commit();
             return redirect()->route('product')->with('success', 'Product updated successfully!');
         } catch (\Exception $e) {
@@ -480,14 +517,46 @@ class ProductController extends Controller
 
     public function edit($id)
     {
-        $product = Product::with(['category_relation', 'sub_category_relation', 'unit', 'brand', 'variants'])->findOrFail($id);
+        $product = Product::with(['category_relation', 'sub_category_relation', 'unit', 'brand', 'variants', 'bom.rawMaterial'])->findOrFail($id);
         $categories = Category::select('id', 'name')->get();
         $units = Unit::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->get();
-        // Subcategories for the current category
         $subcategories = SubCategory::where('category_id', $product->category_id)->get();
+        $rawMaterials = RawMaterial::orderBy('name')->get();
 
-        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'units'));
+        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'units', 'rawMaterials'));
+    }
+
+    public function getBom($id)
+    {
+        $bom = ProductRawMaterialBom::with('rawMaterial')->where('product_id', $id)->get();
+        return response()->json($bom);
+    }
+
+    public function storeBom(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'raw_material_id' => 'required|array',
+            'raw_material_id.*' => 'exists:raw_materials,id',
+            'qty_per_unit' => 'required|array',
+            'qty_per_unit.*' => 'numeric|min:0',
+        ]);
+
+        ProductRawMaterialBom::where('product_id', $request->product_id)->delete();
+
+        foreach ($request->raw_material_id as $i => $rmId) {
+            $qty = (float)($request->qty_per_unit[$i] ?? 0);
+            if ($rmId && $qty > 0) {
+                ProductRawMaterialBom::create([
+                    'product_id' => $request->product_id,
+                    'raw_material_id' => $rmId,
+                    'qty_per_unit' => $qty,
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'BOM saved successfully!');
     }
 
     // Add function in ProductController.php
