@@ -56,7 +56,6 @@
 
                 </div>
             </div>
-        </div>
         <div class="nav-bottom">
             <div class="container">
                 <ul class="nav page-navigation">
