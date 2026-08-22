@@ -23,11 +23,15 @@ class SaleController extends Controller
         if ($request->ajax()) {
             
             // 🔹 Base Query
-            $query = Sale::with(['customer_relation', 'user']);
+            $query = Sale::with(['customer_relation', 'user', 'branch']);
+
+            // 🔹 Multi-Branch Scoping
+            if (!is_all_branches()) {
+                $query->where('branch_id', active_branch_id());
+            }
 
             // 🔹 Restrict non-admin users to their own sales
-            // Exempt User ID 1 (Super Admin) to ensure they can see/filter everything
-            if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
+            if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin') && !auth()->user()->hasRole('Super Admin')) {
                  $query->where('user_id', auth()->id());
             }
 
@@ -264,9 +268,10 @@ class SaleController extends Controller
         $catId   = $request->get('category_id', '');
         $perPage = (int) $request->get('per_page', 60);
 
+        $branchId = active_branch_id();
         $query = Product::with(['brand', 'stock', 'variants', 'activeDiscount', 'category_relation'])
-            ->withSum(['stocks as total_stock' => function($q) {
-                $q->where('branch_id', 1)->where('warehouse_id', 1);
+            ->withSum(['stocks as total_stock' => function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
             }], 'qty');
 
         if ($q !== '') {
@@ -300,9 +305,13 @@ class SaleController extends Controller
             // ────────────────────────────────────────────────────────────────
 
             $stock    = (float) ($product->total_stock ?? 0);
-            $imageUrl = $product->image
-                ? asset('uploads/products/' . $product->image)
-                : null;
+            $imageUrl = null;
+            if ($product->image) {
+                $imgPath = public_path('uploads/products/' . $product->image);
+                if (is_file($imgPath)) {
+                    $imageUrl = asset('uploads/products/' . $product->image);
+                }
+            }
 
             return [
                 'id'               => $product->id,
@@ -339,9 +348,10 @@ class SaleController extends Controller
             return response()->json(['data' => []]);
         }
 
+        $branchId = active_branch_id();
         $products = Product::with(['brand', 'stock', 'variants', 'activeDiscount', 'category_relation'])
-            ->withSum(['stocks as total_stock' => function($q) {
-                $q->where('branch_id', 1)->where('warehouse_id', 1);
+            ->withSum(['stocks as total_stock' => function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
             }], 'qty')
             ->whereIn('id', $ids)
             ->get()
@@ -360,9 +370,13 @@ class SaleController extends Controller
                 $price = (float) ($product->activeDiscount->final_price ?? $rawPrice);
             }
             $stock    = (float) ($product->total_stock ?? 0);
-            $imageUrl = $product->image
-                ? asset('uploads/products/' . $product->image)
-                : null;
+            $imageUrl = null;
+            if ($product->image) {
+                $imgPath = public_path('uploads/products/' . $product->image);
+                if (is_file($imgPath)) {
+                    $imageUrl = asset('uploads/products/' . $product->image);
+                }
+            }
             return [
                 'id'               => $product->id,
                 'item_name'        => $product->item_name,
@@ -388,12 +402,12 @@ class SaleController extends Controller
 
     public function getProductVariants($id)
     {
+        $branchId = active_branch_id();
         $product = Product::with(['variants', 'stock'])->findOrFail($id);
-        $variants = $product->variants->map(function ($v) use ($product) {
+        $variants = $product->variants->map(function ($v) use ($product, $branchId) {
             // Get real stock from stocks table for this variant
             $vStock = Stock::where('product_id', $product->id)
-                ->where('branch_id', 1)
-                ->where('warehouse_id', 1)
+                ->where('branch_id', $branchId)
                 ->where('variant_id', $v->id)
                 ->first();
             
@@ -410,8 +424,7 @@ class SaleController extends Controller
             ];
         });
         $totalStock = Stock::where('product_id', $product->id)
-            ->where('branch_id', 1)
-            ->where('warehouse_id', 1)
+            ->where('branch_id', $branchId)
             ->sum('qty');
 
         return response()->json([
@@ -802,9 +815,9 @@ class SaleController extends Controller
                 // Use pre-fetched stock 
                 // In Memon Nimko POS, we deduct stock for BOTH final sale and save_token
                 // Default branch/warehouse to 1 for POS for now
+                $currentBranchId = active_branch_id();
                 $stockQuery = Stock::where('product_id', $product_id)
-                                   ->where('branch_id', 1)
-                                   ->where('warehouse_id', 1);
+                                   ->where('branch_id', $currentBranchId);
                 
                 $prodModel = $productsMap[$product_id] ?? null;
                 $isGram = $prodModel && $prodModel->unit_type === 'kg';
@@ -842,9 +855,10 @@ class SaleController extends Controller
                         $stock->qty = $stock->qty - $deductQty;
                         $stock->save();
                     } else {
+                        $firstWh = \App\Models\Warehouse::where('branch_id', $currentBranchId)->value('id') ?? 1;
                         $stock = \App\Models\Stock::create([
-                            'branch_id'  => 1,
-                            'warehouse_id' => 1,
+                            'branch_id'  => $currentBranchId,
+                            'warehouse_id' => $firstWh,
                             'product_id' => $product_id,
                             'variant_id' => $dbVariantId,
                             'qty'        => 0 - $deductQty,
@@ -887,6 +901,7 @@ class SaleController extends Controller
             $model->total_bill_amount    = $request->total_subtotal ?? array_sum($combined_totals);
             $model->total_extradiscount  = $request->total_extra_cost ?? 0;
             $model->total_net            = $request->total_net ?? array_sum($combined_totals);
+            $model->branch_id            = active_branch_id();
             
             // For bookings, we track advance and final payment
             if ($model instanceof \App\Models\ProductBooking) {

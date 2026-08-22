@@ -70,6 +70,117 @@
 .pc-empty span { font-size: .9rem; font-weight: 500; }
 
 @media (max-width: 768px) { .pc-hdr { padding: 1rem 1.25rem; flex-direction: column; align-items: stretch; gap: .5rem; } .pc-hdr h2 { font-size: 1.1rem; } .pc-card-body { padding: 1rem; } }
+
+/* ═══════ FULL MOBILE RESPONSIVE — CARD LAYOUT ═══════ */
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pc-page { overflow-x: hidden !important; }
+
+  .pc-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .5rem; }
+  .pc-hdr h2 { font-size: .95rem !important; }
+  .pc-card-body { padding: .6rem !important; overflow: hidden !important; }
+
+  /* Kill ALL scroll wrappers — higher specificity */
+  .pc-page .pc-tbl-wrap,
+  .pc-page .dataTables_wrapper,
+  .pc-page .dataTables_scrollBody,
+  .pc-page .dataTables_scrollHead,
+  .pc-page .dataTables_scrollFoot,
+  .pc-page .table-responsive,
+  .pc-page > .container-fluid > .pc-card > .pc-card-body > div {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+  }
+
+  .pc-page .pc-tbl,
+  .pc-page .pc-tbl.dataTable {
+    display: block !important;
+    width: 100% !important;
+    font-size: .72rem !important;
+  }
+  .pc-page .pc-tbl thead { display: none !important; }
+  .pc-page .pc-tbl tbody { display: block !important; }
+  .pc-page .pc-tbl tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .3rem .55rem;
+    align-items: start;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+    padding: .5rem .6rem;
+    margin-bottom: .5rem;
+    overflow: hidden !important;
+  }
+  .pc-page .pc-tbl tbody tr:hover { background: var(--pc-surface); }
+  .pc-page .pc-tbl tbody td {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 4px;
+    border: none !important;
+    padding: 0 !important;
+    min-width: 0;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-size: .72rem;
+    line-height: 1.35;
+  }
+  .pc-page .pc-tbl tbody td::before {
+    content: attr(data-label) ":";
+    font-size: .55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--pc-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .pc-page .pc-tbl tbody td:nth-child(1) { order: 0; justify-self: start; }
+  .pc-page .pc-tbl tbody td:nth-child(1)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(1) {
+    background: #f0f4fe; color: #3b5bb3 !important; border-radius: 6px;
+    padding: .05rem .4rem !important; font-weight: 700 !important; font-size: .62rem;
+  }
+  .pc-page .pc-tbl tbody td:nth-child(2) { order: 1; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(2)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(2) { font-weight: 600; font-size: .8rem; padding-top: 2px; }
+  .pc-page .pc-tbl tbody td:nth-child(3) { order: 2; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(3)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(3) { font-weight: 600; font-size: .8rem; }
+  .pc-page .pc-tbl tbody td:nth-child(4) { order: 3; }
+  .pc-page .pc-tbl tbody td:nth-child(5) { order: 4; }
+  .pc-page .pc-tbl tbody td:nth-child(6) { order: 5; }
+  .pc-page .pc-tbl tbody td:nth-child(7) { order: 6; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(8) { order: 7; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(9) { order: 8; }
+  .pc-page .pc-tbl tbody td:nth-child(10) { order: 9; }
+  .pc-page .pc-tbl tbody td:nth-child(11) { order: 10; }
+  .pc-page .pc-tbl tbody td:nth-child(12) { order: 11; grid-column: 1 / -1; font-size: .82rem !important; }
+  .pc-page .pc-tbl tbody td:nth-child(13) { order: 12; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(13)::before { content: none; }
+
+  .pc-page .dataTables_filter, .pc-page .dataTables_length {
+    width: 100% !important; text-align: left !important; margin-bottom: .5rem;
+  }
+  .pc-page .dataTables_filter input, .pc-page .dataTables_length select {
+    width: 100% !important; min-height: 36px; font-size: .78rem; border-radius: 8px;
+    padding: .3rem .6rem; border: 1.5px solid var(--pc-border); margin-top: 4px;
+  }
+  .pc-page .dataTables_info { font-size: .68rem !important; text-align: center !important; padding: .5rem 0 0; }
+  .pc-page .dataTables_paginate { text-align: center !important; padding: .5rem 0; }
+  .pc-page .dataTables_paginate .paginate_button {
+    display: inline-flex !important; min-width: 28px !important; height: 28px !important;
+    padding: 0 .35rem !important; font-size: .68rem !important; margin: 0 1px !important;
+    border-radius: 6px !important;
+  }
+}
 </style>
 
 <div class="pc-page">
@@ -104,27 +215,27 @@
           <tbody>
             @foreach ($returns as $return)
             <tr>
-              <td style="color:var(--pc-text-muted);font-weight:600;">{{ $return->id }}</td>
-              <td class="pc-inv">{{ $return->purchase->invoice_no ?? 'N/A' }}</td>
-              <td class="pc-inv">{{ $return->return_invoice }}</td>
-              <td class="pc-vendor">{{ $return->vendor->name ?? 'N/A' }}</td>
-              <td class="pc-wh">{{ $return->warehouse->warehouse_name ?? 'N/A' }}</td>
-              <td class="pc-date">{{ \Carbon\Carbon::parse($return->return_date)->format('d-M-Y') }}</td>
-              <td>
+              <td style="color:var(--pc-text-muted);font-weight:600;" data-label="ID">{{ $return->id }}</td>
+              <td class="pc-inv" data-label="Purchase Inv">{{ $return->purchase->invoice_no ?? 'N/A' }}</td>
+              <td class="pc-inv" data-label="Return Inv">{{ $return->return_invoice }}</td>
+              <td class="pc-vendor" data-label="Vendor">{{ $return->vendor->name ?? 'N/A' }}</td>
+              <td class="pc-wh" data-label="Warehouse">{{ $return->warehouse->warehouse_name ?? 'N/A' }}</td>
+              <td class="pc-date" data-label="Date">{{ \Carbon\Carbon::parse($return->return_date)->format('d-M-Y') }}</td>
+              <td data-label="Products">
                 @foreach($return->items as $item)
                 <div class="pc-prod-name">{{ $item->product->item_name ?? 'N/A' }}</div>
                 @endforeach
               </td>
-              <td class="pc-qty">
+              <td class="pc-qty" data-label="Qty">
                 @foreach($return->items as $item)
                 <div>{{ $item->qty + 0 }}</div>
                 @endforeach
               </td>
-              <td class="pc-amount">{{ number_format($return->bill_amount, 2) }}</td>
-              <td class="pc-amount">{{ number_format($return->item_discount, 2) }}</td>
-              <td class="pc-amount">{{ number_format($return->extra_discount, 2) }}</td>
-              <td class="pc-net">Rs {{ number_format($return->net_amount, 2) }}</td>
-              <td>
+              <td class="pc-amount" data-label="Bill Amt">{{ number_format($return->bill_amount, 2) }}</td>
+              <td class="pc-amount" data-label="Item Disc">{{ number_format($return->item_discount, 2) }}</td>
+              <td class="pc-amount" data-label="Extra Disc">{{ number_format($return->extra_discount, 2) }}</td>
+              <td class="pc-net" data-label="Net Amount">Rs {{ number_format($return->net_amount, 2) }}</td>
+              <td data-label="Action">
                 <a href="{{ route('purchasereturn.invoice', $return->id) }}" class="pc-act pc-act-inv"><i class="bi bi-file-text"></i>Invoice</a>
               </td>
             </tr>

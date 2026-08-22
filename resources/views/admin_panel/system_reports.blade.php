@@ -265,10 +265,58 @@
         box-shadow: 0 0 0 4px rgba(79,70,229,0.1);
     }
 
-    @media (max-width: 768px) {
-        .reports-page { padding: 14px; }
-        .stat-card .stat-value { font-size: 22px; }
-        .stat-card .stat-icon { width: 44px; height: 44px; font-size: 18px; }
+    @media (max-width: 767.98px) {
+        body, html { overflow-x: hidden !important; }
+        .reports-page { padding: 12px; overflow-x: hidden !important; }
+
+        /* Filter card — stacked premium controls */
+        .filter-card { padding: 16px 14px; border-radius: 16px; }
+        .filter-card label { font-size: 11px; margin-bottom: 5px; }
+        .filter-card .form-control, .filter-card .form-select { min-height: 44px; font-size: 15px; padding: 10px 12px; }
+        .filter-card .btn-filter { width: 100%; min-height: 44px; margin-bottom: 8px; }
+        .filter-card .btn-reset,
+        .filter-card .btn { width: 48%; justify-content: center; min-height: 42px; font-size: 13px; padding: 10px 12px; }
+        .filter-card .col-md-4 .d-flex { flex-wrap: wrap; gap: 8px; }
+
+        /* Stat cards — premium mobile sizing */
+        .stat-card { padding: 16px 14px; border-radius: 16px; gap: 10px; }
+        .stat-card .stat-value { font-size: 22px !important; }
+        .stat-card .stat-value[style*="font-size:22px"] { font-size: 19px !important; }
+        .stat-card .stat-value[style*="font-size:20px"] { font-size: 17px !important; }
+        .stat-card .stat-icon { width: 40px; height: 40px; font-size: 16px; border-radius: 12px; }
+        .stat-card .stat-label { font-size: 9px; letter-spacing: .4px; }
+        .stat-card .stat-sub { font-size: 11px; }
+
+        /* Chart cards — tightened premium layout */
+        .chart-container { padding: 14px 12px; border-radius: 16px; }
+        .chart-container .chart-title { font-size: 14px; }
+        .chart-container .chart-sub { font-size: 11px; }
+        .chart-container .chart-header { gap: 8px; }
+        .chart-filter-select { flex: 1; min-width: 0; font-size: 12px; padding: 6px 10px; }
+        .chart-wrapper { border-radius: 10px; }
+        .apexcharts-toolbar { display: none; }
+        .apexcharts-legend { font-size: 11px; flex-wrap: wrap !important; white-space: normal !important; }
+        .apexcharts-xaxis-label, .apexcharts-yaxis-label { font-size: 10px !important; }
+
+        /* Modal polish on touch */
+        .modal-custom .modal-title { font-size: 15px; }
+        .modal-custom .modal-header { padding: 13px 14px; }
+        .modal-custom .modal-body { padding: 12px; }
+        .modal-custom .form-control { width: 100%; min-height: 44px; }
+        .modal-custom .pagination .page-link { padding: 6px 10px; font-size: 13px; min-width: 34px; text-align: center; }
+        .modal-custom .table { font-size: 12px; }
+        .modal-custom .table td, .modal-custom .table th { padding: 8px 10px; }
+        .modal-custom .table thead th { font-size: 10px; }
+
+        @media (max-width: 575.98px) {
+            .reports-page { padding: 8px; }
+            .stat-card { padding: 13px 11px; }
+            .stat-card .stat-icon { width: 36px; height: 36px; font-size: 14px; }
+            .stat-card .stat-label { font-size: 8.5px; }
+            .stat-card .stat-sub { font-size: 10px; }
+            .chart-container { padding: 11px 9px; }
+            .modal-custom .table tbody td:nth-child(3) { text-align: right; }
+        }
     }
 </style>
 
@@ -616,6 +664,10 @@
                 background: 'transparent',
                 animations: { enabled: true, easing: 'easeinout', speed: 800, animateGradually: { enabled: true, delay: 150 } }
             },
+            responsive: [{
+                breakpoint: 768,
+                options: { chart: { height: 280, toolbar: { show: false } }, plotOptions: { bar: { columnWidth: '55%', borderRadius: 6 } } }
+            }],
             series: data.series,
             xaxis: {
                 categories: data.categories,
@@ -688,6 +740,10 @@
                 background: 'transparent',
                 animations: { enabled: true, easing: 'easeinout', speed: 800 }
             },
+            responsive: [{
+                breakpoint: 768,
+                options: { chart: { height: 280, toolbar: { show: false } }, plotOptions: { bar: { columnWidth: '55%', borderRadius: 6 } } }
+            }],
             series: data.series,
             xaxis: {
                 categories: data.categories,
@@ -764,6 +820,23 @@
                     }
                 }
             },
+            responsive: [{
+                breakpoint: 768,
+                options: {
+                    chart: { height: 320 },
+                    xaxis: {
+                        labels: {
+                            rotate: -45,
+                            rotateAlways: true,
+                            style: { colors: '#64748b', fontSize: '10px', fontWeight: 600 },
+                            offsetY: 5
+                        }
+                    },
+                    yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '10px', fontWeight: 600 } } },
+                    plotOptions: { bar: { columnWidth: '65%', borderRadius: 5 } },
+                    tooltip: { theme: 'light', y: { formatter: val => val.toLocaleString() + ' Products' } }
+                }
+            }],
             series: categoryStockData.series,
             plotOptions: {
                 bar: {
@@ -853,6 +926,10 @@
                 background: 'transparent',
                 animations: { enabled: true, easing: 'easeinout', speed: 800 }
             },
+            responsive: [{
+                breakpoint: 768,
+                options: { chart: { height: 260, toolbar: { show: false } } }
+            }],
             series: data.series,
             xaxis: {
                 categories: data.categories,
@@ -906,6 +983,10 @@
 
         new ApexCharts(document.querySelector('#profitLossChart'), {
             chart: { type: 'donut', height: 350, background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            responsive: [{
+                breakpoint: 768,
+                options: { chart: { height: 260 }, legend: { position: 'bottom', fontSize: '11px' } }
+            }],
             series: [netSales, netPurchases, totalExpenses],
             labels: ['Net Sales', 'Net Purchases', 'Total Expenses'],
             colors: ['#10b981', '#4f46e5', '#ef4444'],
@@ -938,6 +1019,17 @@
 
         new ApexCharts(document.querySelector('#summaryChart'), {
             chart: { type: 'bar', height: 350, toolbar: { show: false }, foreColor: '#94a3b8', background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            responsive: [{
+                breakpoint: 768,
+                options: {
+                    chart: { height: 290 },
+                    dataLabels: { enabled: false },
+                    legend: { position: 'bottom', fontSize: '11px', markers: { size: 3 } },
+                    xaxis: { labels: { style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 } } },
+                    yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '10px', fontWeight: 600 } } },
+                    plotOptions: { bar: { columnWidth: '65%', borderRadius: 6 } }
+                }
+            }],
             series: summaryData,
             xaxis: {
                 categories: ['This Month'],

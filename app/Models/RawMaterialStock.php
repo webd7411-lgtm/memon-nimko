@@ -12,4 +12,9 @@ class RawMaterialStock extends Model
     {
         return $this->belongsTo(RawMaterial::class);
     }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
 }

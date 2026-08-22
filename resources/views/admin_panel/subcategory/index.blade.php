@@ -303,10 +303,102 @@ select.pc-fld {
   color: #fff;
 }
 
-@media (max-width: 768px) {
-  .pc-hdr { padding: 1.1rem 1.25rem; }
-  .pc-hdr h2 { font-size: 1.1rem; }
-  .pc-card-body { padding: 1rem; }
+/* ═══════ RESPONSIVE ═══════ */
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pc-page { overflow-x: hidden !important; }
+
+  .pc-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .5rem; }
+  .pc-hdr h2 { font-size: .95rem !important; }
+  .pc-hdr .pc-btn { padding: .35rem .6rem !important; font-size: .68rem !important; min-height: 32px; border-radius: 8px; }
+  .pc-card-body { padding: .6rem !important; overflow: hidden !important; }
+
+  .pc-page .pc-tbl-wrap,
+  .pc-page .dataTables_wrapper,
+  .pc-page .dataTables_scrollBody,
+  .pc-page .dataTables_scrollHead,
+  .pc-page .dataTables_scrollFoot,
+  .pc-page .table-responsive,
+  .pc-page > .container-fluid > .pc-card > .pc-card-body > div {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+  }
+
+  .pc-page .pc-tbl,
+  .pc-page .pc-tbl.dataTable {
+    display: block !important;
+    width: 100% !important;
+    font-size: .72rem !important;
+  }
+  .pc-page .pc-tbl thead { display: none !important; }
+  .pc-page .pc-tbl tbody { display: block !important; }
+  .pc-page .pc-tbl tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .35rem .55rem;
+    align-items: start;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+    padding: .5rem .6rem;
+    margin-bottom: .5rem;
+    overflow: hidden !important;
+  }
+  .pc-page .pc-tbl tbody tr:hover { background: var(--pc-surface); }
+  .pc-page .pc-tbl tbody td {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 4px;
+    border: none !important;
+    padding: 0 !important;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-size: .72rem;
+    line-height: 1.35;
+  }
+  .pc-page .pc-tbl tbody td::before {
+    content: attr(data-label) ":";
+    font-size: .55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--pc-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .pc-page .pc-tbl tbody td:nth-child(1) { order: 0; }
+  .pc-page .pc-tbl tbody td:nth-child(1)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(1) {
+    background: #f0f4fe; color: #3b5bb3 !important; border-radius: 6px;
+    padding: .05rem .4rem !important; font-weight: 700 !important; font-size: .62rem;
+  }
+  .pc-page .pc-tbl tbody td:nth-child(2) { order: 1; }
+  .pc-page .pc-tbl tbody td:nth-child(3) { order: 2; }
+  .pc-page .pc-tbl tbody td:nth-child(4) { order: 3; grid-column: 1 / -1; }
+  .pc-page .pc-tbl .pc-actions { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: .4rem; width: 100%; }
+  .pc-page .pc-act { justify-content: center; width: 100%; padding: .38rem .4rem; font-size: .64rem; border-radius: 8px; min-height: 34px; }
+
+  .pc-page .dataTables_filter, .pc-page .dataTables_length {
+    width: 100% !important; text-align: left !important; margin-bottom: .5rem;
+  }
+  .pc-page .dataTables_filter input, .pc-page .dataTables_length select {
+    width: 100% !important; min-height: 36px; font-size: .78rem; border-radius: 8px; padding: .3rem .6rem;
+    border: 1.5px solid var(--pc-border); margin-top: 4px;
+  }
+  .pc-page .dataTables_info { font-size: .68rem !important; text-align: center !important; padding: .5rem 0 0; }
+  .pc-page .dataTables_paginate { text-align: center !important; padding: .5rem 0; }
+  .pc-page .dataTables_paginate .paginate_button {
+    display: inline-flex !important; min-width: 28px !important; height: 28px !important;
+    padding: 0 .35rem !important; font-size: .68rem !important; margin: 0 1px !important;
+    border-radius: 6px !important;
+  }
 }
 </style>
 
@@ -348,10 +440,10 @@ select.pc-fld {
             <tbody>
               @forelse ($subcategory as $company)
               <tr>
-                <td class="pc-id id">{{ $company->id }}</td>
-                <td class="pc-name name">{{ $company->name }}</td>
-                <td class="pc-cat" data-category-id="{{ $company->category_id }}">{{ $company->category->name ?? '-' }}</td>
-                <td>
+                <td class="pc-id id" data-label="ID">{{ $company->id }}</td>
+                <td class="pc-name name" data-label="Sub Category">{{ $company->name }}</td>
+                <td class="pc-cat" data-label="Category" data-category-id="{{ $company->category_id }}">{{ $company->category->name ?? '-' }}</td>
+                <td data-label="Actions">
                   <div class="pc-actions">
                     <button class="pc-act pc-act-edit edit-btn"
                       data-url="{{ route('store.subcategory') }}">
@@ -452,6 +544,11 @@ select.pc-fld {
         lengthMenu: "Show _MENU_ entries",
         emptyTable: "No sub categories found"
       }
+    });
+
+    // Prevent aria-hidden on focused element — move focus before modal closes
+    $('.modal').on('hide.bs.modal', function() {
+      $(document.body).focus();
     });
   });
 </script>

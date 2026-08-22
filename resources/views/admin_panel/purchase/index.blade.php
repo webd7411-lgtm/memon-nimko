@@ -410,12 +410,137 @@
 .pi-act-danger:hover { background: #fde8e8; color: #7f1d1d; text-decoration: none; }
 
 /* ═══════ RESPONSIVE ═══════ */
-@media (max-width: 768px) {
-  .pi-hdr { padding: 1.1rem 1.25rem; }
-  .pi-hdr h2 { font-size: 1.1rem; }
-  .pi-card-body { padding: 1rem; }
-  .pi-filter { flex-direction: column; align-items: stretch; }
-  .pi-filter-group input { min-width: auto; }
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pi-page { overflow-x: hidden !important; }
+
+  .pi-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .5rem; }
+  .pi-hdr h2 { font-size: .95rem !important; }
+  .pi-hdr .pi-btn { padding: .35rem .6rem !important; font-size: .68rem !important; min-height: 32px; border-radius: 8px; }
+  .pi-card-body { padding: .6rem !important; overflow: hidden !important; }
+
+  .pi-filter { gap: .5rem; }
+  .pi-filter-group { flex: 1 1 100%; }
+  .pi-filter-group input { min-width: auto; width: 100%; font-size: .82rem; min-height: 38px; }
+  .pi-filter-actions { flex: 1 1 100%; }
+  .pi-fbtn { flex: 1; justify-content: center; font-size: .75rem; padding: .45rem .8rem; }
+
+  .pi-page .pi-tbl-wrap,
+  .pi-page .dataTables_wrapper,
+  .pi-page .dataTables_scrollBody,
+  .pi-page .dataTables_scrollHead,
+  .pi-page .dataTables_scrollFoot,
+  .pi-page .table-responsive,
+  .pi-page > .container-fluid > .pi-card > .pi-card-body > div {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+  }
+
+  .pi-page .pi-tbl,
+  .pi-page .pi-tbl.dataTable {
+    display: block !important;
+    width: 100% !important;
+    font-size: .68rem !important;
+  }
+  .pi-page .pi-tbl thead { display: none !important; }
+  .pi-page .pi-tbl tbody { display: block !important; }
+  .pi-page .pi-tbl tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .3rem .45rem;
+    align-items: start;
+    background: var(--pi-surface);
+    border: 1px solid var(--pi-border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+    padding: .45rem .55rem;
+    margin-bottom: .45rem;
+    overflow: hidden !important;
+  }
+  .pi-page .pi-tbl tbody tr:hover { background: var(--pi-surface); }
+  .pi-page .pi-tbl tbody td {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 4px;
+    border: none !important;
+    padding: 0 !important;
+    text-align: left;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-size: .68rem;
+    line-height: 1.35;
+  }
+  .pi-page .pi-tbl tbody td::before {
+    content: attr(data-label) ":";
+    font-size: .5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--pi-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* # badge */
+  .pi-page .pi-tbl tbody td:nth-child(1) { order: 0; }
+  .pi-page .pi-tbl tbody td:nth-child(1)::before { content: none; }
+  .pi-page .pi-tbl tbody td:nth-child(1) {
+    background: #f0f4fe; color: #3b5bb3 !important; border-radius: 6px;
+    padding: .05rem .4rem !important; font-weight: 700 !important; font-size: .58rem;
+  }
+  /* Invoice | Date */
+  .pi-page .pi-tbl tbody td:nth-child(2) { order: 1; }
+  .pi-page .pi-tbl tbody td:nth-child(15) { order: 2; }
+  /* Vendor | Branch */
+  .pi-page .pi-tbl tbody td:nth-child(5) { order: 3; }
+  .pi-page .pi-tbl tbody td:nth-child(3) { order: 4; }
+  /* Type | Location */
+  .pi-page .pi-tbl tbody td:nth-child(4) { order: 5; }
+  .pi-page .pi-tbl tbody td:nth-child(6) { order: 6; }
+  /* Products full width */
+  .pi-page .pi-tbl tbody td:nth-child(7) { order: 7; grid-column: 1 / -1; }
+  .pi-page .pi-tbl tbody td:nth-child(7)::before { content: none; }
+  /* Qty | Note */
+  .pi-page .pi-tbl tbody td:nth-child(8) { order: 8; }
+  .pi-page .pi-tbl tbody td:nth-child(9) { order: 9; }
+  /* Subtotal | Disc */
+  .pi-page .pi-tbl tbody td:nth-child(10) { order: 10; }
+  .pi-page .pi-tbl tbody td:nth-child(11) { order: 11; }
+  /* Extras | Net */
+  .pi-page .pi-tbl tbody td:nth-child(12) { order: 12; }
+  .pi-page .pi-tbl tbody td:nth-child(13) { order: 13; }
+  /* Paid | Due */
+  .pi-page .pi-tbl tbody td:nth-child(14) { order: 14; }
+  .pi-page .pi-tbl tbody td:nth-child(15) { order: 15; }
+  /* Actions full width */
+  .pi-page .pi-tbl tbody td:nth-child(17) { order: 16; grid-column: 1 / -1; }
+  .pi-page .pi-actions { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: .35rem; width: 100%; }
+  .pi-page .pi-act { justify-content: center; width: 100%; padding: .35rem .35rem; font-size: .6rem; border-radius: 8px; min-height: 30px; }
+
+  .pi-page .pi-amount { font-size: .65rem !important; }
+  .pi-page .pi-badge { font-size: .58rem; padding: 1px 5px; }
+  .pi-page .pi-prod-item { font-size: .65rem; }
+  .pi-page .pi-prod-qty { font-size: .6rem; padding: 0 4px; }
+
+  .pi-page .dataTables_filter, .pi-page .dataTables_length {
+    width: 100% !important; text-align: left !important; margin-bottom: .5rem;
+  }
+  .pi-page .dataTables_filter input, .pi-page .dataTables_length select {
+    width: 100% !important; min-height: 36px; font-size: .78rem; border-radius: 8px; padding: .3rem .6rem;
+    border: 1.5px solid var(--pi-border); margin-top: 4px;
+  }
+  .pi-page .dataTables_info { font-size: .68rem !important; text-align: center !important; padding: .5rem 0 0; }
+  .pi-page .dataTables_paginate { text-align: center !important; padding: .5rem 0; }
+  .pi-page .dataTables_paginate .paginate_button {
+    display: inline-flex !important; min-width: 28px !important; height: 28px !important;
+    padding: 0 .35rem !important; font-size: .68rem !important; margin: 0 1px !important;
+    border-radius: 6px !important;
+  }
 }
 </style>
 
@@ -500,9 +625,9 @@
             <tbody>
               @forelse ($Purchase as $purchase)
               <tr @if($purchase->return) class="pi-returned" @endif>
-                <td class="fw-semibold" style="color:var(--pi-text-muted);">{{ $purchase->id }}</td>
+                <td data-label="#" class="fw-semibold" style="color:var(--pi-text-muted);">{{ $purchase->id }}</td>
 
-                <td>
+                <td data-label="Invoice">
                   @if($purchase instanceof \App\Models\InwardGatepass)
                   <span class="fw-semibold">{{ $purchase->invoice_no }}</span>
                   <span class="pi-badge pi-badge-inward ms-1"><i class="bi bi-box-arrow-in-right"></i>Inward</span>
@@ -511,9 +636,9 @@
                   @endif
                 </td>
 
-                <td>{{ $purchase->branch->name ?? 'N/A' }}</td>
+                <td data-label="Branch">{{ $purchase->branch->name ?? 'N/A' }}</td>
 
-                <td>
+                <td data-label="Type">
                   @php
                   $type = $purchase instanceof \App\Models\InwardGatepass
                     ? $purchase->receive_type
@@ -525,7 +650,7 @@
                   </span>
                 </td>
 
-                <td>
+                <td data-label="Location">
                   @if($purchase instanceof \App\Models\InwardGatepass)
                     {{ $purchase->warehouse->warehouse_name ?? 'Shop' }}
                   @else
@@ -535,10 +660,10 @@
                   @endif
                 </td>
 
-                <td class="fw-semibold">{{ $purchase->vendor->name ?? 'N/A' }}</td>
+                <td data-label="Vendor" class="fw-semibold">{{ $purchase->vendor->name ?? 'N/A' }}</td>
 
                 {{-- Products stacked with qty badges --}}
-                <td class="text-start">
+                <td data-label="Products" class="text-start">
                   <div class="pi-prod-list">
                     @forelse ($purchase->items as $item)
                     <div class="pi-prod-item">
@@ -551,25 +676,25 @@
                   </div>
                 </td>
 
-                <td class="fw-semibold" style="color:var(--pi-text-sec);">
+                <td data-label="Qty" class="fw-semibold" style="color:var(--pi-text-sec);">
                   {{ $purchase->items->sum('qty') }}
                 </td>
 
-                <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--pi-text-muted);">
+                <td data-label="Note" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--pi-text-muted);">
                   {{ $purchase->note ?? '—' }}
                 </td>
 
-                <td class="pi-amount">{{ number_format($purchase->subtotal ?? 0, 2) }}</td>
-                <td class="pi-amount">{{ number_format($purchase->discount ?? 0, 2) }}</td>
-                <td class="pi-amount">{{ number_format($purchase->extra_cost ?? 0, 2) }}</td>
+                <td data-label="Subtotal" class="pi-amount">{{ number_format($purchase->subtotal ?? 0, 2) }}</td>
+                <td data-label="Disc" class="pi-amount">{{ number_format($purchase->discount ?? 0, 2) }}</td>
+                <td data-label="Extras" class="pi-amount">{{ number_format($purchase->extra_cost ?? 0, 2) }}</td>
 
-                <td class="pi-amount pi-amount-net">{{ number_format($purchase->net_amount ?? 0, 2) }}</td>
+                <td data-label="Net" class="pi-amount pi-amount-net">{{ number_format($purchase->net_amount ?? 0, 2) }}</td>
 
-                <td class="pi-amount pi-amount-paid">{{ number_format($purchase->paid_amount ?? 0, 2) }}</td>
+                <td data-label="Paid" class="pi-amount pi-amount-paid">{{ number_format($purchase->paid_amount ?? 0, 2) }}</td>
 
-                <td class="pi-amount pi-amount-due">{{ number_format($purchase->due_amount ?? 0, 2) }}</td>
+                <td data-label="Due" class="pi-amount pi-amount-due">{{ number_format($purchase->due_amount ?? 0, 2) }}</td>
 
-                <td style="font-size:.82rem;color:var(--pi-text-sec);white-space:nowrap;">
+                <td data-label="Date" style="font-size:.82rem;color:var(--pi-text-sec);white-space:nowrap;">
                   {{ \Carbon\Carbon::parse(
                     $purchase instanceof \App\Models\InwardGatepass
                       ? $purchase->gatepass_date
@@ -577,7 +702,7 @@
                   )->format('d-m-Y') }}
                 </td>
 
-                <td>
+                <td data-label="Actions">
                   <div class="pi-actions">
                     @if($purchase instanceof \App\Models\InwardGatepass)
                     <a href="{{ route('InwardGatepass.inv', $purchase->id) }}" class="pi-act pi-act-info">
@@ -696,6 +821,11 @@
         lengthMenu: "Show _MENU_ entries",
         emptyTable: "No purchases found"
       }
+    });
+
+    // Prevent aria-hidden on focused element — move focus before modal closes
+    $('.modal').on('hide.bs.modal', function() {
+      $(document.body).focus();
     });
   });
 </script>

@@ -1,14 +1,54 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+:root {
+    --ex-bg: #f1f4f9;
+    --ex-surface: #ffffff;
+    --ex-border: #e9edf2;
+    --ex-text: #0b1a33;
+    --ex-sec: #54657e;
+    --ex-muted: #8896ab;
+    --ex-accent: #0d9488;
+    --ex-shadow: 0 1px 2px rgba(0,0,0,.03), 0 1px 3px rgba(0,0,0,.05);
+}
+.ex-desk { overflow-x: hidden; }
+.ex-tbl { table-layout: fixed; width: 100% !important; margin: 0; border-collapse: separate; border-spacing: 0; font-size: .8rem; }
+.ex-tbl thead th { background: #f8fafc; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .45px; color: var(--ex-muted); padding: .5rem .65rem; border-bottom: 2px solid var(--ex-border); white-space: normal !important; overflow-wrap: break-word; }
+.ex-tbl tbody td { padding: .45rem .65rem; border-bottom: 1px solid #f1f4f9; vertical-align: middle; color: var(--ex-sec); white-space: normal !important; overflow-wrap: break-word; }
+.ex-tbl tbody tr:hover { background: #fafbfc; }
+.ex-tbl .ex-amt { font-weight: 700; color: var(--ex-accent); white-space: nowrap; }
+
+.exc-cards { display: none; }
+.exc-card { background: var(--ex-surface); border: 1.5px solid var(--ex-border); border-left: 4px solid var(--ex-accent); border-radius: 10px; box-shadow: var(--ex-shadow); padding: .7rem .85rem; margin-bottom: .6rem; }
+.exc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; padding-bottom: .5rem; margin-bottom: .5rem; border-bottom: 1px dashed var(--ex-border); }
+.exc-head-l { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.exc-type { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; background: #e7f9f0; color: #0f7a4d; font-size: .64rem; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; border: 1px solid #b9ecd2; border-radius: 20px; padding: .22rem .6rem; }
+.exc-party { font-size: .9rem; font-weight: 800; color: var(--ex-text); line-height: 1.3; overflow-wrap: break-word; }
+.exc-date { flex: 0 0 auto; font-size: .7rem; font-weight: 600; color: var(--ex-muted); white-space: nowrap; }
+.exc-body { display: grid; grid-template-columns: repeat(2, 1fr); gap: .45rem .9rem; }
+.exc-row { min-width: 0; }
+.exc-row span { display: block; font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--ex-muted); }
+.exc-row b { display: block; font-size: .84rem; font-weight: 700; color: var(--ex-text); overflow-wrap: break-word; }
+.exc-row b.exc-amt { color: var(--ex-accent); font-size: .95rem; }
+.exc-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .4rem; padding-top: .55rem; margin-top: .1rem; border-top: 1px dashed var(--ex-border); }
+.exc-actions .btn { margin: 0; }
+.exc-empty { text-align: center; padding: 1.5rem 1rem; color: var(--ex-muted); font-size: .82rem; }
+
+@media (max-width: 991.98px) {
+    .ex-desk { display: none; }
+    .exc-cards { display: block; margin-top: 1rem; }
+    .exc-cards::before {
+        content: attr(data-count);
+        display: none;
+    }
+}
+</style>
     <div class="container-fluid py-4">
-
-
-
 
         {{-- Voucher Table --}}
         <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center text-white">
+            <div class="card-header d-flex justify-content-between align-items-center text-white flex-wrap gap-2">
                 <h6 class="mb-0 text-dark ">{{ ucwords($type) }}</h6>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#voucherModal">
                     <i class="bi bi-plus-circle"></i> Add Voucher
@@ -16,46 +56,49 @@
             </div>
 
             <div class="card-body">
-                <table id="voucherTable" class="table table-bordered table-striped table-hover align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            {{--  <th>Sales Officer</th>  --}}
-
-                            <th>id</th>
-                            <th>Customer</th>
-                            <th>party</th>
-                            {{--  <th>Sub-Head</th>  --}}
-                            <th>Narration</th>
-                            <th>Amount</th>
-                            <th>Date</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($vouchers as $voucher)
+                <div class="ex-desk">
+                    <table id="voucherTable" class="table table-bordered table-striped table-hover align-middle ex-tbl">
+                        <thead class="table-dark">
                             <tr>
-                                <td>{{ $voucher->id }}</td>
+                                {{--  <th>Sales Officer</th>  --}}
 
-                                <td>{{ ucfirst($voucher->type) }}</td>
-                                <td>{{ $voucher->person }}</td>
-                                {{--  <td>{{ $voucher->sub_head }}</td>  --}}
-                                <td>{{ $voucher->narration }}</td>
-                                <td>{{ number_format($voucher->amount, 2) }}</td>
-                                <td>{{ $voucher->date }}</td>
-                                <td>
-                                    <button class="btn btn-warning btn-sm edit-btn" data-id="{{ $voucher->id }}"
-                                        data-sales_officer="{{ $voucher->sales_officer }}" data-date="{{ $voucher->date }}"
-                                        data-type="{{ $voucher->type }}" data-person="{{ $voucher->person }}"
-                                        data-sub_head="{{ $voucher->sub_head }}"
-                                        data-narration="{{ $voucher->narration }}" data-amount="{{ $voucher->amount }}"
-                                        data-bs-toggle="modal" data-bs-target="#voucherModal">
-                                        Edit
-                                    </button>
-                                </td>
+                                <th>id</th>
+                                <th>Customer</th>
+                                <th>party</th>
+                                {{--  <th>Sub-Head</th>  --}}
+                                <th>Narration</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th>Action</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach ($vouchers as $voucher)
+                                <tr>
+                                    <td>{{ $voucher->id }}</td>
+
+                                    <td>{{ ucfirst($voucher->type) }}</td>
+                                    <td>{{ $voucher->person }}</td>
+                                    {{--  <td>{{ $voucher->sub_head }}</td>  --}}
+                                    <td>{{ $voucher->narration }}</td>
+                                    <td class="ex-amt">{{ number_format($voucher->amount, 2) }}</td>
+                                    <td>{{ $voucher->date }}</td>
+                                    <td>
+                                        <button class="btn btn-warning btn-sm edit-btn" data-id="{{ $voucher->id }}"
+                                            data-sales_officer="{{ $voucher->sales_officer }}" data-date="{{ $voucher->date }}"
+                                            data-type="{{ $voucher->type }}" data-person="{{ $voucher->person }}"
+                                            data-sub_head="{{ $voucher->sub_head }}"
+                                            data-narration="{{ $voucher->narration }}" data-amount="{{ $voucher->amount }}"
+                                            data-bs-toggle="modal" data-bs-target="#voucherModal">
+                                            Edit
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div id="excCards" class="exc-cards"></div>
             </div>
         </div>
     </div>
@@ -308,7 +351,71 @@
 
      <script>
         $(document).ready(function() {
-            $('#voucherTable').DataTable();
+            if ($.fn.DataTable.isDataTable('#voucherTable')) {
+                $('#voucherTable').DataTable().destroy();
+            }
+            var table = $('#voucherTable').DataTable({
+                order: [],
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search.."
+                },
+                drawCallback: function() {
+                    if (window.matchMedia('(max-width: 991.98px)').matches) renderVoucherCards(this);
+                }
+            });
+
+            window.setTimeout(function() {
+                if (window.matchMedia('(max-width: 991.98px)').matches) renderVoucherCards(table);
+            }, 0);
+
+            function esc(str) {
+                var d = document.createElement('div');
+                d.textContent = str == null ? '' : String(str);
+                return d.innerHTML;
+            }
+
+            function renderVoucherCards(dt) {
+                if (!dt || !dt.rows) return;
+                var rows = dt.rows({ page: 'current' }).nodes().toArray();
+                var $wrap = $('#excCards');
+                if (!rows.length) {
+                    $wrap.html('<div class="exc-empty"><i class="bi bi-inbox"></i>No vouchers found</div>');
+                    return;
+                }
+                var html = '';
+                rows.forEach(function(tr) {
+                    var tds = $(tr).children('td');
+                    var id = $(tds[0]).text().trim();
+                    var type = $(tds[1]).text().trim();
+                    var party = $(tds[2]).text().trim();
+                    var narration = $(tds[3]).text().trim();
+                    var amount = $(tds[4]).text().trim();
+                    var date = $(tds[5]).text().trim();
+                    var actions = $(tds[6]).html() || '';
+
+                    html += '<div class="exc-card">'
+                        + '<div class="exc-head">'
+                        + '<div class="exc-head-l">'
+                        + '<span class="exc-type"><i class="bi bi-person"></i>' + esc(type) + '</span>'
+                        + '<span class="exc-party">' + esc(party) + '</span>'
+                        + '</div>'
+                        + '<span class="exc-date"><i class="bi bi-calendar"></i>' + esc(date) + '</span>'
+                        + '</div>'
+                        + '<div class="exc-body">'
+                        + '<div class="exc-row"><span>Voucher ID</span><b>#' + esc(id) + '</b></div>'
+                        + '<div class="exc-row"><span>Narration</span><b>' + esc(narration) + '</b></div>'
+                        + '<div class="exc-row"><span>Amount</span><b class="exc-amt">' + esc(amount) + '</b></div>'
+                        + '<div class="exc-actions">' + actions + '</div>'
+                        + '</div>'
+                        + '</div>';
+                });
+                $wrap.html(html);
+            }
+
+            $(window).on('resize.exc', function() {
+                if (window.matchMedia('(max-width: 991.98px)').matches) renderVoucherCards(table);
+            });
 
             // Edit Button Click
             $('.edit-btn').on('click', function() {

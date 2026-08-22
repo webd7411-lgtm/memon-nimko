@@ -2,147 +2,84 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Receipt</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Transfer Receipt #{{ $transfer->id ?? '' }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   <style>
-    /* ---- Clean layout: fixed column widths, no overlap ---- */
-    :root {
-      --font-base: 12.5px;
-      /* 🔥 overall font increased */
-      --line-gap: 1.35;
-      --ink: #000;
-    }
-
     * {
       box-sizing: border-box;
-    }
-
-    html,
-    body {
       margin: 0;
       padding: 0;
     }
 
-    .receipt {
-      max-width: 58mm;
-      /* 🔥 thermal safe */
-      padding: 0 1mm;
-    }
-
-    /* ===== TABLE FIX ===== */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 11.5px;
-    }
-
-    /* Column widths – balanced for 58mm */
-    colgroup col.from {
-      width: 20%;
-    }
-
-    colgroup col.to {
-      width: 20%;
-    }
-
-    colgroup col.item {
-      width: 42%;
-    }
-
-    colgroup col.qty {
-      width: 18%;
-    }
-
-    th {
-      font-size: 11px;
-      font-weight: 800;
-      padding-bottom: 4px;
-      border-bottom: 1px dashed #000;
-    }
-
-    th:nth-child(1),
-    th:nth-child(2) {
-      padding-right: 6px;
-    }
-
-
-
-    td {
-      padding: 3px 0;
-      font-weight: 600;
-      vertical-align: top;
-    }
-
-    /* Alignment */
-    td.qty,
-    th.qty {
-      text-align: right;
-      font-weight: 800;
-    }
-
-    /* Wrapping rules */
-    td.from,
-    td.to {
-      white-space: normal;
-      word-break: break-word;
-    }
-
-    td.from {
-      padding-right: 6px;
-      border-right: 1px dotted #000;
-    }
-
-    td.item {
-      white-space: normal;
-      overflow-wrap: anywhere;
-      line-height: 1.3;
-    }
-
-    /* ===== TOTAL SUMMARY BOX ===== */
-    .summary-box {
-      padding: 6px;
-      margin-top: 10px;
-      background: #f7f7f7;
-      font-size: 12px;
-    }
-
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      font-weight: 800;
-      margin-bottom: 2px;
-    }
-
-    .summary-row.final {
-      border-top: 1px dashed #000;
-      padding-top: 4px;
-      margin-top: 4px;
-      font-size: 13px;
-    }
-
     body {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-      font-size: var(--font-base);
-      line-height: var(--line-gap);
-      font-weight: 500;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      color: #000000;
+      background-color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 10px;
     }
 
-    .page {
-      width: 100%;
-      display: grid;
-      place-items: start center;
-      padding: 4px 0;
+    /* SCREEN ACTION BAR */
+    .screen-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+      padding: 10px 16px;
+      border-radius: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    .receipt {
+    .btn-act {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ffffff;
+      color: #0f172a;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      font-family: sans-serif;
+    }
+
+    .btn-act:hover {
+      background: #2563eb;
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .btn-act-sec {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .btn-act-sec:hover {
+      background: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+
+    /* THERMAL RECEIPT CONTAINER */
+    .receipt-container {
       width: 100%;
-      max-width: 58mm;
-      background: #fff;
-      color: var(--ink);
-      padding: 0 1mm;
+      max-width: 360px;
+      background: #ffffff;
+      padding: 15px 12px;
+      border-radius: 6px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      color: #000000;
     }
 
     .center {
@@ -150,327 +87,267 @@
     }
 
     .bold {
-      font-weight: 700;
+      font-weight: bold;
     }
 
-    h2 {
-      margin: 0 0 4px;
-      font-size: 18px;
-      /* 🔥 Memon Nimko BIG */
-      font-weight: 900;
-      /* 🔥 EXTRA BOLD */
-      letter-spacing: 1px;
+    .line {
+      border-top: 1.5px dashed #000000;
+      margin: 8px 0;
     }
 
-    p {
-      margin: 0;
-    }
-
-    hr {
-      border: 0;
-      border-top: 1px dashed #000;
-      margin: 6px 0;
-    }
-
-    /* --- Meta rows (Invoice/Date/Remarks) as two-column grid --- */
-    .meta {
-      display: grid;
-      grid-template-columns: 32% 68%;
-      row-gap: 2px;
-    }
-
-    .label {
-      font-weight: 700;
-    }
-
-    .value {
-      text-align: left;
-    }
-
-    /* --- Items table with fixed column widths so text doesn't collide --- */
     table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      font-size: 12px;
-      /* 🔥 table text bigger */
+      word-wrap: break-word;
     }
 
-
-    colgroup col.from {
-      width: 24%;
-    }
-
-    colgroup col.to {
-      width: 24%;
-    }
-
-    colgroup col.item {
-      width: 38%;
-    }
-
-    colgroup col.qty {
-      width: 14%;
-    }
-
-    th,
-    td {
-      padding: 3px 0;
-      font-weight: 600;
+    th, td {
+      padding: 4px 0;
+      font-size: 13px;
+      color: #000000;
+      line-height: 1.3;
     }
 
     th {
-      font-size: 11.5px;
-      font-weight: 800;
-      padding: 3px 0;
+      text-align: left;
+      font-weight: bold;
     }
 
-    td.qty,
-    th:last-child {
-      text-align: right;
-      font-weight: 800;
-    }
-
-    td:last-child,
-    th:last-child {
+    td.right, th.right {
       text-align: right;
     }
 
-    .remarks {
-      text-align: center;
-      font-size: 13.5px;
-      font-weight: 800;
-      margin-top: 6px;
+    .company-title {
+      font-size: 18px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 4px;
     }
 
-    /* Prevent ugly mid-word breaks for From/To; allow flexible wrap for Item only */
-    td.from,
-    td.to {
-      word-break: keep-all;
-      white-space: normal;
-    }
-
-    td.to {
-      padding-left: 6px;
-    }
-
-    td.item {
-      overflow-wrap: anywhere;
+    .slip-title {
+      font-size: 15px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 4px 0;
     }
 
     .footer {
       text-align: center;
-      font-size: 11px;
-      font-weight: 600;
-      margin-top: 6px;
+      font-size: 11.5px;
+      margin-top: 10px;
+      border-top: 1.5px dashed #000000;
+      padding-top: 8px;
+      color: #000000;
+      font-weight: bold;
     }
 
+    /* BLACK COPPER / POS PRINT MEDIA OVERRIDES */
     @media print {
       @page {
-        size: 58mm auto;
-        margin: 2mm;
+        margin: 0;
+        size: auto;
       }
-    }
 
-    /* Print button (screen only) */
-    .printbar {
-      display: flex;
-      justify-content: center;
-      margin: 6px 0;
-    }
+      html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+      }
 
-    .printbtn {
-      font: inherit;
-      padding: 0px 0px;
-      border: 1px solid #000;
-      background: transparent;
-      cursor: pointer;
-    }
-
-    .transfer-title {
-      font-size: 14.5px;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
-    /* ---------- META ---------- */
-    .meta {
-      display: grid;
-      grid-template-columns: 40% 60%;
-      row-gap: 3px;
-      font-size: 12.5px;
-    }
-
-    .receipt {
-      max-width: 80mm;
-    }
-
-    .label {
-      font-weight: 800;
-      /* 🔥 Invoice / Date bold */
-    }
-
-    .value {
-      font-weight: 700;
-    }
-
-    @media print {
-      .printbar {
+      .screen-actions {
         display: none !important;
       }
 
-      @page {
-        size: 58mm auto;
-        margin: 2mm;
+      .receipt-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 2mm 4mm !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        page-break-inside: avoid;
+        page-break-after: avoid;
       }
 
-      .page {
-        padding: 0;
+      table, tr, td, th, tbody, thead, tfoot {
+        page-break-inside: avoid !important;
       }
 
-      .receipt {
-        padding: 0 1mm;
+      table {
+        table-layout: fixed;
+        width: 100%;
+        word-wrap: break-word;
       }
 
-      .receipt,
-      table,
-      tr,
-      p,
-      .footer {
-        break-inside: avoid;
+      th, td {
+        white-space: normal !important;
+        padding: 3px 0 !important;
+        font-size: 13px !important;
+        color: #000000 !important;
+        font-weight: bold !important;
       }
-    }
 
-
-    @media screen {
-      .no-pdf {
-        display: none;
+      .company-title {
+        font-size: 18px !important;
+        font-weight: bold !important;
       }
-    }
 
-    @media print {
-      .no-print {
-        display: none;
+      .slip-title {
+        font-size: 15px !important;
+        font-weight: bold !important;
+      }
+
+      body, div, span, table, th, td, p {
+        font-family: 'Courier New', Courier, monospace !important;
+        color: #000000 !important;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="page">
-    <div class="receipt">
-      <div class="printbar">
-        <button class="printbtn" onclick="window.print()">🖨️ Print</button>
-        <button class="printbtn" onclick="downloadPDF()">💾 Download PDF</button>
-        <a href="{{ route('stock_transfers.index') }}" class="btn btn-secondary">
-          ← Back
-        </a>
-      </div>
-      <div class="center">
-        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-        <h2 class="bold">Memon Nimko</h2>
-      </div>
-      <div class="meta">
-        <div class="label">Invoice ID:</div>
-        <div class="value">{{ $transfer->id ?? '-' }}</div>
-        <div class="label">Date:</div>
-        <div class="value">{{ $transfer->created_at?->format('d-m-Y') ?? '-' }}</div>
-        <div class="label">Print Time:</div>
-        <div class="value">{{ \Carbon\Carbon::now()->format('h:i A') }}</div>
-      </div>
-      <hr>
-      <div class="center transfer-title">Stock Transfer</div>
-      <hr>
 
-      <table>
-        <colgroup>
-          <col class="from">
-          <col class="to">
-          <col class="item">
-          <col class="qty">
-        </colgroup>
+  <!-- SCREEN ACTION BAR -->
+  <div class="screen-actions">
+    <a href="{{ route('stock_transfers.index') }}" class="btn-act btn-act-sec">
+      <i class="bi bi-arrow-left"></i> Back
+    </a>
+    <button class="btn-act" onclick="window.print()">
+      <i class="bi bi-printer-fill"></i> Print Receipt
+    </button>
+    <button class="btn-act" onclick="downloadPDF()">
+      <i class="bi bi-file-earmark-pdf-fill"></i> Save PDF
+    </button>
+  </div>
 
-        <thead>
-          <tr>
-            <th>From</th>
-            <th>To</th>
-            <th>Item</th>
-            <th class="qty">Qty</th>
-          </tr>
-        </thead>
-        <tbody>
-          @forelse ($products as $product)
-          <tr>
-            <td>{{ $transfer->fromWarehouse->warehouse_name ?? 'Shop' }}</td>
-            <td class="center">
-              {{ $transfer->toWarehouse->warehouse_name ?? 'Shop' }}
-            </td>
-            <td class="item">
-              {{ $product->item_name }}
-              @if($product->variant_name)
-                <br><small>({{ $product->variant_name }})</small>
-              @endif
-            </td>
-            <td class="qty">{{ number_format($product->transfer_qty, 2) }}</td>
-          </tr>
-          @empty
-          <tr>
-            <td colspan="4" class="center">No products found</td>
-          </tr>
-          @endforelse
-        </tbody>
-      </table>
+  <!-- THERMAL RECEIPT CONTAINER -->
+  <div class="receipt-container">
 
-      <div class="summary-box">
-        <div class="summary-row final">
-        </div>
-        @foreach ($unitTotals as $unit => $qty)
-        <div class="summary-row">
-          <span>{{ $unit }}</span>
-          <span>{{ number_format($qty, 2) }}</span>
-        </div>
-        @endforeach
-      </div>
-      <div class="remarks center">
-        Remarks: {{ $transfer->remarks ?? '-' }}
-      </div>
-
-      <hr>
+    <!-- HEADER LOGO & COMPANY NAME -->
+    <div class="center">
+      <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;" onerror="this.style.display='none'">
+      <div class="company-title">Memon Nimko</div>
+      <p style="margin:0; font-size:12px; font-weight:bold;">Sweets & Bakers</p>
     </div>
+
+    <div class="line"></div>
+    <div class="center slip-title">Stock Transfer Slip</div>
+    <div class="line"></div>
+
+    <!-- META INFORMATION -->
+    <table>
+      <tr>
+        <th width="40%">Transfer ID:</th>
+        <td class="right bold">#{{ $transfer->id ?? '-' }}</td>
+      </tr>
+      <tr>
+        <th>Date:</th>
+        <td class="right bold">{{ $transfer->created_at?->format('d-m-Y') ?? '-' }}</td>
+      </tr>
+      <tr>
+        <th>Time:</th>
+        <td class="right bold">
+          @php
+            $formattedTime = ($transfer->created_at && $transfer->created_at->format('H:i:s') !== '00:00:00')
+              ? $transfer->created_at->format('h:i A')
+              : (($transfer->updated_at && $transfer->updated_at->format('H:i:s') !== '00:00:00')
+                ? $transfer->updated_at->format('h:i A')
+                : \Carbon\Carbon::now()->format('h:i A'));
+          @endphp
+          {{ $formattedTime }}
+        </td>
+      </tr>
+      <tr>
+        <th>From:</th>
+        <td class="right bold">{{ $transfer->fromWarehouse->warehouse_name ?? 'Shop Stock' }}</td>
+      </tr>
+      <tr>
+        <th>To:</th>
+        <td class="right bold">
+          @if($transfer->transfer_to === 'shop')
+            {{ $transfer->shop_name ?? 'Shop' }}
+          @else
+            {{ $transfer->toWarehouse->warehouse_name ?? 'Warehouse' }}
+          @endif
+        </td>
+      </tr>
+      <tr>
+        <th>Operator:</th>
+        <td class="right bold">{{ auth()->user()->name ?? 'Admin' }}</td>
+      </tr>
+    </table>
+
+    <div class="line"></div>
+
+    <!-- ITEMS TABLE -->
+    <table>
+      <thead>
+        <tr>
+          <th width="62%">Item Description</th>
+          <th width="38%" class="right">Transfer Qty</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse ($products as $product)
+        <tr>
+          <td class="bold">
+            {{ $product->item_name }}
+            @if(!empty($product->variant_name))
+              <br><small style="font-size:11px; font-weight:normal;">({{ $product->variant_name }})</small>
+            @endif
+          </td>
+          <td class="right bold" style="font-size:14px;">{{ number_format($product->transfer_qty, 2) }}</td>
+        </tr>
+        @empty
+        <tr>
+          <td colspan="2" class="center">No items found</td>
+        </tr>
+        @endforelse
+      </tbody>
+    </table>
+
+    <!-- UNIT TOTALS SUMMARY -->
+    <div class="line"></div>
+    <table>
+      @foreach ($unitTotals as $unit => $qty)
+      <tr>
+        <th class="bold" style="font-size:13px;">Total {{ $unit }}:</th>
+        <td class="right bold" style="font-size:14px;">{{ number_format($qty, 2) }}</td>
+      </tr>
+      @endforeach
+    </table>
+
+    @if(!empty($transfer->remarks))
+    <div class="line"></div>
+    <div style="font-size:12px; text-align:center; font-weight:bold;">
+      Remarks: {{ $transfer->remarks }}
+    </div>
+    @endif
+
+    <!-- FOOTER -->
+    <div class="footer">
+      *** Inventory Transfer Record ***
+    </div>
+
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
     function downloadPDF() {
-      const element = document.querySelector('.receipt');
+      const element = document.querySelector('.receipt-container');
       const opt = {
-        margin: [2, 2, 2, 2], // mm margin for thermal roll
-        filename: 'Stock_Transfer_Receipt.pdf',
-        image: {
-          type: 'jpeg',
-          quality: 1
-        },
-        html2canvas: {
-          scale: 4,
-          useCORS: true
-        },
-        jsPDF: {
-          unit: 'mm',
-          format: [58, 297],
-          orientation: 'portrait'
-        } // 58mm thermal size
+        margin: [2, 2, 2, 2],
+        filename: 'Stock_Transfer_Receipt_{{ $transfer->id ?? "doc" }}.pdf',
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 4, useCORS: true },
+        jsPDF: { unit: 'mm', format: [80, 297], orientation: 'portrait' }
       };
-
       html2pdf().set(opt).from(element).save();
     }
-
-     window.onload = function() {
-      window.print();
-    };
-
-    window.onafterprint = function() {
-      window.location.href = "{{ route('stock_transfers.index') }}";
-    };
   </script>
 
 </body>

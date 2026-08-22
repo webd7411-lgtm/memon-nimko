@@ -124,11 +124,11 @@ class VendorController extends Controller
     // Show all vendor payments
     public function vendor_payments()
     {
-        $userId = Auth::id();
-        $payments = VendorPayment::with('vendor')
-            ->where('admin_or_user_id', $userId)
-            ->orderByDesc('payment_date')
-            ->get();
+        $query = VendorPayment::with('vendor')->orderByDesc('payment_date');
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+        $payments = $query->get();
 
         $vendors = Vendor::all();
         return view('admin_panel.vendors.vendor_payments', compact('payments', 'vendors'));
@@ -161,6 +161,7 @@ class VendorController extends Controller
             'payment_no' => $paymentNo, // ✅ AUTO
             'vendor_id' => $request->vendor_id,
             'admin_or_user_id' => Auth::id(),
+            'branch_id'       => active_branch_id(),
             'payment_date' => $request->payment_date,
             'amount' => $request->amount,
             'payment_method' => $request->payment_method,

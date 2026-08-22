@@ -378,6 +378,7 @@
                         @endif
 
                         <form action="/store-product" method="POST" enctype="multipart/form-data" id="productForm">
+                            @csrf
 
                             {{-- STEP PROGRESS --}}
                             <div class="pz-progress-wrap">

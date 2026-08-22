@@ -85,6 +85,7 @@
 </head>
 <body>
     <div class="label">
+        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 42px; margin-bottom: 3px;">
         <div class="brand-name">Memon Nimko</div>
 
         <div class="barcode-block">

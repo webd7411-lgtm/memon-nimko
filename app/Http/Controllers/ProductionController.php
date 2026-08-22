@@ -82,7 +82,7 @@ class ProductionController extends Controller
 
             // Insert production items and update finished goods stock
             foreach ($request->product_id as $index => $productId) {
-                $qtyTyped = (float)$request->qty[$index];
+                $qtyTyped = (float)($request->qty[$index] ?? 0);
                 if ($qtyTyped <= 0) continue;
 
                 $variantId = $request->variant_id[$index] ?? null;
@@ -291,7 +291,7 @@ class ProductionController extends Controller
 
             // 5. Insert new items + update stock
             foreach ($request->product_id as $index => $productId) {
-                $qtyTyped = (float)$request->qty[$index];
+                $qtyTyped = (float)($request->qty[$index] ?? 0);
                 if ($qtyTyped <= 0) continue;
 
                 $variantId = $request->variant_id[$index] ?? null;

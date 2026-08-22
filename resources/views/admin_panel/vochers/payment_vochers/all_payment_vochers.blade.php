@@ -3,8 +3,72 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+    .apv-page .table-responsive { overflow-x: hidden; }
+    .apv-page table#example { table-layout: fixed; width: 100% !important; }
+    .apv-page thead th, .apv-page tbody td { white-space: normal !important; overflow-wrap: anywhere; }
 
-<div class="main-content">
+    @media (max-width: 991.98px) {
+        .apv-page .table-responsive { overflow: visible; }
+        .apv-page table { display: block !important; width: 100% !important; }
+        .apv-page thead { display: none !important; }
+        .apv-page tbody { display: block !important; }
+        .apv-page tbody tr {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: .3rem .5rem;
+            background: #fff;
+            border: 1px solid #e9edf2;
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+            padding: .55rem .65rem;
+            margin-bottom: .55rem;
+            overflow: hidden !important;
+        }
+        .apv-page tbody td {
+            display: flex !important;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 2px 4px;
+            border: none !important;
+            padding: 0 !important;
+            text-align: left;
+            min-width: 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            font-size: .75rem;
+            line-height: 1.35;
+        }
+        .apv-page tbody td::before {
+            content: attr(data-label) ":";
+            font-size: .55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: #94a3b8;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .apv-page tbody td:nth-child(1) { order: 0; }
+        .apv-page tbody td:nth-child(1)::before { content: none; }
+        .apv-page tbody td:nth-child(2) { order: 1; grid-column: 1 / -1; font-weight: 800; color: #0f172a; }
+        .apv-page tbody td:nth-child(2)::before { content: none; }
+        .apv-page tbody td:nth-child(6) { order: 2; font-weight: 700; }
+        .apv-page tbody td:nth-child(3) { order: 3; }
+        .apv-page tbody td:nth-child(4) { order: 4; }
+        .apv-page tbody td:nth-child(5) { order: 5; }
+        .apv-page tbody td:nth-child(7) { order: 6; }
+        .apv-page tbody td:nth-child(8) { order: 7; grid-column: 1 / -1; }
+        .apv-page tbody td:nth-child(9) { order: 8; }
+        .apv-page tbody td:nth-child(10) { order: 9; font-weight: 800; color: #166534; }
+        .apv-page tbody td:nth-child(11) { order: 10; grid-column: 1 / -1; }
+        .apv-page tbody td:nth-child(12) { order: 11; grid-column: 1 / -1; }
+        .apv-page tbody td:nth-child(12)::before { content: none; }
+        .apv-page tbody td:nth-child(12) .btn { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    }
+</style>
+
+<div class="main-content apv-page">
     <div class="container-fluid">
         <div class="card-header mt-2 d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Payment Vouchers</h4>
@@ -44,11 +108,11 @@
                             $narration = is_array($narrations) ? implode(', ', $narrations) : $item->narration_id;
                             @endphp
                             <tr>
-                                <td>{{ $item->id }}</td>
-                                <td>{{ $item->pvid }}</td>
-                                <td>{{ $item->receipt_date }}</td>
-                                <td>{{ $item->entry_date }}</td>
-                                <td>
+                                <td data-label="ID">{{ $item->id }}</td>
+                                <td data-label="Voucher No">{{ $item->pvid }}</td>
+                                <td data-label="Payment Date">{{ $item->receipt_date }}</td>
+                                <td data-label="Entry Date">{{ $item->entry_date }}</td>
+                                <td data-label="Type">
                                     @if($item->type == 'vendor' || $item->type == 1)
                                     Vendor
                                     @elseif($item->type == 'customer' || $item->type == 2)
@@ -57,13 +121,13 @@
                                     Other
                                     @endif
                                 </td>
-                                <td>{{ $item->party_id }}</td>
-                                <td>{{ $reference }}</td>
-                                <td>{{ $item->remarks }}</td>
-                                <td>{{ number_format($amount, 2) }}</td>
-                                <td>{{ number_format((float)$item->total_amount, 2) }}</td>
-                                <td>{{ $item->created_at }}</td>
-                                <td>
+                                <td data-label="Party">{{ $item->party_id }}</td>
+                                <td data-label="Reference No">{{ $reference }}</td>
+                                <td data-label="Remarks">{{ $item->remarks }}</td>
+                                <td data-label="Amount">{{ number_format($amount, 2) }}</td>
+                                <td data-label="Total Amount">{{ number_format((float)$item->total_amount, 2) }}</td>
+                                <td data-label="Created At">{{ $item->created_at }}</td>
+                                <td data-label="Actions">
                                     <a href="{{ route('PaymentVoucher.print', $item->id) }}"
                                         target="_blank"
                                         class="btn btn-sm btn-danger">

@@ -625,6 +625,7 @@ class VoucherController extends Controller
             $voucher = ExpenseVoucher::create([
                 'evid'         => $request->evid,
                 'user_id'      => auth()->id(), // ✅ Save current user ID
+                'branch_id'    => active_branch_id(),
                 'entry_date'   => now(),
                 'date'         => $request->date,
                 'type'         => $request->vendor_type, // Account Head
@@ -661,7 +662,12 @@ class VoucherController extends Controller
 
     public function all_expense_vochers(Request $request)
     {
-        $query = ExpenseVoucher::with(['accountHeadType', 'partyAccount', 'vendor', 'customer', 'user']);
+        $query = ExpenseVoucher::with(['accountHeadType', 'partyAccount', 'vendor', 'customer', 'user', 'branch']);
+
+        // 🏢 Multi-Branch Scoping
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
 
         // 🛡️ Restrict non-admin users to their own expenses
         if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {

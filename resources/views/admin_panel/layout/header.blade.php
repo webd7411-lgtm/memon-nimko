@@ -4,14 +4,35 @@
         <div class="top_nav flex-grow-1">
             <div class="container d-flex flex-row h-100 align-items-center">
                 <div class="text-center rt_nav_wrapper d-flex align-items-center">
-                    <a class="nav_logo rt_logo" href="index.html">
+                    <a class="nav_logo rt_logo" href="{{ url('/home') }}">
                         <img src="{{ asset('assets/images/logo.png') }}" alt="logo" /></a>
                 </div>
-                <div class="nav_wrapper_main d-flex align-items-center justify-content-between flex-grow-1">
-                    <ul class="navbar-nav navbar-nav-right mr-0 ml-auto">
+                    <ul class="navbar-nav navbar-nav-right mr-0 ml-auto align-items-center">
+                        <li class="nav-item me-3 d-flex align-items-center">
+                            <form action="{{ route('branch.switch') }}" method="POST" id="branchSwitchForm" class="d-flex align-items-center mb-0">
+                                @csrf
+                                <div class="input-group input-group-sm shadow-sm" style="border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2);">
+                                    <span class="input-group-text bg-primary text-white border-0 px-2">
+                                        <i class="fas fa-store"></i>
+                                    </span>
+                                    <select name="branch_id" onchange="document.getElementById('branchSwitchForm').submit()" 
+                                            class="form-select form-select-sm border-0 font-weight-bold" 
+                                            style="background-color: #f8fafc; color: #0f172a; cursor: pointer; padding-left: 8px; padding-right: 25px; height: 32px;">
+                                        @if(auth()->user()->email === 'admin@admin.com' || (auth()->check() && auth()->user()->hasRole('Super Admin')))
+                                            <option value="all" {{ is_all_branches() ? 'selected' : '' }}>🏢 All Branches (Consolidated)</option>
+                                        @endif
+                                        @foreach(\App\Models\Branch::all() as $branch)
+                                            <option value="{{ $branch->id }}" {{ (!is_all_branches() && active_branch_id() == $branch->id) ? 'selected' : '' }}>
+                                                📍 {{ $branch->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </form>
+                        </li>
                         <li class="nav-item nav-profile dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown"
-                                id="profileDropdown">
+                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"
+                                id="profileDropdown" aria-expanded="false">
                                 <span class="profile_name">{{ Auth::user()->name }} <i
                                         class="feather ft-chevron-down"></i></span>
                             </a>
@@ -28,7 +49,8 @@
                         </li>
                     </ul>
 
-                    <button class="navbar-toggler align-self-center" type="button" data-toggle="minimize">
+                    <button class="navbar-toggler align-self-center" type="button" id="mobileNavToggle"
+                        aria-label="Toggle navigation">
                         <span class="feather ft-menu text-white"></span>
                     </button>
 

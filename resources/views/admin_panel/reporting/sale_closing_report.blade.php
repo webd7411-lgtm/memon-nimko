@@ -246,6 +246,65 @@
 }
 .sc-tbl tbody tr.sc-row-empty i { font-size: 1.5rem; display: block; margin-bottom: .3rem; color: #d0d6e8; }
 
+/* Desktop: fixed layout = table NEVER overflows / no horizontal scroll */
+.sc-tbl-wrap { overflow-x: hidden; }
+.sc-tbl { table-layout: fixed; width: 100% !important; }
+.sc-tbl thead th, .sc-tbl tbody td { white-space: normal !important; overflow-wrap: break-word; word-break: normal; }
+
+/* ═══════ MOBILE / TABLET PREMIUM CARDS ═══════ */
+.scc-cards { display: none; }
+
+.scc-card {
+  background: var(--sc-surface);
+  border: 1.5px solid var(--sc-border);
+  border-left: 4px solid var(--sc-accent);
+  border-radius: var(--sc-radius-sm);
+  box-shadow: var(--sc-shadow);
+  padding: .7rem .85rem;
+  margin-bottom: .6rem;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.scc-card:hover { box-shadow: var(--sc-shadow-lg); transform: translateY(-1px); }
+
+.scc-top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.scc-inv { font-size: .85rem; font-weight: 700; color: var(--sc-text); word-break: normal; overflow-wrap: break-word; line-height: 1.3; }
+.scc-inv i { color: var(--sc-accent); margin-right: 5px; font-size: .85rem; }
+.scc-date { flex: 0 0 auto; font-size: .7rem; font-weight: 600; color: var(--sc-text-muted); white-space: nowrap; }
+.scc-date i { margin-right: 4px; color: #b0b8c8; }
+
+.scc-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-top: .55rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--sc-border);
+}
+.scc-label { font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--sc-text-muted); }
+.scc-amt { font-size: .95rem; font-weight: 800; color: #059669; word-break: normal; overflow-wrap: break-word; text-align: right; }
+
+.scc-card.exp { border-left-color: #ea580c; }
+.scc-card.exp .scc-inv i { color: #ea580c; }
+.scc-card.exp .scc-amt { color: #ea580c; }
+
+.scc-empty {
+  text-align: center;
+  padding: 1.6rem 1rem;
+  color: var(--sc-text-muted);
+  font-size: .82rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+}
+.scc-empty i { font-size: 1.6rem; color: #d0d6e8; }
+
+@media (max-width: 991.98px) {
+  .sc-tbl-wrap { display: none; }
+  .scc-cards { display: block; }
+}
+
 /* ═══════ LOADER ═══════ */
 .sc-loader {
   display: none;
@@ -399,6 +458,7 @@
                 </tbody>
               </table>
             </div>
+            <div id="saleCards" class="scc-cards"></div>
           </div>
         </div>
       </div>
@@ -420,6 +480,7 @@
                 </tbody>
               </table>
             </div>
+            <div id="expenseCards" class="scc-cards"></div>
           </div>
         </div>
       </div>
@@ -493,6 +554,7 @@ $(document).ready(function() {
 
         // Sales table
         let saleHtml = '';
+        let saleCards = '';
         if (res.sales && res.sales.length) {
           res.sales.forEach(function(s, idx) {
             let d = new Date(s.created_at);
@@ -503,14 +565,28 @@ $(document).ready(function() {
               + '<td class="sc-inv">' + (s.invoice_no || '—') + '</td>'
               + '<td class="sc-amt text-end">' + parseFloat(s.total_net).toLocaleString() + '</td>'
               + '</tr>';
+
+            saleCards += '<div class="scc-card sc-fade-in" style="animation-delay:' + (idx * 0.03) + 's">'
+              + '<div class="scc-top">'
+              + '<span class="scc-inv"><i class="la la-file-invoice"></i>' + (s.invoice_no || '—') + '</span>'
+              + '<span class="scc-date"><i class="la la-calendar"></i>' + dateStr + ' ' + timeStr + '</span>'
+              + '</div>'
+              + '<div class="scc-bottom">'
+              + '<span class="scc-label">Amount</span>'
+              + '<span class="scc-amt">' + parseFloat(s.total_net).toLocaleString() + '</span>'
+              + '</div>'
+              + '</div>';
           });
         } else {
           saleHtml = '<tr class="sc-row-empty"><td colspan="3"><i class="la la-inbox"></i>No sales found</td></tr>';
+          saleCards = '<div class="scc-empty"><i class="la la-inbox"></i>No sales found</div>';
         }
         $('#saleBody').html(saleHtml);
+        $('#saleCards').html(saleCards);
 
         // Expenses table
         let expHtml = '';
+        let expCards = '';
         if (res.expenses && res.expenses.length) {
           res.expenses.forEach(function(e, idx) {
             expHtml += '<tr class="sc-fade-in" style="animation-delay:' + (idx * 0.03) + 's">'
@@ -518,11 +594,24 @@ $(document).ready(function() {
               + '<td class="sc-inv">' + (e.evid || '—') + '</td>'
               + '<td class="sc-amt text-end">' + parseFloat(e.total_amount).toLocaleString() + '</td>'
               + '</tr>';
+
+            expCards += '<div class="scc-card exp sc-fade-in" style="animation-delay:' + (idx * 0.03) + 's">'
+              + '<div class="scc-top">'
+              + '<span class="scc-inv"><i class="la la-money-bill-wave"></i>' + (e.evid || '—') + '</span>'
+              + '<span class="scc-date"><i class="la la-calendar"></i>' + (e.date || '—') + '</span>'
+              + '</div>'
+              + '<div class="scc-bottom">'
+              + '<span class="scc-label">Amount</span>'
+              + '<span class="scc-amt">' + parseFloat(e.total_amount).toLocaleString() + '</span>'
+              + '</div>'
+              + '</div>';
           });
         } else {
           expHtml = '<tr class="sc-row-empty"><td colspan="3"><i class="la la-inbox"></i>No expenses found</td></tr>';
+          expCards = '<div class="scc-empty"><i class="la la-inbox"></i>No expenses found</div>';
         }
         $('#expenseBody').html(expHtml);
+        $('#expenseCards').html(expCards);
       },
       error: function(xhr) {
         $('#scLoader').removeClass('show');

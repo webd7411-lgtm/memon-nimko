@@ -1,6 +1,39 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+:root {
+    --pe-bg: #f1f4f9;
+    --pe-surface: #ffffff;
+    --pe-border: #e9edf2;
+    --pe-text: #0b1a33;
+    --pe-sec: #54657e;
+    --pe-muted: #8896ab;
+    --pe-accent: #0d9488;
+    --pe-shadow: 0 1px 2px rgba(0,0,0,.03), 0 1px 3px rgba(0,0,0,.05);
+}
+.pe-desk { overflow-x: auto; }
+.pe-tbl { table-layout: fixed; width: 100% !important; margin: 0; border-collapse: separate; border-spacing: 0; font-size: .8rem; }
+.pe-tbl thead th { background: #f8fafc; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .45px; color: var(--pe-muted); padding: .5rem .6rem; border-bottom: 2px solid var(--pe-border); white-space: normal; overflow-wrap: break-word; }
+.pe-tbl tbody td { padding: .4rem .5rem; border-bottom: 1px solid #f1f4f9; vertical-align: middle; }
+.pe-tbl .form-control { font-size: .78rem; padding: .3rem .45rem; }
+
+.pec-cards { display: none; }
+.pec-card { background: var(--pe-surface); border: 1.5px solid var(--pe-border); border-left: 4px solid var(--pe-accent); border-radius: 10px; box-shadow: var(--pe-shadow); padding: .7rem .8rem; margin-bottom: .65rem; }
+.pec-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .55rem; padding-bottom: .5rem; border-bottom: 1px dashed var(--pe-border); }
+.pec-head .pec-prod { font-weight: 700; color: var(--pe-text); background: #f8fafc; }
+.pec-head .remove-row { flex: 0 0 auto; }
+.pec-search-wrap { flex: 1 1 auto; min-width: 0; }
+.pec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem .7rem; }
+.pec-f { min-width: 0; }
+.pec-lbl { display: block; font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--pe-muted); margin-bottom: .15rem; }
+.pec-f .form-control { font-size: .85rem; min-height: 42px; }
+
+@media (max-width: 991.98px) {
+    .pe-desk { display: none; }
+    .pec-cards { display: block; }
+}
+</style>
 <div class="main-content">
     <div class="main-content-inner">
         <div class="container-fluid">
@@ -86,9 +119,9 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Items Table -->
-                                            <div style="max-height: 300px; overflow-y: scroll;">
-                                                <table class="table mt-3 table-bordered">
+                                            <!-- Items (Desktop table) -->
+                                            <div class="pe-desk" style="max-height: 320px; overflow-y: auto;">
+                                                <table class="table mt-3 table-bordered pe-tbl">
                                                     <thead>
                                                         <tr class="text-center">
                                                             <th>Product</th>
@@ -104,7 +137,7 @@
                                                     </thead>
                                                     <tbody id="purchaseItems">
                                                         @foreach($purchase->items as $item)
-                                                        <tr>
+                                                        <tr class="pec-row" data-rid="{{ $loop->index }}">
                                                             <!-- Product -->
                                                             <td>
                                                                 <input type="hidden" name="product_id[]" value="{{ $item->product_id }}">
@@ -138,8 +171,8 @@
 
                                                             <!-- Discount -->
                                                             <td>
-                                                                <input type="number" step="0.01" name="price[]" class="form-control price"
-                                                                    value="{{ $item->price ?? 0 }}">
+                                                                <input type="number" step="0.01" name="item_disc[]" class="form-control item_disc"
+                                                                    value="{{ $item->item_discount ?? 0 }}">
                                                             </td>
 
                                                             <!-- Qty -->
@@ -148,13 +181,11 @@
                                                                     value="{{ $item->qty ?? 0 }}">
                                                             </td>
 
-
                                                             <!-- Total -->
                                                             <td>
                                                                 <input type="text" name="line_total[]" class="form-control row-total"
                                                                     value="{{ $item->line_total ?? 0 }}" readonly>
                                                             </td>
-
 
                                                             <!-- Action -->
                                                             <td>
@@ -164,7 +195,29 @@
                                                         @endforeach
                                                     </tbody>
                                                 </table>
+                                            </div>
 
+                                            <!-- Items (Mobile cards) -->
+                                            <div class="pec-cards">
+                                                @foreach($purchase->items as $item)
+                                                <div class="pec-card pec-row" data-rid="{{ $loop->index }}">
+                                                    <div class="pec-head">
+                                                        <input type="hidden" name="product_id[]" value="{{ $item->product_id }}">
+                                                        <input type="text" class="form-control pec-prod"
+                                                            value="{{ $item->product->item_name ?? 'NULL' }}" readonly>
+                                                        <button type="button" class="btn btn-sm btn-danger remove-row">X</button>
+                                                    </div>
+                                                    <div class="pec-grid">
+                                                        <div class="pec-f"><span class="pec-lbl">Item Code</span><div class="item_code"><input type="text" class="form-control" value="{{ $item->product->item_code ?? 'NULL' }}" readonly></div></div>
+                                                        <div class="pec-f"><span class="pec-lbl">Brand</span><div class="uom"><input type="text" class="form-control" value="{{ $item->product->brand->name ?? 'NULL' }}" readonly></div></div>
+                                                        <div class="pec-f"><span class="pec-lbl">Unit</span><div class="unit"><input type="text" name="unit[]" class="form-control" value="{{ $item->unit ?? 'NULL' }}"></div></div>
+                                                        <div class="pec-f"><span class="pec-lbl">Price</span><input type="number" step="0.01" name="price[]" class="form-control price" value="{{ $item->price ?? 0 }}"></div>
+                                                        <div class="pec-f"><span class="pec-lbl">Discount</span><input type="number" step="0.01" name="item_disc[]" class="form-control item_disc" value="{{ $item->item_discount ?? 0 }}"></div>
+                                                        <div class="pec-f"><span class="pec-lbl">Qty</span><input type="number" name="qty[]" class="form-control quantity" value="{{ $item->qty ?? 0 }}"></div>
+                                                        <div class="pec-f"><span class="pec-lbl">Total</span><input type="text" name="line_total[]" class="form-control row-total" value="{{ $item->line_total ?? 0 }}" readonly></div>
+                                                    </div>
+                                                </div>
+                                                @endforeach
                                             </div>
 
                                             <div class="row g-3 mt-3">
@@ -208,124 +261,58 @@
 @endsection
 @section('scripts')
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const form = document.querySelector("form[action='{{ route('store.Purchase') }}']");
-        const submitBtn = document.getElementById("submitBtn");
-
-        // Enter key se form submit disable
-        form.addEventListener("keydown", function(e) {
-            if (e.key === "Enter") {
-                e.preventDefault();
-            }
-        });
-
-        // Sirf button click pe submit
-        submitBtn.addEventListener("click", function() {
-            form.submit();
-        });
-    });
-</script>
-
-{{-- Success & Error Messages --}}
-@if (session('success'))
-<script>
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: @json(session('success')),
-        confirmButtonColor: '#3085d6',
-    });
-</script>
-@endif
-
-
-@if ($errors->any())
-<script>
-    Swal.fire({
-        icon: 'error',
-        title: 'Oops...',
-        html: {
-            !!json_encode(implode('<br>', $errors - > all())) !!
-        },
-        confirmButtonColor: '#d33',
-    });
-</script>
-@endif
-<script>
     $(document).ready(function() {
 
+        // ---------- Helpers ----------
+        function num(n) {
+            return isNaN(parseFloat(n)) ? 0 : parseFloat(n);
+        }
 
-        // Prevent Enter key from submitting form in product search
-        $(document).on('keydown', '.productSearch', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // stops form submission
-            }
-        });
+        function recalcRow($row) {
+            if (!$row || !$row.length) return;
+            const qty = num($row.find('.quantity').val());
+            const price = num($row.find('.price').val());
+            const disc = num($row.find('.item_disc').val());
+            let total = (qty * price) - (qty * disc);
+            if (total < 0) total = 0;
+            $row.find('.row-total').val(total.toFixed(2));
+        }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const cancelBtn = document.getElementById('cancelBtn');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', function() {
-                    Swal.fire({
-                        title: 'Are you sure?',
-                        text: 'This will cancel your changes!',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: 'Yes, go back!'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = '';
-                        }
-                    });
-                });
-            }
-        });
-
-        $(document).ready(function() {
-
-            // ---------- Helpers ----------
-            function num(n) {
-                return isNaN(parseFloat(n)) ? 0 : parseFloat(n);
-            }
-
-            function recalcRow($row) {
-                const qty = num($row.find('.quantity').val());
-                const price = num($row.find('.price').val());
-                const disc = num($row.find('.item_disc').val()); // per-item discount
-                let total = (qty * price) - (qty * disc); // ✅ correct formula
-                if (total < 0) total = 0;
-                $row.find('.row-total').val(total.toFixed(2));
-            }
-
-
-            function recalcSummary() {
-                let sub = 0;
-                $('#purchaseItems .row-total').each(function() {
-                    sub += num($(this).val());
-                });
-                $('#subtotal').val(sub.toFixed(2));
-
-                const oDisc = num($('#overallDiscount').val());
-                const xCost = num($('#extraCost').val());
-                const net = (sub - oDisc + xCost);
-                $('#netAmount').val(net.toFixed(2));
-
-                const paid = num($('#paidAmount').val());
-                const due = net - paid;
-                $('#dueAmount').val(due.toFixed(2));
-            }
-
-            $('#overallDiscount, #extraCost, #paidAmount').on('input', function() {
-                recalcSummary();
+        function recalcSummary() {
+            let sub = 0;
+            $('.row-total:visible').each(function() {
+                sub += num($(this).val());
             });
+            $('#subtotal').val(sub.toFixed(2));
 
+            const oDisc = num($('#overallDiscount').val());
+            const xCost = num($('#extraCost').val());
+            const net = (sub - oDisc + xCost);
+            $('#netAmount').val(net.toFixed(2));
+        }
 
+        $('#overallDiscount, #extraCost').on('input', function() {
+            recalcSummary();
+        });
 
-            function appendBlankRow() {
-                const newRow = `
-        <tr>
+        // ---------- Mobile/Desktop view mode: serialize ONLY the visible field set ----------
+        function toggleFormSets() {
+            var mobile = window.matchMedia('(max-width: 991.98px)').matches;
+            $('#purchaseItems input, #purchaseItems select, #purchaseItems textarea, #purchaseItems button').prop('disabled', mobile);
+            $('.pec-cards input, .pec-cards select, .pec-cards textarea, .pec-cards button').prop('disabled', !mobile);
+        }
+        var _resizeT;
+        $(window).on('resize', function() {
+            clearTimeout(_resizeT);
+            _resizeT = setTimeout(toggleFormSets, 150);
+        });
+
+        // ---------- Add row: create BOTH table row + mobile card (same data-rid) ----------
+        function appendBlankRow() {
+            const rid = $('#purchaseItems tr').length;
+
+            const trHtml = `
+        <tr class="pec-row" data-rid="${rid}">
             <td>
                 <input type="hidden" name="product_id[]" class="product_id">
                 <input type="text" class="form-control productSearch" placeholder="Enter product name..." autocomplete="off">
@@ -337,160 +324,169 @@
             <td><input type="number" step="0.01" name="price[]" class="form-control price" value="1"></td>
             <td><input type="number" step="0.01" name="item_disc[]" class="form-control item_disc" value=""></td>
             <td class="qty"><input type="number" name="qty[]" class="form-control quantity" value="" min="1"></td>
-            <td class="total border"><input type="text" name="total[]" class="form-control row-total" readonly></td>
+            <td class="total border"><input type="text" name="line_total[]" class="form-control row-total" readonly></td>
             <td><button type="button" class="btn btn-sm btn-danger remove-row">X</button></td>
         </tr>`;
-                $('#purchaseItems').append(newRow);
+            $('#purchaseItems').append(trHtml);
+
+            const cardHtml = `
+        <div class="pec-card pec-row" data-rid="${rid}">
+            <div class="pec-head">
+                <div class="pec-search-wrap">
+                    <input type="hidden" name="product_id[]" class="product_id">
+                    <input type="text" class="form-control productSearch" placeholder="Enter product name..." autocomplete="off">
+                    <ul class="searchResults list-group mt-1"></ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-danger remove-row">X</button>
+            </div>
+            <div class="pec-grid">
+                <div class="pec-f"><span class="pec-lbl">Item Code</span><div class="item_code"><input type="text" name="item_code[]" class="form-control" readonly></div></div>
+                <div class="pec-f"><span class="pec-lbl">Brand</span><div class="uom"><input type="text" name="uom[]" class="form-control" readonly></div></div>
+                <div class="pec-f"><span class="pec-lbl">Unit</span><div class="unit"><input type="text" name="unit[]" class="form-control" readonly></div></div>
+                <div class="pec-f"><span class="pec-lbl">Price</span><input type="number" step="0.01" name="price[]" class="form-control price" value="1"></div>
+                <div class="pec-f"><span class="pec-lbl">Discount</span><input type="number" step="0.01" name="item_disc[]" class="form-control item_disc" value=""></div>
+                <div class="pec-f"><span class="pec-lbl">Qty</span><input type="number" name="qty[]" class="form-control quantity" value="" min="1"></div>
+                <div class="pec-f"><span class="pec-lbl">Total</span><input type="text" name="line_total[]" class="form-control row-total" readonly></div>
+            </div>
+        </div>`;
+            $('.pec-cards').append(cardHtml);
+            toggleFormSets();
+        }
+
+        // Edit form me bhi ek extra blank row ho, taake user naya product search kare
+        appendBlankRow();
+
+        // ---------- Product Search (AJAX) ----------
+        $(document).on('keydown', '.productSearch', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
             }
+        });
 
+        $(document).on('keyup', '.productSearch', function(e) {
+            const $input = $(this);
+            const q = $input.val().trim();
+            const $row = $input.closest('.pec-row');
+            const $box = $row.find('.searchResults');
 
-            // Edit form me bhi ek extra blank row ho, taake user new product search kare
-            if ($("#purchaseItems tr").length > 0) {
-                appendBlankRow();
-            }
-
-            // ---------- Product Search (AJAX) ----------
-            $(document).on('keyup', '.productSearch', function(e) {
-                const $input = $(this);
-                const q = $input.val().trim();
-                const $row = $input.closest('tr');
-                const $box = $row.find('.searchResults');
-
-                // Keyboard navigation (Arrow Up/Down + Enter)
-                const isNavKey = ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key);
-                if (isNavKey && $box.children('.search-result-item').length) {
-                    const $items = $box.children('.search-result-item');
-                    let idx = $items.index($items.filter('.active'));
-                    if (e.key === 'ArrowDown') {
-                        idx = (idx + 1) % $items.length;
-                        $items.removeClass('active');
-                        $items.eq(idx).addClass('active');
-                        e.preventDefault();
-                        return;
-                    }
-                    if (e.key === 'ArrowUp') {
-                        idx = (idx <= 0 ? $items.length - 1 : idx - 1);
-                        $items.removeClass('active');
-                        $items.eq(idx).addClass('active');
-                        e.preventDefault();
-                        return;
-                    }
-                    if (e.key === 'Enter') {
-                        if (idx >= 0) {
-                            $items.eq(idx).trigger('click');
-                        } else if ($items.length === 1) {
-                            $items.eq(0).trigger('click');
-                        }
-                        e.preventDefault();
-                        return;
-                    }
-                }
-
-                // Normal fetch
-                if (q.length === 0) {
-                    $box.empty();
+            const isNavKey = ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key);
+            if (isNavKey && $box.children('.search-result-item').length) {
+                const $items = $box.children('.search-result-item');
+                let idx = $items.index($items.filter('.active'));
+                if (e.key === 'ArrowDown') {
+                    idx = (idx + 1) % $items.length;
+                    $items.removeClass('active');
+                    $items.eq(idx).addClass('active');
+                    e.preventDefault();
                     return;
                 }
-
-                $.ajax({
-                    url: "{{ route('search-products') }}",
-                    type: 'GET',
-                    data: {
-                        q
-                    },
-                    success: function(data) {
-                        let html = '';
-                        (data || []).forEach(p => {
-                            const brand = (p.brand && p.brand.name) ? p.brand.name : '';
-                            const unit = (p.unit_id ?? '');
-                            const price = (p.wholesale_price ?? 0);
-                            const code = (p.item_code ?? '');
-                            const name = (p.item_name ?? '');
-                            const id = (p.id ?? '');
-                            html += `
-                            <li class="list-group-item search-result-item"
-                                tabindex="0"
-                                data-product-id="${id}"
-                                data-product-name="${name}"
-                                data-product-uom="${brand}"
-                                data-product-unit="${unit}"
-                                data-product-code="${code}"
-                                data-price="${price}">
-                                ${name} - ${code} - Rs. ${price}
-                            </li>`;
-                        });
-                        $box.html(html);
-
-                        // first item active for quick Enter
-                        $box.children('.search-result-item').first().addClass('active');
-                    },
-                    error: function() {
-                        $box.empty();
-                    }
-                });
-            });
-
-            // Click/Enter on suggestion
-            $(document).on('click', '.search-result-item', function() {
-                const $li = $(this);
-                const $row = $li.closest('tr');
-
-                $row.find('.productSearch').val($li.data('product-name'));
-                $row.find('.item_code input').val($li.data('product-code'));
-                $row.find('.uom input').val($li.data('product-uom'));
-                $row.find('.unit input').val($li.data('product-unit'));
-                $row.find('.price').val($li.data('price'));
-
-                $row.find('.product_id').val($li.data('product-id'));
-
-                // reset qty & discount for fresh calc
-                $row.find('.quantity').val(1);
-                $row.find('.item_disc').val(0);
-
-                recalcRow($row);
-                recalcSummary();
-
-                // clear results
-                $row.find('.searchResults').empty();
-
-                // append new blank row and focus its search
-                appendBlankRow();
-                $('#purchaseItems tr:last .productSearch').focus();
-            });
-
-            // Also allow keyboard Enter selection when list focused
-            $(document).on('keydown', '.searchResults .search-result-item', function(e) {
+                if (e.key === 'ArrowUp') {
+                    idx = (idx <= 0 ? $items.length - 1 : idx - 1);
+                    $items.removeClass('active');
+                    $items.eq(idx).addClass('active');
+                    e.preventDefault();
+                    return;
+                }
                 if (e.key === 'Enter') {
-                    $(this).trigger('click');
+                    if (idx >= 0) {
+                        $items.eq(idx).trigger('click');
+                    } else if ($items.length === 1) {
+                        $items.eq(0).trigger('click');
+                    }
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            if (q.length === 0) {
+                $box.empty();
+                return;
+            }
+
+            $.ajax({
+                url: "{{ route('search-products') }}",
+                type: 'GET',
+                data: { q },
+                success: function(data) {
+                    let html = '';
+                    (data || []).forEach(p => {
+                        const brand = (p.brand && p.brand.name) ? p.brand.name : '';
+                        const unit = (p.unit_id ?? '');
+                        const price = (p.wholesale_price ?? 0);
+                        const code = (p.item_code ?? '');
+                        const name = (p.item_name ?? '');
+                        const id = (p.id ?? '');
+                        html += `
+                        <li class="list-group-item search-result-item"
+                            tabindex="0"
+                            data-product-id="${id}"
+                            data-product-name="${name}"
+                            data-product-uom="${brand}"
+                            data-product-unit="${unit}"
+                            data-product-code="${code}"
+                            data-price="${price}">
+                            ${name} - ${code} - Rs. ${price}
+                        </li>`;
+                    });
+                    $box.html(html);
+
+                    $box.children('.search-result-item').first().addClass('active');
+                },
+                error: function() {
+                    $box.empty();
                 }
             });
+        });
 
-            // Row calculations
-            $('#purchaseItems').on('input', '.quantity, .price, .item_disc', function() {
-                const $row = $(this).closest('tr');
-                recalcRow($row);
-                recalcSummary();
-            });
+        // Click/Enter on suggestion
+        $(document).on('click', '.search-result-item', function() {
+            const $li = $(this);
+            const $row = $li.closest('.pec-row');
 
-            // Remove row
-            $('#purchaseItems').on('click', '.remove-row', function() {
-                $(this).closest('tr').remove();
-                recalcSummary();
-            });
+            $row.find('.productSearch').val($li.data('product-name'));
+            $row.find('.item_code input').val($li.data('product-code'));
+            $row.find('.uom input').val($li.data('product-uom'));
+            $row.find('.unit input').val($li.data('product-unit'));
+            $row.find('.price').val($li.data('price'));
 
-            // Summary inputs
-            $('#overallDiscount, #extraCost').on('input', function() {
-                recalcSummary();
-            });
+            $row.find('.product_id').val($li.data('product-id'));
 
-            // init first row values
-            recalcRow($('#purchaseItems tr:first'));
+            $row.find('.quantity').val(1);
+            $row.find('.item_disc').val(0);
+
+            recalcRow($row);
+            recalcSummary();
+
+            $row.find('.searchResults').empty();
+
+            appendBlankRow();
+            $('.pec-row:visible .productSearch').last().focus();
+        });
+
+        $(document).on('keydown', '.searchResults .search-result-item', function(e) {
+            if (e.key === 'Enter') {
+                $(this).trigger('click');
+            }
+        });
+
+        // Row calculations
+        $(document).on('input', '.quantity, .price, .item_disc', function() {
+            const $row = $(this).closest('.pec-row');
+            recalcRow($row);
             recalcSummary();
         });
 
+        // Remove row (removes matching desktop row + mobile card)
+        $(document).on('click', '.remove-row', function() {
+            const rid = $(this).closest('.pec-row').data('rid');
+            $('.pec-row[data-rid="' + rid + '"]').remove();
+            recalcSummary();
+        });
 
-
-
+        // init values
+        recalcRow($('#purchaseItems tr:first'));
+        recalcSummary();
+        toggleFormSets();
     });
 </script>
 

@@ -14,8 +14,9 @@ class UserController extends Controller
     public function index()
     {
 
-        $users = User::all();
+        $users = User::with('branch')->get();
         $allRoles  = Role::all();
+        $branches  = \App\Models\Branch::all();
         
         // attach opening balance for today
         foreach($users as $user) {
@@ -24,41 +25,21 @@ class UserController extends Controller
                 ->first();
         }
 
-        return view('admin_panel.users.users', compact(['users', 'allRoles']));
+        return view('admin_panel.users.users', compact(['users', 'allRoles', 'branches']));
     }
 
     public function store(Request $request)
     {
-        // dd("sda");
         $editId = $request->edit_id ?? null;
         $validator = Validator::make($request->all(), [
             'name' => 'required',
             'email' => 'required|unique:users,email,' . $request->edit_id,
-            'password' => 'required'
+            'password' => $editId ? 'nullable' : 'required'
         ]);
-
-        if ($validator->fails()) {
-            return ['errors' => $validator->errors()];
-        }
-
-
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()]);
         }
-
-        // Step 2: Check for user_id uniqueness (exclude self in edit)
-        // $userExists = Branch::where('user_id', $request->user_id)
-        //     ->when($editId, fn($q) => $q->where('id', '!=', $editId))
-        //     ->exists();
-
-        // if ($userExists) {
-        //     return response()->json([
-        //         'errors' => [
-        //             'user_id' => ['This user is already assigned to another branch.']
-        //         ]
-        //     ]);
-        // }
 
         // Step 3: Save or update logic
         if (!empty($editId)) {
@@ -77,7 +58,12 @@ class UserController extends Controller
 
         $user->name = $request->name;
         $user->email = $request->email;
-        $user->password = Hash::make($request->password);
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+        if ($request->filled('branch_id')) {
+            $user->branch_id = $request->branch_id;
+        }
         $user->save();
 
         return response()->json($msg);

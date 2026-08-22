@@ -61,6 +61,7 @@
 
     <!-- Header -->
     <div class="center">
+        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
         <h2 style="margin:0;font-size:14px;" class="bold">Memon Nimko</h2>
         <p style="margin:0;">Sweet & Bakers</p>
         <p style="margin:0;">Latifabad no 6 Near Shadman Hall  Hyderabad</p>

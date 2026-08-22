@@ -102,14 +102,35 @@ jQuery(document).ready(function() {
             $(".rt_nav_header.horizontal-layout .nav-bottom").toggleClass("header-toggled");
         });
 
+        // Close mobile drawer when a submenu link is clicked (real navigation)
+        $(".rt_nav_header.horizontal-layout .nav-bottom .submenu a").on("click", function() {
+            if (window.matchMedia('(max-width: 991.98px)').matches) {
+                $(".rt_nav_header.horizontal-layout .nav-bottom").removeClass("header-toggled");
+            }
+        });
+
+        // When resizing to desktop, reset drawer state
+        $(window).on('resize', function() {
+            if (window.matchMedia('(min-width: 992px)').matches) {
+                $(".rt_nav_header.horizontal-layout .nav-bottom").removeClass("header-toggled");
+                $('.page-navigation >.nav-item').removeClass('show-submenu');
+            }
+        });
+
         // Navigation in mobile menu on click
         var navItemClicked = $('.page-navigation >.nav-item');
         navItemClicked.on("click", function(event) {
-            if (window.matchMedia('(max-width: 991px)').matches) {
-                if (!($(this).hasClass('show-submenu'))) {
+            if (window.matchMedia('(max-width: 991.98px)').matches) {
+                var $li = $(this);
+                var $link = $(event.target).closest('> .nav-link', $li[0]);
+                // Parent links that only open a submenu should not jump to "#"
+                if ($link.length && $link.attr('href') === '#' && $li.find(':scope > .submenu').length) {
+                    event.preventDefault();
+                }
+                if (!($li.hasClass('show-submenu'))) {
                     navItemClicked.removeClass('show-submenu');
                 }
-                $(this).toggleClass('show-submenu');
+                $li.toggleClass('show-submenu');
             }
         })
 

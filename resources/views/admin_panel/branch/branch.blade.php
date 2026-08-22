@@ -1,7 +1,64 @@
- @extends('admin_panel.layout.app')
+﻿ @extends('admin_panel.layout.app')
  @section('content')
-     
-<div class="main-content">
+<style>
+    .br-page .table-responsive { overflow-x: hidden; }
+    .br-page table#default-datatable { table-layout: fixed; width: 100% !important; }
+    .br-page thead th, .br-page tbody td { white-space: normal !important; overflow-wrap: anywhere; }
+
+    @media (max-width: 991.98px) {
+        .br-page .table-responsive { overflow: visible; }
+        .br-page table { display: block !important; width: 100% !important; }
+        .br-page thead { display: none !important; }
+        .br-page tbody { display: block !important; }
+        .br-page tbody tr {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: .3rem .5rem;
+            background: #fff;
+            border: 1px solid #e9edf2;
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+            padding: .55rem .65rem;
+            margin-bottom: .55rem;
+            overflow: hidden !important;
+        }
+        .br-page tbody td {
+            display: flex !important;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 2px 4px;
+            border: none !important;
+            padding: 0 !important;
+            text-align: left;
+            min-width: 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            font-size: .75rem;
+            line-height: 1.35;
+        }
+        .br-page tbody td::before {
+            content: attr(data-label) ":";
+            font-size: .55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: #94a3b8;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .br-page tbody td:nth-of-type(1) { order: 0; justify-self: start; }
+        .br-page tbody td:nth-of-type(1)::before { content: none; }
+        .br-page tbody td:nth-of-type(2) { order: 1; grid-column: 1 / -1; font-weight: 700; color: #0f172a; }
+        .br-page tbody td:nth-of-type(2)::before { content: none; }
+        .br-page tbody td:nth-of-type(3) { order: 2; }
+        .br-page tbody td:nth-of-type(4) { order: 3; }
+        .br-page tbody td:nth-of-type(5) { order: 4; }
+        .br-page tbody td:nth-of-type(6) { order: 5; grid-column: 1 / -1; }
+        .br-page tbody td:nth-of-type(6)::before { content: none; }
+        .br-page tbody td:nth-of-type(6) .btn { flex: 1 1 auto; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; }
+    }
+</style>
+<div class="main-content br-page">
     <div class="main-content-inner">
         <div class="container">
             <div class="row">
@@ -29,12 +86,12 @@
             @foreach ($branches as $branch)
                 <tr>
                     <span class="d-none" id="edit-id">{{ $branch->id }}</span>
-                    <td class="id">{{ $branch->id }}</td>
-                    <td class="name">{{ $branch->name }}</td>
-                    <td class="address">{{ $branch->address }}</td>
-                    <td class="number">{{ $branch->number }}</td>
-                    <td class="email">{{ $branch->user->email }}</td>
-                    <td>
+                    <td class="id" data-label="Id">{{ $branch->id }}</td>
+                    <td class="name" data-label="Name">{{ $branch->name }}</td>
+                    <td class="address" data-label="Address">{{ $branch->address }}</td>
+                    <td class="number" data-label="Number">{{ $branch->number }}</td>
+                    <td class="email" data-label="Email">{{ $branch->user->email }}</td>
+                    <td data-label="Action">
                         <button class="btn btn-primary btn-sm edit-btn"
                             data-url="{{ route('branch.store') }}">
                             Edit

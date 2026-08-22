@@ -30,6 +30,7 @@
 </head>
 <body>
     <div class="header">
+        <img src="{{ str_replace('\\', '/', public_path('assets/images/logo_print.png')) }}" alt="Logo" style="max-height: 60px; margin-bottom: 8px;">
         <h1>System Reports</h1>
         <p>{{ $startDate && $endDate ? \Carbon\Carbon::parse($startDate)->format('M Y') . ' — ' . \Carbon\Carbon::parse($endDate)->format('M Y') : 'All Time Overview' }} | Generated: {{ now()->format('d-M-Y h:i A') }}</p>
     </div>

@@ -47,4 +47,9 @@ class Sale extends Model
     {
         return $this->belongsTo(Table::class, 'table_id');
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

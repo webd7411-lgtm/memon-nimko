@@ -172,12 +172,117 @@
         gap: 8px;
     }
 
+    /* ═══════ HEADER FILTERS (mobile-first) ═══════ */
+    .cb-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+        width: 100%;
+    }
+    .cb-fgroup { display: flex; flex-direction: column; gap: 5px; flex: 1 1 150px; min-width: 130px; }
+    .cb-fgroup label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: rgba(255, 255, 255, .6);
+        margin: 0;
+    }
+    .cb-input {
+        background: rgba(255, 255, 255, .15);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, .16);
+        border-radius: 9px;
+        padding: .45rem .7rem;
+        font-size: .82rem;
+        font-weight: 600;
+        color-scheme: dark;
+        outline: none;
+        width: 100%;
+        transition: all .2s ease;
+    }
+    .cb-input:focus { border-color: rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .22); }
+    .cb-input::-webkit-calendar-picker-indicator { cursor: pointer; }
+
+    /* Desktop: fixed layout = table NEVER overflows / no horizontal scroll */
+    .cashbook-card .table-responsive { overflow-x: hidden; }
+    .cash-table { table-layout: fixed; width: 100%; }
+    .cash-table thead th, .cash-table tbody td { white-space: normal !important; overflow-wrap: anywhere; word-break: normal; }
+
+    /* ═══════ MOBILE / TABLET PREMIUM CARDS ═══════ */
+    .cb-cards { display: none; }
+
+    .cb-card {
+        background: #fff;
+        border: 1.5px solid #e9ecef;
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+        overflow: hidden;
+        margin-bottom: .8rem;
+    }
+    .cb-row { display: flex; }
+    .cb-col { flex: 1 1 50%; min-width: 0; padding: .7rem .8rem; }
+    .cb-col + .cb-col { border-left: 1px dashed #e9ecef; }
+
+    .cb-col-hd {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .66rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        padding-bottom: .45rem;
+        margin-bottom: .45rem;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .cb-col-rec .cb-col-hd { color: #155724; }
+    .cb-col-pay .cb-col-hd { color: #dc3545; }
+    .cb-col-hd i { font-size: .75rem; }
+    .cb-col-hd .cb-amt { margin-left: auto; font-size: .8rem; font-weight: 800; }
+    .cb-col-pay .cb-amt { color: #dc3545; }
+    .cb-col-rec .cb-amt { color: #155724; }
+
+    .cb-title { font-size: .84rem; font-weight: 700; color: #1a1a2e; line-height: 1.3; word-break: normal; overflow-wrap: anywhere; }
+    .cb-ref { font-size: .72rem; color: #6c757d; margin-top: 2px; word-break: normal; overflow-wrap: anywhere; }
+    .cb-empty { font-size: .72rem; color: #adb5bd; font-style: italic; }
+
+    .cb-totals {
+        display: flex;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+        color: #fff;
+        overflow: hidden;
+    }
+    .cb-total { flex: 1 1 50%; min-width: 0; padding: .8rem .9rem; }
+    .cb-total + .cb-total { border-left: 1px solid rgba(255, 255, 255, .15); }
+    .cb-total span { display: block; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; opacity: .75; margin-bottom: .2rem; }
+    .cb-total b { font-size: 1rem; font-weight: 800; word-break: normal; overflow-wrap: anywhere; }
+    .cb-total-rec b { color: #4ade80; }
+    .cb-total-pay b { color: #f87171; }
+
     @media (max-width: 768px) {
         .cashbook-body { padding: 14px; }
         .balance-hero { flex-direction: column; gap: 12px; text-align: center; }
         .balance-hero .balance-amount { font-size: 24px; }
         .summary-card .summary-value { font-size: 18px; }
         .method-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 991.98px) {
+        .cashbook-card .table-responsive { display: none; }
+        .cb-cards { display: block; }
+    }
+
+    @media (max-width: 575.98px) {
+        .cashbook-header { padding: 14px 14px; }
+        .cashbook-header h4 { font-size: 1.05rem; }
+        .cb-fgroup { flex-basis: 100%; min-width: 0; }
+        .cb-row { flex-direction: column; }
+        .cb-col + .cb-col { border-left: none; border-top: 1px dashed #e9ecef; }
+        .balance-hero { padding: 16px; }
+        .summary-card { padding: 12px 14px; }
     }
 </style>
 
@@ -186,28 +291,30 @@
         <div class="container-fluid">
             <div class="cashbook-card">
                 <div class="cashbook-header">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                         <h4 class="m-0 fw-bold"><i class="fa fa-book me-2"></i>DAILY CASH BOOK</h4>
-                        <form method="GET" action="{{ route('cashbook') }}" id="dateFilterForm" class="d-flex gap-3 flex-wrap">
-                            <div class="d-flex align-items-center gap-2">
-                                <label class="text-white-50 mb-0" style="font-size:13px;">From:</label>
-                                <input type="date" name="start_date" class="form-control form-control-sm border-0" style="background:rgba(255,255,255,0.15);color:#fff;"
+                        <form method="GET" action="{{ route('cashbook') }}" id="dateFilterForm" class="cb-filters">
+                            <div class="cb-fgroup">
+                                <label>From</label>
+                                <input type="date" name="start_date" class="cb-input"
                                        value="{{ $startDate ?? now()->subDays(30)->format('Y-m-d') }}"
                                        onchange="document.getElementById('dateFilterForm').submit()">
                             </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <label class="text-white-50 mb-0" style="font-size:13px;">View:</label>
-                                <input type="date" name="date" class="form-control form-control-sm border-0" style="background:rgba(255,255,255,0.15);color:#fff;"
+                            <div class="cb-fgroup">
+                                <label>View</label>
+                                <input type="date" name="date" class="cb-input"
                                        value="{{ $selectedDate ?? date('Y-m-d') }}"
                                        onchange="document.getElementById('dateFilterForm').submit()">
                             </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <label class="text-white-50 mb-0" style="font-size:13px;">Time:</label>
-                                <input type="time" name="start_time" class="form-control form-control-sm border-0" style="background:rgba(255,255,255,0.15);color:#fff;max-width:120px;"
+                            <div class="cb-fgroup">
+                                <label>Time From</label>
+                                <input type="time" name="start_time" class="cb-input"
                                        value="{{ $startTime ?? '00:00' }}"
                                        onchange="document.getElementById('dateFilterForm').submit()">
-                                <span class="text-white-50">-</span>
-                                <input type="time" name="end_time" class="form-control form-control-sm border-0" style="background:rgba(255,255,255,0.15);color:#fff;max-width:120px;"
+                            </div>
+                            <div class="cb-fgroup">
+                                <label>Time To</label>
+                                <input type="time" name="end_time" class="cb-input"
                                        value="{{ $endTime ?? '23:59' }}"
                                        onchange="document.getElementById('dateFilterForm').submit()">
                             </div>
@@ -349,6 +456,49 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    {{-- MOBILE / TABLET PREMIUM CARDS --}}
+                    <div class="cb-cards">
+                        @for($i = 0; $i < $maxRows; $i++)
+                        <div class="cb-card">
+                            <div class="cb-row">
+                                <div class="cb-col cb-col-rec">
+                                    <div class="cb-col-hd"><i class="fa fa-arrow-down"></i> Receipt
+                                        <span class="cb-amt">{{ isset($receipts[$i]) ? number_format($receipts[$i]['amount'],0) : '' }}</span>
+                                    </div>
+                                    @if(isset($receipts[$i]))
+                                        <div class="cb-title">{{ $receipts[$i]['title'] }}</div>
+                                        <div class="cb-ref">{{ $receipts[$i]['ref'] }}</div>
+                                    @else
+                                        <div class="cb-empty">No receipt</div>
+                                    @endif
+                                </div>
+                                <div class="cb-col cb-col-pay">
+                                    <div class="cb-col-hd"><i class="fa fa-arrow-up"></i> Payment
+                                        <span class="cb-amt">{{ isset($payments[$i]) ? number_format($payments[$i]['amount'],0) : '' }}</span>
+                                    </div>
+                                    @if(isset($payments[$i]))
+                                        <div class="cb-title">{{ $payments[$i]['title'] }}</div>
+                                        <div class="cb-ref">{{ $payments[$i]['ref'] }}</div>
+                                    @else
+                                        <div class="cb-empty">No payment</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @endfor
+
+                        <div class="cb-totals">
+                            <div class="cb-total cb-total-rec">
+                                <span>Total Receipts</span>
+                                <b>{{ number_format($totalReceipts, 0) }}</b>
+                            </div>
+                            <div class="cb-total cb-total-pay">
+                                <span>Total Payments</span>
+                                <b>{{ number_format($totalPayments, 0) }}</b>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -87,6 +87,110 @@
 .pc-btn-p:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(43,127,255,.25); color: #fff; }
 
 @media (max-width: 768px) { .pc-hdr { padding: 1rem 1.25rem; flex-direction: column; align-items: stretch; gap: .5rem; } .pc-hdr h2 { font-size: 1.1rem; } .pc-card-body { padding: 1rem; } }
+
+/* ═══════ FULL MOBILE RESPONSIVE — CARD LAYOUT ═══════ */
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pc-page { overflow-x: hidden !important; }
+
+  .pc-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .5rem; }
+  .pc-hdr h2 { font-size: .95rem !important; }
+  .pc-card-body { padding: .6rem !important; overflow: hidden !important; }
+
+  .pc-page .pc-tbl-wrap,
+  .pc-page .dataTables_wrapper,
+  .pc-page .dataTables_scrollBody,
+  .pc-page .dataTables_scrollHead,
+  .pc-page .dataTables_scrollFoot,
+  .pc-page .table-responsive,
+  .pc-page > .container-fluid > .pc-card > .pc-card-body > div {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+  }
+
+  .pc-page .pc-tbl,
+  .pc-page .pc-tbl.dataTable {
+    display: block !important;
+    width: 100% !important;
+    font-size: .72rem !important;
+  }
+  .pc-page .pc-tbl thead { display: none !important; }
+  .pc-page .pc-tbl tbody { display: block !important; }
+  .pc-page .pc-tbl tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .3rem .55rem;
+    align-items: start;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+    padding: .5rem .6rem;
+    margin-bottom: .5rem;
+    overflow: hidden !important;
+  }
+  .pc-page .pc-tbl tbody tr:hover { background: var(--pc-surface); }
+  .pc-page .pc-tbl tbody td {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 4px;
+    border: none !important;
+    padding: 0 !important;
+    min-width: 0;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-size: .72rem;
+    line-height: 1.35;
+  }
+  .pc-page .pc-tbl tbody td::before {
+    content: attr(data-label) ":";
+    font-size: .55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--pc-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .pc-page .pc-tbl tbody td:nth-child(1) { order: 0; justify-self: start; }
+  .pc-page .pc-tbl tbody td:nth-child(1)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(1) {
+    background: #f0f4fe; color: #3b5bb3 !important; border-radius: 6px;
+    padding: .05rem .4rem !important; font-weight: 700 !important; font-size: .62rem;
+  }
+  .pc-page .pc-tbl tbody td:nth-child(2) { order: 1; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(2)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(2) { font-weight: 600; font-size: .8rem; padding-top: 2px; }
+  .pc-page .pc-tbl tbody td:nth-child(3) { order: 2; }
+  .pc-page .pc-tbl tbody td:nth-child(4) { order: 3; }
+  .pc-page .pc-tbl tbody td:nth-child(5) { order: 4; font-size: .78rem !important; }
+  .pc-page .pc-tbl tbody td:nth-child(6) { order: 5; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(7) { order: 6; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(7)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(7) .d-flex { display: grid !important; grid-template-columns: 1fr 1fr; gap: .4rem; width: 100%; }
+  .pc-page .pc-tbl tbody td:nth-child(7) .pc-act { justify-content: center; width: 100%; padding: .38rem .4rem; font-size: .64rem; border-radius: 8px; min-height: 34px; }
+
+  .pc-page .dataTables_filter, .pc-page .dataTables_length {
+    width: 100% !important; text-align: left !important; margin-bottom: .5rem;
+  }
+  .pc-page .dataTables_filter input, .pc-page .dataTables_length select {
+    width: 100% !important; min-height: 36px; font-size: .78rem; border-radius: 8px;
+    padding: .3rem .6rem; border: 1.5px solid var(--pc-border); margin-top: 4px;
+  }
+  .pc-page .dataTables_info { font-size: .68rem !important; text-align: center !important; padding: .5rem 0 0; }
+  .pc-page .dataTables_paginate { text-align: center !important; padding: .5rem 0; }
+  .pc-page .dataTables_paginate .paginate_button {
+    display: inline-flex !important; min-width: 28px !important; height: 28px !important;
+    padding: 0 .35rem !important; font-size: .68rem !important; margin: 0 1px !important;
+    border-radius: 6px !important;
+  }
+}
 </style>
 
 <div class="pc-page">
@@ -133,22 +237,22 @@
           <tbody>
             @foreach($vendors as $key => $v)
             <tr>
-              <td style="color:var(--pc-text-muted);font-weight:600;">{{ $key + 1 }}</td>
-              <td>
+              <td style="color:var(--pc-text-muted);font-weight:600;" data-label="#">{{ $key + 1 }}</td>
+              <td data-label="Name">
                 <div class="d-flex align-items-center gap-2">
                   <div class="pc-avatar">{{ strtoupper(substr($v->name, 0, 1)) }}</div>
                   <span class="pc-name">{{ $v->name }}</span>
                 </div>
               </td>
-              <td class="pc-phone">{{ $v->phone }}</td>
-              <td style="color:var(--pc-text-muted);">{{ number_format((float)$v->opening_balance, 2) }}</td>
+              <td class="pc-phone" data-label="Phone">{{ $v->phone }}</td>
+              <td style="color:var(--pc-text-muted);" data-label="Opening Balance">{{ number_format((float)$v->opening_balance, 2) }}</td>
               @php
                 $balance = (float)($v->ledger->closing_balance ?? 0);
                 $color = $balance < 0 ? 'neg' : 'pos';
               @endphp
-              <td class="pc-bal {{ $color }}">{{ number_format($balance, 2) }}</td>
-              <td class="pc-addr">{{ Str::limit($v->address, 30) }}</td>
-              <td>
+              <td class="pc-bal {{ $color }}" data-label="Closing Balance">{{ number_format($balance, 2) }}</td>
+              <td class="pc-addr" data-label="Address">{{ Str::limit($v->address, 30) }}</td>
+              <td data-label="Actions">
                 <div class="d-flex gap-1">
                   <button class="pc-act pc-act-edit btn-edit-vendor"
                     data-id="{{ $v->id }}" data-name="{{ $v->name }}"
@@ -215,9 +319,14 @@
 <script>
   $(document).ready(function() {
     $('#vendorTable').DataTable({
-      responsive: true, pageLength: 25, lengthMenu: [10, 25, 50, 100],
+      pageLength: 25, lengthMenu: [10, 25, 50, 100],
       order: [],
       language: { search: "", searchPlaceholder: "Search vendor..." }
+    });
+
+    // Prevent aria-hidden on focused element — move focus before modal closes
+    $('.modal').on('hide.bs.modal', function() {
+      $(document.body).focus();
     });
 
     window.clearVendor = function() {

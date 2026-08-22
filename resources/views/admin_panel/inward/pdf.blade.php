@@ -11,6 +11,10 @@
     </style>
 </head>
 <body>
+    <div style="text-align:center;margin-bottom:10px;">
+        <img src="{{ str_replace('\\', '/', public_path('assets/images/logo_print.png')) }}" alt="Logo" style="max-height: 60px; margin-bottom: 4px;">
+        <h2 style="text-align:center;margin:4px 0;">Memon Nimko</h2>
+    </div>
     <h2 style="text-align:center;">Inward Gatepass</h2>
     <h4 style="text-align:center;">#{{ $gatepass->id }}</h4>
 

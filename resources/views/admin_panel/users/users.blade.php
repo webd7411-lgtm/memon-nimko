@@ -20,6 +20,7 @@
                 <th class="text-center">Id</th>
                 <th class="text-center">Name</th>
                 <th class="text-center">Email</th>
+                <th class="text-center">Branch</th>
                 <th class="text-center">Roles</th>
                 <th class="text-center">Opening Balance (Today)</th>
                 <th class="text-center">Action</th>
@@ -29,13 +30,16 @@
         <tbody class="text-center">
                 @foreach ($users as $key => $user)
                         <tr>
-                            {{-- <span class="d-none" id="edit-id">{{ $user->id }}</span> --}}
                             <td class="d-none">
                                 <input type="hidden" class="edit-id" value="{{ $user->id }}">
+                                <input type="hidden" class="branch-id" value="{{ $user->branch_id }}">
                             </td>
                             <th scope="row" class="id">{{ $user->id }}</th>
                             <td class="name">{{ $user->name }}</td>
                             <td class="email">{{ $user->email }}</td>
+                            <td class="branch-name">
+                                <span class="badge bg-info text-white"><i class="fas fa-store me-1"></i>{{ $user->branch->name ?? 'Main Branch' }}</span>
+                            </td>
                             <td>
                                 {{-- @foreach ($user->getRoleNames() as $role)
                                     <span class="badge bg-primary">{{ $role }}</span>
@@ -138,8 +142,17 @@
                             <input type="text" name="email" class="form-control" id="email" />
                         </div>
                         <div class="mb-3">
-                            <label for="title" class="form-label">Pasword</label>
-                            <input type="text" name="password" class="form-control" id="password" />
+                            <label for="branch_id" class="form-label">Assigned Branch</label>
+                            <select name="branch_id" id="user_branch_id" class="form-control">
+                                <option value="">-- Main Branch (Default) --</option>
+                                @foreach($branches as $b)
+                                    <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Password</label>
+                            <input type="password" name="password" class="form-control" id="password" placeholder="Leave blank to keep unchanged on edit" />
                         </div>
                 </div>
                 <div class="modal-footer">
@@ -250,13 +263,14 @@
 
         var tr = $(this).closest("tr");
         var id = tr.find(".edit-id").val();
-        // alert(id+"hit");
+        var branchId = tr.find(".branch-id").val();
         var name = tr.find(".name").text();
         var email = tr.find(".email").text();
         $('#id').val(id);
-        $('#name').val(name)
-        $('#email').val(email)
-        $("#exampleModal").modal("show")
+        $('#name').val(name);
+        $('#email').val(email);
+        $('#user_branch_id').val(branchId);
+        $("#exampleModal").modal("show");
 
     });
    
@@ -285,13 +299,12 @@
     }
 
      $(document).on('click', '#reset-form', function () {
-        // alert("sd");
-        // Manually clear inputs
         $('#id').val('');
         $('#name').val('');
         $('#email').val('');
         $('#password').val('');
-        $("#exampleModal").modal("show")
+        $('#user_branch_id').val('');
+        $("#exampleModal").modal("show");
     });
     const allRoles = @json($allRoles);
     // update role

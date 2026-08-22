@@ -55,7 +55,8 @@
         }
 
         .login-wrapper {
-            height: 100vh;
+            min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -193,6 +194,63 @@
             -webkit-box-shadow: 0 0 0px 1000px #2a2a2a inset;
             transition: background-color 5000s ease-in-out 0s;
         }
+
+        /* ═══════ FULL MOBILE PERFECT ═══════ */
+        @media (max-width: 600px) {
+            body, html {
+                overflow-x: hidden;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .bg-overlay { transform: scale(1.05); animation-duration: 15s; }
+
+            .login-wrapper {
+                min-height: 100vh;
+                min-height: 100dvh;
+                padding: 14px;
+                align-items: center;
+            }
+
+            .login-card {
+                width: 100%;
+                max-width: 100%;
+                padding: 2.1rem 1.35rem 1.7rem;
+                border-radius: 18px;
+                box-shadow: 0 20px 45px -12px rgba(0, 0, 0, 0.6);
+                animation: fadeInUp 0.6s ease forwards;
+            }
+
+            .brand-header { margin-bottom: 1.7rem; }
+            .brand-header img { max-height: 60px; margin-bottom: 8px; }
+            .brand-header h2 { font-size: 1.7rem; margin-bottom: .35rem; }
+            .brand-header p { font-size: .68rem; letter-spacing: 1.6px; }
+
+            .form-group { margin-bottom: 1.1rem; }
+            .form-group i { left: 14px; font-size: 1rem; }
+            .form-control {
+                padding: 14px 15px 14px 44px;
+                font-size: 16px;
+                border-radius: 12px;
+            }
+
+            .btn-login {
+                padding: 15px;
+                font-size: .92rem;
+                border-radius: 12px;
+                margin-top: .7rem;
+            }
+
+            .back-to-site { margin-top: 1.45rem; font-size: .85rem; }
+            .alert-error { font-size: .82rem; padding: 11px 12px; margin-bottom: 1.05rem; }
+        }
+
+        @media (max-width: 369.98px) {
+            .login-card { padding: 1.7rem 1.05rem 1.4rem; }
+            .brand-header img { max-height: 52px; }
+            .brand-header h2 { font-size: 1.45rem; }
+            .form-group i { left: 12px; }
+            .form-control { padding-left: 40px; }
+        }
     </style>
 </head>
 <body>
@@ -202,6 +260,7 @@
     <div class="login-wrapper">
         <div class="login-card">
             <div class="brand-header">
+                <img src="{{ asset('assets/images/logo.png') }}" alt="Memon Nimko Logo" style="max-height: 90px; margin-bottom: 12px;">
                 <h2>Memon Nimko<span>.</span></h2>
                 <p>Bakery Management System</p>
             </div>

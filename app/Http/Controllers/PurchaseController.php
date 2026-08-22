@@ -28,6 +28,10 @@ class PurchaseController extends Controller
             'return'
         ]);
 
+        if (!is_all_branches()) {
+            $purchaseQuery->where('branch_id', active_branch_id());
+        }
+
         if ($request->start_date && $request->end_date) {
             $purchaseQuery->whereBetween('purchase_date', [
                 $request->start_date,
@@ -44,6 +48,10 @@ class PurchaseController extends Controller
         ])
             ->where('status', 'linked')
             ->where('bill_status', 'billed');
+
+        if (!is_all_branches()) {
+            $inwardQuery->where('branch_id', active_branch_id());
+        }
 
         if ($request->start_date && $request->end_date) {
             $inwardQuery->whereBetween('gatepass_date', [
@@ -101,7 +109,7 @@ class PurchaseController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'vendor_id'       => 'nullable|exists:vendors,id',
+            'vendor_id'       => 'required|exists:vendors,id',
             'purchase_date'   => 'nullable|date',
             'purchase_to'     => 'required|in:shop,warehouse',
             'warehouse_id'    => 'nullable|required_if:purchase_to,warehouse|exists:warehouses,id',
@@ -141,8 +149,10 @@ class PurchaseController extends Controller
 
             $invoiceNo = Purchase::generateInvoiceNo();
 
+            $currentBranchId = active_branch_id();
+
             $purchase = Purchase::create([
-                'branch_id'     => auth()->id(),
+                'branch_id'     => $currentBranchId,
                 'vendor_id'     => $validated['vendor_id'] ?? null,
                 'purchase_date' => $validated['purchase_date'] ?? now(),
                 'invoice_no'    => $invoiceNo,
@@ -219,7 +229,7 @@ class PurchaseController extends Controller
                 if ($validated['purchase_to'] === 'shop') {
 
                     // ➕ SHOP STOCK
-                    $stock = Stock::where('branch_id', auth()->id())
+                    $stock = Stock::where('branch_id', $currentBranchId)
                         ->where('product_id', $productId)
                         ->where('variant_id', $variantId)
                         ->first();
@@ -229,7 +239,7 @@ class PurchaseController extends Controller
                         $stock->save();
                     } else {
                         Stock::create([
-                            'branch_id'  => auth()->id(),
+                            'branch_id'  => $currentBranchId,
                             'product_id' => $productId,
                             'variant_id' => $variantId,
                             'qty'        => $qtyStock,
@@ -275,13 +285,16 @@ class PurchaseController extends Controller
             /* ================= VENDOR LEDGER ================= */
 
             /* ================= VENDOR LEDGER ================= */
+
+            $vendorId = $validated['vendor_id'] ?? null;
             
-            $ledger = VendorLedger::firstOrNew(['vendor_id' => $validated['vendor_id'] ?? null]);
+            if ($vendorId) {
+            $ledger = VendorLedger::firstOrNew(['vendor_id' => $vendorId]);
             
             // If new ledger (shouldn't happen if vendor created properly, but safety fallback)
             if (!$ledger->exists) {
                 // Initialize with Vendor's opening balance if available
-                $v = Vendor::find($validated['vendor_id']);
+                $v = Vendor::find($vendorId);
                 $initialParams = $v ? $v->opening_balance : 0;
                 $ledger->opening_balance = $initialParams;
                 $ledger->closing_balance = $initialParams;
@@ -293,6 +306,7 @@ class PurchaseController extends Controller
             $ledger->previous_balance = $ledger->closing_balance; // Set previous to what it was before this purchase
             $ledger->closing_balance  += $netAmount; // Add purchase amount
             $ledger->save();
+            }
         });
 
         return redirect()
@@ -712,11 +726,11 @@ class PurchaseController extends Controller
 
             // Purchase table update
             $purchase->update([
-                'vendor_id'     => $validated['vendor_id'],
-                'warehouse_id'  => $validated['warehouse_id'],
-                'purchase_date' => $validated['purchase_date'],
-                'invoice_no'    => $validated['invoice_no'],
-                'note'          => $validated['note'],
+                'vendor_id'     => $validated['vendor_id'] ?? null,
+                'warehouse_id'  => $validated['warehouse_id'] ?? null,
+                'purchase_date' => $validated['purchase_date'] ?? now(),
+                'invoice_no'    => $validated['invoice_no'] ?? null,
+                'note'          => $validated['note'] ?? null,
                 'subtotal'      => $subtotal,
                 'discount'      => $discount,
                 'extra_cost'    => $extraCost,
@@ -725,20 +739,23 @@ class PurchaseController extends Controller
             ]);
 
             // Vendor Ledger Update
-            $previousLedger = VendorLedger::where('vendor_id', $validated['vendor_id'])->first();
+            $vendorId = $validated['vendor_id'] ?? null;
+            if ($vendorId) {
+            $previousLedger = VendorLedger::where('vendor_id', $vendorId)->first();
             $openingBalance = $previousLedger ? $previousLedger->closing_balance : 0;
             $newClosingBalance = $openingBalance + $netAmount;
 
             VendorLedger::updateOrCreate(
-                ['vendor_id' => $validated['vendor_id']],
+                ['vendor_id' => $vendorId],
                 [
-                    'vendor_id'         => $validated['vendor_id'],
+                    'vendor_id'         => $vendorId,
                     'admin_or_user_id'  => auth()->id(),
                     'previous_balance'  => $subtotal,
                     'closing_balance'   => $newClosingBalance,
                     'opening_balance'   => $openingBalance,
                 ]
             );
+            }
         });
 
         return redirect()->route('Purchase.home')->with('success', 'Purchase updated successfully!');
@@ -899,10 +916,10 @@ class PurchaseController extends Controller
             ]);
 
             // Vendor Ledger Update for Return
-            $ledger = \App\Models\VendorLedger::firstOrNew(['vendor_id' => $validated['vendor_id']]);
+            $ledger = \App\Models\VendorLedger::firstOrNew(['vendor_id' => $validated['vendor_id'] ?? null]);
             
             if (!$ledger->exists) {
-                $v = \App\Models\Vendor::find($validated['vendor_id']);
+                $v = \App\Models\Vendor::find($validated['vendor_id'] ?? null);
                 $initialParams = $v ? $v->opening_balance : 0;
                 $ledger->opening_balance = $initialParams;
                 $ledger->closing_balance = $initialParams;

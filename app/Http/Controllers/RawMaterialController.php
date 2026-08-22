@@ -16,12 +16,13 @@ class RawMaterialController extends Controller
     // ==================== RAW MATERIALS CRUD ====================
     public function index()
     {
-        $materials = RawMaterial::with('stock')->orderBy('name')->get();
-        $purchases = RawMaterialPurchase::with(['items.rawMaterial', 'creator'])
+        $materials = RawMaterial::with(['stock', 'stocks.warehouse'])->orderBy('name')->get();
+        $purchases = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse'])
             ->orderBy('date', 'desc')->orderBy('id', 'desc')->take(50)->get();
         $vendors = \App\Models\Vendor::orderBy('name')->get(['id', 'name']);
+        $warehouses = \App\Models\Warehouse::orderBy('warehouse_name')->get(['id', 'warehouse_name']);
         $productsWithBom = \App\Models\Product::has('bom')->with(['bom.rawMaterial'])->orderBy('item_name')->get();
-        return view('admin_panel.raw_material.index', compact('materials', 'purchases', 'vendors', 'productsWithBom'));
+        return view('admin_panel.raw_material.index', compact('materials', 'purchases', 'vendors', 'warehouses', 'productsWithBom'));
     }
 
     public function storeRawMaterial(Request $request)
@@ -43,7 +44,6 @@ class RawMaterialController extends Controller
         } else {
             $material = new RawMaterial();
             $msg = ['success' => 'Raw Material Created Successfully', 'reload' => true];
-            // Create stock record
         }
 
         $material->name = $request->name;
@@ -75,6 +75,7 @@ class RawMaterialController extends Controller
         $validator = Validator::make($request->all(), [
             'date' => 'required|date',
             'vendor_name' => 'required|string|max:255',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'raw_material_id' => 'required|array',
             'raw_material_id.*' => 'required|exists:raw_materials,id',
             'qty' => 'required|array',
@@ -94,8 +95,8 @@ class RawMaterialController extends Controller
             $itemsData = [];
 
             foreach ($request->raw_material_id as $i => $rmId) {
-                $qty = (float)$request->qty[$i];
-                $price = (float)$request->price_per_unit[$i];
+                $qty = (float)($request->qty[$i] ?? 0);
+                $price = (float)($request->price_per_unit[$i] ?? 0);
                 $total = $qty * $price;
                 $totalCost += $total;
 
@@ -111,6 +112,7 @@ class RawMaterialController extends Controller
                 'date' => $request->date,
                 'invoice_no' => 'RMP-' . date('Ymd-His'),
                 'vendor_name' => $request->vendor_name,
+                'warehouse_id' => $request->warehouse_id ?: null,
                 'total_cost' => $totalCost,
                 'notes' => $request->notes,
                 'created_by' => Auth::id(),
@@ -122,7 +124,10 @@ class RawMaterialController extends Controller
 
                 // Update stock
                 $stock = RawMaterialStock::firstOrCreate(
-                    ['raw_material_id' => $item['raw_material_id']],
+                    [
+                        'raw_material_id' => $item['raw_material_id'],
+                        'warehouse_id' => $request->warehouse_id ?: null,
+                    ],
                     ['qty' => 0]
                 );
                 $stock->qty += $item['qty'];
@@ -145,9 +150,14 @@ class RawMaterialController extends Controller
 
             // Reverse stock
             foreach ($purchase->items as $item) {
-                $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)->first();
+                $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)
+                    ->where('warehouse_id', $purchase->warehouse_id)
+                    ->first();
+                if (!$stock) {
+                    $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)->first();
+                }
                 if ($stock) {
-                    $stock->qty -= $item->qty;
+                    $stock->qty = max(0, $stock->qty - $item->qty);
                     $stock->save();
                 }
             }
@@ -161,10 +171,16 @@ class RawMaterialController extends Controller
         }
     }
 
+    public function printPurchase($id)
+    {
+        $purchase = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse'])->findOrFail($id);
+        return view('admin_panel.raw_material.purchase_print', compact('purchase'));
+    }
+
     // ==================== STOCK AJAX ====================
     public function getStock()
     {
-        $materials = RawMaterial::with('stock')->orderBy('name')->get()->map(function ($m) {
+        $materials = RawMaterial::with(['stock', 'stocks.warehouse'])->orderBy('name')->get()->map(function ($m) {
             return [
                 'id' => $m->id,
                 'name' => $m->name,

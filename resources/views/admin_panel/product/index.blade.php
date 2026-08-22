@@ -125,12 +125,13 @@
 
 /* ═══════ CARD ═══════ */
 .pc-card {
-  background: var(--pc-surface);
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-radius);
-  box-shadow: var(--pc-shadow);
-  transition: box-shadow .3s ease;
-}
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-border);
+    border-radius: var(--pc-radius);
+    box-shadow: var(--pc-shadow);
+    transition: box-shadow .3s ease;
+    overflow: hidden;
+  }
 
 .pc-card:hover { box-shadow: var(--pc-shadow-lg); }
 
@@ -386,12 +387,161 @@
 }
 
 /* ═══════ RESPONSIVE ═══════ */
-@media (max-width: 768px) {
-  .pc-hdr { padding: 1rem 1.25rem; flex-direction: column; align-items: stretch; gap: .5rem; }
-  .pc-hdr h2 { font-size: 1.1rem; }
-  .pc-hdr .hdr-actions { justify-content: flex-start; flex-wrap: wrap; }
-  .pc-card-body { padding: 1rem; }
-  .pc-tbl tbody td { padding: .4rem .5rem; }
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .pc-tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pc-tbl { font-size: .76rem; }
+  .pc-tbl thead th, .pc-tbl tbody td { padding: .45rem .55rem; }
+}
+
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden; }
+  .pc-page { overflow-x: hidden; }
+  .pc-page > .container-fluid {
+    padding-left: .75rem !important;
+    padding-right: .75rem !important;
+  }
+
+  .pc-hdr { padding: .85rem; flex-direction: column; align-items: stretch; gap: .6rem; }
+  .pc-hdr h2 { font-size: 1rem; }
+  .pc-hdr .hdr-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+  }
+  .pc-hdr .hdr-actions .pc-btn {
+    flex: 0 1 auto;
+    justify-content: center;
+    padding: .35rem .55rem;
+    font-size: .65rem;
+    border-radius: 8px;
+    min-height: 32px;
+    white-space: nowrap;
+  }
+
+  .pc-card-body { padding: .9rem .75rem; }
+
+  /* ── TABLE → PREMIUM CARDS ── */
+  .pc-tbl-wrap {
+    overflow: hidden !important;
+    border: none;
+    background: transparent;
+  }
+  .pc-tbl { display: block; width: 100%; font-size: .72rem; }
+  .pc-tbl thead { display: none; }
+  .pc-tbl tbody { display: block; }
+  .pc-tbl tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .3rem .5rem;
+    align-items: start;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+    padding: .5rem .6rem;
+    margin-bottom: .5rem;
+    overflow: hidden;
+  }
+  .pc-tbl tbody tr:hover { background: var(--pc-surface); }
+  .pc-tbl tbody tr:last-child { margin-bottom: 0; }
+  .pc-tbl tbody td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 4px;
+    border: none;
+    padding: 0;
+    text-align: left;
+    min-width: 0;
+    min-height: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-size: .72rem;
+    line-height: 1.35;
+  }
+  .pc-tbl tbody td::before {
+    content: attr(data-label) ":";
+    font-size: .55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--pc-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Checkbox + row number → top strip */
+  .pc-tbl tbody td:nth-child(1) { order: 0; justify-self: start; }
+  .pc-tbl tbody td:nth-child(1)::before { content: none; }
+  .pc-tbl tbody td:nth-child(1) input {
+    width: 17px; height: 17px; accent-color: var(--pc-accent); cursor: pointer;
+  }
+
+  .pc-tbl tbody td:nth-child(2) {
+    order: 0;
+    justify-self: end;
+    background: #f0f4fe;
+    color: #3b5bb3 !important;
+    border-radius: 6px;
+    padding: .05rem .4rem !important;
+    font-weight: 700 !important;
+    font-size: .62rem;
+    text-align: center;
+  }
+  .pc-tbl tbody td:nth-child(2)::before { content: none; }
+
+  /* Pair up: (Code|Barcode) (Category|Unit) (Name|Brand) (Price|Stock) */
+  .pc-tbl tbody td:nth-child(3) { order: 1; }   /* Item Code  */
+  .pc-tbl tbody td:nth-child(4) { order: 2; }   /* Barcode    */
+  .pc-tbl tbody td:nth-child(5) { order: 3; }   /* Category   */
+  .pc-tbl tbody td:nth-child(7) { order: 4; }   /* Unit       */
+  .pc-tbl tbody td:nth-child(6) { order: 5; }   /* Item Name  */
+  .pc-tbl tbody td:nth-child(11) { order: 6; }  /* Brand      */
+  .pc-tbl tbody td:nth-child(9) { order: 7; }   /* Price      */
+  .pc-tbl tbody td:nth-child(10) { order: 8; }  /* Stock      */
+  .pc-tbl tbody td:nth-child(8) { order: 9; grid-column: 1 / -1; }   /* Variants (full)   */
+  .pc-tbl tbody td:nth-child(12) { order: 10; grid-column: 1 / -1; } /* Actions (full)    */
+
+  .pc-tbl tbody td:nth-child(6) .pc-name-wrap strong {
+    font-size: .76rem;
+    display: block;
+  }
+
+  .pc-tbl tbody td:nth-child(8) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    margin-top: 2px;
+  }
+
+  .pc-tbl .pc-code { white-space: normal; word-break: break-all; }
+  .pc-tbl .pc-bc-badge { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+  .pc-tbl .pc-price, .pc-tbl .pc-stock { white-space: normal; }
+
+  .pc-tbl tbody td:nth-child(12) .pc-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .4rem;
+    width: 100%;
+  }
+  .pc-tbl tbody td:nth-child(12) .pc-act {
+    justify-content: center;
+    width: 100%;
+    padding: .35rem .4rem;
+    font-size: .64rem;
+    border-radius: 8px;
+    min-height: 34px;
+  }
+
+  .pc-tbl .pc-variant-list { font-size: .67rem; width: 100%; }
+  .pc-tbl .pc-variant-list > div { flex-wrap: wrap; gap: 2px 6px; padding: 2px 0; }
+
+  .pc-tbl .pc-badge { font-size: .6rem; padding: .05rem .4rem; }
+  .pc-tbl .pc-disc-badge { font-size: .58rem; }
+
+  /* Pagination wrap safety */
+  .pc-pagi nav, .pc-pagi .pagination { flex-wrap: wrap; justify-content: center; gap: 4px; }
 }
 </style>
 
@@ -414,7 +564,7 @@
           <i class="bi bi-percent"></i>Discounts
         </a>
         @endif
-        <a href="create_prodcut" class="pc-btn pc-btn-primary pc-btn-sm">
+        <a href="{{ route('store') }}" class="pc-btn pc-btn-primary pc-btn-sm">
           <i class="bi bi-plus-circle"></i>Add Product
         </a>
         <button id="bulkEditBtn" class="pc-btn pc-btn-primary pc-btn-sm" style="display:none;">
@@ -479,17 +629,28 @@
             <tbody id="productTable">
               @foreach ($products as $key => $product)
               <tr>
-                <td><input type="checkbox" class="selectProduct" value="{{ $product->id }}"></td>
-                <td style="color:var(--pc-text-muted);font-weight:600;">{{ $products->firstItem() + $key }}</td>
-                <td><span class="pc-code">{{ $product->item_code }}</span></td>
-                <td>
-                  @if($product->barcode_path)
+                <td data-label="Select"><input type="checkbox" class="selectProduct" value="{{ $product->id }}"></td>
+                <td data-label="#" style="color:var(--pc-text-muted);font-weight:600;">{{ $products->firstItem() + $key }}</td>
+                <td data-label="Item Code"><span class="pc-code">{{ $product->item_code }}</span></td>
+                <td data-label="Barcode">
+                  @if($product->variants && $product->variants->count() > 0)
+                  <div class="d-flex flex-column gap-1">
+                    @foreach($product->variants as $variant)
+                      @if($variant->barcode_path)
+                      <div>
+                        <span class="pc-bc-badge" title="{{ $variant->variant_name }}"><i class="bi bi-upc-scan"></i>{{ $variant->barcode_path }}</span>
+                        <small style="font-size:.68rem;color:var(--pc-text-muted);">({{ $variant->variant_name }})</small>
+                      </div>
+                      @endif
+                    @endforeach
+                  </div>
+                  @elseif($product->barcode_path)
                   <span class="pc-bc-badge"><i class="bi bi-upc-scan"></i>{{ $product->barcode_path }}</span>
                   @else
                   <span style="color:var(--pc-text-muted);font-size:.72rem;">—</span>
                   @endif
                 </td>
-                <td>
+                <td data-label="Category">
                   <div class="pc-cat">
                     <strong>{{ $product->category_relation->name ?? '-' }}</strong>
                     @if($product->sub_category_relation)
@@ -497,12 +658,12 @@
                     @endif
                   </div>
                 </td>
-                <td>
+                <td data-label="Item Name">
                   <div class="pc-name-wrap">
                     <strong>{{ $product->item_name }}</strong>
                   </div>
                 </td>
-                <td>
+                <td data-label="Unit">
                   @php
                     $unitType = $product->unit_type ?? 'piece';
                   @endphp
@@ -510,12 +671,15 @@
                     {{ $unitType === 'kg' ? 'KG' : ($unitType === 'pound' ? 'Pound' : 'Piece') }}
                   </span>
                 </td>
-                <td>
+                <td data-label="Variants">
                   @if($product->variants && $product->variants->count() > 0)
                   <div class="pc-variant-list">
                     @foreach($product->variants as $variant)
                     <div>
-                      <span><strong>{{ $variant->variant_name }}</strong> - Rs {{ number_format($variant->price) }}                       @if($product->unit_type != 'kg')<span style="color:var(--pc-text-muted)">({{ $variant->stock_qty }})</span>@endif</span>
+                      <span>
+                        <strong>{{ $variant->variant_name }}</strong> - Rs {{ number_format($variant->price) }}
+                        @if($product->unit_type != 'kg')<span style="color:var(--pc-text-muted)">({{ $variant->stock_qty }})</span>@endif
+                      </span>
                       @if($variant->is_default)<span class="v-default">Default</span>@endif
                     </div>
                     @endforeach
@@ -524,7 +688,7 @@
                   <span style="color:var(--pc-text-muted);font-size:.72rem;">No variants</span>
                   @endif
                 </td>
-                <td>
+                <td data-label="Price">
                   <div class="pc-price">
                     @if($product->discountProduct)
                     @php
@@ -539,7 +703,7 @@
                     @endif
                   </div>
                 </td>
-                <td>
+                <td data-label="Stock">
                   <span class="pc-stock">
                     @php
                       $totalStockValue = $product->total_stock ?? 0;
@@ -551,8 +715,8 @@
                     @endphp
                   </span>
                 </td>
-                <td>{{ $product->brand->name ?? '-' }}</td>
-                <td>
+                <td data-label="Brand">{{ $product->brand->name ?? '-' }}</td>
+                <td data-label="Actions">
                   <div class="pc-actions">
                     <a href="{{ route('products.edit', $product->id) }}" class="pc-act pc-act-edit">
                       <i class="bi bi-pencil"></i>Edit
@@ -882,5 +1046,39 @@ function confirmResetStock() {
     text-decoration: none; transition: all .2s ease;
   }
   #paginationLinks nav a:hover { border-color: var(--pc-accent); color: var(--pc-accent); }
+
+  @media (max-width: 767.98px) {
+    #paginationLinks {
+      margin-top: .75rem;
+      overflow: hidden;
+    }
+    #paginationLinks nav {
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+      gap: 4px; width: 100%; text-align: center;
+    }
+    #paginationLinks nav ul,
+    #paginationLinks nav ul.pagination {
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+      gap: 4px; padding: 0; margin: 0; width: 100%; list-style: none;
+    }
+    #paginationLinks nav ul li,
+    #paginationLinks nav ul.pagination li {
+      display: inline-flex;
+    }
+    #paginationLinks nav span,
+    #paginationLinks nav a,
+    #paginationLinks nav ul li a,
+    #paginationLinks nav ul li span,
+    #paginationLinks nav ul.pagination li a,
+    #paginationLinks nav ul.pagination li span {
+      min-width: 28px; height: 28px; padding: 0 .35rem; margin: 0;
+      font-size: .7rem; border-radius: 6px;
+    }
+    #paginationLinks .d-flex,
+    #paginationLinks .small,
+    #paginationLinks .text-muted {
+      width: 100%; text-align: center; font-size: .68rem; margin-top: 4px;
+    }
+  }
 </style>
 @endsection

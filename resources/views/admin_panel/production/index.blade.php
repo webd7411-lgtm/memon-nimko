@@ -275,10 +275,147 @@
 
 /* ═══════ RESPONSIVE ═══════ */
 @media (max-width: 768px) {
-  .pc-hdr { padding: 1.1rem 1.25rem; }
-  .pc-hdr h2 { font-size: 1.1rem; }
-  .pc-card-body { padding: 1rem; }
-  .pc-tbl tbody td { padding: .45rem .6rem; }
+  .pc-hdr { padding: 1rem 1rem; flex-direction: column; align-items: stretch; gap: .6rem; }
+  .pc-hdr h2 { font-size: 1rem !important; line-height: 1.35; }
+}
+
+/* ═══════ MOBILE PREMIUM CARD LAYOUT ═══════ */
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pc-page { overflow-x: hidden !important; padding-bottom: 2rem; }
+
+  /* Header */
+  .pc-hdr { padding: .85rem .9rem !important; }
+  .pc-hdr h2 { font-size: .98rem !important; }
+  .pc-hdr h2 i { font-size: 1.05rem; }
+  .pc-hdr > div:last-child { display: flex !important; flex-direction: column; align-items: stretch !important; gap: .45rem !important; margin-top: 0 !important; }
+  .pc-hdr .pc-btn { justify-content: center; min-height: 40px; font-size: .76rem; }
+
+  /* KPI stat cards — compact */
+  .pc-page .row.g-3 { margin-bottom: .9rem !important; }
+  .pc-page .row.g-3 > .col-6 > .pc-card { padding: .55rem .6rem !important; gap: .5rem !important; border-radius: 12px; }
+  .pc-page .row.g-3 .rounded-circle { width: 36px !important; height: 36px !important; padding: .45rem !important; flex-shrink: 0; }
+  .pc-page .row.g-3 .fs-5 { font-size: .92rem !important; }
+  .pc-page .row.g-3 .small { font-size: .56rem !important; letter-spacing: .3px; }
+
+  /* Card body */
+  .pc-card-body { padding: .65rem !important; overflow: hidden !important; }
+
+  /* Kill ALL scroll wrappers — no horizontal scroll */
+  .pc-page .pc-tbl-wrap,
+  .pc-page .dataTables_wrapper,
+  .pc-page .dataTables_scrollBody,
+  .pc-page .dataTables_scrollHead,
+  .pc-page .table-responsive {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+  }
+
+  /* Table → stacked cards */
+  .pc-page .pc-tbl,
+  .pc-page .pc-tbl.dataTable {
+    display: block !important;
+    width: 100% !important;
+  }
+  .pc-page .pc-tbl thead { display: none !important; }
+  .pc-page .pc-tbl tbody { display: block !important; }
+  .pc-page .pc-tbl tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .5rem .55rem;
+    align-items: start;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-border);
+    border-top: 3px solid var(--pc-accent);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 8px rgba(0,0,0,.05);
+    padding: .6rem .7rem;
+    margin-bottom: .65rem;
+    overflow: hidden !important;
+  }
+  .pc-page .pc-tbl tbody tr:hover { background: var(--pc-surface); }
+
+  .pc-page .pc-tbl tbody td {
+    display: flex !important;
+    flex-direction: column;
+    gap: .15rem;
+    border: none !important;
+    padding: 0 !important;
+    min-width: 0;
+    text-align: left;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .pc-page .pc-tbl tbody td::before {
+    content: attr(data-label);
+    font-size: .54rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .45px;
+    color: var(--pc-text-muted);
+    white-space: nowrap;
+  }
+
+  /* ── Column ordering & styling ── */
+  /* Batch # → badge top-left */
+  .pc-page .pc-tbl tbody td:nth-child(1) {
+    order: 0; justify-self: start; align-self: start;
+    background: #eef3fc; border-radius: 7px; padding: .18rem .55rem !important;
+    font-weight: 700; font-size: .68rem; color: #3b5bb3;
+  }
+  .pc-page .pc-tbl tbody td:nth-child(1)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(1) .pc-batch { font-size: .72rem; white-space: normal; }
+
+  /* Date */
+  .pc-page .pc-tbl tbody td:nth-child(2) { order: 1; align-self: end; justify-self: end; }
+  .pc-page .pc-tbl tbody td:nth-child(2)::before { content: "Date"; }
+  .pc-page .pc-tbl tbody td:nth-child(2) .pc-date { font-size: .72rem; white-space: normal; }
+
+  /* Source badge */
+  .pc-page .pc-tbl tbody td:nth-child(3) { order: 2; }
+  .pc-page .pc-tbl tbody td:nth-child(3) .pc-badge { font-size: .64rem; }
+
+  /* Cost — accent highlight */
+  .pc-page .pc-tbl tbody td:nth-child(5) { order: 3; }
+  .pc-page .pc-tbl tbody td:nth-child(5)::before { content: "Cost"; }
+  .pc-page .pc-tbl tbody td:nth-child(5) { font-weight: 800; font-size: .82rem; color: var(--pc-accent); }
+
+  /* Items — full width */
+  .pc-page .pc-tbl tbody td:nth-child(4) { order: 4; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(4) .pc-items small { font-size: .66rem; }
+
+  /* Notes — full width */
+  .pc-page .pc-tbl tbody td:nth-child(6) { order: 5; grid-column: 1 / -1; background: #f8fafc; border-radius: 8px; padding: .25rem .5rem !important; }
+  .pc-page .pc-tbl tbody td:nth-child(6).pc-notes,
+  .pc-page .pc-tbl tbody td:nth-child(6) .pc-notes { max-width: 100%; white-space: normal; overflow: visible; text-overflow: unset; font-size: .72rem; }
+
+  /* Created By */
+  .pc-page .pc-tbl tbody td:nth-child(7) { order: 6; grid-column: 1 / -1; flex-direction: row; align-items: center; gap: .4rem; }
+  .pc-page .pc-tbl tbody td:nth-child(7) .pc-user { font-size: .7rem; }
+
+  /* Actions — full width 2-col grid */
+  .pc-page .pc-tbl tbody td:nth-child(8) { order: 7; grid-column: 1 / -1; }
+  .pc-page .pc-tbl .pc-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .4rem;
+    width: 100%;
+    white-space: normal;
+  }
+  .pc-page .pc-act {
+    justify-content: center;
+    width: 100%;
+    min-height: 34px;
+    padding: .38rem .4rem;
+    font-size: .66rem;
+    border-radius: 8px;
+  }
+
+  /* Empty state */
+  .pc-page .pc-tbl tbody td.pc-empty { grid-column: 1 / -1; }
 }
 </style>
 
@@ -377,24 +514,24 @@
             <tbody>
               @forelse($entries as $e)
               <tr>
-                <td><span class="pc-batch">{{ $e->entry_no }}</span></td>
-                <td><span class="pc-date">{{ \Carbon\Carbon::parse($e->production_date)->format('d-M-Y') }}</span></td>
-                <td>
+                <td data-label="Batch #"><span class="pc-batch">{{ $e->entry_no }}</span></td>
+                <td data-label="Date"><span class="pc-date">{{ \Carbon\Carbon::parse($e->production_date)->format('d-M-Y') }}</span></td>
+                <td data-label="Source">
                   <span class="pc-badge {{ $e->source === 'kitchen' ? 'pc-badge-kitchen' : 'pc-badge-warehouse' }}">
                     <i class="bi bi-{{ $e->source === 'kitchen' ? 'house-door' : 'building' }}"></i>
                     {{ $e->source }}
                   </span>
                 </td>
-                <td>
+                <td data-label="Items">
                   <div class="pc-items" title="{{ $e->product_details }}">
                     {{ \Illuminate\Support\Str::limit($e->product_details, 50) }}
                     <br>
                     <small><i class="bi bi-box-seam"></i> {{ $e->items_count }} items</small>
                   </div>
                 </td>
-                <td style="font-weight:700;color:var(--pc-accent);">Rs {{ number_format($e->production_cost ?? 0, 0) }}</td>
-                <td class="pc-notes">{{ $e->notes ?? '-' }}</td>
-                <td><span class="pc-user">{{ $e->user_name ?? 'System' }}</span></td>
+                <td data-label="Cost (Rs)" style="font-weight:700;color:var(--pc-accent);">Rs {{ number_format($e->production_cost ?? 0, 0) }}</td>
+                <td class="pc-notes" data-label="Notes">{{ $e->notes ?? '-' }}</td>
+                <td data-label="Created By"><span class="pc-user">{{ $e->user_name ?? 'System' }}</span></td>
                 <td>
                   <div class="pc-actions">
                     <a href="{{ route('production.edit', $e->id) }}" class="pc-act pc-act-edit">

@@ -15,4 +15,8 @@ class Warehouse extends Model
         return $this->belongsTo(User::class, 'creater_id');
     }
 
+    public function getNameAttribute()
+    {
+        return $this->attributes['warehouse_name'] ?? '';
+    }
 }

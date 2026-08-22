@@ -18,13 +18,17 @@
         z-index: 999999 !important;
     }
 
-    /* --- Table ke andar overflow na cut ho --- */
+    /* --- Table ke andar overflow na cut ho (but allow mobile scroll on wrapper) --- */
     .table-responsive,
-    .table,
-    .table-bordered,
-    #gatepassItems {
+    .table-bordered {
         overflow: visible !important;
         position: relative !important;
+    }
+
+    @media (max-width: 767.98px) {
+        .table-responsive {
+            overflow-x: auto !important;
+        }
     }
 
     /* --- Compact remove button --- */
@@ -271,9 +275,10 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
-
         $('.select2').select2({
-            width: '100%'
+            width: '100%',
+            placeholder: 'Select One',
+            allowClear: true
         });
 
         $('.receiveType').on('change', function() {
@@ -290,19 +295,6 @@
                 $('#warehouseBox').addClass('d-none');
                 $('select[name="warehouse_id"]').val('').trigger('change');
             }
-        });
-
-    });
-</script>
-@endsection
-
-@section('scripts')
-<script>
-    $(document).ready(function() {
-        $('.select2').select2({
-            width: '100%',
-            placeholder: 'Select One',
-            allowClear: true
         });
 
         // naya row add

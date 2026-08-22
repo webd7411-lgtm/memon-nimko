@@ -67,6 +67,7 @@
 
 <div class="receipt">
     <div class="center">
+        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
         <div class="brand">Memon Nimko</div>
         <div class="address" style="font-size:15px; margin-bottom: 3px;">Sweets & Bakers</div>
         <div class="address">Latifabad no 6 Near Shadman</div>

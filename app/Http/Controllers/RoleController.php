@@ -15,7 +15,49 @@ class RoleController extends Controller
     {
         $roles = Role::all();
         $allPermissions  = Permission::all();
-        return view('admin_panel.roles.role', compact(['roles', 'allPermissions'])); 
+        $permissionGroups = $this->permissionGroups();
+        return view('admin_panel.roles.role', compact(['roles', 'allPermissions', 'permissionGroups'])); 
+    }
+
+    /**
+     * Build the list of permission groups (page => [permissions])
+     * used by the "Update Role Permissions" modal.
+     */
+    protected function permissionGroups()
+    {
+        $existing = Permission::pluck('name')->all();
+        $existingSet = array_flip($existing);
+
+        $groups = config('permission_groups.groups', []);
+        $grouped = [];
+        $assigned = [];
+
+        foreach ($groups as $page => $perms) {
+            $members = [];
+            foreach ($perms as $perm) {
+                if (isset($existingSet[$perm])) {
+                    $members[] = $perm;
+                    $assigned[$perm] = true;
+                }
+            }
+            if ($members) {
+                $grouped[] = [
+                    'page' => $page,
+                    'permissions' => $members,
+                ];
+            }
+        }
+
+        // Anything not covered by the map goes into "Others"
+        $others = array_values(array_diff($existing, array_keys($assigned)));
+        if ($others) {
+            $grouped[] = [
+                'page' => 'Others',
+                'permissions' => $others,
+            ];
+        }
+
+        return $grouped;
     }
 
     public function store(Request $request)

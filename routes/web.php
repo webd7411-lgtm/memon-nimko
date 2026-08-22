@@ -177,6 +177,7 @@ Route::middleware('auth')->group(function () {
     // Branches
     Route::resource('branch', BranchController::class)->names('branch')->only(['index', 'store']);
     Route::get('/branch/delete/{id}', [BranchController::class, 'delete'])->name('branch.delete');
+    Route::post('/switch-branch', [BranchController::class, 'switchBranch'])->name('branch.switch');
 
     // Roles
     Route::resource('roles', RoleController::class)->names('roles')->only(['index', 'store']);

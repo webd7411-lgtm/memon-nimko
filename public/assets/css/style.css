@@ -1235,7 +1235,7 @@ blockquote span:before {
 
 .rt_nav_header.horizontal-layout .dropdownAnimation,
 .rt_nav_header.horizontal-layout .top_nav .nav_wrapper_main .navbar-nav .nav-item.dropdown .navbar-dropdown,
-.rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item .submenu {
+.rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item:hover .submenu {
     animation-name: dropdownAnimation;
     -webkit-animation-duration: 0.25s;
     -moz-animation-duration: 0.25s;
@@ -1718,7 +1718,7 @@ blockquote span:before {
     -moz-osx-font-smoothing: grayscale;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 992px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item:hover .submenu {
         display: block;
     }
@@ -1738,7 +1738,7 @@ blockquote span:before {
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item.show-submenu .submenu {
         display: block;
     }
@@ -1826,7 +1826,7 @@ blockquote span:before {
     left: 0;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 992px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item:not(.mega-menu) .submenu {
         position: absolute;
         top: 61px;
@@ -1843,7 +1843,7 @@ blockquote span:before {
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item:not(.mega-menu) .submenu {
         position: relative;
         top: 0;
@@ -1851,7 +1851,7 @@ blockquote span:before {
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item:not(.mega-menu) .submenu {
         top: 0;
     }
@@ -1862,7 +1862,7 @@ blockquote span:before {
     padding: 25px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item:not(.mega-menu) .submenu ul {
         padding: 0 23px;
     }
@@ -1875,7 +1875,7 @@ blockquote span:before {
     padding: 25px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 992px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item.mega-menu .submenu {
         position: absolute;
         top: 61px;
@@ -1891,7 +1891,7 @@ blockquote span:before {
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item.mega-menu .submenu {
         position: relative;
         top: 0;

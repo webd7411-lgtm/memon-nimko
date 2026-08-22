@@ -88,9 +88,130 @@
 }
 .be-search:focus { border-color: var(--be-accent); box-shadow: 0 0 0 3px rgba(43,127,255,.1); }
 
+/* ─── Summary stats ─── */
+.be-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .7rem; margin-bottom: 1rem; }
+.be-stat { background: #fff; border: 1px solid var(--be-border); border-radius: var(--be-radius-sm); padding: .7rem .9rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; box-shadow: var(--be-shadow); }
+.be-stat .bs-lbl { font-size: .64rem; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--be-text-muted); }
+.be-stat .bs-val { font-size: 1.1rem; font-weight: 800; color: var(--be-text); }
+.be-stat .bs-val small { font-size: .62rem; font-weight: 700; color: var(--be-accent); }
+
 @media (max-width:768px) {
   .be-hdr { padding: 1rem 1.25rem; flex-direction: column; gap: .5rem; }
   .be-floating-btn { bottom: 15px; right: 15px; padding: .6rem 1.2rem; font-size: .8rem; }
+}
+
+/* ─── FULL MOBILE RESPONSIVE (premium cards) ─── */
+@media (max-width: 991.98px) {
+  body, html { overflow-x: hidden !important; }
+  .be-page { padding-bottom: 5.5rem; }
+  .be-hdr { align-items: stretch; gap: .6rem; }
+  .be-hdr > div { justify-content: center; }
+
+  .be-excel-wrap { overflow: visible; border: none; background: transparent; }
+  .be-excel { display: block !important; min-width: 0 !important; width: 100% !important; border-collapse: separate; }
+  .be-excel thead { display: none !important; }
+  .be-excel tbody { display: block !important; }
+
+  .be-excel tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .5rem .6rem;
+    box-sizing: border-box;
+    width: 100% !important;
+    background: var(--be-surface);
+    border: 1px solid var(--be-border);
+    border-radius: 12px;
+    box-shadow: var(--be-shadow);
+    padding: .65rem .7rem;
+    margin-bottom: .7rem;
+    overflow: hidden !important;
+  }
+
+  .be-excel tbody tr.be-variant-row {
+    gap: .45rem .55rem;
+    background: #f8f9fc;
+    border-color: #dfe5f1;
+    border-left: 3px solid #b9cdf2;
+    padding: .55rem .65rem .55rem .9rem;
+    margin: -.15rem 0 .6rem .65rem;
+  }
+
+  .be-excel tbody td {
+    display: flex !important;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 0;
+    border: none !important;
+    padding: 0 !important;
+    text-align: left;
+    font-size: .78rem;
+    line-height: 1.25;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .be-excel tbody td::before {
+    content: attr(data-label);
+    font-size: .55rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .45px;
+    color: var(--be-text-muted);
+    white-space: nowrap;
+  }
+  .be-excel tbody td input.be-fld, .be-excel tbody td select.be-fld {
+    font-size: 16px; min-height: 42px; border-radius: 8px; padding: .35rem .5rem;
+  }
+  .be-excel tbody td input[type="radio"] { transform: scale(1.35); margin: .15rem 0; }
+  .be-excel tbody td.be-vh, .be-excel tbody td.be-vh::before { display: none !important; }
+
+  .be-fld, .be-sel { min-width: 0; max-width: 100%; }
+  .be-excel tbody tr.be-product-row { border-top: 2.5px solid var(--be-accent); background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%); }
+  .be-excel tbody tr.be-product-row td:nth-child(2) { font-size: .88rem; }
+  .be-excel tbody tr.be-product-row td:nth-child(2) .be-fld { font-size: .88rem; background: #fff; }
+
+  /* Product card ordering */
+  .be-excel tbody tr.be-product-row td:nth-child(1) {
+    order: 0; justify-self: start;
+    background: #eef3fc; border-radius: 6px; padding: .18rem .55rem !important;
+    font-weight: 700; font-size: .7rem; color: var(--be-text-muted);
+  }
+  .be-excel tbody tr.be-product-row td:nth-child(1)::before { content: none; }
+  .be-excel tbody tr.be-product-row td:nth-child(2) { order: 1; grid-column: 1 / -1; }
+  .be-excel tbody tr.be-product-row td:nth-child(2)::before { content: none; }
+  .be-excel tbody tr.be-product-row td:nth-child(2) .be-fld { font-weight: 800; color: var(--be-text); }
+  .be-excel tbody tr.be-product-row td:nth-child(3) { order: 2; }
+  .be-excel tbody tr.be-product-row td:nth-child(4) { order: 3; }
+  .be-excel tbody tr.be-product-row td:nth-child(5) { order: 4; }
+  .be-excel tbody tr.be-product-row td:nth-child(6) { order: 5; }
+  .be-excel tbody tr.be-product-row td:nth-child(7) { order: 6; }
+  .be-excel tbody tr.be-product-row td:nth-child(8) { order: 7; }
+  .be-excel tbody tr.be-product-row td:nth-child(9) {
+    order: 8; grid-column: 1 / -1;
+    background: #f0f6ff; border-radius: 8px !important; padding: .2rem .5rem !important;
+  }
+  .be-excel tbody tr.be-product-row td:nth-child(9)::before { content: "Variant"; color: var(--be-accent); }
+  .be-excel tbody tr.be-product-row td:nth-child(10) { order: 9; }
+  .be-excel tbody tr.be-product-row td:nth-child(11) { order: 10; }
+  .be-excel tbody tr.be-product-row td:nth-child(12) { order: 11; }
+  .be-excel tbody tr.be-product-row td:nth-child(13) { order: 12; }
+  .be-excel tbody tr.be-product-row td:nth-child(14) { order: 13; }
+  .be-excel tbody tr.be-product-row td:nth-child(15) { order: 14; }
+
+  /* Variant card ordering */
+  .be-excel tbody tr.be-variant-row td:nth-child(1),
+  .be-excel tbody tr.be-variant-row td:nth-child(2) { display: none !important; }
+  .be-excel tbody tr.be-variant-row td:nth-child(3) {
+    order: 0; grid-column: 1 / -1;
+    flex-direction: row; align-items: center; gap: .4rem;
+  }
+  .be-excel tbody tr.be-variant-row td:nth-child(3)::before { content: "Variant"; color: var(--be-accent); }
+  .be-excel tbody tr.be-variant-row td:nth-child(3) .be-fld { font-weight: 700; }
+  .be-excel tbody tr.be-variant-row td:nth-child(4) { order: 1; }
+  .be-excel tbody tr.be-variant-row td:nth-child(5) { order: 2; }
+  .be-excel tbody tr.be-variant-row td:nth-child(6) { order: 3; }
+  .be-excel tbody tr.be-variant-row td:nth-child(7) { order: 4; }
+  .be-excel tbody tr.be-variant-row td:nth-child(8) { order: 5; }
+  .be-excel tbody tr.be-variant-row td:nth-child(9) { order: 6; }
 }
 </style>
 
@@ -105,6 +226,14 @@
           <button type="submit" class="be-btn be-btn-primary"><i class="bi bi-check-lg"></i>Update All</button>
           <a href="{{ route('product') }}" class="be-btn be-btn-outline"><i class="bi bi-arrow-left"></i>Back</a>
         </div>
+      </div>
+
+      {{-- Summary stats --}}
+      <div class="be-stats">
+        <div class="be-stat"><span class="bs-lbl">Products</span><span class="bs-val">{{ $products->count() }}</span></div>
+        <div class="be-stat"><span class="bs-lbl">With Variants</span><span class="bs-val">{{ $products->filter(fn($p) => $p->variants->isNotEmpty())->count() }}</span></div>
+        <div class="be-stat"><span class="bs-lbl">Total Variants</span><span class="bs-val">{{ $products->sum(fn($p) => $p->variants->count()) }}</span></div>
+        <div class="be-stat"><span class="bs-lbl">KG Products</span><span class="bs-val">{{ $products->where('unit_type','kg')->count() }}</span></div>
       </div>
 
       <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
@@ -157,9 +286,9 @@
                 }
             @endphp
             <tr class="be-product-row" data-pid="{{ $pid }}">
-              <td style="font-weight:600;color:var(--be-text-muted);">{{ $loop->iteration }}</td>
-              <td><input type="text" class="be-fld" name="product_name[{{ $pid }}]" value="{{ $product->item_name }}"></td>
-              <td>
+              <td data-label="#"> {{ $loop->iteration }}</td>
+              <td data-label="Name"><input type="text" class="be-fld" name="product_name[{{ $pid }}]" value="{{ $product->item_name }}"></td>
+              <td data-label="Category">
                 <select class="be-fld be-cat" name="category_id[{{ $pid }}]" data-pid="{{ $pid }}">
                   <option value="">-</option>
                   @foreach($categories as $cat)
@@ -167,7 +296,7 @@
                   @endforeach
                 </select>
               </td>
-              <td>
+              <td data-label="Sub-Category">
                 <select class="be-fld be-subcat" name="sub_category_id[{{ $pid }}]" data-pid="{{ $pid }}">
                   <option value="">-</option>
                   @foreach($subcategories as $sub)
@@ -175,16 +304,16 @@
                   @endforeach
                 </select>
               </td>
-              <td>
+              <td data-label="Unit">
                 <select class="be-fld" name="unit_type[{{ $pid }}]">
                   <option value="piece" {{ ($product->unit_type ?? 'piece') == 'piece' ? 'selected' : '' }}>Pc</option>
                   <option value="kg" {{ $product->unit_type == 'kg' ? 'selected' : '' }}>KG</option>
                   <option value="pound" {{ $product->unit_type == 'pound' ? 'selected' : '' }}>Lb</option>
                 </select>
               </td>
-              <td><input type="number" class="be-fld" name="price[{{ $pid }}]" step="0.01" value="{{ $product->price }}"></td>
-              <td><input type="number" class="be-fld" name="alert_quantity[{{ $pid }}]" value="{{ $product->alert_quantity }}"></td>
-              <td>
+              <td data-label="Price"><input type="number" class="be-fld" name="price[{{ $pid }}]" step="0.01" value="{{ $product->price }}"></td>
+              <td data-label="Alert"><input type="number" class="be-fld" name="alert_quantity[{{ $pid }}]" value="{{ $product->alert_quantity }}"></td>
+              <td data-label="Brand">
                 <select class="be-fld" name="brand_id[{{ $pid }}]">
                   <option value="">-</option>
                   @foreach($brands as $brand)
@@ -194,54 +323,54 @@
               </td>
               @php $firstVar = $product->variants->first(); @endphp
               @if($firstVar)
-              <td><input type="text" class="be-fld" name="variant_name[{{ $pid }}][]" value="{{ $firstVar->variant_name }}" placeholder="-"><input type="hidden" name="variant_id[{{ $pid }}][]" value="{{ $firstVar->id }}"></td>
-              <td><input type="number" class="be-fld" step="0.01" name="variant_size_value[{{ $pid }}][]" value="{{ $firstVar->grams }}"></td>
-              <td>
+              <td data-label="Variant"><input type="text" class="be-fld" name="variant_name[{{ $pid }}][]" value="{{ $firstVar->variant_name }}" placeholder="-"><input type="hidden" name="variant_id[{{ $pid }}][]" value="{{ $firstVar->id }}"></td>
+              <td data-label="Size"><input type="number" class="be-fld" step="0.01" name="variant_size_value[{{ $pid }}][]" value="{{ $firstVar->grams }}"></td>
+              <td data-label="Size Unit">
                 <select class="be-fld" name="variant_size_unit[{{ $pid }}][]">
                   <option value="piece" {{ $firstVar->size_unit == 'piece' ? 'selected' : '' }}>Pc</option>
                   <option value="kg" {{ $firstVar->size_unit == 'kg' ? 'selected' : '' }}>KG</option>
                   <option value="pound" {{ $firstVar->size_unit == 'pound' ? 'selected' : '' }}>Lb</option>
                 </select>
               </td>
-              <td><input type="number" class="be-fld" step="0.01" name="variant_price[{{ $pid }}][]" value="{{ $firstVar->price }}"></td>
-              <td><input type="number" class="be-fld" step="0.01" name="variant_cost_price[{{ $pid }}][]" value="{{ $firstVar->cost_price }}"></td>
+              <td data-label="Sale Price"><input type="number" class="be-fld" step="0.01" name="variant_price[{{ $pid }}][]" value="{{ $firstVar->price }}"></td>
+              <td data-label="Cost Price"><input type="number" class="be-fld" step="0.01" name="variant_cost_price[{{ $pid }}][]" value="{{ $firstVar->cost_price }}"></td>
               @if($product->unit_type == 'kg')
-              <td><input type="number" class="be-fld" step="0.01" name="kg_stock[{{ $pid }}]" value="{{ $kgStockKg }}"><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0"></td>
+              <td data-label="Stock"><input type="number" class="be-fld" step="0.01" name="kg_stock[{{ $pid }}]" value="{{ $kgStockKg }}"><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0"></td>
               @else
-              <td><input type="number" class="be-fld" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $firstVar->stock_qty }}"></td>
+              <td data-label="Stock"><input type="number" class="be-fld" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $firstVar->stock_qty }}"></td>
               @endif
-              <td style="text-align:center;"><input type="radio" name="variant_default[{{ $pid }}]" value="0" {{ $firstVar->is_default ? 'checked' : '' }}></td>
+              <td data-label="Default"><input type="radio" name="variant_default[{{ $pid }}]" value="0" {{ $firstVar->is_default ? 'checked' : '' }}></td>
               @else
-              <td><input type="text" class="be-fld" name="variant_name[{{ $pid }}][]" placeholder="-"><input type="hidden" name="variant_id[{{ $pid }}][]" value=""></td>
-              <td><input type="hidden" name="variant_size_value[{{ $pid }}][]" value="0"></td>
-              <td><input type="hidden" name="variant_size_unit[{{ $pid }}][]" value="piece"></td>
-              <td><input type="hidden" name="variant_price[{{ $pid }}][]" value="0"></td>
-              <td><input type="hidden" name="variant_cost_price[{{ $pid }}][]" value="0"></td>
-              <td><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0"></td>
-              <td></td>
+              <td data-label="Variant" class="be-vh"><input type="text" class="be-fld" name="variant_name[{{ $pid }}][]" placeholder="-"><input type="hidden" name="variant_id[{{ $pid }}][]" value=""></td>
+              <td data-label="Size" class="be-vh"><input type="hidden" name="variant_size_value[{{ $pid }}][]" value="0"></td>
+              <td data-label="Size Unit" class="be-vh"><input type="hidden" name="variant_size_unit[{{ $pid }}][]" value="piece"></td>
+              <td data-label="Sale Price" class="be-vh"><input type="hidden" name="variant_price[{{ $pid }}][]" value="0"></td>
+              <td data-label="Cost Price" class="be-vh"><input type="hidden" name="variant_cost_price[{{ $pid }}][]" value="0"></td>
+              <td data-label="Stock" class="be-vh"><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0"></td>
+              <td data-label="Default" class="be-vh"></td>
               @endif
             </tr>
             @foreach($product->variants->skip(1) as $v)
             <tr class="be-variant-row" data-pid="{{ $pid }}">
               <td></td>
               <td colspan="7" class="v-indent"><i class="bi bi-arrow-return-right text-muted"></i> {{ $product->item_name }}</td>
-              <td><input type="text" class="be-fld be-fld-sm" name="variant_name[{{ $pid }}][]" value="{{ $v->variant_name }}"><input type="hidden" name="variant_id[{{ $pid }}][]" value="{{ $v->id }}"></td>
-              <td><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_size_value[{{ $pid }}][]" value="{{ $v->grams }}"></td>
-              <td>
+              <td data-label="Variant"><input type="text" class="be-fld be-fld-sm" name="variant_name[{{ $pid }}][]" value="{{ $v->variant_name }}"><input type="hidden" name="variant_id[{{ $pid }}][]" value="{{ $v->id }}"></td>
+              <td data-label="Size"><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_size_value[{{ $pid }}][]" value="{{ $v->grams }}"></td>
+              <td data-label="Size Unit">
                 <select class="be-fld be-sel" name="variant_size_unit[{{ $pid }}][]">
                   <option value="piece" {{ $v->size_unit == 'piece' ? 'selected' : '' }}>Pc</option>
                   <option value="kg" {{ $v->size_unit == 'kg' ? 'selected' : '' }}>KG</option>
                   <option value="pound" {{ $v->size_unit == 'pound' ? 'selected' : '' }}>Lb</option>
                 </select>
               </td>
-              <td><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_price[{{ $pid }}][]" value="{{ $v->price }}"></td>
-              <td><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_cost_price[{{ $pid }}][]" value="{{ $v->cost_price }}"></td>
+              <td data-label="Sale Price"><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_price[{{ $pid }}][]" value="{{ $v->price }}"></td>
+              <td data-label="Cost Price"><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_cost_price[{{ $pid }}][]" value="{{ $v->cost_price }}"></td>
               @if($product->unit_type == 'kg')
-              <td><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0">—</td>
+              <td data-label="Stock"><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0">—</td>
               @else
-              <td><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $v->stock_qty }}"></td>
+              <td data-label="Stock"><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $v->stock_qty }}"></td>
               @endif
-              <td style="text-align:center;"><input type="radio" name="variant_default[{{ $pid }}]" value="{{ $loop->index + 1 }}" {{ $v->is_default ? 'checked' : '' }}></td>
+              <td data-label="Default"><input type="radio" name="variant_default[{{ $pid }}]" value="{{ $loop->index + 1 }}" {{ $v->is_default ? 'checked' : '' }}></td>
             </tr>
             @endforeach
             @endforeach

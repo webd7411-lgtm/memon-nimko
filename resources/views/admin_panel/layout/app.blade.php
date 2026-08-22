@@ -16,9 +16,13 @@
         margin-top: 20px;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 767.98px) {
+        .main-content {
+            margin-top: 6px;
+        }
+
         body {
-            padding-top: 10px;
+            padding-top: 6px;
         }
     }
 </style>

@@ -64,7 +64,9 @@ class ProductController extends Controller
             'variants.stock'
         ])
             ->withSum(['stocks as total_stock' => function($q) {
-                $q->where('branch_id', 1)->where('warehouse_id', 1);
+                if (!is_all_branches()) {
+                    $q->where('branch_id', active_branch_id());
+                }
             }], 'qty')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -159,6 +161,25 @@ class ProductController extends Controller
             || ProductVariant::where('barcode_path', $code)->exists();
     }
 
+    /** Generate a unique 6-digit barcode for variants */
+    private function generateUniqueBarcode(?string $candidate = null): string
+    {
+        if ($candidate) {
+            $digits = preg_replace('/\D+/', '', $candidate);
+            $digits = substr($digits, 0, 6);
+            $candidate = str_pad($digits, 6, '0', STR_PAD_LEFT);
+            if (!$this->codeExists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        do {
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        } while ($this->codeExists($code));
+
+        return $code;
+    }
+
 
 
 
@@ -215,7 +236,7 @@ class ProductController extends Controller
                 'sub_category_id' => $subCategoryId,
                 'item_code'       => $nextCode,
                 'item_name'       => $request->input('product_name'),
-                'barcode_path'    => $request->input('barcode_path') ?? rand(100000000000, 999999999999),
+                'barcode_path'    => $request->input('barcode_path') ?? null,
                 'unit_id'         => $request->input('unit'),
                 'unit_type'       => $request->input('unit_type'),
                 'brand_id'        => $brandId,
@@ -265,10 +286,12 @@ class ProductController extends Controller
                     $vStock = floatval($variantStocks[$index] ?? 0);
                     $isDefault = ((int)$variantDefault === $index);
 
+                    $vBarcode = !empty($variantBarcodes[$index]) ? $variantBarcodes[$index] : $this->generateUniqueBarcode();
+
                     $variant = ProductVariant::create([
                         'product_id'      => $product->id,
                         'variant_name'    => $vName,
-                        'barcode_path'    => $variantBarcodes[$index] ?? null,
+                        'barcode_path'    => $vBarcode,
                         'size_label'      => $sizeLabel,
                         'size_value'      => $dbSizeValue,
                         'size_unit'       => $sizeUnit,
@@ -283,7 +306,7 @@ class ProductController extends Controller
 
                     // Single variant stock entry
                     DB::table('stocks')->insert([
-                        'branch_id'    => 1,
+                        'branch_id'    => active_branch_id(),
                         'warehouse_id' => 1,
                         'product_id'   => $product->id,
                         'variant_id'   => $variant->id,
@@ -309,7 +332,7 @@ class ProductController extends Controller
             // Normal product without variants
             if (empty($variantNames) && $product->initial_stock > 0) {
                 DB::table('stocks')->insert([
-                    'branch_id'    => 1,
+                    'branch_id'    => active_branch_id(),
                     'warehouse_id' => 1,
                     'product_id'   => $product->id,
                     'variant_id'   => null,
@@ -443,10 +466,20 @@ class ProductController extends Controller
                     $vStock = floatval($variantStocks[$index] ?? 0);
                     $isDefault = ((int)$variantDefault === $index);
 
+                    $vBarcode = !empty($variantBarcodes[$index]) ? $variantBarcodes[$index] : null;
+                    if (empty($vBarcode)) {
+                        if ($vId) {
+                            $existingV = ProductVariant::find($vId);
+                            $vBarcode = (!empty($existingV) && !empty($existingV->barcode_path)) ? $existingV->barcode_path : $this->generateUniqueBarcode();
+                        } else {
+                            $vBarcode = $this->generateUniqueBarcode();
+                        }
+                    }
+
                     $variantData = [
                         'product_id'      => $product->id,
                         'variant_name'    => $vName,
-                        'barcode_path'    => $variantBarcodes[$index] ?? null,
+                        'barcode_path'    => $vBarcode,
                         'size_label'      => $sizeLabel,
                         'size_value'      => $dbSizeValue,
                         'size_unit'       => $sizeUnit,
@@ -470,7 +503,7 @@ class ProductController extends Controller
 
                         // Insert initial stock for new variant
                         DB::table('stocks')->insert([
-                            'branch_id'    => 1,
+                            'branch_id'    => active_branch_id(),
                             'warehouse_id' => 1,
                             'product_id'   => $product->id,
                             'variant_id'   => $variant->id,
@@ -562,7 +595,15 @@ class ProductController extends Controller
     // Add function in ProductController.php
     public function barcode($id)
     {
-        $product = Product::with('activeDiscount')->findOrFail($id);
+        $product = Product::with(['variants', 'activeDiscount', 'brand'])->findOrFail($id);
+
+        foreach ($product->variants as $variant) {
+            if (empty($variant->barcode_path)) {
+                $variant->barcode_path = $this->generateUniqueBarcode();
+                $variant->save();
+            }
+        }
+
         return view('admin_panel.product.barcode', compact('product'));
     }
 

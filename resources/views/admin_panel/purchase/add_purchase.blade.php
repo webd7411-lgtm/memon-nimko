@@ -325,6 +325,55 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
 .pp-tbl .t-empty i { font-size: 2rem; color: #ced8e6; display: block; margin-bottom: .5rem; }
 .pp-tbl .t-empty span { font-size: .9rem; font-weight: 500; color: var(--p-text-muted); }
 
+/* Desktop: fixed layout = table NEVER overflows / no horizontal scroll */
+.pp-tbl-wrap { overflow-x: hidden; }
+.pp-tbl { table-layout: fixed; width: 100% !important; }
+.pp-tbl thead th, .pp-tbl tbody td { white-space: normal !important; overflow-wrap: anywhere; }
+
+/* ═══════ MOBILE / TABLET PREMIUM CARDS ═══════ */
+.ppc-cards { display: none; }
+
+.ppc-card {
+  background: var(--p-surface);
+  border: 1.5px solid var(--p-border);
+  border-radius: var(--p-radius-sm);
+  box-shadow: var(--p-shadow-sm);
+  padding: .9rem 1rem;
+  margin: .7rem .8rem;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.ppc-card.pp-row-new { animation: ppFd .25s ease; }
+.ppc-card:hover { box-shadow: var(--p-shadow); transform: translateY(-1px); }
+
+.ppc-top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .55rem; }
+.ppc-ix {
+  font-size: .72rem; font-weight: 800; color: var(--p-accent);
+  background: var(--p-primary-light); border-radius: 20px; padding: .2rem .7rem;
+}
+.ppc-top .t-del { opacity: 1; }
+
+.ppc-nm { font-size: .92rem; font-weight: 700; color: var(--p-text); word-break: normal; overflow-wrap: anywhere; line-height: 1.35; margin-bottom: .75rem; }
+.ppc-nm .t-var { margin-left: 0; margin-top: 4px; display: inline-flex; }
+
+.ppc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.ppc-f { background: #fafbfc; border: 1px solid var(--p-border); border-radius: 8px; padding: .5rem .6rem; }
+.ppc-f label { display: block; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--p-text-muted); margin-bottom: .25rem; }
+.ppc-f .t-inp { width: 100% !important; border-width: 1px; }
+.ppc-lt { grid-column: span 2; display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.ppc-lt label { margin-bottom: 0; }
+.ppc-lt .t-total { font-size: 1.05rem; font-weight: 800; color: var(--p-accent); }
+
+.ppc-empty {
+  padding: 2.2rem 1rem; text-align: center; color: var(--p-text-muted);
+  display: flex; flex-direction: column; align-items: center; gap: .3rem; font-size: .86rem; font-weight: 500;
+}
+.ppc-empty i { font-size: 1.9rem; color: #ced8e6; display: block; }
+
+@media (max-width: 991.98px) {
+  .pp-tbl-wrap { display: none; }
+  .ppc-cards { display: block; }
+}
+
 /* ═══════ COUNT BADGE ═══════ */
 .pp-cnt {
   display: inline-flex; align-items: center; gap: 5px;
@@ -655,6 +704,8 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
               </tbody>
             </table>
           </div>
+          {{-- Mobile / Tablet premium cards --}}
+          <div id="itemCards" class="ppc-cards"></div>
         </div>
       </div>
 
@@ -889,13 +940,16 @@ $(document).ready(function() {
   function renderT(ni) {
     if (!items.length) {
       $('#tbd').html('<tr class="t-empty"><td colspan="7"><i class="bi bi-inbox"></i><span>No items yet</span></td></tr>');
+      $('#itemCards').html('<div class="ppc-empty"><i class="bi bi-inbox"></i><span>No items yet</span></div>');
       $('#icnt').text('0 items'); updH(); updS(); return;
     }
 
     let h = '';
+    let c = '';
     items.forEach(function(it, i) {
       let sz = it.sl ? `<span class="t-var"><i class="bi bi-tag"></i> ${it.sl}</span>` : '';
-      h += `<tr class="${i === ni ? 'pp-row-new' : ''}">
+      let rn = i === ni ? 'pp-row-new' : '';
+      h += `<tr class="${rn}">
         <td class="text-center fw-semibold" style="color:#94a3b8;">${i+1}</td>
         <td><span style="font-weight:600;color:var(--p-text);">${it.nm}</span>${sz}</td>
         <td class="text-center">${it.sl || '<span style="color:#b8c5d4;">—</span>'}</td>
@@ -904,9 +958,32 @@ $(document).ready(function() {
         <td class="text-end t-total">${it.lt.toFixed(2)}</td>
         <td class="text-center"><button class="t-del" data-i="${i}"><i class="bi bi-trash3"></i></button></td>
       </tr>`;
+
+      c += `<div class="ppc-card ${rn}">
+        <div class="ppc-top">
+          <span class="ppc-ix">Item #${i + 1}</span>
+          <button class="t-del" data-i="${i}"><i class="bi bi-trash3"></i></button>
+        </div>
+        <div class="ppc-nm">${it.nm}${sz}</div>
+        <div class="ppc-grid">
+          <div class="ppc-f">
+            <label>Unit Price</label>
+            <input type="number" step="0.01" class="t-inp" data-i="${i}" value="${it.price}">
+          </div>
+          <div class="ppc-f">
+            <label>Qty</label>
+            <input type="number" step="0.001" min="0.001" class="t-inp qty" data-i="${i}" value="${it.qty}">
+          </div>
+          <div class="ppc-f ppc-lt">
+            <label>Line Total</label>
+            <div class="t-total">${it.lt.toFixed(2)}</div>
+          </div>
+        </div>
+      </div>`;
     });
 
     $('#tbd').html(h);
+    $('#itemCards').html(c);
     $('#icnt').text(items.length + ' item' + (items.length !== 1 ? 's' : ''));
     updH(); updS();
   }
@@ -916,7 +993,7 @@ $(document).ready(function() {
     let v = parseFloat($(this).val()) || 0;
     if (q) items[i].qty = v; else items[i].price = v;
     items[i].lt = items[i].price * items[i].qty;
-    $('.t-total').eq(i).text(items[i].lt.toFixed(2));
+    $(this).closest('tr, .ppc-card').find('.t-total').text(items[i].lt.toFixed(2));
     updH(); updS();
   });
 
@@ -958,6 +1035,8 @@ $(document).ready(function() {
   // ─── SAVE ───
   $('#svBtn').on('click', function() {
     if (!items.length) { Swal.fire({ icon: 'warning', title: 'Empty', text: 'Add at least one product', timer: 1800, showConfirmButton: false }); return; }
+    let vd = $('select[name="vendor_id"]').val();
+    if (!vd) { Swal.fire({ icon: 'warning', title: 'Vendor Required', text: 'Please select a vendor', timer: 1800, showConfirmButton: false }); return; }
     let pt = $('input[name="purchase_to"]:checked').val();
     if (!pt) { Swal.fire({ icon: 'warning', title: 'Type', text: 'Select Shop or Warehouse', timer: 1800, showConfirmButton: false }); return; }
     if (pt === 'warehouse' && !$('select[name="warehouse_id"]').val()) { Swal.fire({ icon: 'warning', title: 'Warehouse', text: 'Select a warehouse', timer: 1800, showConfirmButton: false }); return; }

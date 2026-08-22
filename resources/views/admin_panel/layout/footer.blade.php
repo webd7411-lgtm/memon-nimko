@@ -7,82 +7,67 @@
     </footer>
     </div>
    
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script src="{{ asset('assets/js/popper.min.js') }}"></script>
-<script src="{{ asset('assets/js/bootstrap.min.js') }}"></script>
-
-
 <script src="{{ asset('assets/js/owl.carousel.min.js') }}"></script>
-
-
 <script src="{{ asset('assets/js/metisMenu.min.js') }}"></script>
-
-
 <script src="{{ asset('assets/js/jquery.slimscroll.min.js') }}"></script>
 
-
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
-
 <script src="{{ asset('assets/js/jquery.slicknav.min.js') }}"></script>
-
-
-<script src="{{ asset('assets/vendors/am-charts/js/ammap.js') }}"></script>
-<script src="{{ asset('assets/vendors/am-charts/js/worldLow.js') }}"></script>
-<script src="{{ asset('assets/vendors/am-charts/js/continentsLow.js') }}"></script>
-<script src="{{ asset('assets/vendors/am-charts/js/light.js') }}"></script>
-<script src="{{ asset('assets/js/am-maps.js') }}"></script>
-
 
 <script src="{{ asset('assets/vendors/charts/morris-bundle/raphael.min.js') }}"></script>
 <script src="{{ asset('assets/vendors/charts/morris-bundle/morris.js') }}"></script>
 
-
 <script src="{{ asset('assets/vendors/charts/charts-bundle/Chart.bundle.js') }}"></script>
 
-
-<script src="{{ asset('assets/vendors/charts/c3charts/c3.min.js') }}"></script>
+<!-- D3 must load BEFORE C3 -->
 <script src="{{ asset('assets/vendors/charts/c3charts/d3-5.4.0.min.js') }}"></script>
+<script src="{{ asset('assets/vendors/charts/c3charts/c3.min.js') }}"></script>
 
-
+<!-- DataTables JS with CDN fallback -->
 <script src="{{ asset('assets/vendors/data-table/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('assets/vendors/data-table/js/dataTables.bootstrap4.min.js') }}"></script>
-<script src="{{ asset('assets/vendors/data-table/js/dataTables.responsive.min.js') }}"></script>
-<script src="{{ asset('assets/vendors/data-table/js/responsive.bootstrap.min.js') }}"></script>
-
+<script>
+    if (typeof $.fn.DataTable === 'undefined') {
+        document.write('<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"><\/script>');
+        document.write('<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"><\/script>');
+    }
+</script>
 
 <script src="{{ asset('assets/vendors/charts/sparkline/jquery.sparkline.js') }}"></script>
-
-
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
 
 <script src="{{ asset('assets/js/home.js') }}"></script>
 <script src="{{ asset('assets/js/main.js') }}"></script>
 
 
     <script>
-
         $(document).ready(function() {
-            $('#datatable').DataTable({
-                responsive: true,
-                pageLength: 10,
-                lengthMenu: [
-                    [10, 25, 50, -1],
-                    [10, 25, 50, "All"]
-                ],
-                order: [], // 👈 disable DataTables default order
-                language: {
-                    search: "_INPUT_",
-                    searchPlaceholder: "Search.."
-                }
+            // Auto-wrap bare tables so they scroll horizontally on small screens
+            $('table').each(function() {
+                var $t = $(this);
+                if ($t.closest('.table-responsive, .pc-tbl-wrap, .dataTables_wrapper, .dt-scroll, .dataTables_scroll, .st-tbl-wrap, .st-table-wrapper, .sl-table-wrapper, .sr-table-wrapper, .pc-tbl-desk, .rp-tbl-wrap, .sa-tbl-wrap').length) return;
+                if ($t.attr('id') === 'datatable') return;
+                if (!$t.find('tbody tr').length && !$t.find('thead tr').length) return;
+                $t.wrap('<div class="table-responsive" style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"></div>');
             });
+
+            if (typeof $.fn.DataTable !== 'undefined' && $('#datatable').length) {
+                $('#datatable').DataTable({
+                    pageLength: 10,
+                    lengthMenu: [
+                        [10, 25, 50, -1],
+                        [10, 25, 50, "All"]
+                    ],
+                    order: [], // 👈 disable DataTables default order
+                    language: {
+                        search: "_INPUT_",
+                        searchPlaceholder: "Search.."
+                    }
+                });
+            }
         });
         function showAlert(title, text, icon) {
             Swal.fire({

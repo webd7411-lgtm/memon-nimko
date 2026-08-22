@@ -199,7 +199,11 @@ class CustomerController extends Controller
     // View all customer payments
     public function customer_payments()
     {
-        $payments = CustomerPayment::with('customer')->orderByDesc('id')->get();
+        $query = CustomerPayment::with('customer')->orderByDesc('id');
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+        $payments = $query->get();
         $customers = Customer::all();
         return view('admin_panel.customers.customer_payments', compact('payments', 'customers'));
     }
@@ -234,6 +238,7 @@ class CustomerController extends Controller
             'received_no'     => $receivedNo, // ✅ AUTO
             'customer_id'     => $request->customer_id,
             'admin_or_user_id' => $userId,
+            'branch_id'       => active_branch_id(),
             'amount'          => $request->amount,
             'payment_method'  => $request->payment_method,
             'payment_date'    => $request->payment_date,

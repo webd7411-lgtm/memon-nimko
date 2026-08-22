@@ -1,7 +1,60 @@
  @extends('admin_panel.layout.app')
  @section('content')
-     
-<div class="main-content">
+<style>
+    .bd-page .table-responsive { overflow-x: hidden; }
+    .bd-page table#default-datatable { table-layout: fixed; width: 100% !important; }
+    .bd-page thead th, .bd-page tbody td { white-space: normal !important; overflow-wrap: anywhere; }
+
+    @media (max-width: 991.98px) {
+        .bd-page .table-responsive { overflow: visible; }
+        .bd-page table { display: block !important; width: 100% !important; }
+        .bd-page thead { display: none !important; }
+        .bd-page tbody { display: block !important; }
+        .bd-page tbody tr {
+            display: grid !important;
+            grid-template-columns: 1fr;
+            gap: .3rem .5rem;
+            background: #fff;
+            border: 1px solid #e9edf2;
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
+            padding: .55rem .65rem;
+            margin-bottom: .55rem;
+            overflow: hidden !important;
+        }
+        .bd-page tbody td {
+            display: flex !important;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 2px 4px;
+            border: none !important;
+            padding: 0 !important;
+            text-align: left;
+            min-width: 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            font-size: .75rem;
+            line-height: 1.35;
+        }
+        .bd-page tbody td::before {
+            content: attr(data-label) ":";
+            font-size: .55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: #94a3b8;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .bd-page tbody td:nth-child(1) { order: 0; justify-self: start; }
+        .bd-page tbody td:nth-child(1)::before { content: none; }
+        .bd-page tbody td:nth-child(2) { order: 1; font-weight: 700; color: #0f172a; }
+        .bd-page tbody td:nth-child(3) { order: 2; }
+        .bd-page tbody td:nth-child(3)::before { content: none; }
+        .bd-page tbody td:nth-child(3) .btn { flex: 1 1 auto; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; }
+    }
+</style>
+<div class="main-content bd-page">
     <div class="main-content-inner">
         <div class="container">
             <div class="row">
@@ -25,9 +78,9 @@
         <tbody class="text-center">
             @foreach ($Brand as $company)
                 <tr>
-                   <td class="id">{{ $company->id }}</td>
-                    <td class="name">{{ $company->name }}</td>
-                    <td>
+                   <td class="id" data-label="Id">{{ $company->id }}</td>
+                    <td class="name" data-label="Name">{{ $company->name }}</td>
+                    <td data-label="Action">
                         <button class="btn btn-primary btn-sm edit-btn"
                             data-url="{{ route('store.Brand') }}">
                             Edit

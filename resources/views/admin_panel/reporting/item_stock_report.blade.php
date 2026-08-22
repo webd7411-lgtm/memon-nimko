@@ -346,6 +346,191 @@
   .pc-card-body { padding: 1rem; }
   .pc-tbl tbody td { padding: .4rem .5rem; }
 }
+
+@media (max-width: 991.98px) {
+  .pc-tbl-wrap[style*="max-height:calc"],
+  #variantBody[style*="max-height:calc"] {
+    max-height: none !important;
+  }
+}
+
+/* ═══════ FULL MOBILE RESPONSIVE — CARD LAYOUT (no horizontal scroll) ═══════ */
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pc-page { overflow-x: hidden !important; padding-bottom: 1.5rem; }
+
+  /* Header + tabs */
+  .pc-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .5rem; }
+  .pc-hdr h2 { font-size: .98rem !important; }
+  .pc-hdr .pc-btn { padding: .4rem .8rem !important; font-size: .74rem !important; width: 100%; justify-content: center; min-height: 38px; }
+  .pc-tabs { width: 100% !important; padding: 3px; }
+  .pc-tab { flex: 1; text-align: center; padding: 8px 4px !important; font-size: .72rem; white-space: nowrap; }
+
+  /* Summary cards — 2 col grid */
+  .pc-sum-grid { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+  .pc-sum-card { padding: .7rem .7rem; border-left-width: 3px; min-width: 0; }
+  .pc-sum-card .lbl { font-size: .5rem; letter-spacing: .3px; }
+  .pc-sum-card .val { font-size: 1rem; margin-top: 2px; }
+
+  /* Filter — full width stacked */
+  .pc-filter { padding: .85rem; gap: .55rem; }
+  .pc-filter .fg { width: 100% !important; flex: 0 0 100% !important; min-width: 0 !important; }
+  .pc-filter .pc-fld { width: 100% !important; min-height: 40px; font-size: .85rem; }
+  .pc-filter .pc-btn { width: 100%; justify-content: center; min-height: 40px; }
+
+  /* Card body + toolbar */
+  .pc-card-body { padding: .6rem !important; overflow: hidden !important; }
+  .pc-card-body > .d-flex { flex-wrap: wrap; }
+  .pc-ls-wrap { flex: 1 1 100%; }
+  .pc-ls-wrap input { width: 100% !important; min-width: 0 !important; padding-left: 30px; }
+
+  /* Kill ALL horizontal scroll wrappers — higher specificity */
+  .pc-page .pc-tbl-wrap {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    max-width: 100% !important;
+    max-height: none !important;
+  }
+
+  /* Item table → stacked premium cards */
+  .pc-page .pc-tbl { display: block !important; width: 100% !important; font-size: .7rem !important; }
+  .pc-page .pc-tbl thead { display: none !important; }
+  .pc-page .pc-tbl tbody { display: block !important; }
+  .pc-page .pc-tbl tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .25rem .5rem;
+    align-items: start;
+    background: var(--pc-surface) !important;
+    border: 1px solid var(--pc-border) !important;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 8px rgba(0,0,0,.05);
+    padding: .55rem .6rem;
+    margin-bottom: .5rem;
+    overflow: hidden;
+  }
+  .pc-page .pc-tbl tbody tr:hover { background: var(--pc-surface) !important; }
+  .pc-page .pc-tbl tbody tr.row-out { background: #fff5f5 !important; border-color: #f3cdcd !important; }
+  .pc-page .pc-tbl tbody tr.row-low { background: #fffbf0 !important; border-color: #f1dfa7 !important; }
+
+  .pc-page .pc-tbl tbody td {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1px 4px;
+    border: none !important;
+    padding: 0 !important;
+    min-width: 0;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-size: .7rem;
+    line-height: 1.35;
+    text-align: left !important;
+  }
+  .pc-page .pc-tbl tbody td.num { text-align: left !important; }
+  .pc-page .pc-tbl tbody td::before {
+    content: "";
+    font-size: .5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .35px;
+    color: var(--pc-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Per-column labels + premium layout */
+  .pc-page .pc-tbl tbody td:nth-child(1) { order: 0; justify-self: start; }
+  .pc-page .pc-tbl tbody td:nth-child(1)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(1) {
+    background: #eef4ff; color: #3b5bb3 !important; border-radius: 6px;
+    padding: .04rem .4rem !important; font-weight: 700 !important; font-size: .6rem;
+  }
+  .pc-page .pc-tbl tbody td:nth-child(2) { order: 1; }
+  .pc-page .pc-tbl tbody td:nth-child(2)::before { content: "Code"; }
+  .pc-page .pc-tbl tbody td:nth-child(3) { order: 2; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(3)::before { content: none; }
+  .pc-page .pc-tbl tbody td:nth-child(3) { font-weight: 600; font-size: .8rem; padding-top: 2px; }
+  .pc-page .pc-tbl tbody td:nth-child(4) { order: 3; }
+  .pc-page .pc-tbl tbody td:nth-child(4)::before { content: "Initial"; }
+  .pc-page .pc-tbl tbody td:nth-child(5) { order: 4; }
+  .pc-page .pc-tbl tbody td:nth-child(5)::before { content: "Produced"; }
+  .pc-page .pc-tbl tbody td:nth-child(6) { order: 5; }
+  .pc-page .pc-tbl tbody td:nth-child(6)::before { content: "Purchased"; }
+  .pc-page .pc-tbl tbody td:nth-child(7) { order: 6; }
+  .pc-page .pc-tbl tbody td:nth-child(7)::before { content: "P. Return"; }
+  .pc-page .pc-tbl tbody td:nth-child(8) { order: 7; }
+  .pc-page .pc-tbl tbody td:nth-child(8)::before { content: "Adj +"; }
+  .pc-page .pc-tbl tbody td:nth-child(9) { order: 8; }
+  .pc-page .pc-tbl tbody td:nth-child(9)::before { content: "Adj −"; }
+  .pc-page .pc-tbl tbody td:nth-child(10) { order: 9; }
+  .pc-page .pc-tbl tbody td:nth-child(10)::before { content: "Sold"; }
+  .pc-page .pc-tbl tbody td:nth-child(11) { order: 10; }
+  .pc-page .pc-tbl tbody td:nth-child(11)::before { content: "S. Return"; }
+  .pc-page .pc-tbl tbody td:nth-child(12) { order: 11; grid-column: 1 / -1; font-size: .85rem !important; }
+  .pc-page .pc-tbl tbody td:nth-child(12)::before { content: "Stock Qty"; font-size: .56rem; }
+
+  /* Footer (totals) box */
+  .pc-page .pc-tbl tfoot { display: block !important; }
+  .pc-page .pc-tbl tfoot tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: .25rem .5rem;
+    background: #f8fafc;
+    border: 1px solid var(--pc-border);
+    border-radius: 12px;
+    padding: .55rem .6rem;
+    margin-top: .5rem;
+  }
+  .pc-page .pc-tbl tfoot td {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1px 4px;
+    border: none !important;
+    padding: 0 !important;
+    text-align: left !important;
+    font-size: .7rem;
+    line-height: 1.35;
+  }
+  .pc-page .pc-tbl tfoot td::before {
+    content: "";
+    font-size: .5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .35px;
+    color: var(--pc-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pc-page .pc-tbl tfoot td:first-child {
+    grid-column: 1 / -1; font-size: .66rem; text-transform: uppercase;
+    letter-spacing: .4px; color: var(--pc-text-sec); font-weight: 700;
+  }
+  .pc-page .pc-tbl tfoot td:nth-child(2)::before { content: "Initial"; }
+  .pc-page .pc-tbl tfoot td:nth-child(3)::before { content: "Produced"; }
+  .pc-page .pc-tbl tfoot td:nth-child(4)::before { content: "Purchased"; }
+  .pc-page .pc-tbl tfoot td:nth-child(5)::before { content: "P. Return"; }
+  .pc-page .pc-tbl tfoot td:nth-child(6)::before { content: "Adj +"; }
+  .pc-page .pc-tbl tfoot td:nth-child(7)::before { content: "Adj −"; }
+  .pc-page .pc-tbl tfoot td:nth-child(8)::before { content: "Sold"; }
+  .pc-page .pc-tbl tfoot td:nth-child(9)::before { content: "S. Return"; }
+  .pc-page .pc-tbl tfoot td:nth-child(10) { grid-column: 1 / -1; font-size: .85rem !important; }
+  .pc-page .pc-tbl tfoot td:nth-child(10)::before { content: "Stock Qty"; font-size: .56rem; }
+
+  /* Size panel — 2 col boxes */
+  .pc-vp { flex-wrap: wrap; gap: 4px 8px; padding: .6rem .7rem; font-size: .72rem; }
+  .pc-vp .tot { margin-left: 0; font-size: .66rem; }
+  .pc-sz-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: .45rem; padding: .6rem .65rem .75rem; }
+  .pc-sz-card { min-width: 0; width: 100%; padding: .6rem .4rem; }
+  .pc-sz-card .sz-lbl { font-size: .64rem; }
+  .pc-sz-card .sz-stk { font-size: 1.05rem; }
+}
 </style>
 
 <div class="pc-page">

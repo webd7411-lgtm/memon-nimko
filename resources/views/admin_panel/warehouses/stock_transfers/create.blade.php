@@ -1,317 +1,669 @@
 @extends('admin_panel.layout.app')
-<style>
-    .form-section {
-        background: #fff;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
-    }
-
-    .form-section h6 {
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 15px;
-    }
-
-    .table th {
-        background: #f8fafc;
-        font-weight: 600;
-    }
-
-    .remove-row {
-        padding: 4px 10px;
-    }
-
-    .unit-total-box {
-        min-width: 90px;
-        padding: 6px 8px;
-        border-radius: 8px;
-        text-align: center;
-        display: inline-block;
-        flex-shrink: 0;
-        /* 🔥 IMPORTANT */
-    }
-
-    .unit-total-box .label {
-        font-size: 0.8rem;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
-
-    .unit-total-box input {
-        font-weight: bold;
-        text-align: center;
-        border: none;
-        background: rgba(255, 255, 255, 0.9);
-        height: 30px;
-    }
-
-    /* Modal Product Search Styles */
-    .modal-product-item.active .product-price {
-        color: #fff !important;
-    }
-</style>
 
 @section('content')
-<div class="card shadow-sm border-0">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">➕ New Stock Transfer</h5>
-        <a href="{{ url()->previous() }}" class="btn btn-danger btn-sm rounded-pill px-3">
-            Back
-        </a>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --st-bg: #f8fafc;
+  --st-surface: #ffffff;
+  --st-border: #e2e8f0;
+  --st-border-lt: #f1f5f9;
+  --st-text: #0f172a;
+  --st-text-sec: #475569;
+  --st-text-muted: #64748b;
+  --st-primary: #2563eb;
+  --st-primary-dark: #1d4ed8;
+  --st-success: #10b981;
+  --st-warning: #f59e0b;
+  --st-danger: #ef4444;
+  --st-radius: 16px;
+  --st-radius-sm: 10px;
+  --st-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --st-shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --st-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.st-page * {
+  font-family: var(--st-font);
+}
+
+.st-page {
+  background-color: var(--st-bg);
+  min-height: 100vh;
+  padding-bottom: 3rem;
+}
+
+/* ═══════ HERO HEADER ═══════ */
+.st-hero {
+  position: relative;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%);
+  border-radius: var(--st-radius);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 20px 30px -10px rgba(15, 23, 42, 0.3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.st-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 10% 90%, rgba(37, 99, 235, 0.25) 0%, transparent 60%),
+    radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.st-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.st-hero-title {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.st-hero-title h2 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.st-hero-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60a5fa;
+  font-size: 1.4rem;
+}
+
+.st-hero-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 30px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.st-btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--st-radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.6rem 1.25rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.st-btn-back:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* ═══════ FORM SECTIONS ═══════ */
+.st-section {
+  background: var(--st-surface);
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--st-shadow);
+  transition: all 0.2s ease;
+}
+.st-section:hover {
+  box-shadow: var(--st-shadow-lg);
+}
+
+.st-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--st-border-lt);
+}
+
+.st-section-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--st-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.st-section-title i {
+  color: var(--st-primary);
+  font-size: 1.2rem;
+}
+
+/* ═══════ CUSTOM SOURCE CARDS ═══════ */
+.from-location-group .form-check-input {
+  display: none;
+}
+.from-location-group .form-check-label {
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid var(--st-border);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 1.2rem 0.8rem;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.from-location-group .form-check-label:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
+  transform: translateY(-2px);
+}
+.from-location-group .form-check-input:checked + .form-check-label {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff !important;
+  border-color: #2563eb;
+  box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.4);
+  transform: translateY(-2px);
+}
+.from-location-group .form-check-input:checked + .form-check-label .loc-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+.from-location-group .form-check-input:checked + .form-check-label .loc-title {
+  color: #ffffff !important;
+}
+
+.loc-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: var(--st-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  margin-bottom: 0.6rem;
+  transition: all 0.2s ease;
+}
+.loc-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--st-text);
+}
+
+/* ═══════ DESTINATION SWITCH ═══════ */
+.st-radio-pill-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.st-radio-pill {
+  flex: 1;
+}
+
+.st-radio-pill input {
+  display: none;
+}
+
+.st-radio-pill label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  border: 2px solid var(--st-border);
+  border-radius: 12px;
+  background: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--st-text-sec);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.st-radio-pill label:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.st-radio-pill input:checked + label {
+  border-color: var(--st-primary);
+  background: #eff6ff;
+  color: var(--st-primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+/* ═══════ SEARCH PRODUCT BUTTON ═══════ */
+.st-btn-search-trigger {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 0.8rem 1.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.st-btn-search-trigger:hover {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
+}
+.st-btn-search-trigger .kbd-badge {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #60a5fa;
+}
+
+/* ═══════ PRODUCTS TABLE ═══════ */
+.st-table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+}
+
+.st-product-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
+}
+
+.st-product-table thead th {
+  background: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--st-text-muted);
+  padding: 0.85rem 1rem;
+  border-bottom: 2px solid var(--st-border);
+}
+
+.st-product-table tbody td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--st-border-lt);
+  vertical-align: middle;
+}
+
+.st-form-control {
+  border: 1px solid var(--st-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.88rem;
+  color: var(--st-text);
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+.st-form-control:focus {
+  border-color: var(--st-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+.st-form-control[readonly] {
+  background-color: #f8fafc;
+  color: var(--st-text-sec);
+  font-weight: 600;
+}
+.st-product-table td .productSearch {
+  width: 100%;
+  min-width: 320px;
+}
+
+.unit-total-box {
+  min-width: 90px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  text-align: center;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: var(--st-shadow);
+}
+.unit-total-box .label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 3px;
+}
+.unit-total-box input {
+  font-weight: 800;
+  text-align: center;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  height: 28px;
+  border-radius: 6px;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+/* Modal Search List */
+.modal-product-item {
+  border-left: 4px solid transparent;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.modal-product-item:hover, .modal-product-item.active {
+  background-color: #eff6ff !important;
+  border-left-color: var(--st-primary);
+}
+.modal-product-item.active .product-price {
+  color: var(--st-primary) !important;
+}
+
+/* Submit Action Button */
+.st-btn-submit {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 3rem;
+  font-weight: 800;
+  font-size: 1rem;
+  box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.4);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+.st-btn-submit:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px -4px rgba(37, 99, 235, 0.5);
+}
+
+@media (max-width: 768px) {
+  .st-hero { padding: 1.2rem 1.25rem; }
+  .st-hero-title h2 { font-size: 1.2rem; }
+  .st-section { padding: 1rem; }
+  .loc-icon { width: 38px; height: 38px; font-size: 1.1rem; }
+  .loc-title { font-size: 0.8rem; }
+  .st-form-control { font-size: 16px !important; min-height: 44px; }
+}
+</style>
+
+<div class="st-page">
+  <div class="container-fluid px-3 px-md-4 py-3">
+
+    {{-- ═══════ HERO HEADER ═══════ --}}
+    <div class="st-hero">
+      <div class="st-hero-title">
+        <div class="st-hero-icon">
+          <i class="bi bi-arrow-left-right"></i>
+        </div>
+        <div>
+          <h2>Create Stock Transfer</h2>
+          <span class="st-hero-badge">New Dispatch Entry</span>
+        </div>
+      </div>
+
+      <a href="{{ url()->previous() }}" class="st-btn-back">
+        <i class="bi bi-arrow-left"></i> Back to Ledger
+      </a>
     </div>
-    <div class="card-body">
 
-        <form action="{{ route('stock_transfers.store') }}" method="POST" novalidate>
-            @csrf
-            @if(session('error'))
-            <div class="alert alert-danger">
-                {{ session('error') }}
-            </div>
-            @endif
+    <form action="{{ route('stock_transfers.store') }}" method="POST" novalidate>
+      @csrf
 
-            @if ($errors->any())
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-            @endif
+      @if(session('error'))
+      <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm border-0 mb-3" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      @endif
 
-            @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-            @endif
-            <!-- ================= BASIC INFO ================= -->
-            <style>
-                .from-location-group .form-check-input {
-                    display: none;
-                }
-                .from-location-group .form-check-label {
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    border: 1px solid #dee2e6;
-                    background: #fff;
-                    display: block;
-                    width: 100%;
-                }
-                .from-location-group .form-check-input:checked + .form-check-label {
-                    background-color: #2563eb;
-                    color: white !important;
-                    border-color: #2563eb;
-                    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
-                    transform: translateY(-1px);
-                }
-                .from-location-group .form-check-label:hover:not(.form-check-input:checked + .form-check-label) {
-                    background-color: #f8fafc;
-                    border-color: #cbd5e1;
-                }
-            </style>
-            <div class="form-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6>📄 Transfer Information</h6>
-                    <div class="col-md-3">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light border-end-0 text-muted">📅</span>
-                            <input type="date" name="transfer_date" class="form-control border-start-0 ps-0" value="{{ date('Y-m-d') }}">
-                        </div>
-                    </div>
+      @if ($errors->any())
+      <div class="alert alert-danger rounded-3 shadow-sm border-0 mb-3" role="alert">
+        <ul class="mb-0 ps-3">
+          @foreach ($errors->all() as $error)
+          <li>{{ $error }}</li>
+          @endforeach
+        </ul>
+      </div>
+      @endif
+
+      @if(session('success'))
+      <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm border-0 mb-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      @endif
+
+      {{-- ═══════ SECTION 1: TRANSFER INFO & SOURCE ═══════ --}}
+      <div class="st-section">
+        <div class="st-section-header">
+          <h3 class="st-section-title">
+            <i class="bi bi-box-arrow-up-right me-2 text-primary"></i> 1. Source Location (Dispatch From)
+          </h3>
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small fw-bold">Transfer Date:</span>
+            <input type="date" name="transfer_date" class="st-form-control" style="width: auto;" value="{{ date('Y-m-d') }}">
+          </div>
+        </div>
+
+        <div class="row g-3 from-location-group">
+          <!-- Shop Radio Card -->
+          <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+            <div class="form-check p-0 m-0">
+              <input class="form-check-input fromLocation" type="radio" name="from_warehouse_id" id="fromShop" value="Shop">
+              <label class="form-check-label shadow-sm" for="fromShop">
+                <div class="loc-icon">
+                  <i class="bi bi-shop"></i>
                 </div>
+                <div class="loc-title text-center">Shop Stock</div>
+              </label>
+            </div>
+          </div>
 
-                <div class="row g-4">
-                    <div class="col-md-12">
-                        <label class="fw-bold d-block mb-3 text-muted small text-uppercase tracking-wider">Select Source Location (From):</label>
-                        <div class="row g-3 from-location-group">
-                            <!-- Shop Radio -->
-                            <div class="col-6 col-sm-4 col-md-2">
-                                <div class="form-check p-0 m-0">
-                                    <input class="form-check-input fromLocation" type="radio" name="from_warehouse_id" id="fromShop" value="Shop">
-                                    <label class="form-check-label fw-bold p-3 rounded-3 shadow-sm text-center" for="fromShop">
-                                        <div class="fs-4 mb-1">🏪</div>
-                                        <div>Shop Stock</div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Warehouse Radios -->
-                            @foreach($warehouses as $warehouse)
-                            <div class="col-6 col-sm-4 col-md-2">
-                                <div class="form-check p-0 m-0">
-                                    <input class="form-check-input fromLocation" type="radio" name="from_warehouse_id" id="fromWh{{ $warehouse->id }}" value="{{ $warehouse->id }}">
-                                    <label class="form-check-label fw-bold p-3 rounded-3 shadow-sm text-center" for="fromWh{{ $warehouse->id }}">
-                                        <div class="fs-4 mb-1">🏭</div>
-                                        <div class="text-truncate">{{ $warehouse->warehouse_name }}</div>
-                                    </label>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                    </div>
+          <!-- Warehouse Radios Cards -->
+          @foreach($warehouses as $warehouse)
+          <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+            <div class="form-check p-0 m-0">
+              <input class="form-check-input fromLocation" type="radio" name="from_warehouse_id" id="fromWh{{ $warehouse->id }}" value="{{ $warehouse->id }}">
+              <label class="form-check-label shadow-sm" for="fromWh{{ $warehouse->id }}">
+                <div class="loc-icon">
+                  <i class="bi bi-building"></i>
                 </div>
+                <div class="loc-title text-center text-truncate w-100 px-1">{{ $warehouse->warehouse_name }}</div>
+              </label>
             </div>
+          </div>
+          @endforeach
+        </div>
+      </div>
 
+      {{-- ═══════ SECTION 2: DESTINATION ═══════ --}}
+      <div class="st-section">
+        <div class="st-section-header">
+          <h3 class="st-section-title">
+            <i class="bi bi-geo-alt-fill me-2 text-primary"></i> 2. Destination Location (Receive To)
+          </h3>
+        </div>
 
-            <!-- ================= DESTINATION ================= -->
-            <div class="form-section">
-                <h6>📦 Transfer Destination</h6>
+        <div class="row g-4 align-items-center">
+          <div class="col-12 col-md-5 col-lg-4">
+            <label class="st-label mb-2">Select Target Type</label>
+            <div class="st-radio-pill-group">
+              <div class="st-radio-pill">
+                <input class="transferType" type="radio" name="transfer_to" value="warehouse" id="toWarehouse">
+                <label for="toWarehouse">
+                  <i class="bi bi-building me-1"></i> Warehouse
+                </label>
+              </div>
 
-                <div class="row g-4 align-items-end">
-
-                    <!-- TYPE -->
-                    <div class="col-md-4">
-                        <label class="d-block mb-2">Transfer To</label>
-
-                        <div class="form-check">
-                            <input class="form-check-input transferType" type="radio"
-                                name="transfer_to" value="warehouse" id="toWarehouse">
-                            <label class="form-check-label" for="toWarehouse">
-                                Warehouse
-                            </label>
-                        </div>
-
-                        <div class="form-check mt-2">
-                            <input class="form-check-input transferType" type="radio"
-                                name="transfer_to" value="shop" id="toShop">
-                            <label class="form-check-label" for="toShop">
-                                Shop
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- TO WAREHOUSE -->
-                    <div class="col-md-4 d-none" id="toWarehouseBox">
-                        <label>To Warehouse</label>
-                        <select name="to_warehouse_id" class="form-control select2">
-                            <option value="">Select Warehouse</option>
-                            @foreach($warehouses as $warehouse)
-                            <option value="{{ $warehouse->id }}">
-                                {{ $warehouse->warehouse_name }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- TO SHOP -->
-                    <div class="col-md-4 d-none" id="toShopBox">
-                        <label>Shop Name</label>
-                        <input type="text" name="shop_name"
-                            class="form-control"
-                            placeholder="Enter shop name">
-                    </div>
-
-                </div>
+              <div class="st-radio-pill">
+                <input class="transferType" type="radio" name="transfer_to" value="shop" id="toShop">
+                <label for="toShop">
+                  <i class="bi bi-shop me-1"></i> Shop
+                </label>
+              </div>
             </div>
+          </div>
 
-            <button type="button" class="btn btn-primary btn-sm mt-2 mb-2" id="openProductModal">
-                Search Product (F2)
-            </button>
-            <div class="modal fade" id="productModal" tabindex="-1">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
+          <!-- TO WAREHOUSE SELECT -->
+          <div class="col-12 col-md-7 col-lg-5 d-none" id="toWarehouseBox">
+            <label class="st-label mb-2">Target Warehouse</label>
+            <select name="to_warehouse_id" class="form-control select2 st-form-control">
+              <option value="">-- Select Destination Warehouse --</option>
+              @foreach($warehouses as $warehouse)
+              <option value="{{ $warehouse->id }}">{{ $warehouse->warehouse_name }}</option>
+              @endforeach
+            </select>
+          </div>
 
-                        <div class="modal-header">
-                            <h5 class="modal-title">Search Product</h5>
-                            <button type="button" class="btn-close" data-dismiss="modal"></button>
-                        </div>
+          <!-- TO SHOP NAME INPUT -->
+          <div class="col-12 col-md-7 col-lg-5 d-none" id="toShopBox">
+            <label class="st-label mb-2">Shop Destination Name</label>
+            <input type="text" name="shop_name" class="st-form-control w-100" placeholder="Enter shop name">
+          </div>
+        </div>
+      </div>
 
-                        <div class="modal-body">
+      {{-- ═══════ SECTION 3: PRODUCTS & SEARCH ═══════ --}}
+      <div class="st-section">
+        <div class="st-section-header">
+          <h3 class="st-section-title">
+            <i class="bi bi-boxes me-2 text-primary"></i> 3. Products to Transfer
+          </h3>
 
-                            <input type="text"
-                                id="modalProductSearch"
-                                class="form-control mb-2"
-                                placeholder="Type product name or scan barcode"
-                                autofocus>
+          <button type="button" class="st-btn-search-trigger" id="openProductModal">
+            <i class="bi bi-search me-1"></i> Search Product <span class="kbd-badge">F2</span>
+          </button>
+        </div>
 
-                            <ul class="list-group" id="modalSearchResults"
-                                style="max-height:300px; overflow-y:auto;"></ul>
+        <div class="st-table-responsive">
+          <table class="table st-product-table align-middle text-center" id="product_table">
+            <thead>
+              <tr>
+                <th style="min-width: 320px; width: 42%;" class="text-start">Product Item</th>
+                <th style="min-width: 90px; width: 10%;">Unit</th>
+                <th style="min-width: 110px; width: 12%;">Retail Price</th>
+                <th style="min-width: 120px; width: 13%;">Available Stock</th>
+                <th style="min-width: 130px; width: 15%;">Transfer Qty</th>
+                <th style="min-width: 70px; width: 8%;">Action</th>
+              </tr>
+            </thead>
 
-                        </div>
+            <tbody id="product_body">
+              <tr class="product_row">
+                <td style="position:relative" class="text-start">
+                  <input type="hidden" name="product_id[]" class="product_id">
+                  <input type="hidden" name="variant_id[]" class="variant_id">
+                  <input type="text" class="st-form-control productSearch w-100" placeholder="Click 'Search Product' or press F2..." readonly>
+                </td>
+                <td>
+                  <input type="text" class="st-form-control unit text-center" readonly>
+                </td>
+                <td>
+                  <input type="number" class="st-form-control price text-center" readonly>
+                </td>
+                <td>
+                  <input type="number" class="st-form-control stock text-center fw-bold" readonly>
+                </td>
+                <td>
+                  <input type="number" name="quantity[]" class="st-form-control quantity text-center fw-bold" required step="any" inputmode="numeric" placeholder="0.00">
+                </td>
+                <td>
+                  <button type="button" class="btn btn-outline-danger btn-sm remove-row rounded-circle p-2" style="width:34px;height:34px;line-height:1;">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
 
-                    </div>
-                </div>
-            </div>
+            <tfoot>
+              <tr class="bg-light fw-bold">
+                <td colspan="4" class="text-end text-uppercase small tracking-wider text-muted">Summary Totals by UOM:</td>
+                <td id="unitTotalsFooter" colspan="2" class="text-end"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
 
-            <div class="form-section">
-                <h6>📋 Products to Transfer</h6>
+      {{-- ═══════ SECTION 4: REMARKS & SUBMIT ═══════ --}}
+      <div class="st-section">
+        <div class="st-section-header">
+          <h3 class="st-section-title">
+            <i class="bi bi-journal-text me-2 text-primary"></i> 4. Transfer Remarks & Notes
+          </h3>
+        </div>
+        <textarea name="remarks" rows="3" class="st-form-control w-100" placeholder="Add optional dispatch notes or references..."></textarea>
+      </div>
 
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle text-center" id="product_table">
-                        <thead>
-                            <tr>
-                                <th width="30%">Product</th>
-                                <th width="10%">Unit</th>
-                                <th width="15%">Retail Price</th>
-                                <th width="15%">Available Stock</th>
-                                <th width="15%">Transfer Qty</th>
-                                <th width="10%">Action</th>
-                            </tr>
-                        </thead>
+      <div class="d-flex justify-content-end mb-4">
+        <button type="submit" class="st-btn-submit">
+          <i class="bi bi-check-circle-fill me-2"></i> Confirm & Transfer Stock
+        </button>
+      </div>
 
-                        <tbody id="product_body">
-                            <tr class="product_row">
-                                <td style="position:relative">
-                                    <input type="hidden" name="product_id[]" class="product_id">
-                                    <input type="hidden" name="variant_id[]" class="variant_id">
-                                    <input type="text" class="form-control productSearch" placeholder="Select product from Search (F2)" readonly>
-                                </td>
-                                <td>
-                                    <input type="text" class="form-control unit" readonly>
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control price" readonly>
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control stock" readonly>
-                                </td>
+    </form>
 
-                                <td>
-                                    <input type="number"
-                                        name="quantity[]"
-                                        class="form-control quantity"
-                                        required
-                                        step="any"
-                                        inputmode="numeric">
-                                </td>
+  </div>
+</div>
 
-                                <td>
-                                    <button type="button" class="btn btn-outline-danger btn-sm remove-row">
-                                        ✖
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
+{{-- ═══════ PRODUCT SEARCH MODAL ═══════ --}}
+<div class="modal fade" id="productModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
 
-                        <tfoot>
-                            <tr class="bg-light fw-bold">
-                                <td colspan="4" class="text-end">Unit Totals</td>
-                                <td id="unitTotalsFooter" colspan="2"></td>
-                            </tr>
-                        </tfoot>
+      <div class="modal-header text-white" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+        <h5 class="modal-title fw-bold"><i class="bi bi-search me-2"></i> Fast Product Finder</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal"></button>
+      </div>
 
-                    </table>
-                </div>
-            </div>
+      <div class="modal-body p-4" style="background-color: #f8fafc;">
+        <div class="input-group input-group-lg mb-3 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+          <span class="input-group-text bg-white border-end-0 text-muted ps-3"><i class="bi bi-search"></i></span>
+          <input type="text" id="modalProductSearch" class="form-control border-start-0 ps-2" placeholder="Type product name, item code, or scan barcode..." autofocus style="font-size: 1rem;">
+        </div>
 
-            <!-- ================= REMARKS ================= -->
-            <div class="form-section">
-                <h6>📝 Remarks</h6>
-                <textarea name="remarks" rows="3" class="form-control"
-                    placeholder="Optional remarks..."></textarea>
-            </div>
+        <ul class="list-group shadow-sm" id="modalSearchResults" style="max-height:360px; overflow-y:auto; border-radius: 12px;"></ul>
+      </div>
 
-            <!-- ================= ACTION ================= -->
-            <div class="text-end">
-                <button type="submit" class="btn btn-primary px-5 py-2">
-                    🔄 Transfer Stock
-                </button>
-            </div>
-
-        </form>
     </div>
+  </div>
 </div>
 @endsection
 
@@ -319,7 +671,6 @@
 <script>
     // Prevent double submission and remove empty rows
     $('form').on('submit', function(e) {
-        // Remove empty rows where product_id is not selected
         $('#product_body tr').each(function() {
             var productId = $(this).find('.product_id').val();
             if (!productId || productId.trim() === '') {
@@ -327,41 +678,42 @@
             }
         });
 
-        // Ensure at least one valid product row exists
         if ($('#product_body tr').length === 0) {
             e.preventDefault();
             alert('Please add at least one product before submitting.');
-            addNewRow(); // Add an empty row back so the user can continue
+            addNewRow();
             return false;
         }
 
         const $btn = $(this).find('button[type="submit"]');
         if ($btn.hasClass('disabled')) return false; 
-        $btn.addClass('disabled').text('Processing...');
+        $btn.addClass('disabled').html('<i class="bi bi-hourglass-split me-2"></i> Transferring...');
     });
 
     function addNewRow() {
         const row = `
 <tr class="product_row">
-    <td style="position:relative">
+    <td style="position:relative" class="text-start">
         <input type="hidden" name="product_id[]" class="product_id">
         <input type="hidden" name="variant_id[]" class="variant_id">
-        <input type="text" class="form-control productSearch" placeholder="Select product from Search (F2)" readonly>
+        <input type="text" class="st-form-control productSearch w-100" placeholder="Click 'Search Product' or press F2..." readonly>
     </td>
     <td>
-        <input type="text" class="form-control unit" readonly>
+        <input type="text" class="st-form-control unit text-center" readonly>
     </td>
     <td>
-        <input type="number" class="form-control price" readonly>
+        <input type="number" class="st-form-control price text-center" readonly>
     </td>
     <td>
-        <input type="number" class="form-control stock" readonly>
+        <input type="number" class="st-form-control stock text-center fw-bold" readonly>
     </td>
     <td>
-        <input type="number" name="quantity[]" class="form-control quantity">
+        <input type="number" name="quantity[]" class="st-form-control quantity text-center fw-bold" placeholder="0.00">
     </td>
     <td>
-        <button type="button" class="btn btn-outline-danger btn-sm remove-row">✖</button>
+        <button type="button" class="btn btn-outline-danger btn-sm remove-row rounded-circle p-2" style="width:34px;height:34px;line-height:1;">
+            <i class="bi bi-trash"></i>
+        </button>
     </td>
 </tr>`;
 
@@ -392,7 +744,7 @@
         let html = '';
 
         if (Object.keys(totals).length === 0) {
-            html = `<span class="text-muted">No quantities entered</span>`;
+            html = `<span class="text-muted small">No quantities entered</span>`;
         } else {
             html += `<div class="d-flex gap-2 justify-content-end align-items-center">`;
 
@@ -448,11 +800,9 @@
         $('.transferType').on('change', function() {
             let type = $(this).val();
 
-            // hide all first
             $('#toWarehouseBox').addClass('d-none');
             $('#toShopBox').addClass('d-none');
 
-            // clear values
             $('select[name="to_warehouse_id"]').val('').trigger('change');
             $('input[name="shop_name"]').val('');
 
@@ -470,156 +820,67 @@
             refreshStockForAllRows();
         });
 
-        // Enter on quantity opens new row (existing behavior)
-
-
-        // Validate quantity vs stock
-        $(document).on('input', '.quantity', function() {
-
-            const $row = $(this).closest('tr');
-            const val = $(this).val();
-            if (val === '' || val === '-') {
-                return;
-            }
-            const entered = Number(val);
-            if (isNaN(entered)) return;
-            if (typeof maxAttr === 'undefined') return;
-            const max = Number(maxAttr);
-            if (!isNaN(max)) {
-                $row.find('.stock').val(max - entered);
-            }
-        });
-
         $(document).on('input', '.quantity', function() {
             calculateCreateUnitTotals();
         });
 
-
-        $(document).on('input', '.quantity', calculateCreateUnitTotals);
-
-        $(document).ready(function() {
-            calculateCreateUnitTotals();
-        });
-
-        // Remove row (destroy select2 first)
         $(document).on('click', '.remove-row', function() {
             var $row = $(this).closest('tr');
-            var $sel = $row.find('.product-select');
-            // destroy select2 if initialized
-            if ($sel.data('select2')) {
-                try {
-                    $sel.select2('destroy');
-                } catch (e) {}
-            }
             $row.remove();
             calculateCreateUnitTotals();
-
         });
-
-        // If page loaded with only one blank row, ensure it's initialized
-        if ($('#product_body tr').length === 1) {
-            initProductSelect($('#product_body tr:first').find('.product-select'));
-        }
-
     });
 
     let IS_SCANNING = false;
     $(document).on('keydown', '.quantity', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
-
             let row = $(this).closest('tr');
-
             if ($('#product_body tr:last').is(row)) {
                 addNewRow();
             }
-
             setTimeout(() => {
                 $('#product_body tr:last .productSearch').focus();
             }, 80);
         }
     });
 
-    $(document).on('keydown', function(e) {
-
-        if ($(e.target).is('textarea')) return;
-
-        IS_SCANNING = true;
-
-        if (e.key === 'Enter') {
-            e.preventDefault();
-
-            if (scanBuffer.length >= 5) {
-                handleTransferBarcode(scanBuffer);
-            }
-
-            scanBuffer = '';
-            IS_SCANNING = false;
-            return;
-        }
-
-        if (e.key.length === 1) {
-            scanBuffer += e.key;
-        }
-
-        clearTimeout(scanTimer);
-        scanTimer = setTimeout(() => {
-            scanBuffer = '';
-            IS_SCANNING = false;
-        }, 120);
-    });
-    $(document).on('focus', '.quantity', function() {
-        $(this).removeAttr('max');
-    });
-
-    // ------------------- SCANNER BUFFER -------------------
     let scanBuffer = '';
     let scanTimer = null;
     let lastBarcode = null;
     let lastScanTime = 0;
-    const SCAN_DELAY = 500; // ms to prevent double scan
+    const SCAN_DELAY = 500;
 
     $(document).on('keydown', function(e) {
-        // Ignore typing in textareas and search inputs
         if ($(e.target).is('textarea, input')) return;
-        // Enter key → process scan
         if (e.key === 'Enter') {
             e.preventDefault();
-
             if (scanBuffer.length >= 5) {
                 handleTransferBarcode(scanBuffer.trim());
             }
-
             scanBuffer = '';
             return;
         }
 
-        // Append normal key characters
         if (e.key.length === 1) {
             scanBuffer += e.key;
         }
 
-        // Reset buffer if idle too long
         clearTimeout(scanTimer);
         scanTimer = setTimeout(() => {
             scanBuffer = '';
-        }, 200); // 200ms safe for scanners
+        }, 200);
     });
 
-    // ------------------- HANDLE BARCODE -------------------
     function handleTransferBarcode(barcode) {
         const now = Date.now();
-
-        // Prevent duplicate scan
         if (barcode === lastBarcode && (now - lastScanTime) < SCAN_DELAY) {
-            console.log('Duplicate barcode blocked:', barcode);
             return;
         }
 
         lastBarcode = barcode;
         lastScanTime = now;
 
-        // --- Instant Client-side Lookup ---
         let product = allProducts.find(p => p.barcode === barcode || p.item_code === barcode);
 
         if (product) {
@@ -634,7 +895,6 @@
             };
             processTransferBarcodeResult(res, barcode);
         } else {
-            // Fallback to server if not in cache
             $.get("{{ route('search-product-by-barcode') }}", { barcode }, function(res) {
                 if (res && res.id) {
                     processTransferBarcodeResult(res, barcode);
@@ -648,7 +908,6 @@
     function processTransferBarcodeResult(res, barcode) {
         let foundRow = null;
 
-        // Check if product already exists
         $('#product_body tr').each(function() {
             const pid = $(this).find('.product_id').val();
             const vid = $(this).find('.variant_id').val();
@@ -659,28 +918,20 @@
         });
 
         if (foundRow) {
-            // Increment quantity
             const qtyInput = foundRow.find('.quantity');
-            qtyInput
-                .val((+qtyInput.val() || 0) + 1)
-                .trigger('input');
-
-            // Highlight and Scroll
+            qtyInput.val((+qtyInput.val() || 0) + 1).trigger('input');
             foundRow.addClass('table-success');
             setTimeout(() => foundRow.removeClass('table-success'), 1000);
-
             foundRow[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
 
-        // Use last row if empty, else add new
         let row = $('#product_body tr:last');
         if (row.find('.product_id').val()) {
             addNewRow();
             row = $('#product_body tr:last');
         }
 
-        // Fill product info
         row.find('.product_id').val(res.id).data('barcode', barcode);
         row.find('.variant_id').val(res.variant_id || '');
         row.find('.productSearch').val(res.name).prop('readonly', true);
@@ -688,42 +939,21 @@
         row.find('.price').val(res.price);
         row.find('.quantity').val(1).trigger('input');
 
-        // Fetch stock
         refreshStockForAllRows();
-
-        // addNewRow(); // Remove auto-adding new row on barcode scan to allow qty edit
 
         setTimeout(() => {
             row.find('.quantity').focus().select();
         }, 50);
     }
 
-
-
-    $(document).ready(function() {
-        setTimeout(() => {
-            $('#product_body tr:first .productSearch').focus();
-        }, 300);
-    });
-
-
-    const SCAN_GAP = 50; // ms (scanner fast)
-    const SCAN_TIMEOUT = 80;
-
     $(document).on('keydown', function(e) {
-
         if (e.key === 'F2') {
             e.preventDefault();
             e.stopPropagation();
             openProductModal();
             return false;
         }
-
     });
-
-
-
-
 
     $('#openProductModal').on('click', function(e) {
         e.preventDefault();
@@ -731,34 +961,39 @@
     });
 
     $(document).on('click', '.modal-product-item', function() {
-        $('#productModal').modal('hide');
-
-        // Reset search box
+        if (typeof $('#productModal').modal === 'function') {
+            $('#productModal').modal('hide');
+        } else {
+            $('#productModal').removeClass('show').hide();
+        }
         $('#modalProductSearch').val('');
         $('#modalSearchResults').empty();
     });
+
     $('#productModal').on('shown.bs.modal', function() {
         const $input = $('#modalProductSearch');
-        $input.focus(); // Cursor focus on search input
+        $input.focus();
         activeIndex = 0;
-        setActiveItem(activeIndex); // First item active
+        setActiveItem(activeIndex);
     });
-$('#productModal').on('hidden.bs.modal', function () {
-    setTimeout(() => {
-        let $row = $('#product_body tr').filter(function () {
-            return $(this).find('.product_id').val();
-        }).last();
 
-        $row.find('.quantity').focus().select();
-    }, 100);
-});
+    $('#productModal').on('hidden.bs.modal', function () {
+        setTimeout(() => {
+            let $row = $('#product_body tr').filter(function () {
+                return $(this).find('.product_id').val();
+            }).last();
+            $row.find('.quantity').focus().select();
+        }, 100);
+    });
 
     function openProductModal() {
-
         $('#modalProductSearch').val('');
         $('#modalSearchResults').empty();
-
-        $('#productModal').modal('show');
+        if (typeof $('#productModal').modal === 'function') {
+            $('#productModal').modal('show');
+        } else {
+            $('#productModal').addClass('show').show();
+        }
 
         $('#productModal').one('shown.bs.modal', function() {
             $('#modalProductSearch').focus();
@@ -766,21 +1001,17 @@ $('#productModal').on('hidden.bs.modal', function () {
         });
     }
 
-
     let allProducts = [];
 
     function loadProducts() {
         $.get("{{ route('get-all-products-for-search') }}", function(res) {
             allProducts = res;
-            console.log("Cached all products:", allProducts.length);
         });
     }
 
     $(document).ready(function() {
         loadProducts();
     });
-
-    let modalTimer = null;
 
     $('#modalProductSearch').on('input', function() {
         let q = $(this).val().trim().toLowerCase();
@@ -790,7 +1021,6 @@ $('#productModal').on('hidden.bs.modal', function () {
             return;
         }
 
-        // --- Instant Client-side Filter ---
         let filtered = allProducts.filter(p => {
             const name = (p.item_name || "").toLowerCase();
             const code = (p.item_code || "").toLowerCase();
@@ -799,7 +1029,6 @@ $('#productModal').on('hidden.bs.modal', function () {
             return name.includes(q) || code.includes(q) || barcode.includes(q) || brand.includes(q);
         });
 
-        // Limit to 50 results for UI performance
         let results = filtered.slice(0, 50);
 
         let html = '';
@@ -817,11 +1046,13 @@ $('#productModal').on('hidden.bs.modal', function () {
                     data-unit="${p.unit_id}"
                     data-brand="${p.brand ?? ''}"
                     data-note="${noteText}">
-                    <strong>${p.item_name}</strong>
-                    <br>
-                    <span class="product-price" style="font-weight: 800; font-size: 1.2rem; color: #2563eb;">Rs: ${p.price}</span> | <small>${p.brand ?? '-'}</small>
-                    <br>
-                    <strong class="text-Dark">Note: ${noteText}</strong>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong class="text-dark fs-6">${p.item_name}</strong>
+                        <span class="product-price fw-extrabold text-primary fs-5">Rs ${p.price}</span>
+                    </div>
+                    <div class="small text-muted mt-1">
+                        Code: <strong>${p.item_code || '-'}</strong> | Brand: <span>${p.brand || '-'}</span>
+                    </div>
                 </li>`;
         });
 
@@ -836,23 +1067,18 @@ $('#productModal').on('hidden.bs.modal', function () {
     });
 
     $('#modalProductSearch').on('keydown', function(e) {
-
         const items = $('#modalSearchResults .modal-product-item');
-
         if (!items.length) return;
 
         switch (e.key) {
-
             case 'ArrowDown':
                 e.preventDefault();
                 setActiveItem(activeIndex + 1);
                 break;
-
             case 'ArrowUp':
                 e.preventDefault();
                 setActiveItem(activeIndex - 1);
                 break;
-
             case 'Enter':
                 e.preventDefault();
                 if (activeIndex >= 0) {
@@ -874,29 +1100,16 @@ $('#productModal').on('hidden.bs.modal', function () {
             $row = $('#product_body tr:last');
         }
 
-        // Fill data
         $row.find('.product_id').val(p.data('id'));
         $row.find('.variant_id').val(p.data('variant_id') || '');
-        $row.find('.productSearch')
-            .val(p.data('name'))
-            .prop('readonly', true)
-            .addClass('bg-light');
-
+        $row.find('.productSearch').val(p.data('name')).prop('readonly', true);
         $row.find('.unit').val(p.data('unit'));
         $row.find('.price').val(p.data('price'));
-        $row.find('.product-note').val(p.data('note') || '');
-
         $row.find('.quantity').val(1).trigger('input');
 
-        // Fetch stock
         refreshStockForAllRows();
-
-        
-        // ❌ DO NOT append new row here
         $('#productModal').modal('hide');
     });
-
-
 
     let activeIndex = -1;
 
@@ -905,21 +1118,16 @@ $('#productModal').on('hidden.bs.modal', function () {
         items.removeClass('active');
 
         if (items.length === 0) return;
-
         if (index < 0) index = 0;
         if (index >= items.length) index = items.length - 1;
 
         activeIndex = index;
-
         const activeItem = items.eq(activeIndex);
         activeItem.addClass('active');
 
-        // 🔥 auto scroll into view
-        activeItem[0].scrollIntoView({
-            block: 'nearest'
-        });
+        if (activeItem[0]) {
+            activeItem[0].scrollIntoView({ block: 'nearest' });
+        }
     }
 </script>
-
-
 @endsection

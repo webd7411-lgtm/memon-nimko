@@ -66,6 +66,13 @@
         text-transform: uppercase;
         letter-spacing: 1px;
     }
+
+    @media (max-width: 575.98px) {
+        .receipt-preview { width: 100%; }
+        .summary-item .value { font-size: 19px; }
+        .summary-item h6 { font-size: 12px; }
+        .payment-section { padding: 18px; }
+    }
 </style>
 
 <div class="container-fluid py-4">
@@ -77,6 +84,7 @@
                     <div class="ribbon">BOOKED</div>
                 </div>
                 <div class="center">
+                    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
                     <div class="store-name">Memon Nimko</div>
                     <div class="store-info">Sweet & Bakers</div>
                     <div class="store-info">Latifabad no 6 Hyderabad</div>

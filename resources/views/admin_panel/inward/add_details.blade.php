@@ -13,9 +13,18 @@
         z-index: 99999;
     }
 
-    #gatepassItems,
+    #gatepassItems {
+        overflow: visible !important;
+    }
+
     .table-responsive {
         overflow: visible !important;
+    }
+
+    @media (max-width: 767.98px) {
+        .table-responsive {
+            overflow-x: auto !important;
+        }
     }
 
     .remove-row {

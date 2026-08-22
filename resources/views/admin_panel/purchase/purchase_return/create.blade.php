@@ -72,6 +72,39 @@
     .pr-badge-avail { background: #dcfce7; color: #166534; }
 
     .pr-muted { font-size: 11px; color: var(--pr-text-muted); font-weight: 500; }
+
+    /* ═══════ MOBILE CARDS ═══════ */
+    .pr-purch-cards, .pr-return-cards { display: none; }
+    .pr-pc-card {
+        background: var(--pr-card-bg); border: 1.5px solid #e2e8f0; border-left: 4px solid var(--pr-primary);
+        border-radius: 12px; box-shadow: var(--pr-shadow); padding: .7rem .8rem; margin-bottom: .6rem;
+    }
+    .pr-pc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; margin-bottom: .5rem; padding-bottom: .5rem; border-bottom: 1px dashed #e2e8f0; }
+    .pr-pc-title { font-size: .86rem; font-weight: 700; color: var(--pr-text); line-height: 1.3; overflow-wrap: break-word; }
+    .pr-pc-title code { color: var(--pr-primary); font-size: .72rem; }
+    .pr-pc-ret { display: inline-flex; align-items: center; gap: 5px; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--pr-text-muted); cursor: pointer; flex: 0 0 auto; }
+    .pr-pc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .4rem .8rem; }
+    .pr-pc-item { min-width: 0; }
+    .pr-pc-item span { display: block; font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--pr-text-muted); }
+    .pr-pc-item b { display: block; font-size: .8rem; font-weight: 700; color: var(--pr-text); overflow-wrap: break-word; }
+    .pr-pc-grid .pr-pc-item.pr-pc-avail b .pr-badge { font-size: .7rem; }
+
+    .pr-rc-card {
+        background: var(--pr-card-bg); border: 1.5px solid #e2e8f0; border-left: 4px solid #ef4444;
+        border-radius: 12px; box-shadow: var(--pr-shadow); padding: .7rem .8rem; margin-bottom: .6rem;
+    }
+    .pr-rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; margin-bottom: .5rem; padding-bottom: .5rem; border-bottom: 1px dashed #e2e8f0; }
+    .pr-rc-title { font-size: .86rem; font-weight: 700; color: var(--pr-text); line-height: 1.3; overflow-wrap: break-word; }
+    .pr-rc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem .7rem; }
+    .pr-rc-f { min-width: 0; }
+    .pr-rc-f .pr-label { margin-bottom: 2px; }
+    .pr-rc-f b { font-size: .78rem; color: var(--pr-text); display: block; overflow-wrap: break-word; }
+    .pr-rc-f .pr-input { width: 100%; }
+
+    @media (max-width: 991.98px) {
+        .pr-desk-a, .pr-desk-b { display: none; }
+        .pr-purch-cards, .pr-return-cards { display: block; }
+    }
 </style>
 
 <div class="pr-page">
@@ -126,87 +159,109 @@
                 {{-- PURCHASED ITEMS TABLE --}}
                 <div class="mb-3">
                     <h6 style="font-weight:800;font-size:14px;color:var(--pr-text);margin-bottom:8px;"><i class="bi bi-cart-check me-1" style="color:var(--pr-primary);"></i> Purchased Items</h6>
-                    <div class="pr-scroll">
-                        <table class="pr-table" id="purchasedItemsTable" style="table-layout:fixed;">
-                            <colgroup>
-                                <col style="width:36px">
-                                <col style="width:145px">
-                                <col style="width:65px">
-                                <col style="width:80px">
-                                <col style="width:80px">
-                                <col style="width:36px">
-                                <col style="width:70px">
-                                <col style="width:55px">
-                                <col style="width:55px">
-                            </colgroup>
-                            <thead>
-                                <tr>
-                                    <th>Ret?</th>
-                                    <th>Product</th>
-                                    <th>Item Note</th>
-                                    <th>Code</th>
-                                    <th>Brand</th>
-                                    <th>Unit</th>
-                                    <th class="text-end">Price</th>
-                                    <th class="text-end">Qty</th>
-                                    <th class="text-end">Avail.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($purchase->items as $item)
-                                <tr data-product-id="{{ $item->product_id }}" data-price="{{ $item->price }}" data-unit="{{ $item->unit }}" data-item-disc="{{ $item->item_discount ?? 0 }}" data-item-note="{{ $item->note ?? '' }}">
-                                    <td class="text-center">
-                                        <input type="checkbox" class="pr-chk select-return-item" {{ ($item->available_qty ?? $item->qty) <= 0 ? 'disabled' : '' }}>
-                                    </td>
-                                    <td style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $item->product->item_name ?? '-' }}">{{ $item->product->item_name ?? '-' }}</td>
-                                    <td><input type="text" class="pr-input pr-input-sm form-control" value="{{ $item->note }}" readonly style="width:100%;"></td>
-                                    <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $item->product->item_code ?? '-' }}">{{ $item->product->item_code ?? '-' }}</td>
-                                    <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $item->product->brand->name ?? '-' }}">{{ $item->product->brand->name ?? '-' }}</td>
-                                    <td>{{ $item->unit }}</td>
-                                    <td class="text-end fw-bold">{{ number_format($item->price,0) }}</td>
-                                    <td class="text-end">{{ $item->qty }}</td>
-                                    <td class="text-end available-qty"><span class="pr-badge pr-badge-avail">{{ $item->available_qty ?? $item->qty }}</span></td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                    <div class="pr-desk-a">
+                        <div class="pr-scroll">
+                            <table class="pr-table" id="purchasedItemsTable" style="table-layout:fixed;">
+                                <colgroup>
+                                    <col style="width:36px">
+                                    <col style="width:145px">
+                                    <col style="width:65px">
+                                    <col style="width:80px">
+                                    <col style="width:80px">
+                                    <col style="width:36px">
+                                    <col style="width:70px">
+                                    <col style="width:55px">
+                                    <col style="width:55px">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>Ret?</th>
+                                        <th>Product</th>
+                                        <th>Item Note</th>
+                                        <th>Code</th>
+                                        <th>Brand</th>
+                                        <th>Unit</th>
+                                        <th class="text-end">Price</th>
+                                        <th class="text-end">Qty</th>
+                                        <th class="text-end">Avail.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($purchase->items as $item)
+                                    <tr class="pr-purch" data-product-id="{{ $item->product_id }}" data-price="{{ $item->price }}" data-unit="{{ $item->unit }}" data-item-disc="{{ $item->item_discount ?? 0 }}" data-item-note="{{ $item->note ?? '' }}" data-product-name="{{ $item->product->item_name ?? '-' }}" data-item-code="{{ $item->product->item_code ?? '-' }}" data-brand="{{ $item->product->brand->name ?? '-' }}">
+                                        <td class="text-center">
+                                            <input type="checkbox" class="pr-chk select-return-item" {{ ($item->available_qty ?? $item->qty) <= 0 ? 'disabled' : '' }}>
+                                        </td>
+                                        <td style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $item->product->item_name ?? '-' }}">{{ $item->product->item_name ?? '-' }}</td>
+                                        <td><input type="text" class="pr-input pr-input-sm form-control" value="{{ $item->note }}" readonly style="width:100%;"></td>
+                                        <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $item->product->item_code ?? '-' }}">{{ $item->product->item_code ?? '-' }}</td>
+                                        <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $item->product->brand->name ?? '-' }}">{{ $item->product->brand->name ?? '-' }}</td>
+                                        <td>{{ $item->unit }}</td>
+                                        <td class="text-end fw-bold">{{ number_format($item->price,0) }}</td>
+                                        <td class="text-end">{{ $item->qty }}</td>
+                                        <td class="text-end available-qty"><span class="pr-badge pr-badge-avail">{{ $item->available_qty ?? $item->qty }}</span></td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="pr-purch-cards">
+                        @foreach($purchase->items as $item)
+                        <div class="pr-pc-card pr-purch pr-row" data-product-id="{{ $item->product_id }}" data-price="{{ $item->price }}" data-unit="{{ $item->unit }}" data-item-disc="{{ $item->item_discount ?? 0 }}" data-item-note="{{ $item->note ?? '' }}" data-product-name="{{ $item->product->item_name ?? '-' }}" data-item-code="{{ $item->product->item_code ?? '-' }}" data-brand="{{ $item->product->brand->name ?? '-' }}">
+                            <div class="pr-pc-top">
+                                <div class="pr-pc-title">{{ $item->product->item_name ?? '-' }}<br><code>{{ $item->product->item_code ?? '-' }}</code></div>
+                                <label class="pr-pc-ret"><input type="checkbox" class="pr-chk select-return-item" {{ ($item->available_qty ?? $item->qty) <= 0 ? 'disabled' : '' }}> Return?</label>
+                            </div>
+                            <div class="pr-pc-grid">
+                                <div class="pr-pc-item"><span>Brand</span><b>{{ $item->product->brand->name ?? '-' }}</b></div>
+                                <div class="pr-pc-item"><span>Unit</span><b>{{ $item->unit }}</b></div>
+                                <div class="pr-pc-item"><span>Price</span><b>{{ number_format($item->price,0) }}</b></div>
+                                <div class="pr-pc-item"><span>Qty</span><b>{{ $item->qty }}</b></div>
+                                <div class="pr-pc-item pr-pc-avail"><span>Available</span><b><span class="available-qty"><span class="pr-badge pr-badge-avail">{{ $item->available_qty ?? $item->qty }}</span></span></b></div>
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
                 </div>
 
                 {{-- RETURN ITEMS TABLE --}}
                 <div class="mb-3">
                     <h6 style="font-weight:800;font-size:14px;color:var(--pr-text);margin-bottom:8px;"><i class="bi bi-arrow-return-left me-1" style="color:var(--pr-primary);"></i> Items Selected for Return</h6>
-                    <div style="max-height:260px;overflow-y:auto;">
-                        <table class="pr-table" id="returnItemsTable" style="table-layout:fixed;">
-                            <colgroup>
-                                <col style="width:135px">
-                                <col style="width:60px">
-                                <col style="width:70px">
-                                <col style="width:70px">
-                                <col style="width:32px">
-                                <col style="width:70px">
-                                <col style="width:115px">
-                                <col style="width:62px">
-                                <col style="width:62px">
-                                <col style="width:55px">
-                            </colgroup>
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Note</th>
-                                    <th>Code</th>
-                                    <th>Brand</th>
-                                    <th>Unit</th>
-                                    <th>Price</th>
-                                    <th>Discount</th>
-                                    <th>Ret. Qty</th>
-                                    <th>Total</th>
-                                    <th>Remove</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <div class="pr-desk-b">
+                        <div style="max-height:260px;overflow-y:auto;">
+                            <table class="pr-table" id="returnItemsTable" style="table-layout:fixed;">
+                                <colgroup>
+                                    <col style="width:135px">
+                                    <col style="width:60px">
+                                    <col style="width:70px">
+                                    <col style="width:70px">
+                                    <col style="width:32px">
+                                    <col style="width:70px">
+                                    <col style="width:115px">
+                                    <col style="width:62px">
+                                    <col style="width:62px">
+                                    <col style="width:55px">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Note</th>
+                                        <th>Code</th>
+                                        <th>Brand</th>
+                                        <th>Unit</th>
+                                        <th>Price</th>
+                                        <th>Discount</th>
+                                        <th>Ret. Qty</th>
+                                        <th>Total</th>
+                                        <th>Remove</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
+                    <div class="pr-return-cards"></div>
                 </div>
 
                 {{-- SUMMARY --}}
@@ -244,6 +299,15 @@
         function pkrFromPct(pct, price) { return price ? (price * pct) / 100 : 0; }
         function pctFromPkr(pkr, price) { return price ? (pkr / price) * 100 : 0; }
 
+        // ─── Serialize only the visible field set (mobile cards vs desktop tables) ───
+        function toggleReturnSets() {
+            var mobile = window.matchMedia('(max-width: 991.98px)').matches;
+            $('#returnItemsTable input, #returnItemsTable select, #returnItemsTable textarea, #returnItemsTable button').prop('disabled', mobile);
+            $('.pr-return-cards input, .pr-return-cards select, .pr-return-cards textarea, .pr-return-cards button').prop('disabled', !mobile);
+        }
+        var _rt;
+        $(window).on('resize', function() { clearTimeout(_rt); _rt = setTimeout(toggleReturnSets, 150); });
+
         function recalcReturnRow($row) {
             const qty = num($row.find('.qty-input').val());
             const price = num($row.find('.price-input').val());
@@ -253,27 +317,13 @@
             $row.find('.row-total').val(total.toFixed(2));
         }
 
-        $('#purchasedItemsTable').on('change', '.select-return-item', function() {
-            const $row = $(this).closest('tr');
-            const productId = $row.data('product-id').toString();
-            const price = num($row.data('price'));
-            const unit = $row.data('unit') || '';
-            const itemDisc = num($row.data('item-disc'));
-            const productName = $row.find('td').eq(1).text().trim();
-            const itemCode = $row.find('td').eq(3).text().trim();
-            const brand = $row.find('td').eq(4).text().trim();
-            const availableQty = num($row.find('.available-qty').text());
-
-            if (this.checked) {
-                if (availableQty <= 0) { this.checked = false; return; }
-                if ($('#returnItemsTable tbody tr[data-product-id="' + productId + '"]').length) return;
-                let returnQtyDefault = (availableQty < 1) ? availableQty : 1;
-                const rowHtml = `
-<tr data-product-id="${productId}">
+        function buildReturnPair(productId, productName, itemCode, brand, unit, price, note, availableQty, returnQty) {
+            const rowHtml = `
+<tr data-product-id="${productId}" class="pr-return-row">
     <td style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${productName}">${productName}<input type="hidden" name="product_id[]" value="${productId}"></td>
     <td>
-        <input type="hidden" name="item_note[]" class="item-note-hidden" value="${$row.data('item-note') || ''}">
-        <input type="text" class="pr-input pr-input-sm form-control item-note-visible" value="${$row.data('item-note') || ''}" placeholder="Note" style="width:100%;">
+        <input type="hidden" name="item_note[]" class="item-note-hidden" value="${note || ''}">
+        <input type="text" class="pr-input pr-input-sm form-control item-note-visible" value="${note || ''}" placeholder="Note" style="width:100%;">
     </td>
     <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${itemCode}">${itemCode}</td>
     <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${brand}">${brand}</td>
@@ -289,51 +339,100 @@
         </div>
     </td>
     <td>
-        <input type="number" step="0.01" name="qty[]" class="pr-input pr-input-sm form-control qty-input" value="${returnQtyDefault}" min="0.01" max="${availableQty}" style="width:100%;">
+        <input type="number" step="0.01" name="qty[]" class="pr-input pr-input-sm form-control qty-input" value="${returnQty}" min="0.01" max="${availableQty}" style="width:100%;">
         <div class="pr-muted">Max: ${availableQty}</div>
     </td>
     <td><input type="text" name="total[]" class="pr-input pr-input-sm form-control row-total" readonly style="width:100%;"></td>
-    <td class="text-center"><button type="button" class="pr-btn pr-btn-danger" style="padding:4px 10px;font-size:11px;"><i class="bi bi-x"></i></button></td>
+    <td class="text-center"><button type="button" class="pr-btn pr-btn-danger remove-return-item" style="padding:4px 10px;font-size:11px;"><i class="bi bi-x"></i></button></td>
 </tr>`;
-                $('#returnItemsTable tbody').append(rowHtml);
+
+            const cardHtml = `
+<div class="pr-rc-card pr-return-row" data-product-id="${productId}">
+    <div class="pr-rc-head">
+        <div class="pr-rc-title">${productName}<input type="hidden" name="product_id[]" value="${productId}"></div>
+        <button type="button" class="pr-btn pr-btn-danger remove-return-item" style="padding:4px 8px;font-size:11px;"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="pr-rc-grid">
+        <div class="pr-rc-f"><span class="pr-label">Note</span><input type="hidden" name="item_note[]" class="item-note-hidden" value="${note || ''}"><input type="text" class="pr-input pr-input-sm form-control item-note-visible" value="${note || ''}" placeholder="Note"></div>
+        <div class="pr-rc-f"><span class="pr-label">Code</span><b>${itemCode}</b></div>
+        <div class="pr-rc-f"><span class="pr-label">Brand</span><b>${brand}</b></div>
+        <div class="pr-rc-f"><span class="pr-label">Unit</span><b>${unit}<input type="hidden" name="unit[]" value="${unit}"></b></div>
+        <div class="pr-rc-f"><span class="pr-label">Price</span><input type="number" step="0.01" name="price[]" class="pr-input pr-input-sm form-control price-input" value="${price}"></div>
+        <div class="pr-rc-f"><span class="pr-label">Discount</span>
+            <div class="d-flex gap-1 align-items-center">
+                <input type="number" step="0.01" name="item_disc[]" class="pr-input pr-input-sm form-control disc-pkr" placeholder="PKR" style="width:50%;">
+                <input type="number" step="0.01" class="pr-input pr-input-sm form-control disc-pct" placeholder="%" style="width:40%;">
+                <span style="width:10%;text-align:center;font-size:11px;">%</span>
+            </div>
+        </div>
+        <div class="pr-rc-f"><span class="pr-label">Ret. Qty</span><input type="number" step="0.01" name="qty[]" class="pr-input pr-input-sm form-control qty-input" value="${returnQty}" min="0.01" max="${availableQty}"><div class="pr-muted">Max: ${availableQty}</div></div>
+        <div class="pr-rc-f"><span class="pr-label">Total</span><input type="text" name="total[]" class="pr-input pr-input-sm form-control row-total" readonly></div>
+    </div>
+</div>`;
+
+            $('#returnItemsTable tbody').append(rowHtml);
+            $('.pr-return-cards').append(cardHtml);
+            toggleReturnSets();
+        }
+
+        function removeReturnPair(productId) {
+            $('.pr-return-row[data-product-id="' + productId + '"]').remove();
+        }
+
+        $(document).on('change', '.select-return-item', function() {
+            const $row = $(this).closest('.pr-purch, #purchasedItemsTable tbody tr');
+            const productId = $row.data('product-id').toString();
+            const price = num($row.data('price'));
+            const unit = $row.data('unit') || '';
+            const itemDisc = num($row.data('item-disc'));
+            const productName = $row.data('product-name') || '';
+            const itemCode = $row.data('item-code') || '';
+            const brand = $row.data('brand') || '';
+            const availableQty = num($row.find('.available-qty').text());
+
+            if (this.checked) {
+                if (availableQty <= 0) { this.checked = false; return; }
+                if ($('.pr-return-row[data-product-id="' + productId + '"]').length) return;
+                let returnQtyDefault = (availableQty < 1) ? availableQty : 1;
+                buildReturnPair(productId, productName, itemCode, brand, unit, price, $row.data('item-note') || '', availableQty, returnQtyDefault);
                 let displayAvail = parseFloat((availableQty - returnQtyDefault).toFixed(2));
                 $row.find('.available-qty').html('<span class="pr-badge pr-badge-avail">' + displayAvail + '</span>');
                 if (displayAvail <= 0) $row.find('.select-return-item').prop('disabled', true);
             } else {
-                const $returnRow = $('#returnItemsTable tbody tr[data-product-id="' + productId + '"]');
+                const $returnRow = $('.pr-return-row[data-product-id="' + productId + '"]').last();
                 if ($returnRow.length) {
                     const prevQty = num($returnRow.find('.qty-input').val());
                     const currentAvailable = num($row.find('.available-qty').text());
                     let restored = parseFloat((currentAvailable + prevQty).toFixed(2));
                     $row.find('.available-qty').html('<span class="pr-badge pr-badge-avail">' + restored + '</span>');
                     $row.find('.select-return-item').prop('disabled', false);
-                    $returnRow.remove();
+                    removeReturnPair(productId);
                 }
             }
             recalcAll();
         });
 
-        $('#returnItemsTable').on('input', '.item-note-visible', function() {
-            $(this).closest('td').find('.item-note-hidden').val($(this).val());
+        $(document).on('input', '.item-note-visible', function() {
+            $(this).closest('.pr-return-row').find('.item-note-hidden').val($(this).val());
         });
 
-        $('#returnItemsTable').on('click', '.remove-return-item', function() {
-            const $returnRow = $(this).closest('tr');
+        $(document).on('click', '.remove-return-item', function() {
+            const $returnRow = $(this).closest('.pr-return-row');
             const productId = $returnRow.data('product-id');
             const qtyRemoved = num($returnRow.find('.qty-input').val());
-            const $topRow = $('#purchasedItemsTable tbody tr[data-product-id="' + productId + '"]');
+            const $topRow = $('.pr-purch[data-product-id="' + productId + '"]');
             if ($topRow.length) {
                 const curAvailable = num($topRow.find('.available-qty').text());
                 let restored = parseFloat((curAvailable + qtyRemoved).toFixed(2));
                 $topRow.find('.available-qty').html('<span class="pr-badge pr-badge-avail">' + restored + '</span>');
                 $topRow.find('.select-return-item').prop('checked', false).prop('disabled', false);
             }
-            $returnRow.remove();
+            removeReturnPair(productId);
             recalcAll();
         });
 
-        $('#returnItemsTable').on('input', '.disc-pkr', function() {
-            const $row = $(this).closest('tr');
+        $(document).on('input', '.disc-pkr', function() {
+            const $row = $(this).closest('.pr-return-row');
             if ($row.data('syncing')) return;
             const price = num($row.find('.price-input').val());
             const pkr = num($(this).val());
@@ -345,8 +444,8 @@
             recalcAll();
         });
 
-        $('#returnItemsTable').on('input', '.disc-pct', function() {
-            const $row = $(this).closest('tr');
+        $(document).on('input', '.disc-pct', function() {
+            const $row = $(this).closest('.pr-return-row');
             if ($row.data('syncing')) return;
             const price = num($row.find('.price-input').val());
             const pct = num($(this).val());
@@ -358,14 +457,14 @@
             recalcAll();
         });
 
-        $('#returnItemsTable').on('input', '.qty-input, .price-input', function() {
-            recalcReturnRow($(this).closest('tr'));
+        $(document).on('input', '.qty-input, .price-input', function() {
+            recalcReturnRow($(this).closest('.pr-return-row'));
             recalcAll();
         });
 
         function recalcAll() {
             let subtotal = 0;
-            $('#returnItemsTable tbody tr').each(function() { subtotal += num($(this).find('.row-total').val()); });
+            $('.pr-return-row:visible').each(function() { subtotal += num($(this).find('.row-total:visible').val()); });
             $('#summarySubtotal').val(subtotal.toFixed(2));
             const oDisc = num($('#overallDiscount').val());
             const xCost = num($('#extraCost').val());
@@ -375,6 +474,7 @@
 
         $('#overallDiscount, #extraCost').on('input', recalcAll);
         recalcAll();
+        toggleReturnSets();
     });
 </script>
 @endsection

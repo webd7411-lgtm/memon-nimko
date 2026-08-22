@@ -122,6 +122,102 @@
 .btn-add-o:hover{transform:translateY(-1px)}
 /* booking modal header */
 .bk-hdr{background:linear-gradient(135deg,#f39c12,#f1c40f)}
+
+/* ═══════ MOBILE / RESPONSIVE ═══════ */
+@media (max-width: 991.98px) {
+    .pos-wrap{flex-direction:column;margin:-16px -8px 0}
+    .pos-left{min-height:0}
+    .prod-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+}
+@media (max-width: 767.98px) {
+    .pos-right{width:100%;min-width:0;border-left:none;border-top:1px solid #dde2f0;box-shadow:none}
+    .pos-topbar{flex-wrap:wrap}
+    .srchwrap{flex-basis:100%;order:3;margin-top:2px}
+    .pos-brand{font-size:14px}
+    .prod-grid{grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:9px}
+    .pc{min-height:158px;border-radius:13px}
+    .pc-img-wrap{height:92px;min-height:92px}
+    .cat-tab{padding:6px 13px;font-size:12px}
+    .pos-btns{padding:8px 12px 12px;gap:6px}
+}
+
+/* ═══════ PHONES ═══════ */
+@media (max-width: 575.98px) {
+    .pos-topbar{padding:8px 10px;gap:7px}
+    .pos-brand{font-size:14px}
+    .btn-cls{padding:7px 10px;font-size:12px;gap:4px}
+    .srchwrap input{font-size:16px;min-height:42px;padding:7px 12px 7px 32px}
+    .srchwrap i{font-size:14px;left:9px}
+    .cat-tabs{padding-bottom:4px}
+    .cat-tab{font-size:11.5px;padding:6px 12px;border-radius:18px}
+    .prod-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;padding-bottom:6px}
+    .pc{min-height:144px;border-radius:12px}
+    .pc-img-wrap{height:84px;min-height:84px}
+    .pc-emoji{font-size:34px}
+    .pc-body{padding:6px 8px 8px}
+    .pc-cat{font-size:8.5px;margin-bottom:1px}
+    .pc-name{font-size:11px;line-height:1.25;margin-bottom:3px}
+    .pc-price{font-size:12.5px}
+    .badge-stk,.badge-sz,.badge-disc{font-size:8px;padding:2px 4px}
+    .pc:hover{transform:none}
+
+    .pos-right{border-radius:14px 14px 0 0}
+    .ord-hdr{padding:11px 12px 9px}
+    .ord-cust{gap:6px}
+    .ord-cust select,.ord-cust input{font-size:16px;padding:7px 8px}
+    .ord-list{padding:7px 8px}
+    .oi{padding:7px 4px}
+    .oi-img{width:34px;height:34px}
+    .oi-name{font-size:12px}
+    .oi-qty{width:34px;font-size:13px}
+    .oi-price{width:54px;font-size:12px}
+    .oi-tot{min-width:44px;font-size:12px}
+    .qb{width:24px;height:24px;font-size:15px}
+
+    .ord-sum{padding:8px 12px}
+    .sr{font-size:12px}
+    .sr.big{font-size:14px}
+    .disc-i{width:70px}
+    .cash-row{gap:5px}
+    .cash-row input{font-size:16px}
+    .chng-bar{padding:6px 10px}
+    .chng-bar span:last-child{font-size:15px}
+
+    .pos-btns{padding:8px 12px 12px;gap:6px}
+    .btn-sale,.btn-book{padding:12px 8px;font-size:13px}
+    .btn-clr{width:42px}
+
+    .modal-dialog{margin:10px;max-width:calc(100vw - 20px)}
+    .modal-dialog.modal-lg{max-width:calc(100vw - 20px)}
+    .modal-body{padding:12px}
+    .mod-hdr{padding:13px 14px}
+    .mod-hdr h5{font-size:14px}
+    .sz-grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+    .szc{padding:11px 6px;border-radius:10px}
+    .slabel{font-size:12px}
+    .sprice{font-size:13px}
+
+    .man-sec{padding:10px 12px}
+    .man-sec #kgHelpers{flex-wrap:wrap;gap:8px}
+    .man-sec #kgHelpers .d-flex{gap:6px}
+    .man-sec #kgHelpers input{width:76px!important;font-size:14px!important}
+    .man-sec .row{gap:8px 0}
+    .man-sec .row > [class*="col-"]{padding:0 4px}
+    .man-sec .row > .col-4{flex:0 0 100%;max-width:100%;margin-bottom:2px}
+    .man-sec .row > .col-2,
+    .man-sec .row > .col-3{flex:0 0 33.3333%;max-width:33.3333%}
+    .man-sec .form-control{font-size:16px;min-height:42px}
+    .man-sec .form-label{font-size:10.5px}
+    .btn-add-o{font-size:13px;padding:12px}
+}
+
+@media (max-width: 400.98px) {
+    .btn-cls span{display:none}
+    .btn-cls i{margin:0}
+    .btn-cls{width:38px;justify-content:center;padding:7px 0}
+    .btn-cls[style*="margin-right"]{margin-right:0!important}
+    .prod-grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}
+}
 </style>
 
 <form id="salesForm" action="{{ route('sales.update', $sale->id) }}" method="POST">
@@ -140,8 +236,8 @@
             <i class="la la-search"></i>
             <input type="text" id="posSearch" placeholder="Search products…" autocomplete="off">
         </div>
-        <button type="button" class="btn-cls" style="background:#f39c12; color:#fff; border:none; margin-right: 10px;" onclick="showModal('tableModal')"><i class="la la-server"></i> Running Orders</button>
-        <a href="{{ route('sale.index') }}" class="btn-cls"><i class="la la-times"></i> Close</a>
+        <button type="button" class="btn-cls" style="background:#f39c12; color:#fff; border:none; margin-right: 10px;" onclick="showModal('tableModal')"><i class="la la-server"></i> <span>Running Orders</span></button>
+        <a href="{{ route('sale.index') }}" class="btn-cls"><i class="la la-times"></i> <span>Close</span></a>
     </div>
 
     <div class="cat-tabs">
@@ -981,6 +1077,15 @@ function fixHeights() {
     const posLeft = document.querySelector('.pos-left');
     const posRight = document.querySelector('.pos-right');
     if (!posWrap) return;
+
+    const isMobile = window.matchMedia('(max-width: 991.98px)').matches;
+
+    if (isMobile) {
+        posWrap.style.height  = 'auto';
+        posRight.style.height = 'auto';
+        posGrid.style.height  = '45vh';
+        return;
+    }
 
     // Calculate available height: full viewport minus pos-wrap's top offset
     const top = posWrap.getBoundingClientRect().top;

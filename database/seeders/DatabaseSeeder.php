@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             WarehouseSeeder::class,
             SuperAdminSeeder::class,
+            PermissionSeeder::class,
         ]);
 
         
@@ -42,25 +43,15 @@ class DatabaseSeeder extends Seeder
                     'password' => Hash::make('admin')
                 ]);
 
-         $permissions = [
-            'Create Product',
-            'Delete Product',
-            'View Product',
-            'Edit Product',
-        ];
+        $allPermissions = Permission::pluck('name')->all();
 
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
-        }
-        
-        
         // Create admin role if it doesn't exist
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $branchRole = Role::firstOrCreate(['name' => 'branch']);
 
-        // Assign all permissions to admin role
-        $adminRole->syncPermissions($permissions);
-        $branchRole->syncPermissions($permissions);
+        // Grant the full permission set (pages + features) to both roles
+        $adminRole->syncPermissions($allPermissions);
+        $branchRole->syncPermissions($allPermissions);
 
         // Optional: Assign role to admin user
         $adminUser = User::where('email', 'admin@admin.com')->first();

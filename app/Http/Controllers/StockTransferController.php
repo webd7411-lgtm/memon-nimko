@@ -159,7 +159,7 @@ class StockTransferController extends Controller
                 'variant_id'        => json_encode(array_values($variantIds ?? [])),
                 'quantity'          => json_encode(array_values(array_filter($quantities ?? []))),
                 'remarks'           => $remarks,
-                'created_at'        => $request->transfer_date ? \Carbon\Carbon::parse($request->transfer_date) : now(),
+                'created_at'        => $request->transfer_date ? \Carbon\Carbon::parse($request->transfer_date . ' ' . now()->format('H:i:s')) : now(),
                 'updated_at'        => now(),
             ]);
 

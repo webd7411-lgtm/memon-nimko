@@ -78,6 +78,23 @@
   font-weight: 500;
 }
 
+.dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.35);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .35rem .85rem;
+  border-radius: 999px;
+  margin-top: .7rem;
+  backdrop-filter: blur(4px);
+}
+
+.dash-chip i { color: #fcd34d; }
+
 /* Glass Card */
 .g-card {
   background: var(--card);
@@ -246,16 +263,76 @@
   color: #d97706;
 }
 
+.low-stock-count {
+  font-size: 12px;
+  font-weight: 800;
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 999px;
+  padding: 4px 12px;
+  border: 1px solid #fecaca;
+}
+
 @media (max-width: 768px) {
-  .dash-hero { height: 160px; }
+  .dash-hero { height: 160px; margin-bottom: 1rem; }
   .dash-hero-content h1 { font-size: 1.3rem; }
   .stat-value { font-size: 20px; }
   .stat-icon { width: 42px; height: 42px; font-size: 17px; }
 }
+
+@media (max-width: 575.98px) {
+  .dash { padding-bottom: 1.5rem; }
+  .dash-hero { height: 125px; border-radius: 12px; margin-bottom: 0.85rem; }
+  .dash-hero-content h1 { font-size: 1.05rem; margin-bottom: 2px; }
+  .dash-hero-content p { font-size: 0.78rem; }
+  
+  .stat-card {
+    padding: 0.85rem 0.75rem;
+    border-radius: 14px;
+    align-items: center;
+  }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .stat-label {
+    font-size: 9.5px;
+    letter-spacing: 0.3px;
+  }
+  .stat-value {
+    font-size: 17px !important;
+  }
+  .stat-sub {
+    font-size: 10px;
+  }
+
+  .chart-box { padding: 0.85rem; }
+  .chart-hdr { margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
+  .chart-title { font-size: 13px; }
+  .chart-sub { font-size: 10.5px; }
+  .chart-select { padding: 4px 8px; font-size: 11px; }
+
+  .low-stock-item {
+    padding: 8px 10px;
+    border-radius: 8px;
+    gap: 6px;
+  }
+  .low-stock-name {
+    font-size: 11.5px;
+    line-height: 1.3;
+    max-width: 65%;
+  }
+  .low-stock-qty {
+    font-size: 10px;
+    padding: 2px 7px;
+  }
+}
 </style>
 
 <div class="dash">
-  <div class="container-fluid px-3 px-md-4 py-3">
+  <div class="container-fluid px-2 px-md-4 py-2 py-md-3">
 
     {{-- HERO --}}
     <div class="dash-hero">
@@ -263,11 +340,12 @@
       <div class="dash-hero-content">
         <h1>Welcome to {{ \App\Models\Setting::where('key','software_name')->value('value') ?? 'Memon Nimko' }}</h1>
         <p>Management & Reporting Dashboard</p>
+        <span class="dash-chip"><i class="fas fa-calendar-alt"></i> Data for {{ now()->format('F Y') }}</span>
       </div>
     </div>
 
     {{-- STAT CARDS --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-2 g-md-3 mb-3 mb-md-4">
       <div class="col-6 col-md-3">
         <div class="g-card stat-card b1">
           <div>
@@ -319,7 +397,7 @@
     </div>
 
     {{-- FINANCIAL CARDS --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-2 g-md-3 mb-3 mb-md-4">
       <div class="col-6 col-md-3">
         <div class="g-card stat-card b5">
           <div>
@@ -370,10 +448,62 @@
       </div>
     </div>
 
+    {{-- PROFIT / FINANCIAL SUMMARY --}}
+    <div class="row g-2 g-md-3 mb-3 mb-md-4">
+      <div class="col-6 col-md-3">
+        <div class="g-card stat-card b6">
+          <div>
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value" style="font-size:20px;">Rs {{ number_format($totalExpenses, 0) }}</div>
+            <div class="stat-sub">This month</div>
+          </div>
+          <div class="stat-icon" style="background:#fff7ed;color:#f97316;">
+            <i class="fas fa-file-invoice"></i>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="g-card stat-card b2">
+          <div>
+            <div class="stat-label">Net Sales</div>
+            <div class="stat-value" style="font-size:20px;">Rs {{ number_format($netSales, 0) }}</div>
+            <div class="stat-sub">After returns</div>
+          </div>
+          <div class="stat-icon" style="background:#f0f9ff;color:#0ea5e9;">
+            <i class="fas fa-chart-line"></i>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="g-card stat-card b1">
+          <div>
+            <div class="stat-label">Net Purchases</div>
+            <div class="stat-value" style="font-size:20px;">Rs {{ number_format($netPurchases, 0) }}</div>
+            <div class="stat-sub">After returns</div>
+          </div>
+          <div class="stat-icon" style="background:#eef2ff;color:#4f46e5;">
+            <i class="fas fa-truck"></i>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="g-card stat-card b5" style="{{ $grossProfit < 0 ? 'background:#fef2f2;' : '' }}">
+          <div>
+            <div class="stat-label" style="{{ $grossProfit < 0 ? 'color:#b91c1c;' : '' }}">Gross Profit</div>
+            <div class="stat-value" style="font-size:22px;{{ $grossProfit < 0 ? 'color:#dc2626;' : '' }}">Rs {{ number_format($grossProfit, 0) }}</div>
+            <div class="stat-sub">Net sales - purchases - expenses</div>
+          </div>
+          <div class="stat-icon" style="background:#ecfdf5;color:#10b981;">
+            <i class="fas fa-hand-holding-usd"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {{-- CHARTS --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-3 mb-md-4">
       {{-- Sales Chart --}}
-      <div class="col-lg-6">
+      <div class="col-12 col-lg-6">
         <div class="g-card chart-box">
           <div class="chart-hdr">
             <div>
@@ -387,13 +517,13 @@
             </select>
           </div>
           <div class="chart-wrap">
-            <div id="salesChart" style="height:340px;"></div>
+            <div id="salesChart" style="min-height:260px;"></div>
           </div>
         </div>
       </div>
 
       {{-- Purchase Chart --}}
-      <div class="col-lg-6">
+      <div class="col-12 col-lg-6">
         <div class="g-card chart-box">
           <div class="chart-hdr">
             <div>
@@ -407,15 +537,15 @@
             </select>
           </div>
           <div class="chart-wrap">
-            <div id="purchaseChart" style="height:340px;"></div>
+            <div id="purchaseChart" style="min-height:260px;"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-3 mb-md-4">
       {{-- Category Products --}}
-      <div class="col-lg-7">
+      <div class="col-12 col-lg-7">
         <div class="g-card chart-box">
           <div class="chart-hdr">
             <div>
@@ -424,21 +554,22 @@
             </div>
           </div>
           <div class="chart-wrap">
-            <div id="categoryChart" style="height:380px;"></div>
+            <div id="categoryChart" style="min-height:280px;"></div>
           </div>
         </div>
       </div>
 
       {{-- Low Stock --}}
-      <div class="col-lg-5">
+      <div class="col-12 col-lg-5">
         <div class="g-card chart-box">
           <div class="chart-hdr">
             <div>
               <div class="chart-title"><i class="fas fa-exclamation-triangle" style="color:var(--accent-3);"></i>Low Stock Alerts</div>
               <div class="chart-sub">Products below alert quantity</div>
             </div>
+            <span class="low-stock-count">{{ count($lowStockChart['categories']) }} items</span>
           </div>
-          <div style="max-height:380px;overflow-y:auto;">
+          <div style="max-height:340px;overflow-y:auto;">
             @forelse($lowStockChart['categories'] as $i => $item)
             <div class="low-stock-item">
               <div class="low-stock-name">{{ $item }}</div>
@@ -468,17 +599,25 @@ let salesChart;
 
 function renderSalesChart(type='daily') {
   const d = salesData[type];
+  const isMobile = window.innerWidth < 576;
   const opts = {
-    chart: { type:'bar', height:340, toolbar:{show:true,tools:{download:true,zoom:false,pan:false}}, foreColor:'#94a3b8', background:'transparent', animations:{enabled:true,easing:'easeinout',speed:800} },
+    chart: { type:'bar', height: isMobile ? 260 : 340, toolbar:{show:!isMobile,tools:{download:true,zoom:false,pan:false}}, foreColor:'#94a3b8', background:'transparent', animations:{enabled:true,easing:'easeinout',speed:800} },
     series: d.series,
-    xaxis: { categories:d.categories, labels:{style:{colors:'#94a3b8',fontSize:'11px',fontWeight:600}}, axisBorder:{show:false}, axisTicks:{show:false} },
-    yaxis: { labels:{style:{colors:'#94a3b8',fontSize:'12px',fontWeight:600}, formatter:v=>'Rs '+v.toLocaleString()} },
+    xaxis: { categories:d.categories, labels:{rotate: isMobile ? -45 : 0, style:{colors:'#94a3b8',fontSize: isMobile ? '9px' : '11px',fontWeight:600}}, axisBorder:{show:false}, axisTicks:{show:false} },
+    yaxis: { labels:{style:{colors:'#94a3b8',fontSize: isMobile ? '10px' : '12px',fontWeight:600}, formatter:v=>'Rs '+v.toLocaleString()} },
     dataLabels:{enabled:false},
-    plotOptions:{ bar:{horizontal:false,columnWidth:'45%',borderRadius:8} },
+    plotOptions:{ bar:{horizontal:false,columnWidth: isMobile ? '65%' : '45%',borderRadius: isMobile ? 4 : 8} },
     fill:{ type:'gradient', gradient:{shade:'light',type:'vertical',gradientToColors:['#818cf8'],stops:[0,100]} },
     colors:['#4f46e5'],
     tooltip:{ theme:'light', y:{formatter:v=>'Rs '+v.toLocaleString()} },
-    grid:{ borderColor:'#f1f5f9', strokeDashArray:4, xaxis:{lines:{show:false}} }
+    grid:{ borderColor:'#f1f5f9', strokeDashArray:4, xaxis:{lines:{show:false}} },
+    responsive: [{
+      breakpoint: 576,
+      options: {
+        chart: { height: 260 },
+        plotOptions: { bar: { columnWidth: '70%', borderRadius: 4 } }
+      }
+    }]
   };
   if(salesChart) salesChart.destroy();
   salesChart = new ApexCharts(document.querySelector('#salesChart'), opts);
@@ -493,17 +632,25 @@ let purchaseChart;
 
 function renderPurchaseChart(type='daily') {
   const d = purchaseData[type];
+  const isMobile = window.innerWidth < 576;
   const opts = {
-    chart: { type:'bar', height:340, toolbar:{show:true,tools:{download:true,zoom:false,pan:false}}, foreColor:'#94a3b8', background:'transparent', animations:{enabled:true,easing:'easeinout',speed:800} },
+    chart: { type:'bar', height: isMobile ? 260 : 340, toolbar:{show:!isMobile,tools:{download:true,zoom:false,pan:false}}, foreColor:'#94a3b8', background:'transparent', animations:{enabled:true,easing:'easeinout',speed:800} },
     series: d.series,
-    xaxis: { categories:d.categories, labels:{style:{colors:'#94a3b8',fontSize:'11px',fontWeight:600}}, axisBorder:{show:false}, axisTicks:{show:false} },
-    yaxis: { labels:{style:{colors:'#94a3b8',fontSize:'12px',fontWeight:600}, formatter:v=>'Rs '+v.toLocaleString()} },
+    xaxis: { categories:d.categories, labels:{rotate: isMobile ? -45 : 0, style:{colors:'#94a3b8',fontSize: isMobile ? '9px' : '11px',fontWeight:600}}, axisBorder:{show:false}, axisTicks:{show:false} },
+    yaxis: { labels:{style:{colors:'#94a3b8',fontSize: isMobile ? '10px' : '12px',fontWeight:600}, formatter:v=>'Rs '+v.toLocaleString()} },
     dataLabels:{enabled:false},
-    plotOptions:{ bar:{horizontal:false,columnWidth:'45%',borderRadius:8} },
+    plotOptions:{ bar:{horizontal:false,columnWidth: isMobile ? '65%' : '45%',borderRadius: isMobile ? 4 : 8} },
     fill:{ type:'gradient', gradient:{shade:'light',type:'vertical',gradientToColors:['#34d399'],stops:[0,100]} },
     colors:['#10b981'],
     tooltip:{ theme:'light', y:{formatter:v=>'Rs '+v.toLocaleString()} },
-    grid:{ borderColor:'#f1f5f9', strokeDashArray:4, xaxis:{lines:{show:false}} }
+    grid:{ borderColor:'#f1f5f9', strokeDashArray:4, xaxis:{lines:{show:false}} },
+    responsive: [{
+      breakpoint: 576,
+      options: {
+        chart: { height: 260 },
+        plotOptions: { bar: { columnWidth: '70%', borderRadius: 4 } }
+      }
+    }]
   };
   if(purchaseChart) purchaseChart.destroy();
   purchaseChart = new ApexCharts(document.querySelector('#purchaseChart'), opts);
@@ -515,16 +662,58 @@ document.getElementById('purchaseFilter')?.addEventListener('change', function()
 // ===================== CATEGORY CHART =====================
 const catData = @json($categoryProductChart);
 document.addEventListener('DOMContentLoaded', function(){
+  const isMobile = window.innerWidth < 576;
+  const catCount = catData.categories.length;
+  // On mobile: horizontal bars so labels don't overlap
+  const mobileHeight = isMobile ? Math.max(280, catCount * 32 + 40) : 380;
+  const mobileHorizontal = isMobile && catCount > 6;
   new ApexCharts(document.querySelector('#categoryChart'), {
-    chart: { type:'bar', height:380, toolbar:{show:false}, foreColor:'#94a3b8', background:'transparent', animations:{enabled:true,easing:'easeinout',speed:800} },
+    chart: {
+      type: 'bar',
+      height: mobileHeight,
+      toolbar: { show: false },
+      foreColor: '#94a3b8',
+      background: 'transparent',
+      animations: { enabled: true, easing: 'easeinout', speed: 800 }
+    },
     series: catData.series,
-    plotOptions:{ bar:{horizontal:false,columnWidth:'50%',borderRadius:8,distributed:true} },
-    xaxis: { categories:catData.categories, labels:{style:{colors:'#64748b',fontSize:'12px',fontWeight:600}}, axisBorder:{show:false}, axisTicks:{show:false} },
-    yaxis: { labels:{style:{colors:'#94a3b8',fontSize:'12px',fontWeight:600}, formatter:v=>v.toLocaleString()} },
-    colors:['#4f46e5','#0ea5e9','#ec4899','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#6366f1'],
-    dataLabels:{enabled:false},
-    tooltip:{ theme:'light', y:{formatter:v=>v.toLocaleString()+' Products'} },
-    grid:{ borderColor:'#f1f5f9', strokeDashArray:4, xaxis:{lines:{show:false}} }
+    plotOptions: {
+      bar: {
+        horizontal: mobileHorizontal,
+        columnWidth: isMobile ? '65%' : '50%',
+        borderRadius: isMobile ? 4 : 8,
+        distributed: true
+      }
+    },
+    xaxis: {
+      categories: catData.categories,
+      labels: {
+        rotate: mobileHorizontal ? 0 : (isMobile ? -45 : 0),
+        rotateAlways: isMobile && !mobileHorizontal,
+        style: { colors: '#64748b', fontSize: isMobile ? '9.5px' : '12px', fontWeight: 600 },
+        maxHeight: isMobile ? (mobileHorizontal ? 40 : 80) : undefined
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: '#94a3b8', fontSize: isMobile ? '10px' : '12px', fontWeight: 600 },
+        formatter: v => v.toLocaleString()
+      }
+    },
+    colors: ['#4f46e5','#0ea5e9','#ec4899','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#6366f1'],
+    legend: { show: !isMobile, position: 'bottom', fontSize: '10px', markers: { size: 8 } },
+    dataLabels: { enabled: false },
+    tooltip: { theme: 'light', y: { formatter: v => v.toLocaleString() + ' Products' } },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } },
+    responsive: [{
+      breakpoint: 576,
+      options: {
+        chart: { height: mobileHeight },
+        plotOptions: { bar: { columnWidth: '70%', borderRadius: 4 } }
+      }
+    }]
   }).render();
 });
 </script>

@@ -94,4 +94,22 @@ class BranchController extends Controller
         return redirect()->route('branch.index')->with('success', 'Branch deleted successfully.');
 
     }
+
+    /**
+     * Switch active branch context in session.
+     */
+    public function switchBranch(Request $request)
+    {
+        $branchId = $request->input('branch_id');
+        if ($branchId === 'all') {
+            session(['active_branch_id' => 'all']);
+        } else {
+            $branch = Branch::find($branchId);
+            if ($branch) {
+                session(['active_branch_id' => $branch->id]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Branch context updated successfully.');
+    }
 }
