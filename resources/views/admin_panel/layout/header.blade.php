@@ -342,8 +342,8 @@
                                             class="fa-solid fa-user-lock"></i> Roles</a></li>
                                 <li><a href="{{ route('permissions.index') }}"><i
                                             class="fa-solid fa-user-lock"></i> Permissions</a></li>
-                                <!-- <li><a href="{{ route('branch.index') }}"><i
-                                            class="fa-solid fa-code-branch"></i> Branches</a></li> -->
+                                <li><a href="{{ route('branch.index') }}"><i
+                                            class="fa-solid fa-store"></i> Branches</a></li>
                             </ul>
                         </div>
                     </li>
