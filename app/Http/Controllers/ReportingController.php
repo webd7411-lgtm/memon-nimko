@@ -100,11 +100,10 @@ class ReportingController extends Controller
             ->groupBy('purchase_return_items.product_id')
             ->get();
 
-        $currStocksQuery = DB::table('stocks')->whereIn('product_id', $productIds);
-        if (!is_all_branches()) {
-            $currStocksQuery->where('branch_id', active_branch_id());
-        }
-        $currStocks = $currStocksQuery->select('product_id', 'variant_id', 'qty')->get();
+        $currStocks = DB::table('stocks')
+            ->whereIn('product_id', $productIds)
+            ->select('product_id', 'variant_id', 'qty')
+            ->get();
 
         // Mapping helper: key = pid_vid (use 0 for null variant)
         $mapP = []; foreach($purchases as $p) { $mapP[$p->product_id . '_' . ($p->variant_id ?? 0)] = $p->total_qty; }
@@ -116,9 +115,6 @@ class ReportingController extends Controller
         // Sales processing (by product and variant) with DATE filter
         $hasVariantIdInSales = \Illuminate\Support\Facades\Schema::hasColumn('sales', 'variant_id');
         $allSalesQuery = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT])->whereNotNull('product')->select('product', 'qty');
-        if (!is_all_branches()) {
-            $allSalesQuery->where('branch_id', active_branch_id());
-        }
         if ($hasVariantIdInSales) {
             $allSalesQuery->addSelect('variant_id');
         }
@@ -145,9 +141,6 @@ class ReportingController extends Controller
 
         $hasVariantIdInReturns = \Illuminate\Support\Facades\Schema::hasColumn('sales_returns', 'variant_id');
         $allReturnsQuery = DB::table('sales_returns')->whereBetween('created_at', [$startDT, $endDT])->whereNotNull('product')->select('product', 'qty');
-        if (!is_all_branches()) {
-            $allReturnsQuery->where('branch_id', active_branch_id());
-        }
         if ($hasVariantIdInReturns) {
             $allReturnsQuery->addSelect('variant_id');
         }
@@ -596,10 +589,6 @@ class ReportingController extends Controller
                 'purchases.due_amount'
             );
 
-        if (!is_all_branches()) {
-            $purchaseQuery->where('purchases.branch_id', active_branch_id());
-        }
-
         if ($startDate && $endDate) {
             $purchaseQuery->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
         }
@@ -610,13 +599,8 @@ class ReportingController extends Controller
             ->leftJoin('products', 'inward_gatepass_items.product_id', '=', 'products.id')
             ->leftJoin('vendors', 'inward_gatepasses.vendor_id', '=', 'vendors.id')
             ->where('inward_gatepasses.status', 'linked')
-            ->where('inward_gatepasses.bill_status', 'billed');
-
-        if (!is_all_branches()) {
-            $inwardQuery->where('inward_gatepasses.branch_id', active_branch_id());
-        }
-
-        $inwardQuery->select(
+            ->where('inward_gatepasses.bill_status', 'billed')
+            ->select(
                 DB::raw("'inward' as source_type"),
                 'inward_gatepasses.gatepass_date as purchase_date',
                 'inward_gatepasses.invoice_no',
@@ -697,13 +681,8 @@ class ReportingController extends Controller
             $end = $request->end_date;
 
             $query = DB::table('sales')
-                ->leftJoin('customers', 'sales.customer', '=', 'customers.id');
-
-            if (!is_all_branches()) {
-                $query->where('sales.branch_id', active_branch_id());
-            }
-
-            $query->select(
+                ->leftJoin('customers', 'sales.customer', '=', 'customers.id')
+                ->select(
                     'sales.id',
                     'sales.invoice_no', // ✅ Select invoice_no specifically
                     'sales.reference',
@@ -1514,10 +1493,6 @@ class ReportingController extends Controller
 
             $query = \App\Models\ExpenseVoucher::query();
             
-            if (!is_all_branches()) {
-                $query->where('branch_id', active_branch_id());
-            }
-
             // 🛡️ Restrict non-admin users to their own expenses
             if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
                 $query->where('user_id', auth()->id());
@@ -1557,10 +1532,6 @@ class ReportingController extends Controller
     {
         $query = \App\Models\ExpenseVoucher::query();
 
-        if (!is_all_branches()) {
-            $query->where('branch_id', active_branch_id());
-        }
-
         // 🛡️ Restrict non-admin users to their own expenses
         if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
             $query->where('user_id', auth()->id());
@@ -1589,11 +1560,7 @@ class ReportingController extends Controller
         $data = $vouchers->map(function ($v) {
 
             // remarks decode (JSON safe)
-            $remarks = $v->remarks;
-            if (is_string($remarks) && $remarks !== '') {
-                $decoded = json_decode($remarks, true);
-                $remarks = is_array($decoded) ? $decoded : [$remarks];
-            }
+            $remarks = json_decode($v->remarks, true);
 
             return [
                 'evid'    => $v->evid,
@@ -1635,10 +1602,6 @@ class ReportingController extends Controller
         // 1. Fetch Sales
         $salesQuery = DB::table('sales')
             ->whereBetween('created_at', [$start, $end]);
-
-        if (!is_all_branches()) {
-            $salesQuery->where('branch_id', active_branch_id());
-        }
 
         if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
             $salesQuery->where('user_id', auth()->id());
@@ -1688,10 +1651,6 @@ class ReportingController extends Controller
         // 2. Fetch Expenses
         $expenseQuery = DB::table('expense_vouchers')
             ->whereBetween('created_at', [$start, $end]);
-
-        if (!is_all_branches()) {
-            $expenseQuery->where('branch_id', active_branch_id());
-        }
 
         if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
             $expenseQuery->where('user_id', auth()->id());
