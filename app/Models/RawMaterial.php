@@ -25,13 +25,15 @@ class RawMaterial extends Model
             return $st ? (float)$st->qty : 0;
         }
         $sum = $this->stocks()->sum('qty');
-        return $sum > 0 ? (float)$sum : ($this->stock ? (float)$this->stock->qty : 0);
+        return (float)($sum ?? 0);
     }
 
     public function lastPurchaseCost()
     {
-        return \App\Models\RawMaterialPurchaseItem::where('raw_material_id', $this->id)
+        $cost = (float)(\App\Models\RawMaterialPurchaseItem::where('raw_material_id', $this->id)
             ->latest('id')
-            ->value('price_per_unit') ?? 0;
+            ->value('price_per_unit') ?? 0);
+        $factor = (float)($this->conversion_factor ?? 1);
+        return ($factor > 0) ? ($cost / $factor) : $cost;
     }
 }

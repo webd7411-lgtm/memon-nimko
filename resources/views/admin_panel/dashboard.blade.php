@@ -688,10 +688,12 @@ document.addEventListener('DOMContentLoaded', function(){
     xaxis: {
       categories: catData.categories,
       labels: {
-        rotate: mobileHorizontal ? 0 : (isMobile ? -45 : 0),
-        rotateAlways: isMobile && !mobileHorizontal,
-        style: { colors: '#64748b', fontSize: isMobile ? '9.5px' : '12px', fontWeight: 600 },
-        maxHeight: isMobile ? (mobileHorizontal ? 40 : 80) : undefined
+        rotate: -45,
+        rotateAlways: true,
+        hideOverlappingLabels: true,
+        trim: true,
+        maxHeight: 100,
+        style: { colors: '#64748b', fontSize: isMobile ? '9.5px' : '11px', fontWeight: 600 }
       },
       axisBorder: { show: false },
       axisTicks: { show: false }

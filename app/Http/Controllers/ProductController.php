@@ -103,7 +103,8 @@ class ProductController extends Controller
         $units = Unit::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->get();
         $rawMaterials = RawMaterial::orderBy('name')->get();
-        return view('admin_panel.product.create', compact('categories', 'units', 'brands', 'rawMaterials'));
+        $allProducts = Product::select('id', 'item_code', 'item_name', 'unit_type')->orderBy('item_name')->get();
+        return view('admin_panel.product.create', compact('categories', 'units', 'brands', 'rawMaterials', 'allProducts'));
     }
 
     public function getSubcategories($category_id)
@@ -245,6 +246,7 @@ class ProductController extends Controller
                 'initial_stock'   => 0,
                 'alert_quantity'  => $request->input('alert_quantity') ? (int)$request->input('alert_quantity') : 0,
                 'note'            => $request->input('note'),
+                'recipe_batch_yield' => (float)($request->input('recipe_batch_yield', 1) ?: 1),
                 'image'           => $imagePath,
                 'created_at'      => now(),
                 'updated_at'      => now(),
@@ -252,41 +254,45 @@ class ProductController extends Controller
 
             // --- Save Product Variants ---
             $variantNames = $request->input('variant_name', []);
-            $variantSizeValues = $request->input('variant_size_value', []);
-            $variantSizeUnits = $request->input('variant_size_unit', []);
+            $variantSizes = $request->input('variant_size_value', []);
+            $variantUnits = $request->input('variant_size_unit', []);
             $variantPrices = $request->input('variant_price', []);
-            $variantWholesalePrices = $request->input('variant_wholesale_price', []);
-            $variantCostPrices = $request->input('variant_cost_price', []);
+            $variantCosts = $request->input('variant_cost_price', []);
             $variantStocks = $request->input('variant_stock', []);
             $variantBarcodes = $request->input('variant_barcode', []);
-            $variantDefault = $request->input('variant_default', 0); // index of default variant
+            $defaultVariantIndex = $request->input('variant_default', 0);
+            $unitType = $request->input('unit_type');
+            $recipeYield = (float)($request->input('recipe_batch_yield', 1) ?: 1);
 
             $totalStock = 0;
             $defaultPrice = 0;
-            $defaultWholesale = 0;
-
+            $createdVariants = [];
             if (!empty($variantNames)) {
-                foreach ($variantNames as $index => $vName) {
-                    if (empty($vName)) continue;
+                foreach ($variantNames as $i => $vName) {
+                    $sizeVal  = floatval($variantSizes[$i] ?? 0);
+                    $vPrice   = floatval($variantPrices[$i] ?? 0);
+                    $vCost    = floatval($variantCosts[$i] ?? 0);
+                    $vStock   = floatval($variantStocks[$i] ?? 0);
+                    $vBarcode = trim($variantBarcodes[$i] ?? '');
+                    $sizeUnit = strtolower(trim($variantUnits[$i] ?? $unitType));
+                    $isDefault = ($defaultVariantIndex == $i);
 
-                    $sizeValue = floatval($variantSizeValues[$index] ?? 0);
-                    $sizeUnit = $variantSizeUnits[$index] ?? $request->input('unit_type');
+                    // Skip empty variant rows
+                    if (empty($vName) && $vPrice == 0 && $sizeVal == 0) continue;
 
-                    // If unit is KG, user enters Grams in form, so convert to KG for DB
-                    $dbSizeValue = $sizeValue;
-                    $sizeLabel = $vName;
-                    
+                    // Convert size to DB value (grams to kg for kg products)
+                    $dbSizeValue = $sizeVal;
                     if ($sizeUnit === 'kg') {
-                        $dbSizeValue = $sizeValue / 1000; // Convert Grams to KG for storage
+                        $dbSizeValue = $sizeVal / 1000;
                         $sizeLabel = $vName . ' (' . number_format($dbSizeValue, 3) . ' KG)';
+                    } else {
+                        $sizeLabel = $vName;
                     }
 
-                    $vPrice = floatval($variantPrices[$index] ?? 0);
-                    $vCost = floatval($variantCostPrices[$index] ?? 0);
-                    $vStock = floatval($variantStocks[$index] ?? 0);
-                    $isDefault = ((int)$variantDefault === $index);
-
-                    $vBarcode = !empty($variantBarcodes[$index]) ? $variantBarcodes[$index] : $this->generateUniqueBarcode();
+                    // Auto-generate barcode if blank
+                    if (empty($vBarcode)) {
+                        $vBarcode = $this->generateUniqueBarcode();
+                    }
 
                     $variant = ProductVariant::create([
                         'product_id'      => $product->id,
@@ -296,13 +302,14 @@ class ProductController extends Controller
                         'size_value'      => $dbSizeValue,
                         'size_unit'       => $sizeUnit,
                         'price'           => $vPrice,
-                        'wholesale_price' => 0, // Field removed from form
+                        'wholesale_price' => 0,
                         'cost_price'      => $vCost,
                         'stock_qty'       => $vStock,
                         'alert_quantity'  => 0,
                         'is_default'      => $isDefault,
                         'is_active'       => true,
                     ]);
+                    $createdVariants[$i] = $variant->id;
 
                     // Single variant stock entry
                     DB::table('stocks')->insert([
@@ -314,45 +321,69 @@ class ProductController extends Controller
                         'created_at'   => now(),
                         'updated_at'   => now(),
                     ]);
-
-                    $totalStock += $vStock;
-                    if ($isDefault) {
-                        $defaultPrice = $vPrice;
-                    }
                 }
-
-                // Update product with default variant price
-                $product->update([
-                    'price'           => $defaultPrice,
-                    'wholesale_price' => 0,
-                    'initial_stock'   => $totalStock,
-                ]);
-            }
-
-            // Normal product without variants
-            if (empty($variantNames) && $product->initial_stock > 0) {
-                DB::table('stocks')->insert([
-                    'branch_id'    => active_branch_id(),
-                    'warehouse_id' => 1,
-                    'product_id'   => $product->id,
-                    'variant_id'   => null,
-                    'qty'          => $product->initial_stock,
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]);
             }
 
             // --- Save BOM (Bill of Materials) ---
-            $rmIds = $request->input('raw_material_id', []);
+            ProductRawMaterialBom::where('product_id', $product->id)->delete();
+            $bomTypes = $request->input('bom_type', []);
+            $bomItemIds = $request->input('bom_item_id', []);
             $qtys = $request->input('qty_per_unit', []);
-            foreach ($rmIds as $i => $rmId) {
-                $qty = (float)($qtys[$i] ?? 0);
-                if ($rmId && $qty > 0) {
-                    ProductRawMaterialBom::create([
-                        'product_id' => $product->id,
-                        'raw_material_id' => $rmId,
-                        'qty_per_unit' => $qty,
-                    ]);
+            $rmIds = $request->input('raw_material_id', []);
+
+            if (!empty($bomItemIds)) {
+                foreach ($bomItemIds as $i => $itemId) {
+                    $rawQty = (float)($qtys[$i] ?? 0);
+                    $qtyPerUnit = $recipeYield > 0 ? ($rawQty / $recipeYield) : $rawQty;
+                    $type = $bomTypes[$i] ?? 'rm';
+                    if ($itemId && $rawQty > 0) {
+                        ProductRawMaterialBom::create([
+                            'product_id' => $product->id,
+                            'variant_id' => null,
+                            'raw_material_id' => ($type === 'rm') ? $itemId : null,
+                            'ingredient_product_id' => ($type === 'product') ? $itemId : null,
+                            'qty_per_unit' => $qtyPerUnit,
+                        ]);
+                    }
+                }
+            } else {
+                foreach ($rmIds as $i => $rmId) {
+                    $rawQty = (float)($qtys[$i] ?? 0);
+                    $qtyPerUnit = $recipeYield > 0 ? ($rawQty / $recipeYield) : $rawQty;
+                    if ($rmId && $rawQty > 0) {
+                        ProductRawMaterialBom::create([
+                            'product_id' => $product->id,
+                            'variant_id' => null,
+                            'raw_material_id' => $rmId,
+                            'qty_per_unit' => $qtyPerUnit,
+                        ]);
+                    }
+                }
+            }
+
+            // --- Save Custom Variant BOMs ---
+            $variantBomTypes = $request->input('variant_bom_type', []);
+            $variantBomItemIds = $request->input('variant_bom_item_id', []);
+            $variantBomQtys = $request->input('variant_qty_per_unit', []);
+
+            if (!empty($variantBomItemIds)) {
+                foreach ($variantBomItemIds as $vKey => $itemIds) {
+                    $targetVariantId = $createdVariants[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
+                    if (!$targetVariantId) continue;
+
+                    foreach ($itemIds as $j => $itemId) {
+                        $rawQty = (float)($variantBomQtys[$vKey][$j] ?? 0);
+                        $type = $variantBomTypes[$vKey][$j] ?? 'rm';
+                        if ($itemId && $rawQty > 0) {
+                            ProductRawMaterialBom::create([
+                                'product_id' => $product->id,
+                                'variant_id' => $targetVariantId,
+                                'raw_material_id' => ($type === 'rm') ? $itemId : null,
+                                'ingredient_product_id' => ($type === 'product') ? $itemId : null,
+                                'qty_per_unit' => $rawQty,
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -420,6 +451,7 @@ class ProductController extends Controller
                 'brand_id'        => $brandId,
                 'alert_quantity'  => $request->input('alert_quantity') ? (int)$request->input('alert_quantity') : 0,
                 'note'            => $request->input('note'),
+                'recipe_batch_yield' => (float)($request->input('recipe_batch_yield', 1) ?: 1),
                 'image'           => $imagePath,
             ]);
 
@@ -444,6 +476,7 @@ class ProductController extends Controller
                 });
 
             $defaultPrice = 0;
+            $updatedVariantMap = [];
 
             if (!empty($variantNames)) {
                 foreach ($variantNames as $index => $vName) {
@@ -495,11 +528,14 @@ class ProductController extends Controller
                         // Update existing
                         $variant = ProductVariant::findOrFail($vId);
                         $variant->update($variantData);
+                        $updatedVariantMap[$index] = $variant->id;
+                        $updatedVariantMap[$vId] = $variant->id;
                         // Stock is preserved for existing variants
                     } else {
                         // Create new
                         $variantData['stock_qty'] = $vStock;
                         $variant = ProductVariant::create($variantData);
+                        $updatedVariantMap[$index] = $variant->id;
 
                         // Insert initial stock for new variant
                         DB::table('stocks')->insert([
@@ -526,16 +562,65 @@ class ProductController extends Controller
 
             // --- Sync BOM (Bill of Materials) ---
             ProductRawMaterialBom::where('product_id', $product->id)->delete();
-            $rmIds = $request->input('raw_material_id', []);
+            $bomTypes = $request->input('bom_type', []);
+            $bomItemIds = $request->input('bom_item_id', []);
             $qtys = $request->input('qty_per_unit', []);
-            foreach ($rmIds as $i => $rmId) {
-                $qty = (float)($qtys[$i] ?? 0);
-                if ($rmId && $qty > 0) {
-                    ProductRawMaterialBom::create([
-                        'product_id' => $product->id,
-                        'raw_material_id' => $rmId,
-                        'qty_per_unit' => $qty,
-                    ]);
+            $rmIds = $request->input('raw_material_id', []);
+            $recipeYield = (float)($request->input('recipe_batch_yield', 1) ?: 1);
+
+            if (!empty($bomItemIds)) {
+                foreach ($bomItemIds as $i => $itemId) {
+                    $rawQty = (float)($qtys[$i] ?? 0);
+                    $qtyPerUnit = $recipeYield > 0 ? ($rawQty / $recipeYield) : $rawQty;
+                    $type = $bomTypes[$i] ?? 'rm';
+                    if ($itemId && $rawQty > 0) {
+                        ProductRawMaterialBom::create([
+                            'product_id' => $product->id,
+                            'variant_id' => null,
+                            'raw_material_id' => ($type === 'rm') ? $itemId : null,
+                            'ingredient_product_id' => ($type === 'product') ? $itemId : null,
+                            'qty_per_unit' => $qtyPerUnit,
+                        ]);
+                    }
+                }
+            } else {
+                foreach ($rmIds as $i => $rmId) {
+                    $rawQty = (float)($qtys[$i] ?? 0);
+                    $qtyPerUnit = $recipeYield > 0 ? ($rawQty / $recipeYield) : $rawQty;
+                    if ($rmId && $rawQty > 0) {
+                        ProductRawMaterialBom::create([
+                            'product_id' => $product->id,
+                            'variant_id' => null,
+                            'raw_material_id' => $rmId,
+                            'qty_per_unit' => $qtyPerUnit,
+                        ]);
+                    }
+                }
+            }
+
+            // --- Save Custom Variant BOMs ---
+            $variantBomTypes = $request->input('variant_bom_type', []);
+            $variantBomItemIds = $request->input('variant_bom_item_id', []);
+            $variantBomQtys = $request->input('variant_qty_per_unit', []);
+
+            if (!empty($variantBomItemIds)) {
+                foreach ($variantBomItemIds as $vKey => $itemIds) {
+                    $targetVariantId = $updatedVariantMap[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
+                    if (!$targetVariantId) continue;
+
+                    foreach ($itemIds as $j => $itemId) {
+                        $rawQty = (float)($variantBomQtys[$vKey][$j] ?? 0);
+                        $type = $variantBomTypes[$vKey][$j] ?? 'rm';
+                        if ($itemId && $rawQty > 0) {
+                            ProductRawMaterialBom::create([
+                                'product_id' => $product->id,
+                                'variant_id' => $targetVariantId,
+                                'raw_material_id' => ($type === 'rm') ? $itemId : null,
+                                'ingredient_product_id' => ($type === 'product') ? $itemId : null,
+                                'qty_per_unit' => $rawQty,
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -550,19 +635,20 @@ class ProductController extends Controller
 
     public function edit($id)
     {
-        $product = Product::with(['category_relation', 'sub_category_relation', 'unit', 'brand', 'variants', 'bom.rawMaterial'])->findOrFail($id);
+        $product = Product::with(['category_relation', 'sub_category_relation', 'unit', 'brand', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct'])->findOrFail($id);
         $categories = Category::select('id', 'name')->get();
         $units = Unit::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->get();
         $subcategories = SubCategory::where('category_id', $product->category_id)->get();
         $rawMaterials = RawMaterial::orderBy('name')->get();
+        $allProducts = Product::where('id', '!=', $id)->select('id', 'item_code', 'item_name', 'unit_type')->orderBy('item_name')->get();
 
-        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'units', 'rawMaterials'));
+        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'units', 'rawMaterials', 'allProducts'));
     }
 
     public function getBom($id)
     {
-        $bom = ProductRawMaterialBom::with('rawMaterial')->where('product_id', $id)->get();
+        $bom = ProductRawMaterialBom::with(['rawMaterial', 'ingredientProduct'])->where('product_id', $id)->get();
         return response()->json($bom);
     }
 
@@ -638,12 +724,13 @@ class ProductController extends Controller
 
     public function getAllProductsForSearch()
     {
-        $products = Product::with(['brand', 'variants'])
-            ->select('id', 'item_name', 'item_code', 'barcode_path', 'price', 'unit_id', 'brand_id', 'note')
+        $products = Product::with(['brand', 'variants', 'unit'])
+            ->select('id', 'item_name', 'item_code', 'barcode_path', 'price', 'unit_id', 'unit_type', 'brand_id', 'note')
             ->get();
 
         $results = [];
         foreach ($products as $p) {
+            $unitName = $p->unit->name ?? ($p->unit_type ? strtoupper($p->unit_type) : 'Pc');
             if ($p->variants->count() > 0) {
                 foreach ($p->variants as $v) {
                     $results[] = [
@@ -654,6 +741,8 @@ class ProductController extends Controller
                         'barcode'    => $p->barcode_path,
                         'price'      => $v->price ?: $p->price,
                         'unit_id'    => $p->unit_id,
+                        'unit'       => $unitName,
+                        'unit_type'  => $p->unit_type,
                         'brand'      => $p->brand->name ?? '',
                         'note'       => $p->note ?? ''
                     ];
@@ -667,6 +756,8 @@ class ProductController extends Controller
                     'barcode'    => $p->barcode_path,
                     'price'      => $p->price,
                     'unit_id'    => $p->unit_id,
+                    'unit'       => $unitName,
+                    'unit_type'  => $p->unit_type,
                     'brand'      => $p->brand->name ?? '',
                     'note'       => $p->note ?? ''
                 ];
@@ -839,7 +930,7 @@ class ProductController extends Controller
                             $variant = ProductVariant::create($variantData);
                             if ($product->unit_type != 'kg') {
                                 DB::table('stocks')->insert([
-                                    'branch_id'    => 1,
+                                    'branch_id'    => active_branch_id(),
                                     'warehouse_id' => 1,
                                     'product_id'   => $product->id,
                                     'variant_id'   => $variant->id,
@@ -857,7 +948,7 @@ class ProductController extends Controller
                         $stockRec = DB::table('stocks')
                             ->where('product_id', $product->id)
                             ->whereNull('variant_id')
-                            ->where('branch_id', 1)
+                            ->where('branch_id', active_branch_id())
                             ->where('warehouse_id', 1)
                             ->first();
                         if ($stockRec) {
@@ -866,7 +957,7 @@ class ProductController extends Controller
                                 ->update(['qty' => $kgQtyGrams, 'updated_at' => now()]);
                         } else {
                             DB::table('stocks')->insert([
-                                'branch_id'    => 1,
+                                'branch_id'    => active_branch_id(),
                                 'warehouse_id' => 1,
                                 'product_id'   => $product->id,
                                 'variant_id'   => null,

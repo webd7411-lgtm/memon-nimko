@@ -8,11 +8,19 @@ if (!function_exists('active_branch_id')) {
      */
     function active_branch_id(): int
     {
+        if (auth()->check()) {
+            $user = auth()->user();
+            $isSuperAdmin = ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin'));
+            if (!$isSuperAdmin && !empty($user->branch_id)) {
+                return (int) $user->branch_id;
+            }
+        }
+
         if (session()->has('active_branch_id') && session('active_branch_id') !== 'all') {
             return (int) session('active_branch_id');
         }
 
-        if (auth()->check() && auth()->user()->branch_id) {
+        if (auth()->check() && !empty(auth()->user()->branch_id)) {
             return (int) auth()->user()->branch_id;
         }
 
@@ -26,6 +34,13 @@ if (!function_exists('is_all_branches')) {
      */
     function is_all_branches(): bool
     {
+        if (auth()->check()) {
+            $user = auth()->user();
+            $isSuperAdmin = ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin'));
+            if (!$isSuperAdmin && !empty($user->branch_id)) {
+                return false;
+            }
+        }
         return session()->get('active_branch_id') === 'all';
     }
 }

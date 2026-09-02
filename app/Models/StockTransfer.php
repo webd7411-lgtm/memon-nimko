@@ -28,6 +28,16 @@ class StockTransfer extends Model
         return $this->belongsTo(Warehouse::class, 'to_warehouse_id');
     }
 
+    public function toBranch()
+    {
+        return $this->belongsTo(Branch::class, 'to_branch_id');
+    }
+
+    public function fromBranch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
     public function getProductsAttribute()
     {
         // Normalize product_id into an array

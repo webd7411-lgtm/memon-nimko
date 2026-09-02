@@ -77,9 +77,14 @@ class SaleController extends Controller
             }
 
             // 🔹 Total Records (before filtering)
-            $totalRecords = auth()->user()->hasRole('Admin')
-                ? Sale::count()
-                : Sale::where('user_id', auth()->id())->count();
+            $totalRecordsQuery = Sale::query();
+            if (!is_all_branches()) {
+                $totalRecordsQuery->where('branch_id', active_branch_id());
+            }
+            if (!auth()->user()->hasRole('Admin')) {
+                $totalRecordsQuery->where('user_id', auth()->id());
+            }
+            $totalRecords = $totalRecordsQuery->count();
             
             // 🔹 Filtered Records
             $filteredRecords = $query->count();
@@ -194,10 +199,12 @@ class SaleController extends Controller
 
                 // Status Badge
                 $statusBadge = '<span class="badge bg-secondary">Unknown</span>';
-                if($sale->sale_status === null) 
+                if($sale->sale_status === null || $sale->sale_status == 0) 
                     $statusBadge = '<span class="badge bg-success">Sale</span>';
                 elseif($sale->sale_status == 1) 
                     $statusBadge = '<span class="badge bg-danger">Return</span>';
+                elseif($sale->sale_status == 2) 
+                    $statusBadge = '<span class="badge" style="background:#8e44ad; color:#fff;">Exchange</span>';
 
                 // Action Buttons
                 $actions = '<div class="btn-group btn-group-sm" role="group">
@@ -239,15 +246,25 @@ class SaleController extends Controller
             ->where('date', date('Y-m-d'))
             ->value('amount') ?? 0;
 
-        // Calculate today's sales for the logged-in user
-        $todaySales = Sale::where('user_id', auth()->id())
-            ->whereDate('created_at', date('Y-m-d'))
-            ->sum('total_bill_amount');
+        // Calculate today's sales
+        $todaySalesQuery = Sale::query()->whereDate('created_at', date('Y-m-d'));
+        if (!is_all_branches()) {
+            $todaySalesQuery->where('branch_id', active_branch_id());
+        }
+        if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
+            $todaySalesQuery->where('user_id', auth()->id());
+        }
+        $todaySales = $todaySalesQuery->sum('total_bill_amount');
 
-        // Calculate today's expenses for the logged-in user
-        $todayExpense = \App\Models\ExpenseVoucher::where('user_id', auth()->id())
-            ->whereDate('date', date('Y-m-d'))
-            ->sum('total_amount');
+        // Calculate today's expenses
+        $todayExpenseQuery = \App\Models\ExpenseVoucher::query()->whereDate('date', date('Y-m-d'));
+        if (!is_all_branches()) {
+            $todayExpenseQuery->where('branch_id', active_branch_id());
+        }
+        if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
+            $todayExpenseQuery->where('user_id', auth()->id());
+        }
+        $todayExpense = $todayExpenseQuery->sum('total_amount');
 
         $netCash = $openingBalance + $todaySales - $todayExpense;
 
@@ -398,6 +415,77 @@ class SaleController extends Controller
         });
 
         return response()->json(['data' => $items]);
+    }
+
+    public function searchInvoiceForExchange(Request $request)
+    {
+        $query = trim($request->get('q', ''));
+        if (empty($query)) {
+            return response()->json(['success' => false, 'message' => 'Please enter Invoice Number']);
+        }
+
+        $sale = Sale::with(['customer_relation'])
+            ->where(function($q) use ($query) {
+                $q->where('invoice_no', $query)
+                  ->orWhere('invoice_no', 'like', "%{$query}%")
+                  ->orWhere('id', $query);
+            })
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$sale) {
+            return response()->json(['success' => false, 'message' => 'Invoice not found']);
+        }
+
+        $products = explode(',', $sale->product);
+        $codes = explode(',', $sale->product_code);
+        $brands = explode(',', $sale->brand);
+        $units = explode(',', $sale->unit);
+        $prices = explode(',', $sale->per_price);
+        $discounts = explode(',', $sale->per_discount);
+        $qtys = explode(',', $sale->qty);
+        $totals = explode(',', $sale->per_total);
+        $variant_ids = explode(',', $sale->variant_id ?? '');
+
+        $productMap = Product::whereIn('id', array_filter($products))->get()->keyBy('id');
+        $variantMap = \App\Models\ProductVariant::whereIn('id', array_filter($variant_ids))->pluck('variant_name', 'id');
+
+        $items = [];
+        foreach ($products as $index => $pid) {
+            if (empty($pid)) continue;
+            $qty = floatval($qtys[$index] ?? 0);
+            if ($qty <= 0) continue; // Only positive items can be returned
+
+            $prod = $productMap->get($pid);
+            $vId = $variant_ids[$index] ?? '';
+            $name = $prod ? $prod->item_name : $pid;
+            if ($vId && isset($variantMap[$vId])) {
+                $name .= ' (' . $variantMap[$vId] . ')';
+            }
+
+            $items[] = [
+                'prod_id'    => $pid,
+                'var_id'     => $vId,
+                'name'       => $name,
+                'code'       => $codes[$index] ?? '',
+                'brand'      => $brands[$index] ?? '',
+                'unit'       => $units[$index] ?? '',
+                'price'      => floatval($prices[$index] ?? 0),
+                'disc'       => floatval($discounts[$index] ?? 0),
+                'qty'        => $qty,
+                'total'      => floatval($totals[$index] ?? 0),
+                'unit_type'  => $prod ? ($prod->unit_type ?? 'piece') : 'piece'
+            ];
+        }
+
+        return response()->json([
+            'success'      => true,
+            'sale_id'      => $sale->id,
+            'invoice_no'   => $sale->invoice_no,
+            'customer'     => $sale->customer_relation->customer_name ?? 'Walk-in Customer',
+            'date'         => \Carbon\Carbon::parse($sale->created_at)->format('d-m-Y h:i A'),
+            'items'        => $items,
+        ]);
     }
 
     public function getProductVariants($id)
@@ -728,7 +816,7 @@ class SaleController extends Controller
         foreach ($product_ids as $i => $pid) {
             $q = isset($qtys[$i]) ? floatval($qtys[$i]) : 0;
             $p = isset($prices[$i]) ? floatval($prices[$i]) : 0;
-            if (!empty($pid) && $q > 0 && $p > 0) {
+            if (!empty($pid) && $q != 0 && $p > 0) {
                 $hasRow = true;
                 break;
             }
@@ -769,6 +857,7 @@ class SaleController extends Controller
             $variant_ids = is_array($request->variant_id) ? $request->variant_id : [];
 
             $total_items = 0;
+            $hasExchangeReturn = false;
 
             // Pre-fetch all necessary models to avoid N+1 queries inside the loop
             $unique_product_ids = array_unique(array_filter($product_ids));
@@ -781,12 +870,16 @@ class SaleController extends Controller
             $stocksMap = \App\Models\Stock::whereIn('product_id', $unique_product_ids)->get()->keyBy('product_id');
 
             foreach ($product_ids as $index => $product_id) {
-                $qty   = isset($quantities[$index]) ? $quantities[$index] : 0;
-                $price = isset($prices[$index]) ? $prices[$index] : 0;
+                $qty   = isset($quantities[$index]) ? floatval($quantities[$index]) : 0;
+                $price = isset($prices[$index]) ? floatval($prices[$index]) : 0;
 
-                // skip incomplete rows
-                if (empty($product_id) || $qty <= 0 || $price <= 0) {
+                // skip incomplete rows (allow negative qty for exchange returns)
+                if (empty($product_id) || $qty == 0 || $price <= 0) {
                     continue;
+                }
+
+                if ($qty < 0) {
+                    $hasExchangeReturn = true;
                 }
 
                 $combined_product_ids[] = $product_id;
@@ -934,6 +1027,9 @@ class SaleController extends Controller
                 $model->user_id = auth()->id();
                 $model->order_type = $request->order_type ?? 'Walk-in';
                 $model->table_id = $request->table_id ?? null;
+                if ($hasExchangeReturn) {
+                    $model->sale_status = 2; // 2 = Exchange
+                }
             }
             
             // Table status logic for Dine-in
@@ -1960,8 +2056,8 @@ class SaleController extends Controller
 
             $qty = (float) ($qtys[$index] ?? 0);
 
-            // ❌ returned item → skip
-            if ($qty <= 0) {
+            // ❌ skip empty/zero qty
+            if ($qty == 0) {
                 continue;
             }
             

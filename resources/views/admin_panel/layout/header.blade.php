@@ -1,3 +1,65 @@
+<style>
+/* ══════════ RESPONSIVE HEADER STYLING ══════════ */
+@media (max-width: 991.98px) {
+    .top_nav .container {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        flex-wrap: nowrap !important;
+    }
+    .rt_logo img {
+        max-height: 32px !important;
+        width: auto !important;
+    }
+    .navbar-nav-right {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 6px !important;
+        margin-left: auto !important;
+        margin-right: 4px !important;
+    }
+    .nav-bell-link {
+        margin-right: 4px !important;
+        font-size: 1.05rem !important;
+        padding: 3px !important;
+    }
+    .branch-switch-container {
+        max-width: 120px !important;
+    }
+    .branch-switch-container select {
+        font-size: 0.72rem !important;
+        padding-left: 4px !important;
+        padding-right: 18px !important;
+        height: 30px !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+    .branch-switch-container .input-group-text {
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        font-size: 0.72rem !important;
+        height: 30px !important;
+    }
+    .nav-profile {
+        margin-left: 2px !important;
+    }
+    .nav-profile .profile_name {
+        max-width: 75px !important;
+        display: inline-block !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        vertical-align: middle !important;
+        font-size: 0.75rem !important;
+        color: #ffffff !important;
+    }
+    #mobileNavToggle {
+        padding: 2px 4px !important;
+        margin-left: 2px !important;
+    }
+}
+</style>
+
 <div class="container-scroller">
 
     <nav class="rt_nav_header horizontal-layout col-lg-12 col-12 p-0">
@@ -7,31 +69,63 @@
                     <a class="nav_logo rt_logo" href="{{ url('/home') }}">
                         <img src="{{ asset('assets/images/logo.png') }}" alt="logo" /></a>
                 </div>
-                    <ul class="navbar-nav navbar-nav-right mr-0 ml-auto align-items-center">
-                        <li class="nav-item me-3 d-flex align-items-center">
+                    <ul class="navbar-nav navbar-nav-right mr-0 ml-auto align-items-center flex-row">
+                        <li class="nav-item me-2 d-flex align-items-center">
+                            @php
+                                $headerPendingCount = 0;
+                                if (auth()->check()) {
+                                    $headerPendingCount = \App\Models\StockTransfer::where('status', 'pending')
+                                        ->when(!is_all_branches(), function($q) {
+                                            $q->where('to_branch_id', active_branch_id());
+                                        })->count();
+                                }
+                            @endphp
+                            <a href="{{ route('stock_transfers.index') }}" 
+                               class="text-white nav-bell-link position-relative d-inline-flex align-items-center text-decoration-none me-2" 
+                               title="Pending Stock Transfers"
+                               style="font-size: 1.15rem; line-height: 1; padding: 4px;">
+                                <i class="fas fa-bell"></i>
+                                <span class="badge rounded-pill bg-danger shadow position-absolute {{ $headerPendingCount > 0 ? '' : 'd-none' }}" 
+                                      id="navTransferBadge" 
+                                      style="font-size: 0.65rem; top: -4px; right: -6px; padding: 2px 5px; border: 1.5px solid #ffffff;">
+                                    {{ $headerPendingCount }}
+                                </span>
+                            </a>
+
                             <form action="{{ route('branch.switch') }}" method="POST" id="branchSwitchForm" class="d-flex align-items-center mb-0">
                                 @csrf
-                                <div class="input-group input-group-sm shadow-sm" style="border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2);">
+                                <div class="input-group input-group-sm shadow-sm branch-switch-container" style="border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2);">
                                     <span class="input-group-text bg-primary text-white border-0 px-2">
                                         <i class="fas fa-store"></i>
                                     </span>
                                     <select name="branch_id" onchange="document.getElementById('branchSwitchForm').submit()" 
                                             class="form-select form-select-sm border-0 font-weight-bold" 
                                             style="background-color: #f8fafc; color: #0f172a; cursor: pointer; padding-left: 8px; padding-right: 25px; height: 32px;">
-                                        @if(auth()->user()->email === 'admin@admin.com' || (auth()->check() && auth()->user()->hasRole('Super Admin')))
-                                            <option value="all" {{ is_all_branches() ? 'selected' : '' }}>🏢 All Branches (Consolidated)</option>
-                                        @endif
-                                        @foreach(\App\Models\Branch::all() as $branch)
-                                            <option value="{{ $branch->id }}" {{ (!is_all_branches() && active_branch_id() == $branch->id) ? 'selected' : '' }}>
-                                                📍 {{ $branch->name }}
+                                        @php
+                                            $isSuperAdminUser = auth()->check() && (auth()->user()->email === 'admin@admin.com' || auth()->user()->hasRole('Super Admin'));
+                                        @endphp
+                                        @if($isSuperAdminUser)
+                                            <option value="all" {{ is_all_branches() ? 'selected' : '' }}>🏢 All Branches</option>
+                                            @foreach(\App\Models\Branch::all() as $branch)
+                                                <option value="{{ $branch->id }}" {{ (!is_all_branches() && active_branch_id() == $branch->id) ? 'selected' : '' }}>
+                                                    📍 {{ $branch->name }}
+                                                </option>
+                                            @endforeach
+                                        @else
+                                            @php
+                                                $uBranchId = active_branch_id();
+                                                $uBranch = \App\Models\Branch::find($uBranchId);
+                                            @endphp
+                                            <option value="{{ $uBranchId }}" selected>
+                                                📍 {{ $uBranch->name ?? 'Main Branch' }}
                                             </option>
-                                        @endforeach
+                                        @endif
                                     </select>
                                 </div>
                             </form>
                         </li>
                         <li class="nav-item nav-profile dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"
+                            <a class="nav-link dropdown-toggle p-0" href="#" data-bs-toggle="dropdown"
                                 id="profileDropdown" aria-expanded="false">
                                 <span class="profile_name">{{ Auth::user()->name }} <i
                                         class="feather ft-chevron-down"></i></span>
@@ -59,10 +153,12 @@
         <div class="nav-bottom">
             <div class="container">
                 <ul class="nav page-navigation">
+                    @can('Dashboard')
                     <li class="nav-item">
                         <a href="{{ url('/home') }}" class="nav-link"><i
                                 class="menu_icon feather ft-home"></i><span class="menu-title">Dashboard</span></a>
                     </li>
+                    @endcan
 
                     @canany(['Sales'])
                     <li class="nav-item">
@@ -72,7 +168,7 @@
                     </li>
                     @endcanany
 
-                    @canany(['Products','Category','Sub Category','Brands','Purchase','Purchase Return','Vendor','List Warehouse','Warehouse Stock','Stock Transfer','Sales','Sale Return','Bookings','Customer'])
+                    @canany(['Products','Category','Sub Category','Brands','Purchase','Purchase Return','Vendor','List Warehouse','Warehouse Stock','Stock Transfer','Sales','Sale Return','Bookings','Customer','Production','Raw Materials','Stock Adjustment'])
                     <li class="nav-item mega-menu">
                         <a href="#" class="nav-link">
                             <i class="menu_icon fas fa-user-shield"></i>
@@ -102,17 +198,23 @@
                                 </div>
                                 @endcanany
 
-                                @canany(['Purchase','Purchase Return','Vendor'])
+                                @canany(['Purchase','Purchase Return','Vendor','Production','Raw Materials','Stock Adjustment'])
                                 <!-- Purchase & Inventory -->
                                 <div class="col-group col-md-3">
                                     <p class="category-heading">Purchase & Inventory</p>
                                     <ul class="submenu-item">
                                         @can('Purchase')
                                         <li><a href="{{ route('Purchase.home') }}"><i class="fas fa-shopping-cart"></i> Purchase</a></li>
-                                        <li><a href="{{ route('production.index') }}"><i class="fas fa-industry"></i> Own Production</a></li>
-                                        <li><a href="{{ route('raw-materials.index') }}"><i class="fas fa-database"></i> Raw Materials</a></li>
-                                        <li><a href="{{ route('stock-adjustment.index') }}"><i class="fas fa-sliders-h"></i> Stock Adjustment</a></li>
                                         @endcan
+                                        @canany(['Production','Purchase'])
+                                        <li><a href="{{ route('production.index') }}"><i class="fas fa-industry"></i> Own Production</a></li>
+                                        @endcanany
+                                        @canany(['Raw Materials','Purchase'])
+                                        <li><a href="{{ route('raw-materials.index') }}"><i class="fas fa-database"></i> Raw Materials</a></li>
+                                        @endcanany
+                                        @canany(['Stock Adjustment','Purchase'])
+                                        <li><a href="{{ route('stock-adjustment.index') }}"><i class="fas fa-sliders-h"></i> Stock Adjustment</a></li>
+                                        @endcanany
                                         @can('Purchase Return')
                                         <li><a href="{{ route('purchase.return.index') }}"><i class="fas fa-undo"></i> Purchase Return</a></li>
                                         @endcan
@@ -246,7 +348,12 @@
                                 @can('Item Stock Report')
                                 <li>
                                     <a href="{{ route('report.item_stock') }}">
-                                        <i class="fa-solid fa-users"></i> Item Stock Report
+                                        <i class="fa-solid fa-boxes"></i> Item Stock Report
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('report.branch_stock') }}">
+                                        <i class="fa-solid fa-store"></i> Branch Stock Matrix
                                     </a>
                                 </li>
                                 @endcan
@@ -371,3 +478,17 @@
             </div>
         </div>
     </nav>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var mobileBtn = document.getElementById('mobileNavToggle');
+    if (mobileBtn) {
+        mobileBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var navBottom = document.querySelector('.rt_nav_header.horizontal-layout .nav-bottom');
+            if (navBottom) {
+                navBottom.classList.toggle('header-toggled');
+            }
+        });
+    }
+});
+</script>

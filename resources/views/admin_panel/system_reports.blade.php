@@ -848,7 +848,14 @@
             },
             xaxis: {
                 categories: categoryStockData.categories,
-                labels: { style: { colors: '#64748b', fontSize: '12px', fontWeight: 600 } },
+                labels: {
+                    rotate: -45,
+                    rotateAlways: true,
+                    hideOverlappingLabels: true,
+                    trim: true,
+                    maxHeight: 100,
+                    style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 }
+                },
                 axisBorder: { show: false },
                 axisTicks: { show: false }
             },

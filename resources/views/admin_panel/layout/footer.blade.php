@@ -254,30 +254,59 @@
             });
         }, 10000); 
     </script>
+    @endif
 
+    @if(auth()->check())
     <script>
-        // Poll for Stock Transfer Notifications every 12 seconds
+        function playTransferChime() {
+            try {
+                let ctx = new (window.AudioContext || window.webkitAudioContext)();
+                let osc = ctx.createOscillator();
+                let gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+            } catch(e) {
+                console.log('Audio alert playback prevented or unsupported');
+            }
+        }
+
+        // Poll for Stock Transfer Notifications every 8 seconds for all logged-in branch users
         setInterval(function(){
             $.get("{{ route('notifications.check_transfers') }}", function(data){
                 if(data && data.length > 0){
+                    playTransferChime();
+
                     let last = data[0];
-                    let from = last.from_warehouse ? last.from_warehouse.warehouse_name : 'Shop';
-                    let to = last.to_warehouse ? last.to_warehouse.warehouse_name : (last.transfer_to == 'shop' ? 'Shop' : 'N/A');
+                    let from = last.from_warehouse ? last.from_warehouse.warehouse_name : (last.from_branch ? last.from_branch.name : 'Sending Branch');
+                    let to = last.to_branch ? last.to_branch.name : (last.to_warehouse ? last.to_warehouse.warehouse_name : 'Shop');
                     
-                    let msg = `New Stock Transfer!\nFrom: ${from}\nTo: ${to}`;
+                    let msg = `Dispatched From: ${from}\nTarget: ${to}\nStatus: Pending Acceptance`;
                     
-                    // Show Notification
+                    let currentBadge = $('#navTransferBadge');
+                    if (currentBadge.length) {
+                        let curCount = parseInt(currentBadge.text()) || 0;
+                        let newCount = curCount + data.length;
+                        currentBadge.text(newCount).removeClass('d-none');
+                    }
+
                     Swal.fire({
-                        title: 'Stock Transfer Alert!',
+                        title: '🔔 Incoming Stock Dispatched!',
                         text: msg,
                         icon: 'info',
                         toast: true,
                         position: 'top-end',
                         showConfirmButton: true,
-                        confirmButtonText: 'Check Now',
+                        confirmButtonText: 'View & Accept',
                         showCancelButton: true,
                         cancelButtonText: 'Dismiss',
-                        timer: 15000,
+                        timer: 20000,
                         timerProgressBar: true
                     }).then((result) => {
                         if (result.isConfirmed) {
@@ -285,7 +314,6 @@
                         }
                     });
 
-                    // Mark as notified
                     let ids = [];
                     data.forEach(function(item){ ids.push(item.id); });
 
@@ -302,7 +330,7 @@
                     });
                 }
             });
-        }, 12000); 
+        }, 8000); 
     </script>
     @endif
 

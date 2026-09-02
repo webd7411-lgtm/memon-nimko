@@ -12,7 +12,7 @@ class WarehouseStockController extends Controller
 {
     public function index(Request $request)
     {
-        $branchId  = auth()->id();
+        $branchId  = active_branch_id();
         $type      = $request->stock_type ?? 'all';
         $startDate = $request->start_date;
         $endDate   = $request->end_date;

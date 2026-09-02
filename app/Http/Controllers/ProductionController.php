@@ -15,14 +15,61 @@ class ProductionController extends Controller
 {
     public function index()
     {
-        $entries = DB::table('production_entries as pe')
-            ->leftJoin('users as u', 'u.id', '=', 'pe.created_by')
-            ->select('pe.*', 'u.name as user_name',
-                DB::raw('(SELECT COUNT(*) FROM production_entry_items WHERE production_entry_id = pe.id) as items_count'),
-                DB::raw("(SELECT GROUP_CONCAT(CONCAT(p.item_name, IF(pv.size_label IS NULL AND pv.variant_name IS NULL, '', CONCAT(' ', COALESCE(pv.size_label, pv.variant_name))), ' (', pei.qty_entered, ' ', pei.unit, ')') SEPARATOR ', ') FROM production_entry_items pei JOIN products p ON p.id = pei.product_id LEFT JOIN product_variants pv ON pv.id = pei.variant_id WHERE pei.production_entry_id = pe.id) as product_details")
-            )
+        $query = DB::table('production_entries as pe')
+            ->leftJoin('users as u', 'u.id', '=', 'pe.created_by');
+
+        if (!is_all_branches()) {
+            $query->where('pe.branch_id', active_branch_id());
+        }
+
+        $entries = $query->select('pe.*', 'u.name as user_name')
             ->orderBy('pe.created_at', 'desc')
             ->get();
+
+        if ($entries->isNotEmpty()) {
+            $entryIds = $entries->pluck('id');
+            $items = DB::table('production_entry_items as pei')
+                ->leftJoin('products as p', 'p.id', '=', 'pei.product_id')
+                ->leftJoin('product_variants as pv', 'pv.id', '=', 'pei.variant_id')
+                ->leftJoin('units as u', 'u.id', '=', 'p.unit_id')
+                ->whereIn('pei.production_entry_id', $entryIds)
+                ->select('pei.*', 'p.item_name', 'p.unit_type', 'u.name as unit_name', 'pv.size_label', 'pv.variant_name', 'pv.size_value')
+                ->get()
+                ->groupBy('production_entry_id');
+
+            foreach ($entries as $entry) {
+                $entryItems = $items->get($entry->id, collect());
+                $entry->items_count = $entryItems->count();
+
+                $details = [];
+                foreach ($entryItems as $item) {
+                    $pName = $item->item_name ?? 'Unknown';
+                    $vName = $item->size_label ?: $item->variant_name;
+                    $unitName = $item->unit ?? $item->unit_name ?? 'Pc';
+
+                    $isKg = ($item->unit_type === 'kg') || str_contains(strtolower($unitName), 'kg');
+
+                    if ($isKg) {
+                        $totalKg = floatval($item->qty_stock) / 1000;
+                        $formattedQty = ($totalKg == (int)$totalKg) ? number_format($totalKg, 0) : rtrim(rtrim(number_format($totalKg, 3), '0'), '.');
+                        $displayUnit = 'KG';
+                    } else {
+                        $qty = floatval($item->qty_stock);
+                        $formattedQty = ($qty == (int)$qty) ? number_format($qty, 0) : rtrim(rtrim(number_format($qty, 3), '0'), '.');
+                        $displayUnit = $unitName;
+                    }
+
+                    $str = $pName;
+                    if (!empty($vName)) {
+                        $str .= ' ' . $vName;
+                    }
+                    $str .= ' (' . $formattedQty . ' ' . $displayUnit . ')';
+                    $details[] = $str;
+                }
+
+                $entry->product_details = implode(', ', $details);
+            }
+        }
 
         return view('admin_panel.production.index', compact('entries'));
     }
@@ -68,8 +115,10 @@ class ProductionController extends Controller
             }
 
             $totalProductionCost = $totalItemCost + $totalRmCost;
+            $currentBranchId = active_branch_id();
 
             $entryId = DB::table('production_entries')->insertGetId([
+                'branch_id' => $currentBranchId,
                 'entry_no' => 'PROD-' . date('Ymd-His'),
                 'production_date' => $request->production_date,
                 'source' => $request->source ?? 'kitchen',
@@ -121,7 +170,7 @@ class ProductionController extends Controller
                     'production_entry_id' => $entryId,
                     'product_id' => $productId,
                     'variant_id' => $variantId,
-                    'unit' => $product->unit->name ?? 'Pc',
+                    'unit' => $product->unit->name ?? ($product->unit_type ? strtoupper($product->unit_type) : 'Pc'),
                     'qty_entered' => $qtyTyped,
                     'qty_stock' => $qtyStock,
                     'notes' => $request->item_note[$index] ?? null,
@@ -131,7 +180,7 @@ class ProductionController extends Controller
 
                 // Update Stock
                 $stockQuery = Stock::where('product_id', $productId)
-                    ->where('branch_id', 1)
+                    ->where('branch_id', $currentBranchId)
                     ->where('warehouse_id', 1);
 
                 if ($dbVariantId) {
@@ -149,14 +198,14 @@ class ProductionController extends Controller
                     Stock::create([
                         'product_id' => $productId,
                         'variant_id' => $dbVariantId,
-                        'branch_id' => 1,
+                        'branch_id' => $currentBranchId,
                         'warehouse_id' => 1,
                         'qty' => $qtyStock,
                     ]);
                 }
             }
 
-            // Insert raw material usage and deduct from raw material stock
+            // Insert raw material / product ingredient usage and deduct stock
             if ($request->has('rm_id')) {
                 foreach ($request->rm_id as $ri => $rmId) {
                     if (!$rmId) continue;
@@ -165,20 +214,60 @@ class ProductionController extends Controller
 
                     $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
                     $totalCost = $qtyUsed * $costPerUnit;
+                    $rmType = $request->rm_type[$ri] ?? 'rm';
 
-                    DB::table('production_raw_material_usage')->insert([
-                        'production_entry_id' => $entryId,
-                        'raw_material_id' => $rmId,
-                        'qty_used' => $qtyUsed,
-                        'cost_per_unit' => $costPerUnit,
-                        'total_cost' => $totalCost,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                    if ($rmType === 'product') {
+                        DB::table('production_raw_material_usage')->insert([
+                            'production_entry_id' => $entryId,
+                            'raw_material_id' => null,
+                            'ingredient_product_id' => $rmId,
+                            'qty_used' => $qtyUsed,
+                            'cost_per_unit' => $costPerUnit,
+                            'total_cost' => $totalCost,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
 
-                    // Deduct from raw material stock
-                    $rmStock = RawMaterialStock::where('raw_material_id', $rmId)->first();
-                    if ($rmStock) {
+                        $pModel = Product::find($rmId);
+                        $isKg = $pModel && ($pModel->unit_type === 'kg');
+                        $deductStockQty = $isKg ? ($qtyUsed * 1000) : $qtyUsed;
+
+                        $prodStock = Stock::firstOrCreate(
+                            [
+                                'product_id' => $rmId,
+                                'branch_id' => $currentBranchId,
+                                'warehouse_id' => 1,
+                                'variant_id' => null,
+                            ],
+                            ['qty' => 0]
+                        );
+                        $prodStock->qty -= $deductStockQty;
+                        $prodStock->save();
+                    } else {
+                        DB::table('production_raw_material_usage')->insert([
+                            'production_entry_id' => $entryId,
+                            'raw_material_id' => $rmId,
+                            'ingredient_product_id' => null,
+                            'qty_used' => $qtyUsed,
+                            'cost_per_unit' => $costPerUnit,
+                            'total_cost' => $totalCost,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        $rmStock = RawMaterialStock::where('raw_material_id', $rmId)
+                            ->where(function($q) {
+                                $q->where('warehouse_id', 1)->orWhereNull('warehouse_id');
+                            })
+                            ->orderByRaw('warehouse_id DESC')
+                            ->first();
+
+                        if (!$rmStock) {
+                            $rmStock = RawMaterialStock::firstOrCreate(
+                                ['raw_material_id' => $rmId],
+                                ['qty' => 0]
+                            );
+                        }
                         $rmStock->qty -= $qtyUsed;
                         $rmStock->save();
                     }
@@ -224,6 +313,7 @@ class ProductionController extends Controller
 
         try {
             DB::beginTransaction();
+            $currentBranchId = active_branch_id();
 
             // 1. Reverse old finished goods stock
             $oldItems = DB::table('production_entry_items')->where('production_entry_id', $id)->get();
@@ -232,7 +322,7 @@ class ProductionController extends Controller
                 $oldIsGram = $oldProduct && ($oldProduct->unit_type === 'kg' || str_contains(strtolower($oldProduct->item_name), 'gram'));
 
                 $stockQuery = Stock::where('product_id', $oi->product_id)
-                    ->where('branch_id', 1)
+                    ->where('branch_id', $currentBranchId)
                     ->where('warehouse_id', 1);
 
                 if ($oldIsGram || !$oi->variant_id) {
@@ -248,11 +338,39 @@ class ProductionController extends Controller
                 }
             }
 
-            // 2. Reverse old raw material stock
+            // 2. Reverse old raw material / product ingredient stock
             $oldRmUsage = DB::table('production_raw_material_usage')->where('production_entry_id', $id)->get();
             foreach ($oldRmUsage as $rmu) {
-                $rmStock = RawMaterialStock::where('raw_material_id', $rmu->raw_material_id)->first();
-                if ($rmStock) {
+                if ($rmu->ingredient_product_id) {
+                    $pModel = Product::find($rmu->ingredient_product_id);
+                    $isKg = $pModel && ($pModel->unit_type === 'kg');
+                    $addStockQty = $isKg ? ($rmu->qty_used * 1000) : $rmu->qty_used;
+
+                    $prodStock = Stock::firstOrCreate(
+                        [
+                            'product_id' => $rmu->ingredient_product_id,
+                            'branch_id' => $currentBranchId,
+                            'warehouse_id' => 1,
+                            'variant_id' => null,
+                        ],
+                        ['qty' => 0]
+                    );
+                    $prodStock->qty += $addStockQty;
+                    $prodStock->save();
+                } else if ($rmu->raw_material_id) {
+                    $rmStock = RawMaterialStock::where('raw_material_id', $rmu->raw_material_id)
+                        ->where(function($q) {
+                            $q->where('warehouse_id', 1)->orWhereNull('warehouse_id');
+                        })
+                        ->orderByRaw('warehouse_id DESC')
+                        ->first();
+
+                    if (!$rmStock) {
+                        $rmStock = RawMaterialStock::firstOrCreate(
+                            ['raw_material_id' => $rmu->raw_material_id],
+                            ['qty' => 0]
+                        );
+                    }
                     $rmStock->qty += $rmu->qty_used;
                     $rmStock->save();
                 }
@@ -330,7 +448,7 @@ class ProductionController extends Controller
                     'production_entry_id' => $id,
                     'product_id' => $productId,
                     'variant_id' => $variantId,
-                    'unit' => $product->unit->name ?? 'Pc',
+                    'unit' => $product->unit->name ?? ($product->unit_type ? strtoupper($product->unit_type) : 'Pc'),
                     'qty_entered' => $qtyTyped,
                     'qty_stock' => $qtyStock,
                     'notes' => $request->item_note[$index] ?? null,
@@ -339,7 +457,7 @@ class ProductionController extends Controller
                 ]);
 
                 $stockQuery = Stock::where('product_id', $productId)
-                    ->where('branch_id', 1)
+                    ->where('branch_id', $currentBranchId)
                     ->where('warehouse_id', 1);
 
                 if ($dbVariantId) {
@@ -356,14 +474,14 @@ class ProductionController extends Controller
                     Stock::create([
                         'product_id' => $productId,
                         'variant_id' => $dbVariantId,
-                        'branch_id' => 1,
+                        'branch_id' => $currentBranchId,
                         'warehouse_id' => 1,
                         'qty' => $qtyStock,
                     ]);
                 }
             }
 
-            // 6. Insert raw material usage + deduct stock
+            // 6. Insert raw material / product ingredient usage + deduct stock
             if ($request->has('rm_id')) {
                 foreach ($request->rm_id as $ri => $rmId) {
                     if (!$rmId) continue;
@@ -372,19 +490,61 @@ class ProductionController extends Controller
 
                     $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
                     $totalCost = $qtyUsed * $costPerUnit;
+                    $rmType = $request->rm_type[$ri] ?? 'rm';
 
-                    DB::table('production_raw_material_usage')->insert([
-                        'production_entry_id' => $id,
-                        'raw_material_id' => $rmId,
-                        'qty_used' => $qtyUsed,
-                        'cost_per_unit' => $costPerUnit,
-                        'total_cost' => $totalCost,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                    if ($rmType === 'product') {
+                        DB::table('production_raw_material_usage')->insert([
+                            'production_entry_id' => $id,
+                            'raw_material_id' => null,
+                            'ingredient_product_id' => $rmId,
+                            'qty_used' => $qtyUsed,
+                            'cost_per_unit' => $costPerUnit,
+                            'total_cost' => $totalCost,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
 
-                    $rmStock = RawMaterialStock::where('raw_material_id', $rmId)->first();
-                    if ($rmStock) {
+                        $pModel = Product::find($rmId);
+                        $isKg = $pModel && ($pModel->unit_type === 'kg');
+                        $deductStockQty = $isKg ? ($qtyUsed * 1000) : $qtyUsed;
+
+                        $prodStock = Stock::firstOrCreate(
+                            [
+                                'product_id' => $rmId,
+                                'branch_id' => $currentBranchId,
+                                'warehouse_id' => 1,
+                                'variant_id' => null,
+                            ],
+                            ['qty' => 0]
+                        );
+
+                        $prodStock->qty -= $deductStockQty;
+                        $prodStock->save();
+                    } else {
+                        DB::table('production_raw_material_usage')->insert([
+                            'production_entry_id' => $id,
+                            'raw_material_id' => $rmId,
+                            'ingredient_product_id' => null,
+                            'qty_used' => $qtyUsed,
+                            'cost_per_unit' => $costPerUnit,
+                            'total_cost' => $totalCost,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        $rmStock = RawMaterialStock::where('raw_material_id', $rmId)
+                            ->where(function($q) {
+                                $q->where('warehouse_id', 1)->orWhereNull('warehouse_id');
+                            })
+                            ->orderByRaw('warehouse_id DESC')
+                            ->first();
+
+                        if (!$rmStock) {
+                            $rmStock = RawMaterialStock::firstOrCreate(
+                                ['raw_material_id' => $rmId],
+                                ['qty' => 0]
+                            );
+                        }
                         $rmStock->qty -= $qtyUsed;
                         $rmStock->save();
                     }
@@ -418,16 +578,45 @@ class ProductionController extends Controller
 
         $rawMaterialUsage = DB::table('production_raw_material_usage as rmu')
             ->leftJoin('raw_materials as rm', 'rm.id', '=', 'rmu.raw_material_id')
+            ->leftJoin('products as p', 'p.id', '=', 'rmu.ingredient_product_id')
             ->where('rmu.production_entry_id', $id)
-            ->select('rmu.*', 'rm.name as rm_name', 'rm.unit')
+            ->select('rmu.*', 'rm.name as rm_name', 'rm.unit', 'p.item_name as p_name', 'p.item_code as p_code')
             ->get();
 
         return view('admin_panel.production.gatepass', compact('entry', 'items', 'rawMaterialUsage'));
     }
 
-    public function getBomRawMaterials($id)
+    public function getBomRawMaterials($id, Request $request)
     {
-        $bom = ProductRawMaterialBom::with('rawMaterial')->where('product_id', $id)->get();
+        $variantId = $request->query('variant_id');
+
+        $bom = collect();
+        if (!empty($variantId)) {
+            $bom = ProductRawMaterialBom::with(['rawMaterial', 'ingredientProduct'])
+                ->where('product_id', $id)
+                ->where('variant_id', $variantId)
+                ->get();
+        }
+
+        $isCustomVariantBom = true;
+        if ($bom->isEmpty()) {
+            $isCustomVariantBom = false;
+            $bom = ProductRawMaterialBom::with(['rawMaterial', 'ingredientProduct'])
+                ->where('product_id', $id)
+                ->whereNull('variant_id')
+                ->get();
+        }
+
+        foreach ($bom as $item) {
+            $item->is_custom_variant_bom = $isCustomVariantBom;
+            if ($item->rawMaterial) {
+                $item->unit_cost = $item->rawMaterial->lastPurchaseCost();
+            } elseif ($item->ingredientProduct) {
+                $item->unit_cost = (float)($item->ingredientProduct->price ?? 0);
+            } else {
+                $item->unit_cost = 0;
+            }
+        }
         return response()->json($bom);
     }
 }

@@ -254,6 +254,7 @@
             <i class="la la-search"></i>
             <input type="text" id="posSearch" placeholder="Search products…" autocomplete="off">
         </div>
+        <button type="button" class="btn-cls" style="background:#8e44ad; color:#fff; border:none; margin-right: 8px;" onclick="openExchangeModal()"><i class="la la-refresh"></i> <span>🔄 Exchange</span></button>
         <button type="button" class="btn-cls" style="background:#f39c12; color:#fff; border:none; margin-right: 10px;" onclick="showModal('tableModal')"><i class="la la-server"></i> <span>Running Orders</span></button>
         <a href="{{ route('sale.index') }}" class="btn-cls"><i class="la la-times"></i> <span>Close</span></a>
     </div>
@@ -426,6 +427,60 @@
                         </div>
                     @endforeach
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ======= EXCHANGE MODAL ======= --}}
+<div class="modal fade" id="exchangeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="mod-hdr" style="background:linear-gradient(135deg, #8e44ad, #9b59b6)">
+                <h5>🔄 Sale Exchange (سیل ایکسچینج)</h5>
+                <button type="button" class="mod-x" id="exchangeClose">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="p-3 mb-3 bg-light rounded border">
+                    <label class="form-label fw-bold text-dark" style="font-size:13px;"><i class="la la-barcode"></i> Invoice # Enter Karein ya Search Karein:</label>
+                    <div class="input-group">
+                        <input type="text" id="exInvoiceInput" class="form-control form-control-lg fw-bold" placeholder="e.g. INV-0001" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchInvoiceExchange();}">
+                        <button class="btn text-white fw-bold px-4" type="button" style="background:#8e44ad;" onclick="searchInvoiceExchange()"><i class="la la-search"></i> Search Invoice</button>
+                    </div>
+                </div>
+
+                <div id="exResultsWrap" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="background:#f3e8f9; border:1px solid #dcd0e8;">
+                        <div>
+                            <strong style="color:#8e44ad; font-size:15px;" id="exInvNo">INV-0000</strong> 
+                            <span class="ms-2 badge bg-secondary" id="exCustName">Walk-in</span> 
+                            <small class="ms-2 text-muted" id="exInvDate"></small>
+                        </div>
+                        <span class="badge" style="background:#8e44ad;">Original Sale Invoice</span>
+                    </div>
+
+                    <div class="table-responsive" style="max-height:260px; overflow-y:auto;">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th class="text-center">Sold Price</th>
+                                    <th class="text-center">Sold Qty</th>
+                                    <th class="text-center" style="width:130px;">Return Qty</th>
+                                    <th class="text-center" style="width:110px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exItemsBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between bg-light">
+                <small class="text-muted"><i class="la la-info-circle"></i> Ek se zyada items return karne ke liye 'Return' dabayein, phir 'Done' par click karein.</small>
+                <button type="button" class="btn btn-success fw-bold px-4" onclick="hideModal('exchangeModal')">✓ Done Exchange</button>
+            </div>
         </div>
     </div>
 </div>
@@ -447,11 +502,22 @@ let szModalI = null, bkModalI = null, tbModalI = null;
 /* ---- MODAL SETUP (manual show/hide to avoid BS close btn issues) ---- */
 function showModal(id) {
     const el = document.getElementById(id);
+    if (!el) return;
+    if (el.parentNode !== document.body) {
+        document.body.appendChild(el);
+    }
     el.classList.add('show');
     el.style.display = 'block';
+    el.style.zIndex = '1060';
     document.body.classList.add('modal-open');
     let bd = document.getElementById('modBackdrop');
-    if (!bd) { bd = document.createElement('div'); bd.id='modBackdrop'; bd.className='modal-backdrop fade show'; document.body.appendChild(bd); }
+    if (!bd) { 
+        bd = document.createElement('div'); 
+        bd.id='modBackdrop'; 
+        bd.className='modal-backdrop fade show'; 
+        bd.style.zIndex = '1050';
+        document.body.appendChild(bd); 
+    }
 }
 function hideModal(id) {
     const el = document.getElementById(id);
@@ -467,10 +533,20 @@ document.getElementById('szClose').onclick = () => hideModal('szModal');
 document.getElementById('bkClose').onclick = () => hideModal('bkModal');
 document.getElementById('bkCancel').onclick = () => hideModal('bkModal');
 document.getElementById('tableClose').onclick = () => hideModal('tableModal');
+document.getElementById('exchangeClose').onclick = () => hideModal('exchangeModal');
 
 document.getElementById('szModal').addEventListener('click', function(e){ if(e.target===this) hideModal('szModal'); });
 document.getElementById('bkModal').addEventListener('click', function(e){ if(e.target===this) hideModal('bkModal'); });
 document.getElementById('tableModal').addEventListener('click', function(e){ if(e.target===this) hideModal('tableModal'); });
+document.getElementById('exchangeModal').addEventListener('click', function(e){ if(e.target===this) hideModal('exchangeModal'); });
+
+function openExchangeModal() {
+    showModal('exchangeModal');
+    setTimeout(() => {
+        const input = document.getElementById('exInvoiceInput');
+        if (input) { input.focus(); input.select(); }
+    }, 100);
+}
 
 /* ---- ORDER TYPE PREFERENCE (per-user localStorage) ---- */
 const ORDER_TYPE_KEY = 'pos_order_type_user_' + CURRENT_USER_ID;
@@ -694,6 +770,7 @@ function loadProds(reset=false) {
 function makeCard(p) {
     const div = document.createElement('div');
     div.className = 'pc';
+    div.dataset.pid = p.id;
 
     const isKg   = p.unit_type === 'kg';
     const lowTh  = isKg ? 5000 : 5;
@@ -782,9 +859,16 @@ function prependRecentToGrid(grid) {
             if (json.data && json.data.length) {
                 // Prepend cards in reverse order so first is at top
                 for (let i = json.data.length - 1; i >= 0; i--) {
-                    const card = makeCard(json.data[i]);
-                    card.classList.add('recent-card');
-                    grid.prepend(card);
+                    const itemData = json.data[i];
+                    const existingCard = grid.querySelector('.pc[data-pid="' + itemData.id + '"]');
+                    if (existingCard) {
+                        existingCard.classList.add('recent-card');
+                        grid.prepend(existingCard);
+                    } else {
+                        const card = makeCard(itemData);
+                        card.classList.add('recent-card');
+                        grid.prepend(card);
+                    }
                 }
                 grid.dataset.recentLoaded = '1';
             }
@@ -1151,6 +1235,11 @@ function renderCart() {
         const tot  = rowTotal(item);
         const div  = document.createElement('div');
         div.className = 'oi';
+        if (item.qty < 0) {
+            div.style.background = '#fff0f0';
+            div.style.borderLeft = '3.5px solid #e74c3c';
+            div.style.paddingLeft = '6px';
+        }
 
         // Image cell
         const imgCell = document.createElement('div');
@@ -1160,7 +1249,7 @@ function renderCart() {
             img.src = item.image; img.alt = '';
             img.onerror = function() { this.parentElement.textContent = '\uD83E\uDDE1'; };
             imgCell.appendChild(img);
-        } else { imgCell.textContent = '🧁'; }
+        } else { imgCell.textContent = item.qty < 0 ? '🔄' : '🧁'; }
 
         // Info cell
         const infoCell = document.createElement('div');
@@ -1168,7 +1257,11 @@ function renderCart() {
 
         const nameDiv = document.createElement('div');
         nameDiv.className = 'oi-name'; nameDiv.title = item.name;
-        nameDiv.textContent = item.name;
+        if (item.qty < 0) {
+            nameDiv.innerHTML = '<span style="background:#e74c3c; color:#fff; font-size:9.5px; padding:1px 4px; border-radius:3px; font-weight:800; margin-right:3px;">RETURN</span> ' + item.name;
+        } else {
+            nameDiv.textContent = item.name;
+        }
 
         const subDiv = document.createElement('div');
         subDiv.className = 'oi-sub';
@@ -1186,7 +1279,7 @@ function renderCart() {
         qtyInput.type = 'number'; qtyInput.className = 'oi-qty';
         // Clean display of qty
         qtyInput.value = parseFloat(parseFloat(item.qty).toFixed(4)); 
-        qtyInput.min = '0.001'; qtyInput.step = 'any';
+        qtyInput.step = 'any';
         qtyInput.setAttribute('data-idx', idx);
         qtyInput.addEventListener('change', function() { setQ(parseInt(this.dataset.idx), this.value); });
 
@@ -1212,7 +1305,12 @@ function renderCart() {
 
         const totDiv = document.createElement('div');
         totDiv.className = 'oi-tot';
-        totDiv.textContent = 'Rs ' + fmt(tot);
+        if (tot < 0) {
+            totDiv.textContent = '- Rs ' + fmt(Math.abs(tot));
+            totDiv.style.color = '#e74c3c';
+        } else {
+            totDiv.textContent = 'Rs ' + fmt(tot);
+        }
 
         const delBtn = document.createElement('button');
         delBtn.type = 'button'; delBtn.className = 'oi-del'; delBtn.textContent = '×';
@@ -1233,13 +1331,34 @@ function renderCart() {
 
 
 function rowTotal(item){
+    if (item.qty < 0) {
+        return item.qty * item.price; // Negative total for return items
+    }
     let d=0; const dr=(item.disc||'').toString().trim();
     if (dr.endsWith('%')) d=item.price*(parseFloat(dr)/100)*item.qty;
     else d=(parseFloat(dr)||0)*item.qty;
     return Math.max(0,item.qty*item.price-d);
 }
-function chQ(i,d){ cart[i].qty=Math.max(0.01,(cart[i].qty||0)+d); renderCart(); recalc(); }
-function setQ(i,v){ cart[i].qty=Math.max(0.01,parseFloat(v)||0.01); recalc(); }
+function chQ(i,d){ 
+    if (cart[i].qty < 0) {
+        let nq = (cart[i].qty || 0) - d; // if minus clicked (d=-1), -1 - (-1) = 0 or -1 + 1 = 0
+        if (nq >= 0) nq = -0.01;
+        cart[i].qty = nq;
+    } else {
+        cart[i].qty = Math.max(0.01, (cart[i].qty || 0) + d);
+    }
+    renderCart(); 
+    recalc(); 
+}
+function setQ(i,v){ 
+    let p = parseFloat(v) || 0;
+    if (cart[i].is_exchange_return || cart[i].qty < 0) {
+        cart[i].qty = p > 0 ? -p : (p < 0 ? p : -0.01);
+    } else {
+        cart[i].qty = Math.max(0.01, p);
+    }
+    recalc(); 
+}
 function setP(i,v){ cart[i].price=parseFloat(v)||0; renderCart(); recalc(); }
 function delI(i){ cart.splice(i,1); renderCart(); recalc(); }
 function clearOrder(prompt = true){
@@ -1252,13 +1371,22 @@ function clearOrder(prompt = true){
 /* ---- RECALC ---- */
 function recalc(){
     let sub=0,iDisc=0,pcs=0;
-    cart.forEach(item=>{ const r=item.qty*item.price,t=rowTotal(item); sub+=t; iDisc+=r-t; pcs+=item.qty; });
+    cart.forEach(item=>{ 
+        const t=rowTotal(item); 
+        sub+=t; 
+        if (item.qty > 0) {
+            const r=item.qty*item.price; 
+            iDisc+=r-t; 
+            pcs+=item.qty; 
+        }
+    });
     const ex_pct=parseFloat(document.getElementById('extraDisc').value)||0;
-    const ex = sub * (ex_pct / 100);
+    const ex = sub > 0 ? sub * (ex_pct / 100) : 0;
     if(document.getElementById('hExtraDisc')) document.getElementById('hExtraDisc').value = ex.toFixed(2);
     const cs=parseFloat(document.getElementById('cashI').value)||0;
     const cd=parseFloat(document.getElementById('cardI').value)||0;
-    const net=Math.max(0,sub-ex), chng=(cs+cd)-net;
+    const net=sub-ex, chng=(cs+cd)-net;
+    
     document.getElementById('sSubtotal').textContent='Rs '+sub.toFixed(2);
     document.getElementById('sItemDisc').textContent='Rs '+iDisc.toFixed(2);
     document.getElementById('sNet').textContent='Rs '+net.toFixed(2);
@@ -1269,13 +1397,121 @@ function recalc(){
     document.getElementById('hChng').value=chng.toFixed(2);
     document.getElementById('hItems').value=pcs;
     document.getElementById('hPieces').value=pcs;
-    const w=n2w(Math.round(net));
+    
+    let w = '';
+    if (net > 0) {
+        w = n2w(Math.round(net));
+    } else if (net < 0) {
+        w = 'Refund to Customer: Rs ' + fmt(Math.abs(net));
+    } else {
+        w = 'Even Exchange (Zero Payable)';
+    }
     document.getElementById('wordsSpan').textContent=w||'–';
     document.getElementById('hWords').value=w;
 }
 document.getElementById('extraDisc').addEventListener('input',recalc);
 document.getElementById('cashI').addEventListener('input',recalc);
 document.getElementById('cardI').addEventListener('input',recalc);
+
+/* ---- INVOICE SEARCH FOR SALE EXCHANGE ---- */
+function searchInvoiceExchange() {
+    const q = (document.getElementById('exInvoiceInput').value || '').trim();
+    if (!q) { toast('Invoice number enter karein'); return; }
+
+    const body = document.getElementById('exItemsBody');
+    body.innerHTML = '<tr><td colspan="5" class="text-center py-3"><i class="la la-spinner la-spin" style="font-size:24px"></i> Searching invoice...</td></tr>';
+    document.getElementById('exResultsWrap').style.display = 'block';
+
+    fetch(`{{ route('pos.invoice.search') }}?q=${encodeURIComponent(q)}`)
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3"><i class="la la-exclamation-circle"></i> ${data.message}</td></tr>`;
+            return;
+        }
+
+        document.getElementById('exInvNo').textContent = data.invoice_no;
+        document.getElementById('exCustName').textContent = data.customer;
+        document.getElementById('exInvDate').textContent = data.date;
+
+        body.innerHTML = '';
+        if (!data.items || data.items.length === 0) {
+            body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Is invoice me koi returnable item nahi hai.</td></tr>';
+            return;
+        }
+
+        data.items.forEach((item, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <div class="fw-bold">${item.name}</div>
+                    <small class="text-muted">Code: ${item.code || '-'}</small>
+                </td>
+                <td class="text-center fw-bold">Rs ${fmt(item.price)}</td>
+                <td class="text-center"><span class="badge bg-secondary">${item.qty} ${item.unit}</span></td>
+                <td class="text-center">
+                    <input type="number" id="exRetQty_${i}" class="form-control form-control-sm text-center fw-bold" value="${item.qty}" min="0.0001" max="${item.qty}" step="any">
+                </td>
+                <td class="text-center">
+                    <button type="button" id="exBtn_${i}" class="btn btn-sm text-white fw-bold" style="background:#8e44ad;" onclick="addExchangeReturnToCart(${i})">
+                        🔄 Return
+                    </button>
+                </td>
+            `;
+            body.appendChild(tr);
+        });
+        window._exCurrentItems = data.items;
+    })
+    .catch(err => {
+        body.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Invoice search karne me error aaya.</td></tr>';
+    });
+}
+
+function addExchangeReturnToCart(i) {
+    const item = window._exCurrentItems ? window._exCurrentItems[i] : null;
+    if (!item) return;
+
+    const retQtyInput = document.getElementById(`exRetQty_${i}`);
+    let returnQty = parseFloat(retQtyInput ? retQtyInput.value : item.qty) || item.qty;
+
+    if (returnQty <= 0) { toast('Return Qty sahi enter karein'); return; }
+    if (returnQty > (item.qty + 0.0001)) { toast(`Return Qty purchased Qty (${item.qty}) se zyada nahi ho sakti`); return; }
+
+    const label = '[EXCHANGE RETURN] ' + item.name;
+
+    // Check if already in cart
+    const idx = cart.findIndex(c => c.id == item.prod_id && c.label === label);
+    if (idx >= 0) {
+        cart[idx].qty = -returnQty;
+    } else {
+        cart.push({
+            id:         item.prod_id,
+            name:       item.name,
+            code:       item.code,
+            price:      item.price,
+            qty:        -returnQty,
+            disc:       '0',
+            note:       '',
+            image:      '',
+            unitId:     item.unit,
+            label:      label,
+            variantId:  item.var_id || null,
+            is_exchange_return: true
+        });
+    }
+
+    renderCart();
+    recalc();
+
+    // Visual feedback on button (keep modal open so multiple items can be returned)
+    const btn = document.getElementById(`exBtn_${i}`);
+    if (btn) {
+        btn.className = 'btn btn-sm btn-success fw-bold';
+        btn.innerHTML = '✓ Added';
+    }
+
+    toast(`${item.name} return cart me add ho gaya hai!`);
+}
 
 /* ---- SUBMIT ---- */
 function buildFields(){

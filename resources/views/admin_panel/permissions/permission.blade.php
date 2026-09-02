@@ -183,11 +183,10 @@
 
 
      function confirmedBox(element, event) {
-         event.preventDefault(); // Stop immediate redirect
-
+         event.preventDefault();
          const message = element.getAttribute('data-msg') || 'Are you sure?';
-         const url = element.getAttribute('href');
-
+         const url = element.getAttribute('data-url') || element.getAttribute('href');
+         const method = element.getAttribute('data-method') || 'DELETE';
          Swal.fire({
              title: 'Confirm Deletion',
              text: message,
@@ -199,8 +198,25 @@
              cancelButtonColor: '#3085d6'
          }).then((result) => {
              if (result.isConfirmed) {
-                 // Redirect manually after confirmation
-                 window.location.href = url;
+                 $.ajax({
+                     url: url,
+                     type: method,
+                     headers: {
+                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                     },
+                     success: function(response) {
+                         Swal.fire('Deleted!', response.success || 'Deleted successfully.', 'success').then(() => {
+                             if (response.reload) {
+                                 window.location.href = response.reload;
+                             } else {
+                                 location.reload();
+                             }
+                         });
+                     },
+                     error: function() {
+                         Swal.fire('Error!', 'Something went wrong.', 'error');
+                     }
+                 });
              }
          });
      }

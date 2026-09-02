@@ -486,7 +486,7 @@
                     <button class="pc-act pc-act-del delete-btn"
                       data-url="{{ route('delete.category', $cat->id) }}"
                       data-msg="Are you sure you want to delete this category?"
-                      data-method="get"
+                      data-method="DELETE"
                       onclick="logoutAndDeleteFunction(this)">
                       <i class="bi bi-trash3"></i>Delete
                     </button>

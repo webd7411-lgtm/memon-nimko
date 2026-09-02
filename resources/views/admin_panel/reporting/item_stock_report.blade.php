@@ -891,17 +891,20 @@ function renderVariants(data) {
     }
     let h = '';
     data.forEach(function(prod) {
+        const isKgProd = prod.unit_type === 'kg';
         const totStk = prod.sizes.reduce(function(s, v) { return s + (v.stock_qty || 0); }, 0);
+        const totTxt = isKgProd ? ((Number.isInteger(totStk) ? totStk : totStk.toFixed(2)) + ' KG') : fmt(totStk);
         h += '<div class="pc-vp"><span class="badge">' + esc(prod.item_code) + '</span><strong>' + esc(prod.product_name) + '</strong>';
         if (prod.category && prod.category !== '–') h += '<span style="font-size:.7rem;background:#f0f2f7;color:#666;border-radius:5px;padding:2px 7px;font-weight:600;">' + esc(prod.category) + '</span>';
-        h += '<span class="tot">Total: ' + fmt(totStk) + '</span></div>';
+        h += '<span class="tot">Total: ' + totTxt + '</span></div>';
         h += '<div class="pc-sz-grid">';
         prod.sizes.forEach(function(sz) {
             const stk = sz.stock_qty || 0;
             const cls = sz.status;
             const statusTxt = cls === 'out' ? 'Out of Stock' : (cls === 'low' ? 'Low Stock ⚠️' : 'In Stock ✅');
+            const displayStk = sz.is_kg ? ((Number.isInteger(stk) ? stk : stk.toFixed(2)) + ' KG') : parseFloat(stk).toFixed(0);
             h += '<div class="pc-sz-card ' + cls + '"><div class="sz-lbl">' + esc(sz.label) + '</div>';
-            h += '<div class="sz-stk">' + parseFloat(stk).toFixed(0) + '</div>';
+            h += '<div class="sz-stk">' + displayStk + '</div>';
             h += '<div class="sz-price">Rs ' + fmt(sz.price) + '</div>';
             h += '<div class="sz-status">' + statusTxt + '</div></div>';
         });

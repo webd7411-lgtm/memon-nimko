@@ -28,30 +28,26 @@ class BranchController extends Controller
             'name' => 'required|unique:branches,name,'.$request->edit_id,
             'address' => 'required',
             'number' => 'required',
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'nullable|exists:users,id',
         ]);
 
-        if ($validator->fails()) {
-            return ['errors' => $validator->errors()];
-        }
-
-
-      
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()]);
         }
 
         // Step 2: Check for user_id uniqueness (exclude self in edit)
-        $userExists = Branch::where('user_id', $request->user_id)
-            ->when($editId, fn($q) => $q->where('id', '!=', $editId))
-            ->exists();
+        if ($request->filled('user_id')) {
+            $userExists = Branch::where('user_id', $request->user_id)
+                ->when($editId, fn($q) => $q->where('id', '!=', $editId))
+                ->exists();
 
-        if ($userExists) {
-            return response()->json([
-                'errors' => [
-                    'user_id' => ['This user is already assigned to another branch.']
-                ]
-            ]);
+            if ($userExists) {
+                return response()->json([
+                    'errors' => [
+                        'user_id' => ['This user is already assigned to another branch.']
+                    ]
+                ]);
+            }
         }
 
         // Step 3: Save or update logic
@@ -72,7 +68,7 @@ class BranchController extends Controller
         $branch->name = $request->name;
         $branch->address = $request->address;
         $branch->number = $request->number;
-        $branch->user_id = $request->user_id;
+        $branch->user_id = $request->filled('user_id') ? $request->user_id : null;
         $branch->save();
 
         return response()->json($msg);
@@ -100,9 +96,19 @@ class BranchController extends Controller
      */
     public function switchBranch(Request $request)
     {
+        $user = auth()->user();
+        $isSuperAdmin = $user && ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin'));
+
+        if (!$isSuperAdmin && $user && !empty($user->branch_id)) {
+            session(['active_branch_id' => $user->branch_id]);
+            return redirect()->back()->with('error', 'You are restricted to your assigned branch.');
+        }
+
         $branchId = $request->input('branch_id');
         if ($branchId === 'all') {
-            session(['active_branch_id' => 'all']);
+            if ($isSuperAdmin) {
+                session(['active_branch_id' => 'all']);
+            }
         } else {
             $branch = Branch::find($branchId);
             if ($branch) {

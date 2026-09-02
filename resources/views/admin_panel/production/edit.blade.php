@@ -96,8 +96,7 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    
-                                    <div class="d-flex align-items-center justify-content-between mt-3 mb-2">
+                                                                     <div class="d-flex align-items-center justify-content-between mt-3 mb-2">
                                         <span style="font-weight:600;">Total Cost: <strong id="editTotalCost" style="color:var(--pc-accent);">Rs {{ number_format($entry->production_cost ?? 0, 0) }}</strong></span>
                                         <button type="submit" class="btn btn-primary btn-lg px-5">💾 Update Entry</button>
                                     </div>
@@ -116,39 +115,57 @@
                                                 </tr>
                                             </thead>
                                              <tbody id="rmEditBody">
-                                                 @forelse($rawMaterialUsage as $rmu)
-                                                 <tr class="rm-row">
-                                                     <td>
-                                                         <select name="rm_id[]" class="form-control">
-                                                             <option value="">Select...</option>
-                                                             @foreach($rawMaterials as $rm)
-                                                              <option value="{{ $rm->id }}" data-cost="{{ $rm->lastPurchaseCost() }}" {{ $rmu->raw_material_id == $rm->id ? 'selected' : '' }}>
-                                                                  {{ $rm->name }} ({{ $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
-                                                              </option>
-                                                              @endforeach
-                                                          </select>
-                                                     </td>
-                                                     <td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="{{ $rmu->qty_used }}" min="0"></td>
-                                                     <td><input type="number" step="0.01" min="0" name="rm_cost[]" class="form-control rm-cost" value="{{ $rmu->cost_per_unit }}" placeholder="0"></td>
-                                                     <td><span class="rm-total fw-bold">Rs {{ number_format($rmu->total_cost, 0) }}</span></td>
-                                                     <td><button type="button" class="btn btn-danger btn-sm remove-rm-row"><i class="fas fa-times"></i></button></td>
-                                                 </tr>
-                                                 @empty
-                                                 @endforelse
-                                             </tbody>
-                                         </table>
-                                     </div>
-                                     <button type="button" class="btn btn-success btn-sm" id="addEditRmRow">+ Add More Raw Material</button>
+                                                  @forelse($rawMaterialUsage as $rmu)
+                                                  <tr class="rm-row">
+                                                      <td>
+                                                          <input type="hidden" name="rm_type[]" class="rm-type" value="{{ $rmu->ingredient_product_id ? 'product' : 'rm' }}">
+                                                          <select name="rm_id[]" class="form-control">
+                                                              <option value="">Select...</option>
+                                                              <optgroup label="Raw Materials">
+                                                              @foreach($rawMaterials as $rm)
+                                                               <option value="{{ $rm->id }}" data-type="rm" data-cost="{{ $rm->lastPurchaseCost() }}" {{ $rmu->raw_material_id == $rm->id ? 'selected' : '' }}>
+                                                                   [RM] {{ $rm->name }} ({{ $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
+                                                               </option>
+                                                               @endforeach
+                                                               </optgroup>
+                                                               <optgroup label="Semi-Finished / Base Products">
+                                                               @foreach($products as $p)
+                                                               <option value="{{ $p->id }}" data-type="product" data-cost="{{ $p->price ?? 0 }}" {{ $rmu->ingredient_product_id == $p->id ? 'selected' : '' }}>
+                                                                   [Product] {{ $p->item_code }} - {{ $p->item_name }} ({{ strtoupper($p->unit_type ?? 'Piece') }})
+                                                               </option>
+                                                               @endforeach
+                                                               </optgroup>
+                                                           </select>
+                                                      </td>
+                                                      <td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="{{ $rmu->qty_used }}" min="0"></td>
+                                                      <td><input type="number" step="0.01" min="0" name="rm_cost[]" class="form-control rm-cost" value="{{ $rmu->cost_per_unit }}" placeholder="0"></td>
+                                                      <td><span class="rm-total fw-bold">Rs {{ number_format($rmu->total_cost, 0) }}</span></td>
+                                                      <td><button type="button" class="btn btn-danger btn-sm remove-rm-row"><i class="fas fa-times"></i></button></td>
+                                                  </tr>
+                                                  @empty
+                                                  @endforelse
+                                              </tbody>
+                                          </table>
+                                      </div>
+                                      <button type="button" class="btn btn-success btn-sm" id="addEditRmRow">+ Add More Raw Material</button>
 
 {{-- Hidden template for manual RM rows --}}
 <table style="display:none;" id="editRmTemplateWrap">
   <tr class="rm-row manual-rm-row">
     <td>
+      <input type="hidden" name="rm_type[]" class="rm-type" value="rm">
       <select name="rm_id[]" class="form-control">
         <option value="">Select Raw Material...</option>
+        <optgroup label="Raw Materials">
         @foreach($rawMaterials as $rm)
-        <option value="{{ $rm->id }}" data-cost="{{ $rm->lastPurchaseCost() }}">{{ $rm->name }} ({{ $rm->unit }})</option>
+        <option value="{{ $rm->id }}" data-type="rm" data-cost="{{ $rm->lastPurchaseCost() }}">[RM] {{ $rm->name }} ({{ $rm->unit }})</option>
         @endforeach
+        </optgroup>
+        <optgroup label="Semi-Finished / Base Products">
+        @foreach($products as $p)
+        <option value="{{ $p->id }}" data-type="product" data-cost="{{ $p->price ?? 0 }}">[Product] {{ $p->item_code }} - {{ $p->item_name }} ({{ strtoupper($p->unit_type ?? 'Piece') }})</option>
+        @endforeach
+        </optgroup>
       </select>
     </td>
     <td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="0" min="0"></td>
@@ -189,10 +206,13 @@ $(document).ready(function() {
     $(document).on('input', '.item-cost', calcEditCost);
     $(document).on('input', '.rm-qty, .rm-cost', calcEditCost);
 
-    // Auto-fill rm_cost from data-cost on RM select change
+    // Auto-fill rm_cost & rm_type from selected option
     $(document).on('change', '#rmEditBody select[name="rm_id[]"]', function() {
-        var cost = $(this).find(':selected').data('cost') || 0;
+        var opt = $(this).find(':selected');
+        var cost = opt.data('cost') || 0;
+        var type = opt.data('type') || 'rm';
         $(this).closest('tr').find('.rm-cost').val(cost);
+        $(this).closest('tr').find('.rm-type').val(type);
         calcEditCost();
     });
 
@@ -225,7 +245,7 @@ $(document).ready(function() {
         let variantContainer = row.find('.variant-container');
         let isGram = opt.data('is-gram') == '1';
         
-        if (productId && !isGram) {
+        if (productId) {
             variantContainer.show();
             variantSelect.html('<option value="">Loading sizes...</option>');
             $.ajax({
@@ -235,7 +255,7 @@ $(document).ready(function() {
                     variantSelect.html('<option value="">Select Size (Optional)</option>');
                     if (res.variants && res.variants.length > 0) {
                         res.variants.forEach(function(v) {
-                            variantSelect.append('<option value="' + v.id + '">' + v.size_label + '</option>');
+                            variantSelect.append('<option value="' + v.id + '" data-size-value="' + (v.size_value || 1) + '">' + v.size_label + '</option>');
                         });
                     } else {
                         variantContainer.hide();
@@ -243,6 +263,7 @@ $(document).ready(function() {
                     }
                 },
                 error: function() {
+                    variantContainer.hide();
                     variantSelect.html('<option value="">Select Size (Optional)</option>');
                 }
             });
@@ -252,6 +273,12 @@ $(document).ready(function() {
         }
     });
 
+    $(document).on('change', '.variant-select', function() {
+        let row = $(this).closest('tr');
+        updateConversion(row);
+        loadEditBom(row);
+    });
+
     $(document).on('input', '.qty-input', function() {
         updateConversion($(this).closest('tr'));
         loadEditBom($(this).closest('tr'));
@@ -259,44 +286,66 @@ $(document).ready(function() {
 
     function loadEditBom(row) {
         var productId = row.find('.product-select').val();
+        var variantId = row.find('.variant-select').val() || '';
         var qty = parseFloat(row.find('.qty-input').val()) || 1;
         if (!productId) return;
 
-        // Remove old BOM rows only
-        document.querySelectorAll('#rmEditBody .bom-row').forEach(function(el) { el.remove(); });
+        var selectedVarOpt = row.find('.variant-select option:selected');
+        var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+        var multiplier = varSizeVal > 0 ? varSizeVal : 1;
 
-        // Abort previous request if still running
-        if (window._bomEditAjax) window._bomEditAjax.abort();
-        window._bomEditAjax = $.ajax({
-            url: '/products/' + productId + '/bom-raw-materials',
+        var rowId = row.attr('data-row-id');
+        if (!rowId) {
+            rowId = 'prow_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+            row.attr('data-row-id', rowId);
+        }
+
+        // Remove old BOM rows for THIS specific product row only
+        $('#rmEditBody .bom-row[data-parent-row="' + rowId + '"]').remove();
+
+        var url = '/products/' + productId + '/bom-raw-materials';
+        if (variantId) {
+            url += '?variant_id=' + variantId;
+        }
+
+        $.ajax({
+            url: url,
             type: 'GET',
             success: function(bom) {
                 if (!bom || bom.length === 0) return;
                 var tbody = document.getElementById('rmEditBody');
-                var opts = '';
-                @foreach($rawMaterials as $rm)
-                opts += '<option value="{{ $rm->id }}" data-cost="{{ $rm->lastPurchaseCost() }}">{{ $rm->name }} ({{ $rm->unit }})</option>';
-                @endforeach
 
                 bom.forEach(function(item) {
                     var tr = document.createElement('tr');
                     tr.className = 'rm-row bom-row';
-                    tr.innerHTML = '<td><select name="rm_id[]" class="form-control" style="pointer-events:none;background:#f0f0f0;" tabindex="-1">' +
-                        '<option value="">Select...</option>' + opts + '</select></td>' +
-                        '<td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="' + (parseFloat(item.qty_per_unit) * qty).toFixed(2) + '" min="0" readonly></td>' +
-                        '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="form-control rm-cost" value="0" placeholder="0" readonly></td>' +
-                        '<td><span class="rm-total fw-bold">0</span></td>' +
-                        '<td><button type="button" class="btn btn-danger btn-sm remove-rm-row"><i class="fas fa-times"></i></button></td>';
-                    tbody.insertBefore(tr, tbody.firstChild);
-                    var sel = tr.querySelector('select');
-                    if (sel) sel.value = item.raw_material_id || '';
-                    var inp = tr.querySelector('input[name="rm_cost[]"]');
-                    if (inp && sel) {
-                        var c = parseFloat(sel.options[sel.selectedIndex]?.dataset?.cost) || 0;
-                        inp.value = c.toFixed(2);
-                        var qtyInp = tr.querySelector('input[name="rm_qty[]"]');
-                        tr.querySelector('.rm-total').textContent = 'Rs ' + (parseFloat(qtyInp?.value || 0) * c).toLocaleString();
+                    tr.setAttribute('data-parent-row', rowId);
+                    var isProduct = !!item.ingredient_product_id;
+                    var itemId = isProduct ? item.ingredient_product_id : item.raw_material_id;
+                    var itemType = isProduct ? 'product' : 'rm';
+                    var itemName = isProduct 
+                        ? (item.ingredient_product ? item.ingredient_product.item_name + ' [Base Product]' : 'Product #' + itemId)
+                        : (item.raw_material ? item.raw_material.name + ' (' + (item.raw_material.unit || '') + ')' : 'RM #' + itemId);
+
+                    if (item.is_custom_variant_bom) {
+                        itemName += ' [Custom Variant Recipe]';
                     }
+
+                    var itemCost = parseFloat(item.unit_cost) || 0;
+                    var effectiveQty = item.is_custom_variant_bom ? qty : (qty * multiplier);
+                    var requiredQty = (parseFloat(item.qty_per_unit) * effectiveQty);
+                    var totalItemCost = requiredQty * itemCost;
+
+                    tr.innerHTML = '<td>' +
+                        '<input type="hidden" name="rm_type[]" class="rm-type" value="' + itemType + '">' +
+                        '<input type="hidden" name="rm_id[]" value="' + itemId + '">' +
+                        '<input type="text" class="form-control fw-bold" value="' + itemName + '" readonly style="background:#f0f0f0;">' +
+                        '</td>' +
+                        '<td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="' + requiredQty.toFixed(2) + '" min="0" readonly></td>' +
+                        '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="form-control rm-cost" value="' + itemCost.toFixed(2) + '" placeholder="0"></td>' +
+                        '<td><span class="rm-total fw-bold">Rs ' + totalItemCost.toLocaleString() + '</span></td>' +
+                        '<td><button type="button" class="btn btn-danger btn-sm remove-rm-row"><i class="fas fa-times"></i></button></td>';
+
+                    tbody.insertBefore(tr, tbody.firstChild);
                 });
                 calcEditCost();
             }
@@ -307,7 +356,10 @@ $(document).ready(function() {
         let qty = parseFloat(row.find('.qty-input').val()) || 0;
         let isGram = row.find('.product-select option:selected').data('is-gram') == '1';
         if (isGram && qty > 0) {
-            let grams = qty * 1000;
+            let selectedVarOpt = row.find('.variant-select option:selected');
+            var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+            var multiplier = varSizeVal > 0 ? varSizeVal : 1;
+            let grams = qty * multiplier * 1000;
             row.find('.conversion-display').text('(' + grams.toLocaleString() + ' grams to stock)');
         } else {
             row.find('.conversion-display').text('');
@@ -320,6 +372,7 @@ $(document).ready(function() {
 
     $('#addRow').click(function() {
         let newRow = $('#productionItems tr:first').clone();
+        newRow.removeAttr('data-row-id');
         newRow.find('input').val('');
         newRow.find('.conversion-display').text('');
         newRow.find('.variant-container').hide();
@@ -331,7 +384,14 @@ $(document).ready(function() {
     });
 
     $(document).on('click', '.remove-row', function() {
-        if ($('#productionItems tr').length > 1) $(this).closest('tr').remove();
+        if ($('#productionItems tr').length > 1) {
+            let row = $(this).closest('tr');
+            let rowId = row.attr('data-row-id');
+            if (rowId) {
+                $('#rmEditBody .bom-row[data-parent-row="' + rowId + '"]').remove();
+            }
+            row.remove();
+        }
         calcEditCost();
     });
 

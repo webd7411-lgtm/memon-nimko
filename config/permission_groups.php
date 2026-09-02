@@ -13,6 +13,10 @@ return [
 
     'groups' => [
 
+        'Dashboard' => [
+            'Dashboard',
+        ],
+
         'Products' => [
             'Products',
             'View Product',

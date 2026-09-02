@@ -20,7 +20,11 @@ class VoucherController extends Controller
 
     public function all_recepit_vochers()
     {
-        $receipts = \App\Models\ReceiptsVoucher::orderBy('id', 'DESC')->get();
+        $query = \App\Models\ReceiptsVoucher::orderBy('id', 'DESC');
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+        $receipts = $query->get();
 
         foreach ($receipts as $voucher) {
             $partyName = '-';
@@ -105,6 +109,7 @@ class VoucherController extends Controller
             }
 
             $voucherData = [
+                'branch_id'        => active_branch_id(),
                 'rvid'             => $rvid,
                 'receipt_date'     => $request->receipt_date,
                 'entry_date'       => $request->entry_date,
@@ -412,6 +417,7 @@ class VoucherController extends Controller
                 }
             }
             $voucherData = [
+                'branch_id'        => active_branch_id(),
                 'pvid'             => $pvid,
                 'receipt_date'     => $request->receipt_date,
                 'entry_date'       => $request->entry_date,
@@ -506,7 +512,11 @@ class VoucherController extends Controller
 
     public function all_Payment_vochers()
     {
-        $receipts = PaymentVoucher::orderBy('id', 'DESC')->get();
+        $query = PaymentVoucher::orderBy('id', 'DESC');
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+        $receipts = $query->get();
         return view('admin_panel.vochers.payment_vochers.all_payment_vochers', compact('receipts'));
     }
 

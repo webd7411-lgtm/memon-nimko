@@ -264,30 +264,52 @@
                 <tr>
                   <th>#</th>
                   <th>Name</th>
-                  <th>Urdu Name</th>
-                  <th>Unit</th>
-                  <th>Stock</th>
+                  <th>Units & Ratio</th>
+                  <th>Purchase Price / Unit</th>
+                  <th>Total Stock</th>
                   <th>Alert Qty</th>
                   <th style="width:120px;" class="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 @forelse($materials as $m)
+                @php $lastCost = $m->lastPurchaseCost(); @endphp
                 <tr>
                   <td class="mid fw-bold" data-label="#">{{ $m->id }}</td>
                   <td class="mname fw-bold text-dark" data-label="Name">{{ $m->name }}</td>
-                  <td class="murduname" data-label="Urdu Name">{{ $m->urdu_name }}</td>
-                  <td class="munit" data-label="Unit"><span class="badge bg-secondary-subtle text-secondary border">{{ $m->unit }}</span></td>
-                  <td data-label="Stock">
-                    @php $sqty = $m->currentStock(); @endphp
-                    <span class="stock-badge {{ $sqty > $m->alert_qty ? 'stock-ok' : 'stock-low' }}">{{ $sqty }}</span>
+                  <td class="munit" data-label="Units">
+                    <span class="badge bg-primary-subtle text-primary border">{{ strtoupper($m->unit) }}</span>
+                    @if($m->consumption_unit && $m->consumption_unit != $m->unit)
+                    <div style="font-size:.72rem;" class="text-muted mt-1">1 {{ $m->unit }} = {{ number_format($m->conversion_factor, 0) }} {{ $m->consumption_unit }}</div>
+                    @endif
                   </td>
-                  <td class="malert fw-semibold" data-label="Alert Qty">{{ $m->alert_qty }}</td>
+                  <td class="mprice fw-bold text-success" data-label="Purchase Price">
+                    Rs {{ number_format($lastCost, 2) }}
+                    <div style="font-size:.72rem;" class="text-muted">per {{ $m->unit }}</div>
+                  </td>
+                  <td data-label="Stock">
+                    @php 
+                      $sqty = $m->currentStock(); 
+                      $factor = (float)($m->conversion_factor ?? 1);
+                      $purQty = $factor > 0 ? round($sqty / $factor, 2) : $sqty;
+                      $cUnit = $m->consumption_unit ?? $m->unit;
+                    @endphp
+                    <span class="stock-badge {{ $sqty > $m->alert_qty ? 'stock-ok' : 'stock-low' }}">
+                      {{ number_format($sqty, 2) }} {{ $cUnit }}
+                    </span>
+                    @if($factor > 1)
+                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ $purQty }} {{ $m->unit }})</div>
+                    @endif
+                  </td>
+                  <td class="malert fw-semibold" data-label="Alert Qty">{{ $m->alert_qty }} {{ $m->consumption_unit ?? $m->unit }}</td>
                   <td class="text-center" data-label="Actions">
                     <div class="d-flex align-items-center justify-content-center gap-1">
                       <button class="rm-btn rm-btn-success rm-btn-sm editMaterial"
                         data-id="{{ $m->id }}" data-name="{{ $m->name }}"
                         data-urdu="{{ $m->urdu_name }}" data-unit="{{ $m->unit }}"
+                        data-cunit="{{ $m->consumption_unit ?? $m->unit }}"
+                        data-factor="{{ $m->conversion_factor ?? 1 }}"
+                        data-price="{{ $lastCost }}"
                         data-alert="{{ $m->alert_qty }}" data-notes="{{ $m->notes }}" title="Edit">
                         <i class="bi bi-pencil-square"></i>
                       </button>
@@ -597,28 +619,54 @@
         <div class="modal-body p-4">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="lbl"><i class="bi bi-tag-fill"></i> Name</label>
+              <label class="lbl"><i class="bi bi-tag-fill"></i> Material Name</label>
               <input type="text" name="name" id="materialName" class="fld" required placeholder="e.g. Dough, Sugar" />
             </div>
-            <div class="col-md-3">
-              <label class="lbl"><i class="bi bi-ruler"></i> Unit</label>
+            <div class="col-md-6">
+              <label class="lbl"><i class="bi bi-bag-check-fill"></i> Purchase Unit (Vendor)</label>
               <select name="unit" id="materialUnit" class="fld" required>
-                <option value="">Select...</option>
-                <option value="kg">kg</option>
-                <option value="piece">piece</option>
-                <option value="litre">litre</option>
-                <option value="gram">gram</option>
-                <option value="dozen">dozen</option>
-                <option value="pack">pack</option>
-                <option value="bottle">bottle</option>
-                <option value="bag">bag</option>
+                <option value="">Select Unit...</option>
+                <option value="kg">kg (Kilogram)</option>
+                <option value="litre">litre (Litre)</option>
+                <option value="dozen">dozen (Dozen)</option>
+                <option value="piece">piece (Piece)</option>
+                <option value="gram">gram (Gram)</option>
+                <option value="bottle">bottle (Bottle)</option>
+                <option value="bag">bag (Bag)</option>
+                <option value="pack">pack (Pack)</option>
               </select>
             </div>
-            <div class="col-md-3">
-              <label class="lbl"><i class="bi bi-exclamation-triangle-fill"></i> Alert Qty</label>
+            <div class="col-md-6">
+              <label class="lbl"><i class="bi bi-egg-fried"></i> Recipe / Usage Unit</label>
+              <select name="consumption_unit" id="materialConsumptionUnit" class="fld" required>
+                <option value="">Select Recipe Unit...</option>
+                <option value="gram">gram (Grams)</option>
+                <option value="ml">ml (Milliliters)</option>
+                <option value="piece">piece (Pieces)</option>
+                <option value="kg">kg (Kilograms)</option>
+                <option value="litre">litre (Litres)</option>
+                <option value="dozen">dozen (Dozens)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="lbl"><i class="bi bi-calculator"></i> Conversion Ratio</label>
+              <input type="number" step="0.0001" min="0.0001" name="conversion_factor" id="materialConversionFactor" class="fld" value="1" required placeholder="e.g. 1000" />
+            </div>
+            <div class="col-12 mt-1">
+              <div class="p-2 rounded bg-light border text-muted" style="font-size:.74rem;">
+                <i class="bi bi-info-circle-fill text-primary me-1"></i>
+                <strong>Rule:</strong> How many Recipe Units exist in 1 Purchase Unit? (e.g. 1 kg = <strong>1000</strong> grams, 1 dozen = <strong>12</strong> pieces).
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="lbl"><i class="bi bi-cash-stack"></i> Purchase Price / Cost (Rs)</label>
+              <input type="number" step="0.01" min="0" name="initial_price" id="materialPrice" class="fld" value="0" placeholder="e.g. 150.00" />
+            </div>
+            <div class="col-md-6">
+              <label class="lbl"><i class="bi bi-exclamation-triangle-fill"></i> Alert Qty (Recipe Unit)</label>
               <input type="number" step="0.01" min="0" name="alert_qty" id="materialAlert" class="fld" value="0" />
             </div>
-            <div class="col-md-12">
+            <div class="col-12">
               <label class="lbl"><i class="bi bi-sticky-fill"></i> Notes</label>
               <input type="text" name="notes" id="materialNotes" class="fld" placeholder="Optional description" />
             </div>
@@ -655,11 +703,35 @@ $(document).on('submit', '.material-form', function(e) {
   myAjax(url, fd, 'post');
 });
 
+// Auto conversion defaults when purchase unit changes
+$(document).on('change', '#materialUnit', function() {
+  var u = $(this).val().toLowerCase();
+  var cUnit = $('#materialConsumptionUnit');
+  var factor = $('#materialConversionFactor');
+
+  if (u === 'kg') {
+    cUnit.val('gram');
+    factor.val('1000');
+  } else if (u === 'litre') {
+    cUnit.val('ml');
+    factor.val('1000');
+  } else if (u === 'dozen') {
+    cUnit.val('piece');
+    factor.val('12');
+  } else if (u === 'gram' || u === 'piece' || u === 'ml') {
+    cUnit.val(u);
+    factor.val('1');
+  }
+});
+
 // Edit material
 $(document).on('click', '.editMaterial', function() {
   $('#materialEditId').val($(this).data('id'));
   $('#materialName').val($(this).data('name'));
   $('#materialUnit').val($(this).data('unit'));
+  $('#materialConsumptionUnit').val($(this).data('cunit') || $(this).data('unit'));
+  $('#materialConversionFactor').val($(this).data('factor') || 1);
+  $('#materialPrice').val($(this).data('price') || 0);
   $('#materialAlert').val($(this).data('alert'));
   $('#materialNotes').val($(this).data('notes'));
   $('#materialModalLabel').html('<i class="bi bi-pencil-square me-1 text-primary"></i> Edit Raw Material');
@@ -671,6 +743,9 @@ $(document).on('click', '#resetMaterial', function() {
   $('#materialEditId').val('');
   $('#materialName').val('');
   $('#materialUnit').val('');
+  $('#materialConsumptionUnit').val('');
+  $('#materialConversionFactor').val('1');
+  $('#materialPrice').val('0');
   $('#materialAlert').val('0');
   $('#materialNotes').val('');
   $('#materialModalLabel').html('<i class="bi bi-box-seam me-1 text-primary"></i> Add Raw Material');

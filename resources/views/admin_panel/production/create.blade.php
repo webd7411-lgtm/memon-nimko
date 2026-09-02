@@ -1,509 +1,460 @@
 @extends('admin_panel.layout.app')
 
+@section('content')
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --pc-bg: #f1f4f9;
-  --pc-surface: #ffffff;
-  --pc-border: #e9edf2;
-  --pc-border-lt: #f1f4f9;
-  --pc-text: #0b1a33;
-  --pc-text-sec: #54657e;
-  --pc-text-muted: #8896ab;
-  --pc-accent: #2b7fff;
-  --pc-accent-drk: #1a6ae8;
-  --pc-success: #0fae6b;
-  --pc-danger: #e54545;
-  --pc-warning: #f5a623;
-  --pc-radius: 14px;
-  --pc-radius-sm: 9px;
-  --pc-shadow: 0 1px 2px rgba(0,0,0,.03), 0 1px 3px rgba(0,0,0,.05);
-  --pc-shadow-lg: 0 8px 30px rgba(0,0,0,.07), 0 3px 12px rgba(0,0,0,.04);
-  --pc-shadow-xl: 0 20px 60px rgba(0,0,0,.10), 0 8px 24px rgba(0,0,0,.06);
-  --pc-font: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --pc-green: #0e8349;
+  --pc-green-hover: #0b6b3b;
+  --pc-bg: #f8fafc;
+  --pc-card-bg: #ffffff;
+  --pc-border: #e2e8f0;
+  --pc-text-dark: #0f172a;
+  --pc-text-muted: #64748b;
+  --pc-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.pc-page * { font-family: var(--pc-font); }
+.pc-container * {
+  font-family: var(--pc-font);
+  box-sizing: border-box;
+}
 
-.pc-page {
-  background: var(--pc-bg);
+.pc-container {
+  background-color: var(--pc-bg);
   min-height: 100vh;
-  padding-bottom: 2.5rem;
+  padding: 1.25rem;
+  overflow-x: hidden !important;
 }
 
-/* ══════════════ HEADER ══════════════ */
-.pc-hdr {
-  position: relative;
-  background: linear-gradient(135deg, #0b1a33 0%, #162d50 50%, #1a4d8c 100%);
-  border-radius: var(--pc-radius);
-  padding: 1.3rem 2rem;
-  margin-bottom: 1.5rem;
-  box-shadow: var(--pc-shadow-xl);
+/* ══════════ TOP HEADER BAR ══════════ */
+.pc-header-bar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--pc-border);
+  border-radius: 8px;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 
-.pc-hdr::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 60% 50% at 10% 90%, rgba(43,127,255,.15) 0%, transparent 100%),
-    radial-gradient(ellipse 40% 40% at 90% 10%, rgba(43,127,255,.08) 0%, transparent 100%);
-  pointer-events: none;
-}
-
-.pc-hdr::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  opacity: .5;
-  pointer-events: none;
-}
-
-.pc-hdr > * { position: relative; z-index: 1; }
-
-.pc-hdr h2 {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -.4px;
-  margin: 0;
+.pc-header-title {
   display: flex;
   align-items: center;
-  gap: .65rem;
+  gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
-.pc-hdr h2 i { font-size: 1.4rem; color: #60a5fa; }
+.pc-header-title h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--pc-text-dark);
+  margin: 0;
+}
 
-.pc-btn {
+.pc-header-title .pc-icon {
+  font-size: 1.4rem;
+  color: var(--pc-green);
+  line-height: 1;
+}
+
+.pc-badge-pill {
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-block;
+}
+
+.pc-btn-back {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: .45rem;
-  border-radius: var(--pc-radius-sm);
-  font-weight: 600;
-  font-size: .82rem;
-  transition: all .25s ease;
-  cursor: pointer;
-  text-decoration: none;
-  border: none;
-  padding: .5rem 1.35rem;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
 }
 
-.pc-btn-ghost {
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.12);
-  color: #fff;
+.pc-btn-back:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
-.pc-btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
-
-/* ══════════════ CARD ══════════════ */
+/* ══════════ CARDS ══════════ */
 .pc-card {
-  background: var(--pc-surface);
+  background: var(--pc-card-bg);
   border: 1px solid var(--pc-border);
-  border-radius: var(--pc-radius);
-  box-shadow: var(--pc-shadow);
-  transition: box-shadow .3s ease;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
-.pc-card:hover { box-shadow: var(--pc-shadow-lg); }
-
-.pc-card-hd {
-  padding: 1.1rem 1.5rem;
-  border-bottom: 1px solid var(--pc-border-lt);
-  font-size: .9rem;
+.pc-card-header {
+  font-size: 0.98rem;
   font-weight: 700;
-  color: var(--pc-text);
+  color: var(--pc-text-dark);
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.1rem;
   display: flex;
   align-items: center;
-  gap: .5rem;
+  justify-content: space-between;
 }
 
-.pc-card-hd i { color: var(--pc-accent); font-size: 1rem; }
-
-.pc-card-body { padding: 1.5rem; }
-
-/* ══════════════ FORM FIELDS ══════════════ */
-.pc-lbl {
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--pc-text-sec);
-  margin-bottom: .35rem;
-  display: flex;
-  align-items: center;
-  gap: .3rem;
+.pc-card-header i {
+  color: var(--pc-green);
+  font-size: 1.15rem;
+  margin-right: 0.4rem;
 }
 
-.pc-lbl i { color: var(--pc-accent); font-size: .8rem; }
+.pc-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.4rem;
+  display: block;
+}
 
-.pc-fld {
-  border: 1.5px solid var(--pc-border);
-  border-radius: var(--pc-radius-sm);
-  padding: .5rem .85rem;
-  font-size: .85rem;
-  font-weight: 500;
-  color: var(--pc-text);
-  background: var(--pc-surface);
-  transition: all .25s ease;
+.pc-input, .pc-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.88rem;
+  color: #0f172a;
+  background-color: #ffffff;
   width: 100%;
+  transition: border-color 0.2s;
+}
+
+.pc-input:focus, .pc-select:focus {
+  border-color: var(--pc-green);
   outline: none;
+  box-shadow: 0 0 0 3px rgba(14, 131, 73, 0.12);
 }
 
-.pc-fld:focus {
-  border-color: var(--pc-accent);
-  box-shadow: 0 0 0 3px rgba(43,127,255,.1);
+.pc-input[readonly] {
+  background-color: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
 }
 
-.pc-fld::placeholder { color: var(--pc-text-muted); font-weight: 400; }
-
-.pc-fld[readonly] {
-  background: #f8fafc;
-  color: var(--pc-text-sec);
-  cursor: default;
-}
-
-select.pc-fld {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238896ab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right .75rem center;
-  padding-right: 2.2rem;
-}
-
-/* ══════════════ TABLE ══════════════ */
-.pc-tbl-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-radius-sm);
-}
-
-.pc-tbl {
+/* ══════════ TABLE STYLING ══════════ */
+.pc-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: .84rem;
+  border-collapse: collapse;
+  border: 1px solid #e2e8f0;
 }
 
-.pc-tbl thead th {
-  background: #f8fafc;
-  font-size: .68rem;
+.pc-table th {
+  background-color: #ebf5f0 !important;
+  color: #1e293b;
+  font-size: 0.82rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  color: var(--pc-text-muted);
-  padding: .6rem .85rem;
-  border-bottom: 2px solid var(--pc-border);
-  text-align: left;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid #cbd5e1;
+  border-right: 1px solid #e2e8f0;
+  text-align: center;
 }
 
-.pc-tbl tbody td {
-  padding: .55rem .85rem;
-  border-bottom: 1px solid var(--pc-border-lt);
+.pc-table td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  font-size: 0.88rem;
+  color: #0f172a;
   vertical-align: middle;
 }
 
-.pc-tbl tbody tr:last-child td { border-bottom: none; }
-
-.pc-tbl tbody tr { transition: background .12s ease; }
-.pc-tbl tbody tr:hover { background: #fafbfc; }
-
-.pc-tbl .pc-tbl-fld {
-  border: 1.5px solid var(--pc-border);
-  border-radius: 6px;
-  padding: .38rem .65rem;
-  font-size: .82rem;
-  font-weight: 500;
-  color: var(--pc-text);
-  background: var(--pc-surface);
-  transition: all .25s ease;
-  outline: none;
-  width: 100%;
+.pc-table td:last-child, .pc-table th:last-child {
+  border-right: none;
 }
 
-.pc-tbl .pc-tbl-fld:focus {
-  border-color: var(--pc-accent);
-  box-shadow: 0 0 0 3px rgba(43,127,255,.08);
-}
-
-.pc-tbl .pc-tbl-fld[readonly] {
-  background: #f8fafc;
-  color: var(--pc-text-sec);
-}
-
-.pc-tbl .pc-conv {
-  font-size: .73rem;
-  font-weight: 500;
-  color: var(--pc-text-muted);
-  display: block;
-  margin-top: 2px;
-}
-
-/* ══════════════ ACTIONS ══════════════ */
-.pc-act-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1.5px solid var(--pc-border);
-  background: transparent;
-  color: var(--pc-danger);
-  transition: all .2s ease;
-  cursor: pointer;
-  font-size: .9rem;
-}
-
-.pc-act-remove:hover {
-  background: #fef2f2;
-  border-color: #f5d0d0;
-}
-
-.pc-act-add {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  border-radius: var(--pc-radius-sm);
-  padding: .5rem 1.3rem;
-  font-weight: 600;
-  font-size: .82rem;
-  background: transparent;
-  border: 1.5px dashed var(--pc-border);
-  color: var(--pc-text-sec);
-  transition: all .2s ease;
-  cursor: pointer;
-}
-
-.pc-act-add:hover {
-  border-color: var(--pc-accent);
-  color: var(--pc-accent);
-  background: #f5f9ff;
-}
-
-.pc-act-submit {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  border-radius: var(--pc-radius-sm);
-  padding: .6rem 2rem;
-  font-weight: 700;
-  font-size: .88rem;
-  background: linear-gradient(135deg, var(--pc-accent) 0%, var(--pc-accent-drk) 100%);
-  color: #fff;
-  border: none;
-  transition: all .3s ease;
-  cursor: pointer;
-}
-
-.pc-act-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(43,127,255,.25);
-  color: #fff;
-}
-
-/* ══════════════ SELECT2 OVERRIDES ══════════════ */
-.pc-page .select2-container--default .select2-selection--single {
-  border: 1.5px solid var(--pc-border) !important;
+/* Select2 overrides for table */
+.pc-container .select2-container--default .select2-selection--single {
+  border: 1px solid #cbd5e1 !important;
   border-radius: 6px !important;
-  height: 38px !important;
-  padding: .38rem .65rem !important;
-}
-
-.pc-page .select2-container--default .select2-selection--single .select2-selection__rendered {
-  color: var(--pc-text) !important;
-  font-size: .84rem !important;
-  font-weight: 500 !important;
-  line-height: normal !important;
-  padding: 0 !important;
-}
-
-.pc-page .select2-container--default .select2-selection--single .select2-selection__arrow {
   height: 36px !important;
+  padding: 3px 6px !important;
 }
 
-.pc-page .select2-container--default .select2-search--dropdown .select2-search__field {
-  border: 1.5px solid var(--pc-border) !important;
-  border-radius: 6px !important;
-  font-size: .84rem !important;
+.pc-container .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: #0f172a !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  line-height: 28px !important;
 }
 
-.pc-page .select2-dropdown {
-  border: 1.5px solid var(--pc-border) !important;
-  border-radius: 8px !important;
-  box-shadow: var(--pc-shadow-lg) !important;
+.pc-container .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 34px !important;
 }
 
-/* ══════════════ RESPONSIVE ══════════════ */
-@media (max-width: 768px) {
-  .pc-hdr { padding: 1.1rem 1.25rem; }
-  .pc-hdr h2 { font-size: 1.1rem; }
-  .pc-card-body { padding: 1rem; }
-  .pc-tbl tbody td { padding: .45rem .6rem; }
+/* MOBILE RESPONSIVE */
+.mobile-lbl { display: none; }
+
+@media (max-width: 767.98px) {
+  .pc-container {
+    padding: 0.6rem 0.4rem !important;
+  }
+
+  .pc-header-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .pc-table, .pc-table tbody, .pc-table tr, .pc-table td {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .pc-table thead { display: none !important; }
+
+  .pc-table tbody tr {
+    background: #ffffff !important;
+    border: 1px solid var(--pc-border) !important;
+    border-radius: 8px !important;
+    padding: 0.85rem !important;
+    margin-bottom: 0.85rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+    position: relative !important;
+  }
+
+  .pc-table td {
+    padding: 0.35rem 0 !important;
+    border: none !important;
+    text-align: left !important;
+  }
+
+  .mobile-lbl {
+    display: block !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    margin-bottom: 0.2rem !important;
+    text-transform: uppercase !important;
+  }
 }
 </style>
 
-@section('content')
-<div class="pc-page">
-  <div class="container-fluid px-3 px-md-4 py-3">
+<div class="pc-container">
 
-    {{-- ═══ HEADER ═══ --}}
-    <div class="pc-hdr">
-      <h2><i class="bi bi-gear-wide-connected"></i>Own Production Entry</h2>
-      <a href="{{ route('production.index') }}" class="pc-btn pc-btn-ghost">
-        <i class="bi bi-arrow-left"></i>Back
-      </a>
+  {{-- ══════════ TOP HEADER BAR ══════════ --}}
+  <div class="pc-header-bar">
+    <div class="pc-header-title">
+      <i class="bi bi-gear-wide-connected pc-icon"></i>
+      <h2>Own Production Entry</h2>
+      <span class="pc-badge-pill">New Batch Form</span>
     </div>
 
-    {{-- ═══ MAIN CARD ═══ --}}
+    <a href="{{ route('production.index') }}" class="pc-btn-back">
+      <i class="bi bi-arrow-left"></i> Back to Batches
+    </a>
+  </div>
+
+  <form action="{{ route('production.store') }}" method="POST">
+    @csrf
+
+    {{-- ══════════ MAIN CARD: BATCH DETAILS ══════════ --}}
     <div class="pc-card">
-      <div class="pc-card-hd"><i class="bi bi-clipboard-data"></i>Production Batch Details</div>
-      <div class="pc-card-body">
-        <form action="{{ route('production.store') }}" method="POST">
-          @csrf
+      <div class="pc-card-header">
+        <div><i class="bi bi-clipboard-data"></i> Production Batch Details</div>
+      </div>
 
-          {{-- ROW 1: Date / Entry# / Source --}}
-          <div class="row g-3 mb-4">
-            <div class="col-md-3">
-              <label class="pc-lbl"><i class="bi bi-calendar-event"></i>Production Date</label>
-              <input type="date" name="production_date" value="{{ date('Y-m-d') }}" class="pc-fld" required>
-            </div>
-            <div class="col-md-3">
-              <label class="pc-lbl"><i class="bi bi-hash"></i>Batch / Entry #</label>
-              <input type="text" name="entry_no" value="PROD-{{ date('Ymd-His') }}" class="pc-fld" readonly>
-            </div>
-            <div class="col-md-3">
-              <label class="pc-lbl"><i class="bi bi-geo-alt"></i>Source</label>
-              <select name="source" class="pc-fld">
-                <option value="kitchen">Main Kitchen</option>
-                <option value="warehouse">Warehouse</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="pc-lbl"><i class="bi bi-card-text"></i>Notes</label>
-              <input type="text" name="notes" class="pc-fld" placeholder="Optional notes for this batch...">
-            </div>
-          </div>
+      <div class="row g-3">
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-calendar-event me-1 text-success"></i> Production Date</label>
+          <input type="date" name="production_date" value="{{ date('Y-m-d') }}" class="pc-input" required>
+        </div>
 
-          {{-- ═══ ITEMS TABLE ═══ --}}
-          <div class="pc-tbl-wrap mb-3">
-            <table class="pc-tbl">
-              <thead>
-                <tr>
-                  <th style="width:28%;">Product</th>
-                  <th style="width:12%;">Code</th>
-                  <th style="width:8%;">Unit</th>
-                  <th style="width:12%;">Entered Qty (KG/Pc)</th>
-                  <th style="width:12%;">Cost (Rs)</th>
-                  <th style="width:12%;">Note</th>
-                  <th style="width:70px;">Action</th>
-                </tr>
-              </thead>
-              <tbody id="productionItems">
-                <tr>
-                  <td>
-                    <select name="product_id[]" class="pc-tbl-fld select2 product-select" required style="width:100%;">
-                      <option value="">Search Product...</option>
-                      @foreach($products as $p)
-                      <option value="{{ $p->id }}"
-                        data-code="{{ $p->item_code }}"
-                        data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
-                        data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
-                        {{ $p->item_code }} - {{ $p->item_name }}
-                      </option>
-                      @endforeach
-                    </select>
-                    <div class="variant-container mt-1" style="display:none;">
-                      <select name="variant_id[]" class="pc-tbl-fld variant-select" style="width:100%;">
-                        <option value="">Select Size (Optional)</option>
-                      </select>
-                    </div>
-                  </td>
-                  <td><input type="text" class="pc-tbl-fld code-display" readonly></td>
-                  <td><input type="text" class="pc-tbl-fld unit-display" readonly></td>
-                  <td>
-                    <input type="number" step="0.001" name="qty[]" class="pc-tbl-fld qty-input" required min="0.001">
-                    <small class="pc-conv conversion-display"></small>
-                  </td>
-                  <td><input type="number" step="0.01" min="0" name="item_cost[]" class="pc-tbl-fld item-cost" value="0" placeholder="0"></td>
-                  <td><input type="text" name="item_note[]" class="pc-tbl-fld"></td>
-                  <td>
-                    <button type="button" class="pc-act-remove remove-row" title="Remove row">
-                      <i class="bi bi-x-lg"></i>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-hash me-1 text-success"></i> Batch / Entry #</label>
+          <input type="text" name="entry_no" value="PROD-{{ date('Ymd-His') }}" class="pc-input" readonly>
+        </div>
 
-          {{-- ═══ BOTTOM BAR ═══ --}}
-          <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
-            <button type="button" class="pc-act-add" id="addRow">
-              <i class="bi bi-plus-circle"></i>Add More
-            </button>
-            <div class="ms-auto d-flex align-items-center gap-3">
-              <span style="font-size:.85rem;font-weight:600;color:var(--pc-text-sec);">Total Cost: <strong id="totalProdCost" style="color:var(--pc-accent);font-size:1rem;">Rs 0</strong></span>
-              <button type="submit" class="pc-act-submit">
-                <i class="bi bi-floppy"></i>Save Entry
-              </button>
-            </div>
-          </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-geo-alt me-1 text-success"></i> Source</label>
+          <select name="source" class="pc-select">
+            <option value="kitchen">Main Kitchen</option>
+            <option value="warehouse">Warehouse</option>
+          </select>
+        </div>
 
-          {{-- ═══ RAW MATERIAL USAGE ═══ --}}
-          <hr style="border-color:var(--pc-border);margin:1.5rem 0;">
-          <h5 style="font-weight:700;font-size:.95rem;color:var(--pc-text);margin-bottom:1rem;">
-            <i class="bi bi-box-seam me-1" style="color:var(--pc-accent);"></i>Raw Materials Consumed
-          </h5>
-          <div class="pc-tbl-wrap mb-3">
-            <table class="pc-tbl">
-              <thead>
-                <tr>
-                  <th style="width:35%;">Raw Material</th>
-                  <th style="width:20%;">Qty Used</th>
-                  <th style="width:20%;">Cost/Unit (Rs)</th>
-                  <th style="width:20%;">Total Cost</th>
-                  <th style="width:50px;">Action</th>
-                </tr>
-              </thead>
-              <tbody id="rmUsageBody">
-                <tr class="rm-row manual-rm-row" id="rmManualTemplate" style="display:none;">
-                  <td>
-                    <select name="rm_id[]" class="pc-tbl-fld" style="width:100%;">
-                      <option value="">Select Raw Material...</option>
-                      @foreach($rawMaterials as $rm)
-                      <option value="{{ $rm->id }}" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}">
-                        {{ $rm->name }} ({{ $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
-                      </option>
-                      @endforeach
-                    </select>
-                  </td>
-                  <td><input type="number" step="0.01" name="rm_qty[]" class="pc-tbl-fld rm-qty" value="0" min="0"></td>
-                  <td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-tbl-fld rm-cost" value="0" placeholder="0"></td>
-                  <td><span class="rm-total fw-bold" style="font-size:.88rem;color:var(--pc-text);">0</span></td>
-                  <td>
-                    <button type="button" class="pc-act-remove remove-rm-row" title="Remove">
-                      <i class="bi bi-x-lg"></i>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <button type="button" class="pc-act-add" id="addRmRow">
-            <i class="bi bi-plus-circle"></i>Add More Raw Material
-          </button>
-
-        </form>
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-card-text me-1 text-success"></i> Notes</label>
+          <input type="text" name="notes" class="pc-input" placeholder="Optional notes for batch...">
+        </div>
       </div>
     </div>
 
-  </div>
+    {{-- ══════════ FINISHED PRODUCTS PRODUCED ══════════ --}}
+    <div class="pc-card">
+      <div class="pc-card-header">
+        <div><i class="bi bi-box-seam-fill"></i> Finished Products Produced</div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="pc-table">
+          <thead>
+            <tr>
+              <th class="text-start" style="width:30%;">Product</th>
+              <th style="width:12%;">Code</th>
+              <th style="width:10%;">Unit</th>
+              <th style="width:15%;">Entered Qty (KG/Pc)</th>
+              <th style="width:15%;">Cost (Rs)</th>
+              <th style="width:13%;">Note</th>
+              <th style="width:50px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="productionItems">
+            <tr>
+              <td>
+                <span class="mobile-lbl">Product</span>
+                <select name="product_id[]" class="pc-select select2 product-select" required style="width:100%;">
+                  <option value="">Search Product...</option>
+                  @foreach($products as $p)
+                  <option value="{{ $p->id }}"
+                    data-code="{{ $p->item_code }}"
+                    data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
+                    data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
+                    {{ $p->item_code }} - {{ $p->item_name }}
+                  </option>
+                  @endforeach
+                </select>
+                <div class="variant-container mt-1" style="display:none;">
+                  <select name="variant_id[]" class="pc-select variant-select" style="width:100%;">
+                    <option value="">Select Size (Optional)</option>
+                  </select>
+                </div>
+              </td>
+              <td>
+                <span class="mobile-lbl">Code</span>
+                <input type="text" class="pc-input code-display text-center" readonly>
+              </td>
+              <td>
+                <span class="mobile-lbl">Unit</span>
+                <input type="text" class="pc-input unit-display text-center fw-bold" readonly>
+              </td>
+              <td>
+                <span class="mobile-lbl">Entered Qty</span>
+                <input type="number" step="0.001" name="qty[]" class="pc-input qty-input text-center fw-bold" required min="0.001" placeholder="0.000">
+                <small class="text-muted d-block conversion-display" style="font-size:0.75rem;"></small>
+              </td>
+              <td>
+                <span class="mobile-lbl">Cost (Rs)</span>
+                <input type="number" step="0.01" min="0" name="item_cost[]" class="pc-input item-cost text-center fw-bold" value="0" placeholder="0.00">
+              </td>
+              <td>
+                <span class="mobile-lbl">Note</span>
+                <input type="text" name="item_note[]" class="pc-input" placeholder="Item note...">
+              </td>
+              <td class="text-center">
+                <button type="button" class="btn btn-danger btn-sm remove-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove row">
+                  <i class="bi bi-trash-fill text-white"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-3">
+        <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 py-2" id="addRow" style="border-radius:6px;">
+          <i class="bi bi-plus-lg me-1"></i> Add More Product Row
+        </button>
+      </div>
+    </div>
+
+    {{-- ══════════ RAW MATERIALS CONSUMED ══════════ --}}
+    <div class="pc-card">
+      <div class="pc-card-header">
+        <div><i class="bi bi-box-seam"></i> Raw Materials Consumed</div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="pc-table">
+          <thead>
+            <tr>
+              <th class="text-start" style="width:35%;">Raw Material</th>
+              <th style="width:20%;">Qty Used</th>
+              <th style="width:20%;">Cost/Unit (Rs)</th>
+              <th style="width:20%;">Total Cost</th>
+              <th style="width:50px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="rmUsageBody">
+            <tr class="rm-row manual-rm-row" id="rmManualTemplate" style="display:none;">
+              <td>
+                <span class="mobile-lbl">Raw Material / Product Ingredient</span>
+                <input type="hidden" name="rm_type[]" class="rm-type" value="rm">
+                <select name="rm_id[]" class="pc-select" style="width:100%;">
+                  <option value="">Select Ingredient / Raw Material...</option>
+                  <optgroup label="Raw Materials">
+                    @foreach($rawMaterials as $rm)
+                    <option value="{{ $rm->id }}" data-type="rm" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}">
+                      [Raw Material] {{ $rm->name }} ({{ $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
+                    </option>
+                    @endforeach
+                  </optgroup>
+                  <optgroup label="Semi-Finished / Base Products">
+                    @foreach($products as $pItem)
+                    <option value="{{ $pItem->id }}" data-type="product" data-stock="{{ $pItem->stock->qty ?? 0 }}" data-cost="{{ $pItem->price }}">
+                      [Product] {{ $pItem->item_code }} - {{ $pItem->item_name }}
+                    </option>
+                    @endforeach
+                  </optgroup>
+                </select>
+              </td>
+              <td>
+                <span class="mobile-lbl">Qty Used</span>
+                <input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="0" min="0">
+              </td>
+              <td>
+                <span class="mobile-lbl">Cost/Unit</span>
+                <input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="0" placeholder="0">
+              </td>
+              <td class="text-center">
+                <span class="mobile-lbl">Total Cost</span>
+                <span class="rm-total fw-bold text-success" style="font-size:.9rem;">0</span>
+              </td>
+              <td class="text-center">
+                <button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove">
+                  <i class="bi bi-trash-fill text-white"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 py-2" id="addRmRow" style="border-radius:6px;">
+          <i class="bi bi-plus-lg me-1"></i> Add More Raw Material / Ingredient
+        </button>
+
+        <div class="d-flex align-items-center gap-3 ms-auto">
+          <span class="fw-bold fs-6 text-dark">Total Batch Cost: <strong id="totalProdCost" class="text-success fs-5">Rs 0</strong></span>
+          <button type="submit" class="btn text-white fw-bold px-4 py-2" style="background-color:#0e8349; border-radius:6px; box-shadow: 0 4px 10px rgba(14, 131, 73, 0.2);">
+            <i class="bi bi-floppy-fill me-1"></i> Save Production Batch
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </form>
+
 </div>
 @endsection
 
@@ -512,7 +463,6 @@ select.pc-fld {
 $(document).ready(function() {
   $('.select2').select2({ width: '100%', placeholder: 'Select product...' });
 
-  // Update production item cost display
   function calcTotalCost() {
     var total = 0;
     $('.item-cost').each(function() { total += parseFloat($(this).val()) || 0; });
@@ -530,14 +480,16 @@ $(document).ready(function() {
     calcTotalCost();
   });
 
-  // Auto-fill rm_cost from data-cost on RM select change
   $(document).on('change', '#rmUsageBody select[name="rm_id[]"]', function() {
-    var cost = $(this).find(':selected').data('cost') || 0;
-    $(this).closest('tr').find('.rm-cost').val(cost);
+    var opt = $(this).find(':selected');
+    var cost = opt.data('cost') || 0;
+    var type = opt.data('type') || 'rm';
+    var row = $(this).closest('tr');
+    row.find('.rm-cost').val(cost);
+    row.find('.rm-type').val(type);
     calcTotalCost();
   });
 
-  // Raw material row - add
   $('#addRmRow').click(function() {
     var tmpl = document.getElementById('rmManualTemplate');
     var newRow = tmpl.cloneNode(true);
@@ -546,6 +498,7 @@ $(document).ready(function() {
     newRow.id = '';
     newRow.querySelectorAll('input').forEach(function(el) { el.value = ''; el.readOnly = false; });
     newRow.querySelector('select').disabled = false;
+    newRow.querySelector('.rm-type').value = 'rm';
     newRow.querySelector('.rm-total').textContent = '0';
     document.getElementById('rmUsageBody').appendChild(newRow);
   });
@@ -570,7 +523,7 @@ $(document).ready(function() {
     let variantContainer = row.find('.variant-container');
     let isGram = opt.data('is-gram') == '1';
 
-    if (productId && !isGram) {
+    if (productId) {
       variantContainer.show();
       variantSelect.html('<option value="">Loading sizes...</option>');
       $.ajax({
@@ -580,7 +533,7 @@ $(document).ready(function() {
           variantSelect.html('<option value="">Select Size (Optional)</option>');
           if (res.variants && res.variants.length > 0) {
             res.variants.forEach(function(v) {
-              variantSelect.append('<option value="' + v.id + '">' + v.size_label + '</option>');
+              variantSelect.append('<option value="' + v.id + '" data-size-value="' + (v.size_value || 1) + '">' + v.size_label + '</option>');
             });
           } else {
             variantContainer.hide();
@@ -588,6 +541,7 @@ $(document).ready(function() {
           }
         },
         error: function() {
+          variantContainer.hide();
           variantSelect.html('<option value="">Select Size (Optional)</option>');
         }
       });
@@ -597,46 +551,73 @@ $(document).ready(function() {
     }
   });
 
+  $(document).on('change', '.variant-select', function() {
+    let row = $(this).closest('tr');
+    updateConversion(row);
+    loadBomForRow(row);
+  });
+
   function loadBomForRow(row) {
     var productId = row.find('.product-select').val();
+    var variantId = row.find('.variant-select').val() || '';
     var qty = parseFloat(row.find('.qty-input').val()) || 1;
     if (!productId) return;
 
-    // Remove old BOM rows
-    document.querySelectorAll('#rmUsageBody .bom-row').forEach(function(el) { el.remove(); });
+    var selectedVarOpt = row.find('.variant-select option:selected');
+    var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+    var multiplier = varSizeVal > 0 ? varSizeVal : 1;
 
-    // Abort previous request if still running
-    if (window._bomAjax) window._bomAjax.abort();
-    window._bomAjax = $.ajax({
-      url: '/products/' + productId + '/bom-raw-materials',
+    var rowId = row.attr('data-row-id');
+    if (!rowId) {
+      rowId = 'prow_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+      row.attr('data-row-id', rowId);
+    }
+
+    // Remove old BOM rows for THIS specific product row only
+    $('#rmUsageBody .bom-row[data-parent-row="' + rowId + '"]').remove();
+
+    var url = '/products/' + productId + '/bom-raw-materials';
+    if (variantId) {
+      url += '?variant_id=' + variantId;
+    }
+
+    $.ajax({
+      url: url,
       type: 'GET',
       success: function(bom) {
         if (!bom || bom.length === 0) return;
         var tbody = document.getElementById('rmUsageBody');
-        var opts = '';
-        @foreach($rawMaterials as $rm)
-        opts += '<option value="{{ $rm->id }}" data-cost="{{ $rm->lastPurchaseCost() }}">{{ $rm->name }} ({{ $rm->unit }})</option>';
-        @endforeach
 
         bom.forEach(function(item) {
           var tr = document.createElement('tr');
           tr.className = 'rm-row bom-row';
-          tr.innerHTML = '<td><select name="rm_id[]" class="pc-tbl-fld" style="width:100%;pointer-events:none;background:#f0f0f0;" tabindex="-1">' +
-            '<option value="">Select...</option>' + opts + '</select></td>' +
-            '<td><input type="number" step="0.01" name="rm_qty[]" class="pc-tbl-fld rm-qty" value="' + (parseFloat(item.qty_per_unit) * qty).toFixed(2) + '" min="0" readonly></td>' +
-            '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-tbl-fld rm-cost" value="0" placeholder="0" readonly></td>' +
-            '<td><span class="rm-total fw-bold" style="font-size:.88rem;color:var(--pc-text);">0</span></td>' +
-            '<td><button type="button" class="pc-act-remove remove-rm-row" title="Remove"><i class="bi bi-x-lg"></i></button></td>';
-          tbody.insertBefore(tr, tbody.firstChild);
-          var sel = tr.querySelector('select');
-          if (sel) sel.value = item.raw_material_id || '';
-          var inp = tr.querySelector('input[name="rm_cost[]"]');
-          if (inp && sel) {
-            var c = parseFloat(sel.options[sel.selectedIndex]?.dataset?.cost) || 0;
-            inp.value = c.toFixed(2);
-            var qtyInp = tr.querySelector('input[name="rm_qty[]"]');
-            tr.querySelector('.rm-total').textContent = (parseFloat(qtyInp?.value || 0) * c).toLocaleString();
+          tr.setAttribute('data-parent-row', rowId);
+          var isProduct = !!item.ingredient_product_id;
+          var itemId = isProduct ? item.ingredient_product_id : item.raw_material_id;
+          var itemType = isProduct ? 'product' : 'rm';
+          var itemName = isProduct 
+            ? (item.ingredient_product ? item.ingredient_product.item_name + ' [Base Product]' : 'Product #' + itemId)
+            : (item.raw_material ? item.raw_material.name + ' (' + (item.raw_material.unit || '') + ')' : 'RM #' + itemId);
+
+          if (item.is_custom_variant_bom) {
+            itemName += ' [Custom Variant Recipe]';
           }
+
+          var itemCost = parseFloat(item.unit_cost) || 0;
+          var effectiveQty = item.is_custom_variant_bom ? qty : (qty * multiplier);
+          var requiredQty = (parseFloat(item.qty_per_unit) * effectiveQty);
+
+          tr.innerHTML = '<td>' +
+            '<input type="hidden" name="rm_type[]" class="rm-type" value="' + itemType + '">' +
+            '<input type="hidden" name="rm_id[]" value="' + itemId + '">' +
+            '<input type="text" class="pc-input fw-bold" value="' + itemName + '" readonly style="background:#f1f5f9; color:#0f172a;">' +
+            '</td>' +
+            '<td><input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="' + requiredQty.toFixed(2) + '" min="0" readonly></td>' +
+            '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="' + itemCost.toFixed(2) + '" placeholder="0"></td>' +
+            '<td class="text-center"><span class="rm-total fw-bold text-success" style="font-size:.9rem;">0</span></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove"><i class="bi bi-trash-fill text-white"></i></button></td>';
+
+          tbody.insertBefore(tr, tbody.firstChild);
         });
         calcTotalCost();
       }
@@ -652,7 +633,10 @@ $(document).ready(function() {
     let qty = parseFloat(row.find('.qty-input').val()) || 0;
     let isGram = row.find('.product-select option:selected').data('is-gram') == '1';
     if (isGram && qty > 0) {
-      let grams = qty * 1000;
+      let selectedVarOpt = row.find('.variant-select option:selected');
+      var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+      var multiplier = varSizeVal > 0 ? varSizeVal : 1;
+      let grams = qty * multiplier * 1000;
       row.find('.conversion-display').text('(' + grams.toLocaleString() + ' grams to stock)');
     } else {
       row.find('.conversion-display').text('');
@@ -661,6 +645,7 @@ $(document).ready(function() {
 
   $('#addRow').click(function() {
     let newRow = $('#productionItems tr:first').clone();
+    newRow.removeAttr('data-row-id');
     newRow.find('input').val('');
     newRow.find('.conversion-display').text('');
     newRow.find('.variant-container').hide();
@@ -672,7 +657,14 @@ $(document).ready(function() {
   });
 
   $(document).on('click', '.remove-row', function() {
-    if ($('#productionItems tr').length > 1) $(this).closest('tr').remove();
+    if ($('#productionItems tr').length > 1) {
+      let row = $(this).closest('tr');
+      let rowId = row.attr('data-row-id');
+      if (rowId) {
+        $('#rmUsageBody .bom-row[data-parent-row="' + rowId + '"]').remove();
+      }
+      row.remove();
+    }
     calcTotalCost();
   });
 });

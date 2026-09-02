@@ -516,7 +516,7 @@
                   <button class="btn btn-sm btn-outline-danger rounded-2 delete-btn"
                     data-url="{{ route('table.delete', $table->id) }}"
                     data-msg="Are you sure you want to delete this table?"
-                    data-method="get"
+                    data-method="DELETE"
                     onclick="logoutAndDeleteFunction(this)">
                     <i class="bi bi-trash me-1"></i> Delete
                   </button>

@@ -70,6 +70,9 @@ class ReportingController extends Controller
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->whereIn('purchase_items.product_id', $productIds)
             ->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
+        if (!is_all_branches()) {
+            $purchasesQuery->where('purchases.branch_id', active_branch_id());
+        }
         if ($resetTime) {
             $purchasesQuery->where('purchases.created_at', '>=', $resetTime);
         }
@@ -82,6 +85,9 @@ class ReportingController extends Controller
             ->whereIn('production_entry_items.product_id', $productIds)
             ->whereDate('production_entries.production_date', '>=', $startDate)
             ->whereDate('production_entries.production_date', '<=', $endDate);
+        if (!is_all_branches()) {
+            $productionsQuery->where('production_entries.branch_id', active_branch_id());
+        }
         if ($resetTime) {
             $productionsQuery->where('production_entries.created_at', '>=', $resetTime);
         }
@@ -93,6 +99,9 @@ class ReportingController extends Controller
             ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
             ->whereIn('purchase_return_items.product_id', $productIds)
             ->whereBetween('purchase_returns.return_date', [$startDate, $endDate]);
+        if (!is_all_branches()) {
+            $purchaseReturnsQuery->where('purchase_returns.branch_id', active_branch_id());
+        }
         if ($resetTime) {
             $purchaseReturnsQuery->where('purchase_returns.created_at', '>=', $resetTime);
         }
@@ -100,10 +109,11 @@ class ReportingController extends Controller
             ->groupBy('purchase_return_items.product_id')
             ->get();
 
-        $currStocks = DB::table('stocks')
-            ->whereIn('product_id', $productIds)
-            ->select('product_id', 'variant_id', 'qty')
-            ->get();
+        $currStocksQuery = DB::table('stocks')->whereIn('product_id', $productIds);
+        if (!is_all_branches()) {
+            $currStocksQuery->where('branch_id', active_branch_id());
+        }
+        $currStocks = $currStocksQuery->select('product_id', 'variant_id', 'qty')->get();
 
         // Mapping helper: key = pid_vid (use 0 for null variant)
         $mapP = []; foreach($purchases as $p) { $mapP[$p->product_id . '_' . ($p->variant_id ?? 0)] = $p->total_qty; }
@@ -115,6 +125,9 @@ class ReportingController extends Controller
         // Sales processing (by product and variant) with DATE filter
         $hasVariantIdInSales = \Illuminate\Support\Facades\Schema::hasColumn('sales', 'variant_id');
         $allSalesQuery = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT])->whereNotNull('product')->select('product', 'qty');
+        if (!is_all_branches()) {
+            $allSalesQuery->where('branch_id', active_branch_id());
+        }
         if ($hasVariantIdInSales) {
             $allSalesQuery->addSelect('variant_id');
         }
@@ -141,6 +154,9 @@ class ReportingController extends Controller
 
         $hasVariantIdInReturns = \Illuminate\Support\Facades\Schema::hasColumn('sales_returns', 'variant_id');
         $allReturnsQuery = DB::table('sales_returns')->whereBetween('created_at', [$startDT, $endDT])->whereNotNull('product')->select('product', 'qty');
+        if (!is_all_branches()) {
+            $allReturnsQuery->where('branch_id', active_branch_id());
+        }
         if ($hasVariantIdInReturns) {
             $allReturnsQuery->addSelect('variant_id');
         }
@@ -170,6 +186,9 @@ class ReportingController extends Controller
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->whereIn('purchase_items.product_id', $productIds)
             ->where('purchases.purchase_date', '>', $endDate);
+        if (!is_all_branches()) {
+            $purchAfterQuery->where('purchases.branch_id', active_branch_id());
+        }
         if ($resetTime) {
             $purchAfterQuery->where('purchases.created_at', '>=', $resetTime);
         }
@@ -182,6 +201,9 @@ class ReportingController extends Controller
             ->join('production_entries', 'production_entries.id', '=', 'production_entry_items.production_entry_id')
             ->whereIn('production_entry_items.product_id', $productIds)
             ->whereDate('production_entries.production_date', '>', $endDate);
+        if (!is_all_branches()) {
+            $prodAfterQuery->where('production_entries.branch_id', active_branch_id());
+        }
         if ($resetTime) {
             $prodAfterQuery->where('production_entries.created_at', '>=', $resetTime);
         }
@@ -194,6 +216,9 @@ class ReportingController extends Controller
             ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
             ->whereIn('purchase_return_items.product_id', $productIds)
             ->where('purchase_returns.return_date', '>', $endDate);
+        if (!is_all_branches()) {
+            $prAfterQuery->where('purchase_returns.branch_id', active_branch_id());
+        }
         if ($resetTime) {
             $prAfterQuery->where('purchase_returns.created_at', '>=', $resetTime);
         }
@@ -203,6 +228,9 @@ class ReportingController extends Controller
         $mapPRAft = []; foreach($prAfter as $pr) { $mapPRAft[$pr->product_id . '_0'] = ($mapPRAft[$pr->product_id . '_0'] ?? 0) + $pr->total_qty; }
 
         $allSalesAfterQ = DB::table('sales')->where('created_at', '>', $endDT)->whereNotNull('product')->select('product', 'qty');
+        if (!is_all_branches()) {
+            $allSalesAfterQ->where('branch_id', active_branch_id());
+        }
         if ($hasVariantIdInSales) { $allSalesAfterQ->addSelect('variant_id'); }
         if ($resetTime) {
             $allSalesAfterQ->where('created_at', '>=', $resetTime);
@@ -221,6 +249,9 @@ class ReportingController extends Controller
         }
 
         $allRetAfterQ = DB::table('sales_returns')->where('created_at', '>', $endDT)->whereNotNull('product')->select('product', 'qty');
+        if (!is_all_branches()) {
+            $allRetAfterQ->where('branch_id', active_branch_id());
+        }
         if ($hasVariantIdInReturns) { $allRetAfterQ->addSelect('variant_id'); }
         if ($resetTime) {
             $allRetAfterQ->where('created_at', '>=', $resetTime);
@@ -241,8 +272,17 @@ class ReportingController extends Controller
         // ---- STOCK ADJUSTMENTS within date range ----
         $adjInRangeQuery = DB::table('stock_adjustment_items as sai')
             ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
+            ->leftJoin('users as u', 'u.id', '=', 'sa.created_by')
             ->whereIn('sai.product_id', $productIds)
             ->whereBetween('sa.adjustment_date', [$startDate, $endDate]);
+        if (!is_all_branches()) {
+            $adjInRangeQuery->where(function($q) {
+                $q->where('sa.branch_id', active_branch_id())
+                  ->orWhere(function($sq) {
+                      $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
+                  });
+            });
+        }
         if ($resetTime) {
             $adjInRangeQuery->where('sa.created_at', '>=', $resetTime);
         }
@@ -264,8 +304,17 @@ class ReportingController extends Controller
         // ---- STOCK ADJUSTMENTS AFTER end_date ----
         $adjAfterQuery = DB::table('stock_adjustment_items as sai')
             ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
+            ->leftJoin('users as u', 'u.id', '=', 'sa.created_by')
             ->whereIn('sai.product_id', $productIds)
             ->where('sa.adjustment_date', '>', $endDate);
+        if (!is_all_branches()) {
+            $adjAfterQuery->where(function($q) {
+                $q->where('sa.branch_id', active_branch_id())
+                  ->orWhere(function($sq) {
+                      $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
+                  });
+            });
+        }
         if ($resetTime) {
             $adjAfterQuery->where('sa.created_at', '>=', $resetTime);
         }
@@ -483,6 +532,7 @@ class ReportingController extends Controller
                 'products.id          as product_id',
                 'products.item_code   as item_code',
                 'products.item_name   as product_name',
+                'products.unit_type   as unit_type',
                 'categories.name      as category',
                 'product_variants.id           as variant_id',
                 'product_variants.size_label   as size_label',
@@ -511,10 +561,30 @@ class ReportingController extends Controller
         }
 
         $variants = $query->get();
-        $variantIds = $variants->pluck('variant_id')->toArray();
-        $stocks = DB::table('stocks')
-            ->whereIn('variant_id', $variantIds)
-            ->pluck('qty', 'variant_id');
+        $productIds = $variants->pluck('product_id')->unique()->toArray();
+        
+        $stocksQuery = DB::table('stocks')->whereIn('product_id', $productIds);
+        if (!is_all_branches()) {
+            $stocksQuery->where('branch_id', active_branch_id());
+        }
+        $rawStocks = $stocksQuery->get();
+
+        $stocksMap = [];
+        $nullStocksMap = [];
+        foreach ($rawStocks as $st) {
+            $pid = $st->product_id;
+            if ($st->variant_id) {
+                $stocksMap[$pid][$st->variant_id] = ($stocksMap[$pid][$st->variant_id] ?? 0) + (float)$st->qty;
+            } else {
+                $nullStocksMap[$pid] = ($nullStocksMap[$pid] ?? 0) + (float)$st->qty;
+            }
+        }
+
+        // Group variants by product to check variant counts
+        $productVariantCounts = [];
+        foreach ($variants as $v) {
+            $productVariantCounts[$v->product_id][] = $v->variant_id;
+        }
 
         // Group by product
         $grouped = [];
@@ -525,21 +595,33 @@ class ReportingController extends Controller
                     'product_id'   => $pid,
                     'item_code'    => $v->item_code,
                     'product_name' => $v->product_name,
+                    'unit_type'    => $v->unit_type,
                     'category'     => $v->category ?? '–',
                     'total_stock'  => 0,
                     'sizes'        => [],
                 ];
             }
             $label = $v->size_label ?: $v->variant_name ?: ('Size ' . $v->size_value . ' ' . $v->size_unit);
-            
-            // Override with actual stocks table
-            $stock = isset($stocks[$v->variant_id]) ? (float)$stocks[$v->variant_id] : (float)$v->stock_qty;
+            $vid   = $v->variant_id;
+
+            $rawStock = isset($stocksMap[$pid][$vid]) ? (float)$stocksMap[$pid][$vid] : (float)$v->stock_qty;
+
+            // Combine unassigned main product stock (variant_id IS NULL) with default variant or single variant
+            if (($v->is_default || count($productVariantCounts[$pid] ?? []) === 1) && isset($nullStocksMap[$pid])) {
+                $rawStock += $nullStocksMap[$pid];
+                unset($nullStocksMap[$pid]); // consume null stock so it's not added twice
+            }
+
+            // For KG items: raw stock in DB is in grams -> convert to KG for display
+            $isKg = $v->unit_type === 'kg';
+            $stock = $isKg ? ($rawStock / 1000) : $rawStock;
             
             $grouped[$pid]['sizes'][] = [
                 'variant_id'  => $v->variant_id,
                 'label'       => $label,
                 'price'       => (float)$v->price,
                 'stock_qty'   => $stock,
+                'is_kg'       => $isKg,
                 'alert_qty'   => (int)$v->alert_qty,
                 'is_default'  => (bool)$v->is_default,
                 'status'      => $stock <= 0 ? 'out' : ($stock <= ($v->alert_qty ?: 5) ? 'low' : 'ok'),
@@ -1827,5 +1909,125 @@ class ReportingController extends Controller
         $timeLabel = $startTime . ' to ' . $endTime;
 
         return view('admin_panel.reporting.closing_print', compact('rows', 'total', 'startDate', 'endDate', 'dateLabel', 'timeLabel'));
+    }
+
+    /**
+     * Branch-wise Stock Matrix Report View
+     */
+    public function branch_stock_report()
+    {
+        $categories = Category::orderBy('name')->get();
+        $branches   = \App\Models\Branch::orderBy('name')->get();
+        return view('admin_panel.reporting.branch_stock_report', compact('categories', 'branches'));
+    }
+
+    /**
+     * Fetch Branch-wise Stock Data (AJAX)
+     */
+    public function fetchBranchStockReport(Request $request)
+    {
+        $searchQ    = trim($request->get('q', ''));
+        $categoryId = $request->get('category_id', 'all');
+
+        $branches = \App\Models\Branch::orderBy('name')->get();
+
+        $pQuery = Product::with(['variants', 'unit', 'category_relation'])->orderBy('item_name');
+
+        if ($categoryId && $categoryId !== 'all') {
+            $pQuery->where('category_id', $categoryId);
+        }
+
+        if ($searchQ !== '') {
+            $pQuery->where(function($q) use ($searchQ) {
+                $q->where('item_name', 'like', "%{$searchQ}%")
+                  ->orWhere('item_code', 'like', "%{$searchQ}%")
+                  ->orWhere('barcode_path', 'like', "%{$searchQ}%");
+            });
+        }
+
+        $products = $pQuery->get();
+        $productIds = $products->pluck('id')->toArray();
+
+        // Fetch stocks grouped by product_id, variant_id, branch_id
+        $stocksData = DB::table('stocks')
+            ->whereIn('product_id', $productIds)
+            ->select('product_id', 'variant_id', 'branch_id', DB::raw('SUM(qty) as total_qty'))
+            ->groupBy('product_id', 'variant_id', 'branch_id')
+            ->get();
+
+        $stockMap = [];
+        foreach ($stocksData as $st) {
+            $k = $st->product_id . '_' . ($st->variant_id ?? 0);
+            $bId = $st->branch_id ?? 0;
+            $stockMap[$k][$bId] = ($stockMap[$k][$bId] ?? 0) + (float)$st->total_qty;
+        }
+
+        $rows = [];
+
+        foreach ($products as $p) {
+            $is_kg = $p->unit_type === 'kg';
+            $catName = $p->category_relation->name ?? '-';
+
+            if (!$is_kg && $p->variants->count() > 0) {
+                foreach ($p->variants as $v) {
+                    $key = $p->id . '_' . $v->id;
+                    $branchStocks = [];
+                    $totalStock = 0;
+
+                    foreach ($branches as $b) {
+                        $qty = (float)($stockMap[$key][$b->id] ?? 0);
+                        if ($v->is_default || $p->variants->first()->id == $v->id) {
+                            $qty += (float)($stockMap[$p->id . '_0'][$b->id] ?? 0);
+                        }
+                        $branchStocks[$b->id] = $qty;
+                        $totalStock += $qty;
+                    }
+
+                    $rows[] = [
+                        'item_code'     => $p->item_code,
+                        'item_name'     => $p->item_name . ' (' . ($v->size_label ?: $v->variant_name) . ')',
+                        'category'      => $catName,
+                        'unit'          => $p->unit->name ?? 'PC',
+                        'is_kg'         => false,
+                        'branch_stocks' => $branchStocks,
+                        'total_stock'   => $totalStock,
+                    ];
+                }
+            } else {
+                $key = $p->id . '_0';
+                $branchStocks = [];
+                $totalStock = 0;
+
+                foreach ($branches as $b) {
+                    $qty = (float)($stockMap[$key][$b->id] ?? 0);
+
+                    if ($is_kg && $p->variants->count() > 0) {
+                        foreach ($p->variants as $v) {
+                            $vKey = $p->id . '_' . $v->id;
+                            $qty += (float)($stockMap[$vKey][$b->id] ?? 0);
+                        }
+                    }
+
+                    $branchStocks[$b->id] = $qty;
+                    $totalStock += $qty;
+                }
+
+                $rows[] = [
+                    'item_code'     => $p->item_code,
+                    'item_name'     => $p->item_name,
+                    'category'      => $catName,
+                    'unit'          => $p->unit->name ?? ($is_kg ? 'KG' : 'PC'),
+                    'is_kg'         => $is_kg,
+                    'branch_stocks' => $branchStocks,
+                    'total_stock'   => $totalStock,
+                ];
+            }
+        }
+
+        return response()->json([
+            'branches' => $branches->map(fn($b) => ['id' => $b->id, 'name' => $b->name]),
+            'data'     => $rows,
+            'total'    => count($rows),
+        ]);
     }
 }

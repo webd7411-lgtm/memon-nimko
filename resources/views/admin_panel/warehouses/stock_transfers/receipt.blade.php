@@ -263,12 +263,22 @@
       </tr>
       <tr>
         <th>From:</th>
-        <td class="right bold">{{ $transfer->fromWarehouse->warehouse_name ?? 'Shop Stock' }}</td>
+        <td class="right bold">
+          @if($transfer->fromWarehouse)
+            {{ $transfer->fromWarehouse->warehouse_name }}
+          @elseif($transfer->fromBranch)
+            {{ $transfer->fromBranch->name }}
+          @else
+            Current Branch Stock
+          @endif
+        </td>
       </tr>
       <tr>
         <th>To:</th>
         <td class="right bold">
-          @if($transfer->transfer_to === 'shop')
+          @if($transfer->transfer_to === 'branch')
+            {{ $transfer->toBranch->name ?? 'Branch' }}
+          @elseif($transfer->transfer_to === 'shop')
             {{ $transfer->shop_name ?? 'Shop' }}
           @else
             {{ $transfer->toWarehouse->warehouse_name ?? 'Warehouse' }}
@@ -300,7 +310,7 @@
               <br><small style="font-size:11px; font-weight:normal;">({{ $product->variant_name }})</small>
             @endif
           </td>
-          <td class="right bold" style="font-size:14px;">{{ number_format($product->transfer_qty, 2) }}</td>
+          <td class="right bold" style="font-size:14px;">{{ number_format($product->transfer_qty, 2) }} {{ $product->unit ?? '' }}</td>
         </tr>
         @empty
         <tr>

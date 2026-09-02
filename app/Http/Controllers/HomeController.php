@@ -91,6 +91,13 @@ class HomeController extends Controller
                         ->orWhere('customers.customer_category', 'Retailer');
                 });
 
+            if (!is_all_branches()) {
+                $purchasesQuery->where('purchases.branch_id', active_branch_id());
+                $purchaseReturnsQuery->where('purchase_returns.branch_id', active_branch_id());
+                $salesQuery->where('sales.branch_id', active_branch_id());
+                $salesReturnsQuery->where('sales_returns.branch_id', active_branch_id());
+            }
+
             $totalPurchases = $purchasesQuery->sum('net_amount');
             $totalPurchaseReturns = $purchaseReturnsQuery->sum('net_amount');
             $totalSales = $salesQuery->sum('sales.total_net');
@@ -108,22 +115,28 @@ class HomeController extends Controller
             }
 
             $getSalesData = function($selectRaw) use ($start, $end) {
-                return DB::table('sales')
+                $q = DB::table('sales')
                     ->leftJoin('customers', 'sales.customer', '=', 'customers.id')
                     ->whereBetween('sales.created_at', [$start, $end])
                     ->where(function ($sub) {
                         $sub->where('sales.customer', 'Walk-in Customer')
                             ->orWhere('customers.customer_category', 'Walking Customer')
                             ->orWhere('customers.customer_category', 'Retailer');
-                    })
-                    ->select(DB::raw("$selectRaw as label_key"), DB::raw('SUM(sales.total_net) as total'))
+                    });
+                if (!is_all_branches()) {
+                    $q->where('sales.branch_id', active_branch_id());
+                }
+                return $q->select(DB::raw("$selectRaw as label_key"), DB::raw('SUM(sales.total_net) as total'))
                     ->groupBy('label_key')->orderBy('label_key')->pluck('total', 'label_key');
             };
 
             $getPurchaseData = function($selectRaw) use ($startObj, $endObj) {
-                 return DB::table('purchases')
-                    ->whereBetween('purchase_date', [$startObj->format('Y-m-d'), $endObj->format('Y-m-d')])
-                    ->select(DB::raw("$selectRaw as label_key"), DB::raw('SUM(net_amount) as total'))
+                 $q = DB::table('purchases')
+                    ->whereBetween('purchase_date', [$startObj->format('Y-m-d'), $endObj->format('Y-m-d')]);
+                 if (!is_all_branches()) {
+                     $q->where('purchases.branch_id', active_branch_id());
+                 }
+                 return $q->select(DB::raw("$selectRaw as label_key"), DB::raw('SUM(net_amount) as total'))
                     ->groupBy('label_key')->orderBy('label_key')->pluck('total', 'label_key');
             };
 
@@ -184,11 +197,18 @@ class HomeController extends Controller
             'series' => [['name' => 'Total Products', 'data' => $categoryProductData->pluck('total_products')]]
         ];
 
-        $lowStockData = DB::table('products')
-            ->leftJoin('stocks', 'products.id', '=', 'stocks.product_id')
-            ->select('products.id', 'products.item_code', 'products.item_name', DB::raw('COALESCE(stocks.qty, 0) as qty'), 'products.alert_quantity')
-            ->whereRaw('COALESCE(stocks.qty, 0) <= products.alert_quantity')
-            ->get();
+        $lowStockQuery = DB::table('products')
+            ->leftJoin('stocks', function($join) {
+                $join->on('products.id', '=', 'stocks.product_id');
+                if (!is_all_branches()) {
+                    $join->where('stocks.branch_id', '=', active_branch_id());
+                }
+            })
+            ->select('products.id', 'products.item_code', 'products.item_name', DB::raw('COALESCE(SUM(stocks.qty), 0) as qty'), 'products.alert_quantity')
+            ->groupBy('products.id', 'products.item_code', 'products.item_name', 'products.alert_quantity')
+            ->havingRaw('COALESCE(SUM(stocks.qty), 0) <= products.alert_quantity');
+        $lowStockData = $lowStockQuery->get();
+
         $lowStockChart = [
             'categories' => $lowStockData->pluck('item_name'),
             'series' => [
@@ -217,14 +237,21 @@ class HomeController extends Controller
              $endObj   = Carbon::parse($endDate)->endOfMonth();
 
              // Total Expenses
-             $totalExpenses = DB::table('expense_vouchers')
-                ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')])
-                ->sum('total_amount');
+             $totalExpensesQuery = DB::table('expense_vouchers')
+                ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')]);
+             if (!is_all_branches()) {
+                 $totalExpensesQuery->where('expense_vouchers.branch_id', active_branch_id());
+             }
+             $totalExpenses = $totalExpensesQuery->sum('total_amount');
 
-             $expenseRaw = DB::table('expense_vouchers')
+             $expenseRawQuery = DB::table('expense_vouchers')
                 ->join('accounts', 'expense_vouchers.party_id', '=', 'accounts.id')
                 ->join('account_heads', 'accounts.head_id', '=', 'account_heads.id')
-                ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')])
+                ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')]);
+             if (!is_all_branches()) {
+                 $expenseRawQuery->where('expense_vouchers.branch_id', active_branch_id());
+             }
+             $expenseRaw = $expenseRawQuery
                 ->select('account_heads.id as head_id', 'account_heads.name as head_name', 'accounts.title as account_name', DB::raw('SUM(expense_vouchers.total_amount) as total_expense'))
                 ->groupBy('account_heads.id', 'account_heads.name', 'accounts.title')
                 ->get()

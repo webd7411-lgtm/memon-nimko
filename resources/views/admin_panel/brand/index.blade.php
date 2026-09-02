@@ -442,7 +442,7 @@
                     <button class="pc-act pc-act-del delete-btn"
                       data-url="{{ route('delete.Brand', $company->id) }}"
                       data-msg="Are you sure you want to delete this brand?"
-                      data-method="get"
+                      data-method="DELETE"
                       onclick="logoutAndDeleteFunction(this)">
                       <i class="bi bi-trash3"></i>Delete
                     </button>

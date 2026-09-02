@@ -43,7 +43,11 @@
 
     <div class="header">
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 4px;">
-        <h2>Memon Nimkos</h2>
+        <h2>Memon Nimko</h2>
+        @php
+            $currentBranch = \App\Models\Branch::find(active_branch_id());
+        @endphp
+        <p style="font-weight:bold;text-transform:uppercase;margin:2px 0;">BRANCH: {{ $currentBranch->name ?? 'Main Branch' }}</p>
         <p>Table Bill / Order Summary</p>
     </div>
 

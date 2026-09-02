@@ -529,9 +529,13 @@
                   <a href="{{ route('customers.toggleStatus', $customer->id) }}" class="btn btn-sm btn-outline-warning rounded-2" title="Toggle Status">
                     <i class="bi {{ $customer->status === 'active' ? 'bi-toggle-on text-success fs-6' : 'bi-toggle-off text-muted fs-6' }}"></i>
                   </a>
-                  <a href="{{ route('customers.destroy', $customer->id) }}" class="btn btn-sm btn-outline-danger rounded-2" onclick="return confirm('Are you sure?')" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </a>
+                  <form action="{{ route('customers.destroy', $customer->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-2" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
                 </div>
               </td>
             </tr>

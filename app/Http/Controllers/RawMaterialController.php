@@ -49,9 +49,38 @@ class RawMaterialController extends Controller
         $material->name = $request->name;
         $material->urdu_name = $request->urdu_name;
         $material->unit = $request->unit;
+        $material->consumption_unit = $request->consumption_unit ?? $request->unit;
+        $material->conversion_factor = (float)($request->conversion_factor ?? 1) > 0 ? (float)$request->conversion_factor : 1;
         $material->alert_qty = $request->alert_qty ?? 0;
         $material->notes = $request->notes;
         $material->save();
+
+        // Save initial / updated purchase price
+        if ($request->has('initial_price')) {
+            $price = (float)$request->initial_price;
+            $latestItem = RawMaterialPurchaseItem::where('raw_material_id', $material->id)->latest('id')->first();
+            if ($latestItem) {
+                $latestItem->price_per_unit = $price;
+                $latestItem->total = $latestItem->qty * $price;
+                $latestItem->save();
+            } elseif ($price > 0) {
+                $purchase = RawMaterialPurchase::create([
+                    'date' => date('Y-m-d'),
+                    'invoice_no' => 'INIT-RM-' . $material->id,
+                    'vendor_name' => 'Initial Cost Setup',
+                    'total_cost' => 0,
+                    'notes' => 'Auto-generated for initial raw material cost setup',
+                    'created_by' => Auth::id(),
+                ]);
+                RawMaterialPurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'raw_material_id' => $material->id,
+                    'qty' => 0,
+                    'price_per_unit' => $price,
+                    'total' => 0,
+                ]);
+            }
+        }
 
         // Ensure stock record exists
         RawMaterialStock::firstOrCreate(['raw_material_id' => $material->id], ['qty' => 0]);
@@ -122,7 +151,11 @@ class RawMaterialController extends Controller
                 $item['purchase_id'] = $purchase->id;
                 RawMaterialPurchaseItem::create($item);
 
-                // Update stock
+                // Update stock in consumption/recipe units
+                $rawMat = RawMaterial::find($item['raw_material_id']);
+                $factor = ($rawMat && (float)$rawMat->conversion_factor > 0) ? (float)$rawMat->conversion_factor : 1;
+                $addQty = $item['qty'] * $factor;
+
                 $stock = RawMaterialStock::firstOrCreate(
                     [
                         'raw_material_id' => $item['raw_material_id'],
@@ -130,7 +163,7 @@ class RawMaterialController extends Controller
                     ],
                     ['qty' => 0]
                 );
-                $stock->qty += $item['qty'];
+                $stock->qty += $addQty;
                 $stock->save();
             }
 
@@ -150,6 +183,10 @@ class RawMaterialController extends Controller
 
             // Reverse stock
             foreach ($purchase->items as $item) {
+                $rawMat = RawMaterial::find($item->raw_material_id);
+                $factor = ($rawMat && (float)$rawMat->conversion_factor > 0) ? (float)$rawMat->conversion_factor : 1;
+                $deductQty = $item->qty * $factor;
+
                 $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)
                     ->where('warehouse_id', $purchase->warehouse_id)
                     ->first();
@@ -157,7 +194,7 @@ class RawMaterialController extends Controller
                     $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)->first();
                 }
                 if ($stock) {
-                    $stock->qty = max(0, $stock->qty - $item->qty);
+                    $stock->qty = max(0, $stock->qty - $deductQty);
                     $stock->save();
                 }
             }
@@ -185,6 +222,8 @@ class RawMaterialController extends Controller
                 'id' => $m->id,
                 'name' => $m->name,
                 'unit' => $m->unit,
+                'consumption_unit' => $m->consumption_unit ?? $m->unit,
+                'conversion_factor' => (float)($m->conversion_factor ?? 1),
                 'stock' => $m->currentStock(),
                 'alert_qty' => $m->alert_qty,
             ];

@@ -18,6 +18,10 @@ class StockAdjustmentController extends Controller
         $query = StockAdjustment::with(['user', 'items.product', 'items.variant'])
             ->orderBy('created_at', 'desc');
 
+        if (!is_all_branches() && \Illuminate\Support\Facades\Schema::hasColumn('stock_adjustments', 'branch_id')) {
+            $query->where('branch_id', active_branch_id());
+        }
+
         if ($request->from_date) {
             $query->whereDate('adjustment_date', '>=', $request->from_date);
         }
@@ -62,6 +66,7 @@ class StockAdjustmentController extends Controller
                 'reason'          => $request->reason,
                 'notes'           => $request->notes,
                 'created_by'      => Auth::id(),
+                'branch_id'       => active_branch_id(),
             ]);
 
             foreach ($request->product_id as $idx => $productId) {
@@ -110,9 +115,9 @@ class StockAdjustmentController extends Controller
                  ]);
  
                  // Apply stock adjustment
-                 $stockQuery = Stock::where('product_id', $productId)
-                     ->where('branch_id', 1)
-                     ->where('warehouse_id', 1);
+                  $stockQuery = Stock::where('product_id', $productId)
+                      ->where('branch_id', active_branch_id())
+                      ->where('warehouse_id', 1);
  
                  if ($dbVariantId) {
                      $stockQuery->where('variant_id', $dbVariantId);
@@ -129,9 +134,9 @@ class StockAdjustmentController extends Controller
                      }
                      $stock->save();
                  } elseif ($request->type === 'increase') {
-                     Stock::create([
-                         'branch_id'    => 1,
-                         'warehouse_id' => 1,
+                      Stock::create([
+                          'branch_id'    => active_branch_id(),
+                          'warehouse_id' => 1,
                          'product_id'   => $productId,
                          'variant_id'   => $dbVariantId,
                          'qty'          => $qtyStock,
@@ -175,6 +180,19 @@ class StockAdjustmentController extends Controller
             )
             ->orderBy('sa.adjustment_date', 'desc')
             ->orderBy('sa.id', 'desc');
+
+        if (!is_all_branches()) {
+            $query->where(function($q) {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('stock_adjustments', 'branch_id')) {
+                    $q->where('sa.branch_id', active_branch_id())
+                      ->orWhere(function($sq) {
+                          $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
+                      });
+                } else {
+                    $q->where('u.branch_id', active_branch_id());
+                }
+            });
+        }
 
         if ($type) {
             $query->where('sa.type', $type);

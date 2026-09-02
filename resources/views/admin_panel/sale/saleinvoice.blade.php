@@ -324,7 +324,38 @@
       <div class="store-info">A-16/B Block-D Unit No. 6 Latifabad, Hyderabad</div>
       <div class="store-info">Phone: 0334 2615888</div>
       
-      <div class="receipt-title">Sale Receipt</div>
+    @php
+      $fnUnitShortInv = function($unit) {
+          $u = trim(strtolower($unit));
+          if (in_array($u, ['gram', 'grams', 'gm', 'g'])) return 'Gm';
+          if (in_array($u, ['piece', 'pieces', 'pc', 'pcs'])) return 'Pc';
+          if (in_array($u, ['pound', 'pounds', 'pnd', 'lb', 'lbs'])) return 'Pnd';
+          if (in_array($u, ['kilogram', 'kilograms', 'kg'])) return 'Kg';
+          if (in_array($u, ['packet', 'packets', 'pack', 'pkt'])) return 'Pkt';
+          if (in_array($u, ['box', 'boxes', 'bx'])) return 'Bx';
+          return !empty($unit) ? ucfirst(strtolower($unit)) : '';
+      };
+
+      $invReturnItems = [];
+      $invNewItems = [];
+      $invReturnCost = 0;
+      $invNewCost = 0;
+
+      foreach($saleItems as $item) {
+          $q = (float)($item['qty'] ?? 0);
+          if ($q < 0) {
+              $invReturnItems[] = $item;
+              $invReturnCost += abs((float)($item['total'] ?? 0));
+          } else {
+              $invNewItems[] = $item;
+              $invNewCost += (float)($item['total'] ?? 0);
+          }
+      }
+
+      $isExchangeInv = count($invReturnItems) > 0 || (($bill->sale_status ?? $sale->sale_status ?? 0) == 2);
+    @endphp
+
+    <div class="receipt-title">{{ $isExchangeInv ? 'Sale Exchange Receipt' : 'Sale Receipt' }}</div>
     </div>
 
     <!-- Metadata -->
@@ -355,86 +386,122 @@
 
     <div style="margin-top:10px;"></div>
 
-    <!-- Items Table -->
-    <table class="items-table">
-      <thead>
-        <tr>
-          <th style="width: 40%;">Item Name</th>
-          <th class="col-price" style="width: 20%;">Price</th>
-          <th class="col-qty" style="width: 20%;">Qty/Wt</th>
-          <th class="col-amount" style="width: 20%;">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        @php
-          $categoryGroups = collect($saleItems)->groupBy('category');
-          $totalQty = 0;
-          $totalItemsCount = count($saleItems);
-        @endphp
-
-        @foreach($categoryGroups as $categoryName => $groupItems)
-          @foreach($groupItems as $item)
-            @php 
-                $totalQty += (float)$item['qty']; 
+    @if($isExchangeInv)
+      {{-- RETURN ITEMS SECTION --}}
+      @if(count($invReturnItems) > 0)
+        <div style="text-align:center; font-weight:900; font-size:13px; margin:6px 0 3px 0;">--- RETURN ITEMS ---</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 40%;">Item Name</th>
+              <th class="col-price" style="width: 20%;">Price</th>
+              <th class="col-qty" style="width: 20%;">Qty/Wt</th>
+              <th class="col-amount" style="width: 20%;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($invReturnItems as $item)
+              @php
+                $rQty = abs((float)$item['qty']);
                 $isKg = strtolower($item['unit']) === 'kg';
+                if ($isKg && $rQty < 1) {
+                    $displayQty = round($rQty * 1000);
+                    $displayUnit = 'Gm';
+                } else {
+                    $displayQty = (float)number_format($rQty, 3);
+                    $displayUnit = $fnUnitShortInv($item['unit']);
+                }
+              @endphp
+              <tr class="item-row" style="color:#c0392b; font-weight:bold;">
+                <td style="width: 40%;" class="bold">{{ $item['item_name'] }}</td>
+                <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
+                <td class="col-qty" style="width: 20%;">-{{ $displayQty }} {{ $displayUnit }}</td>
+                <td class="col-amount" style="width: 20%; font-weight: bold;">-{{ number_format(abs($item['total']), 0) }}</td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+        <div style="text-align:right; font-weight:900; color:#c0392b; margin:3px 0 6px 0;">Return Total: -Rs {{ number_format($invReturnCost, 0) }}</div>
+        <div class="line"></div>
+      @endif
+
+      {{-- NEW ITEMS SECTION --}}
+      @if(count($invNewItems) > 0)
+        <div style="text-align:center; font-weight:900; font-size:13px; margin:6px 0 3px 0;">--- NEW ITEMS ---</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 40%;">Item Name</th>
+              <th class="col-price" style="width: 20%;">Price</th>
+              <th class="col-qty" style="width: 20%;">Qty/Wt</th>
+              <th class="col-amount" style="width: 20%;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($invNewItems as $item)
+              @php
+                $nQty = (float)$item['qty'];
+                $isKg = strtolower($item['unit']) === 'kg';
+                if ($isKg && $nQty < 1) {
+                    $displayQty = round($nQty * 1000);
+                    $displayUnit = 'Gm';
+                } else {
+                    $displayQty = (float)number_format($nQty, 3);
+                    $displayUnit = $fnUnitShortInv($item['unit']);
+                }
+              @endphp
+              <tr class="item-row">
+                <td style="width: 40%;" class="bold">{{ $item['item_name'] }}</td>
+                <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
+                <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}</td>
+                <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+        <div style="text-align:right; font-weight:900; margin:3px 0 6px 0;">New Items Cost: Rs {{ number_format($invNewCost, 0) }}</div>
+        <div class="line"></div>
+      @endif
+    @else
+      {{-- STANDARD ITEMS TABLE --}}
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width: 40%;">Item Name</th>
+            <th class="col-price" style="width: 20%;">Price</th>
+            <th class="col-qty" style="width: 20%;">Qty/Wt</th>
+            <th class="col-amount" style="width: 20%;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($saleItems as $item)
+            @php 
                 $displayQty = (float)$item['qty'];
-                $displayUnit = $item['unit'];
-                
-                // If weight is less than 1kg, convert to grams for display
+                $isKg = strtolower($item['unit']) === 'kg';
                 if ($isKg && $displayQty < 1) {
                     $displayQty = round($displayQty * 1000);
-                    $displayUnit = 'GRAM';
+                    $displayUnit = 'Gm';
                 } else {
                     $displayQty = (float)number_format($displayQty, 3);
-                }
-
-                // Get custom label from 'color' field (stored as JSON array in Sale model)
-                $customLabel = '';
-                $cleanItemName = $item['item_name'];
-
-                if (!empty($bill->color)) {
-                    $colors = json_decode($bill->color, true);
-                    if (isset($colors[$loop->parent->index + $loop->index])) {
-                        $label = $colors[$loop->parent->index + $loop->index];
-                        $decoded = json_decode($label, true);
-                        if (json_last_error() === JSON_ERROR_NONE && !is_null($decoded)) {
-                            $cleanLabel = is_array($decoded) ? ($decoded[0] ?? '') : $decoded;
-                        } else {
-                            $cleanLabel = $label;
-                        }
-                        
-                        if (!empty($cleanLabel) && strtolower($cleanLabel) !== strtolower($item['item_name'])) {
-                            $customLabel = ' (' . $cleanLabel . ')';
-                            
-                            // Remove common unit suffixes from name to avoid redundancy
-                            // like "Barfi (1 Kg) (100g)" -> "Barfi (100g)"
-                            $cleanItemName = preg_replace('/\s*\(1\s*(kg|kg\.|pound|lb|gm|unit)\)\s*/i', '', $cleanItemName);
-                        }
-                    }
+                    $displayUnit = $fnUnitShortInv($item['unit']);
                 }
             @endphp
             <tr class="item-row">
-              <td style="width: 40%;" class="bold">
-                  {{ $cleanItemName }}
-                  @if(isset($item['discount']) && $item['discount'] > 0)
-                      <br><small style="font-weight:normal;font-size:12px;">Disc: Rs {{ number_format($item['discount'], 0) }}</small>
-                  @endif
-              </td>
+              <td style="width: 40%;" class="bold">{{ $item['item_name'] }}</td>
               <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
               <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}</td>
               <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
             </tr>
           @endforeach
-        @endforeach
-      </tbody>
-    </table>
-
-    <div class="line"></div>
+        </tbody>
+      </table>
+      <div class="line"></div>
+    @endif
 
     <table class="totals-table">
       <tr>
         <th style="width: 40%;">Total Item</th>
-        <td style="text-align: left;">: {{ $totalItemsCount }}</td>
+        <td style="text-align: left;">: {{ count($saleItems) }}</td>
       </tr>
     </table>
 
@@ -442,6 +509,14 @@
 
     <!-- Summary -->
     <table class="totals-table">
+      @if($isExchangeInv)
+        @if($invReturnCost > 0)
+        <tr style="color:#c0392b;"><th>Return Total</th><td>-{{ number_format($invReturnCost, 0) }}</td></tr>
+        @endif
+        @if($invNewCost > 0)
+        <tr><th>New Items Cost</th><td>{{ number_format($invNewCost, 0) }}</td></tr>
+        @endif
+      @endif
       <tr>
         <th>Gross Amount</th>
         <td>{{ number_format($bill->total_bill_amount ?? 0, 0) }}</td>
@@ -455,16 +530,12 @@
         <td>{{ number_format($bill->total_extradiscount, 0) }}</td>
       </tr>
       @endif
-      
-      {{-- Tax removed as per user request --}}
 
       <tr class="grand-total-row">
         <th>Net Amount</th>
         <td>{{ number_format($bill->total_net ?? 0, 0) }}</td>
       </tr>
     </table>
-
-
 
     <!-- Payment Section -->
     @if($bill->card > 0)

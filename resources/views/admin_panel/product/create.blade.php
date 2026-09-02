@@ -22,6 +22,27 @@
 
     .pz-root { font-family: 'Inter', system-ui, sans-serif; max-width: 1150px; margin: 0 auto; }
 
+    /* Select2 Custom Styling for Recipe Dropdowns */
+    .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        padding: 4px 8px;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 28px !important;
+        color: #1e293b;
+        font-weight: 500;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+    }
+    .select2-dropdown {
+        border-radius: 10px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
     .pz-hero {
         background: var(--pz-grad);
         border-radius: 16px;
@@ -306,17 +327,54 @@
     .pz-bom-hint kbd { background: #eef0f5; border: 1px solid #dfe2ea; border-bottom-width: 2px; border-radius: 5px; padding: 0 .4rem; font-size: .68rem; color: #64748b; font-family: 'Consolas', monospace; }
 
     /* Nav buttons */
-    .pz-nav { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1.6rem; background: #fbfbfe; border-top: 1px solid #f0f1f5; }
+    .pz-nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.6rem; background: #f8fafc; border-top: 1px solid #e2e8f0; }
     .pz-btn {
-        border: none; border-radius: 10px; padding: .55rem 1.4rem; font-weight: 700; font-size: .82rem;
-        cursor: pointer; transition: all .25s; display: inline-flex; align-items: center; gap: .45rem;
+        border: none !important; border-radius: 10px !important; padding: .6rem 1.5rem !important; font-weight: 700 !important; font-size: .85rem !important;
+        cursor: pointer !important; transition: all .25s !important; align-items: center; gap: .45rem;
+        text-decoration: none !important;
     }
-    .pz-btn-next { background: var(--pz-grad); color: #fff; box-shadow: 0 6px 18px rgba(139, 92, 246, .32); }
-    .pz-btn-next:hover { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(139, 92, 246, .42); }
-    .pz-btn-prev { background: #fff; color: #64748b; border: 1.5px solid #e2e5ee; }
-    .pz-btn-prev:hover { background: #f1f2f6; }
-    .pz-btn-submit { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 6px 18px rgba(16, 185, 129, .32); }
-    .pz-btn-submit:hover { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(16, 185, 129, .42); }
+    .pz-btn-next {
+        background: linear-gradient(135deg, #6d5cff 0%, #8b5cf6 50%, #a855f7 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 6px 18px rgba(109, 92, 255, .4) !important;
+    }
+    .pz-btn-next:hover {
+        background: linear-gradient(135deg, #5943e8 0%, #7c3aed 100%) !important;
+        color: #ffffff !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 9px 24px rgba(109, 92, 255, .5) !important;
+    }
+    .pz-btn-prev {
+        background: #ffffff !important;
+        color: #475569 !important;
+        border: 1.5px solid #cbd5e1 !important;
+    }
+    .pz-btn-prev:hover {
+        background: #f1f5f9 !important;
+        color: #1e293b !important;
+    }
+    .pz-btn-submit {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 6px 18px rgba(16, 185, 129, .4) !important;
+    }
+    .pz-btn-submit:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        color: #ffffff !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 9px 24px rgba(16, 185, 129, .5) !important;
+    }
+    .pz-btn-direct {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 6px 18px rgba(14, 165, 233, .4) !important;
+    }
+    .pz-btn-direct:hover {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 9px 24px rgba(14, 165, 233, .5) !important;
+    }
 
     /* Legacy variant section fallback (kept for compat) */
     .variant-section { background: var(--pz-grad-soft); border: 2px dashed #cfd3ff; border-radius: 14px; padding: 1.2rem; }
@@ -329,15 +387,225 @@
     .default-radio-label input[type="radio"]:checked + span { color: #6d5cff; font-weight: 700; }
     .variant-number { width: 26px; height: 26px; background: var(--pz-grad); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
 
-    @media (max-width: 768px) {
-        .pz-hero { padding: 1rem; }
-        .pz-hero-actions { width: 100%; justify-content: flex-start; }
+    @media (max-width: 767.98px) {
+        /* Remove padding accumulation on parent wrappers on mobile */
+        .main-content,
+        .main-content-inner,
+        .container-fluid,
+        .body-wrapper,
+        .bodywrapper__inner {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+        }
+
+        .pz-root {
+            padding: 0.4rem !important;
+            margin: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .pz-hero {
+            padding: 0.85rem !important;
+            border-radius: 12px !important;
+        }
+
+        .pz-hero-actions {
+            width: 100% !important;
+            justify-content: flex-start !important;
+            gap: 0.35rem !important;
+        }
+
+        .pz-hero-actions .btn {
+            flex: 1 1 auto !important;
+            text-align: center !important;
+            justify-content: center !important;
+        }
+
         .pz-unit-selector { grid-template-columns: 1fr; }
         .pz-step .pz-step-desc { display: none; }
-        .pz-panel { padding: 1.1rem; }
-        .pz-nav { padding: .9rem 1rem; }
-        .pz-btn { padding: .5rem 1.1rem; font-size: .78rem; }
-        .pz-progress-wrap { top: 60px; }
+
+        .pz-progress-wrap {
+            top: 0px !important;
+            position: relative !important;
+            z-index: 10 !important;
+            margin-bottom: 0.75rem !important;
+            padding: 0.65rem 0.5rem !important;
+            border-radius: 12px !important;
+        }
+
+        .pz-body {
+            border-radius: 12px !important;
+            box-shadow: none !important;
+            border: 1px solid var(--pz-border) !important;
+        }
+
+        .pz-panel {
+            padding: 0.75rem 0.65rem !important;
+        }
+
+        .pz-nav { padding: .85rem .75rem; }
+        .pz-btn { padding: .5rem 1rem; font-size: .78rem; }
+
+        /* BOM (Step 3) Mobile Card Layout */
+        .pz-bom-card {
+            padding: 0.4rem !important;
+            border-radius: 12px !important;
+        }
+
+        .pz-bom-head {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 0.5rem !important;
+            padding: 0.65rem 0.75rem !important;
+        }
+
+        .pz-bom-title {
+            font-size: 0.78rem !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+        }
+
+        .pz-bom-head .pz-btn-add {
+            width: auto !important;
+            padding: 0.4rem 0.75rem !important;
+            font-size: 0.76rem !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+
+        .pz-bom-table-wrap {
+            overflow-x: visible !important;
+            padding: 0.4rem 0 !important;
+        }
+
+        .pz-bom-table,
+        .pz-bom-table thead,
+        .pz-bom-table tbody,
+        .pz-bom-table tr,
+        .pz-bom-table td {
+            display: block !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .pz-bom-table thead {
+            display: none !important;
+        }
+
+        .pz-bom-table tbody tr {
+            background: #ffffff !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            padding: 0.85rem !important;
+            margin-bottom: 0.75rem !important;
+            position: relative !important;
+            box-shadow: 0 2px 6px rgba(109, 92, 255, 0.04) !important;
+        }
+
+        .pz-bom-table tbody tr:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .pz-bom-table tbody td {
+            padding: 0 !important;
+            border: none !important;
+            text-align: left !important;
+            margin-bottom: 0.65rem !important;
+        }
+
+        .pz-bom-table tbody td:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .pz-bom-table tbody td:nth-child(1) {
+            margin-bottom: 0.65rem !important;
+        }
+
+        /* Label for Raw Material Dropdown */
+        .pz-bom-table tbody td:nth-child(1)::before {
+            content: 'Raw Material *';
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding-right: 2.5rem;
+        }
+
+        /* Label for Qty Required */
+        .pz-bom-table tbody td:nth-child(2)::before {
+            content: 'Qty Required per Unit *';
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .pz-bom-table tbody td select,
+        .pz-bom-table tbody td input {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            font-size: 0.84rem !important;
+            padding: 0.5rem 0.7rem !important;
+            border-radius: 8px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Trash / Remove Button */
+        .pz-bom-table tbody td:nth-child(3) {
+            position: absolute !important;
+            top: 0.65rem !important;
+            right: 0.65rem !important;
+            width: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .pz-bom-remove {
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 8px !important;
+            background: #fef2f2 !important;
+            border: 1px solid #fecaca !important;
+            color: #ef4444 !important;
+        }
+
+        /* Hint Text ("Press Enter in a row...") */
+        .pz-bom-hint {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            font-size: 0.74rem !important;
+            padding: 0.6rem 0.5rem !important;
+            gap: 0.35rem !important;
+            line-height: 1.4 !important;
+            white-space: normal !important;
+            width: 100% !important;
+            border-radius: 0 0 10px 10px !important;
+        }
+
+        .pz-bom-hint kbd {
+            display: inline-block !important;
+            font-size: 0.68rem !important;
+            padding: 0.1rem 0.4rem !important;
+        }
     }
     @media (max-width: 480px) {
         .pz-step .pz-step-label { font-size: .6rem; letter-spacing: 0; }
@@ -521,51 +789,95 @@
                                     </div>
                                 </div>
 
-                                {{-- ============ STEP 3: RECIPE / BOM ============ --}}
-                                <div class="pz-panel" data-panel="3">
-                                    <div class="pz-panel-head">
-                                        <h4><span class="pz-num">3</span> Raw Material Recipe (Bill of Materials)</h4>
-                                        <p>Specify raw materials consumed per unit of this product.</p>
-                                    </div>
-                                    <div class="pz-bom-card">
-                                        <div class="pz-bom-head">
-                                            <span class="pz-bom-title"><i class="las la-list-ul"></i> Recipe Items</span>
-                                            <button type="button" class="pz-btn pz-btn-add" id="addBomRow"><i class="las la-plus"></i> Add Raw Material</button>
-                                        </div>
-                                        <div class="pz-bom-table-wrap">
-                                            <table class="table pz-bom-table" id="bomTable">
-                                                <thead>
-                                                    <tr>
-                                                        <th width="50%">Raw Material</th>
-                                                        <th width="35%">Qty Required per Unit</th>
-                                                        <th width="15%" class="text-center">Action</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="bomBody">
-                                                    <tr>
-                                                        <td>
-                                                            <select name="raw_material_id[]" class="form-select bom-material-select">
-                                                                <option value="">Select Raw Material...</option>
-                                                                @if(isset($rawMaterials))
-                                                                @foreach($rawMaterials as $rm)
-                                                                <option value="{{ $rm->id }}">{{ $rm->name }} ({{ $rm->unit }})</option>
-                                                                @endforeach
-                                                                @endif
-                                                            </select>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" step="0.001" min="0" name="qty_per_unit[]" class="form-control bom-qty-input" value="0" placeholder="e.g. 0.250">
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <button type="button" class="btn pz-bom-remove remove-bom-row" title="Remove"><i class="las la-trash"></i></button>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <div class="pz-bom-hint"><i class="las la-keyboard"></i> Press <kbd>Enter</kbd> in a row to add another raw material</div>
-                                    </div>
-                                </div>
+                                 {{-- ============ STEP 3: RECIPE / BOM ============ --}}
+                                 <div class="pz-panel" data-panel="3">
+                                     <div class="pz-panel-head">
+                                         <h4><span class="pz-num">3</span> Raw Material Recipe (Bill of Materials)</h4>
+                                         <p>Specify raw materials consumed per batch / unit of this product.</p>
+                                     </div>
+                                     <div class="card mb-3 border-0 shadow-sm" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px;">
+                                         <div class="card-body p-3">
+                                             <div class="row align-items-center g-2">
+                                                 <div class="col-md-7">
+                                                     <label class="pz-label fw-bold text-dark mb-1"><i class="las la-boxes text-primary fs-5"></i> Recipe Batch Yield (Ye Recipe Kitne Items / Pieces / KG ke liye hai?)</label>
+                                                     <div class="text-muted small"><i class="las la-info-circle"></i> E.g. Agar ye recipe 50 Pieces ya 10 KG ke liye hai toh yahan 50 ya 10 likhein. System automatically 1 unit ka requirement nikal lega (Default: 1).</div>
+                                                 </div>
+                                                 <div class="col-md-5">
+                                                     <div class="input-group">
+                                                         <span class="input-group-text bg-white fw-semibold text-primary"><i class="las la-layer-group"></i> Batch Yield</span>
+                                                         <input type="number" step="0.001" min="0.001" name="recipe_batch_yield" id="recipeBatchYield" class="form-control fw-bold text-primary" value="1" placeholder="e.g. 50">
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     </div>
+                                     <div class="pz-bom-card">
+                                         <div class="pz-bom-head">
+                                             <span class="pz-bom-title"><i class="las la-list-ul"></i> Recipe Ingredients / Raw Materials</span>
+                                             <button type="button" class="pz-btn pz-btn-add" id="addBomRow"><i class="las la-plus"></i> Add Raw Material</button>
+                                         </div>
+                                         <div class="pz-bom-table-wrap">
+                                             <table class="table pz-bom-table" id="bomTable">
+                                                 <thead>
+                                                     <tr>
+                                                         <th width="50%">Raw Material / Ingredient</th>
+                                                         <th width="35%">Total Batch Qty Required</th>
+                                                         <th width="15%" class="text-center">Action</th>
+                                                     </tr>
+                                                 </thead>
+                                                 <tbody id="bomBody">
+                                                     <tr>
+                                                         <td>
+                                                             <input type="hidden" name="bom_type[]" class="bom-type" value="rm">
+                                                             <select name="bom_item_id[]" class="form-select bom-item-select">
+                                                                 <option value="">Select Ingredient / Raw Material...</option>
+                                                                 <optgroup label="Raw Materials">
+                                                                     @if(isset($rawMaterials))
+                                                                     @foreach($rawMaterials as $rm)
+                                                                     <option value="{{ $rm->id }}" data-type="rm">[RM] {{ $rm->name }} ({{ $rm->unit }})</option>
+                                                                     @endforeach
+                                                                     @endif
+                                                                 </optgroup>
+                                                                 <optgroup label="Semi-Finished / Base Products">
+                                                                     @if(isset($allProducts))
+                                                                     @foreach($allProducts as $ap)
+                                                                     <option value="{{ $ap->id }}" data-type="product">[Product] {{ $ap->item_code }} - {{ $ap->item_name }} ({{ strtoupper($ap->unit_type ?? 'Piece') }})</option>
+                                                                     @endforeach
+                                                                     @endif
+                                                                 </optgroup>
+                                                             </select>
+                                                         </td>
+                                                         <td>
+                                                             <input type="number" step="0.001" min="0" name="qty_per_unit[]" class="form-control bom-qty-input" value="0" placeholder="e.g. 1000">
+                                                         </td>
+                                                         <td class="text-center">
+                                                             <button type="button" class="btn pz-bom-remove remove-bom-row" title="Remove"><i class="las la-trash"></i></button>
+                                                         </td>
+                                                     </tr>
+                                                 </tbody>
+                                             </table>
+                                         </div>
+                                         <div class="pz-bom-hint"><i class="las la-keyboard"></i> Press <kbd>Enter</kbd> in a row to add another raw material</div>
+                                     </div>
+
+                                      {{-- Custom Variant-Wise Recipes (Optional Override) --}}
+                                      <div class="card mt-4 border-0 shadow-sm" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px;">
+                                          <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid #e2e8f0;">
+                                              <h5 class="mb-0 fw-bold text-dark fs-6"><i class="las la-sliders-h text-primary fs-5"></i> Custom Variant Recipes (Optional Override)</h5>
+                                              <span class="badge bg-primary px-3 py-2 rounded-pill">Priority Recipe</span>
+                                          </div>
+                                          <div class="card-body p-3">
+                                              <div class="text-muted small mb-3">
+                                                  <i class="las la-info-circle"></i> Agar kisi specific variant (maslan 2 Pound Cake) ki alag custom recipe hai, toh yahan us variant ki recipe add karein. System production ke waqt auto-multiplier ke bajaye is custom recipe ko priority dega.
+                                              </div>
+                                              <div id="variantCustomBomContainer">
+                                                  <div class="text-muted fst-italic p-3 border rounded text-center bg-white" id="noVariantBomMsg">
+                                                      No variants added in Step 2. (Default base recipe above will be used for all sizes).
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
 
                                 {{-- ============ STEP 4: REVIEW ============ --}}
                                 <div class="pz-panel" data-panel="4">
@@ -642,7 +954,8 @@
                             {{-- NAV BUTTONS --}}
                             <div class="pz-nav">
                                 <button type="button" class="pz-btn pz-btn-prev" id="pzPrevBtn" style="visibility:hidden;"><i class="las la-arrow-left"></i> Previous</button>
-                                <div style="display:flex;gap:.6rem;">
+                                <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                                    <button type="button" class="pz-btn pz-btn-direct" id="pzDirectSaveBtn" style="display:none;"><i class="las la-bolt"></i> Save Direct Product</button>
                                     <button type="button" class="pz-btn pz-btn-next" id="pzNextBtn">Next <i class="las la-arrow-right"></i></button>
                                     <button type="submit" class="pz-btn pz-btn-submit" id="submitProductBtn" style="display:none;"><i class="las la-check-circle"></i> Save Product</button>
                                 </div>
@@ -760,6 +1073,7 @@ $(document).ready(function() {
     const prevBtn = document.getElementById('pzPrevBtn');
     const nextBtn = document.getElementById('pzNextBtn');
     const submitBtn = document.getElementById('submitProductBtn');
+    const directSaveBtn = document.getElementById('pzDirectSaveBtn');
     const form = document.getElementById('productForm');
     let currentStep = 1;
     const TOTAL_STEPS = 4;
@@ -781,12 +1095,23 @@ $(document).ready(function() {
         // Buttons
         prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
         if (currentStep === TOTAL_STEPS) {
-            nextBtn.style.display = 'none';
-            submitBtn.style.display = 'inline-flex';
+            nextBtn.style.setProperty('display', 'none', 'important');
+            if (directSaveBtn) directSaveBtn.style.setProperty('display', 'none', 'important');
+            submitBtn.style.setProperty('display', 'inline-flex', 'important');
             buildReview();
         } else {
-            nextBtn.style.display = 'inline-flex';
-            submitBtn.style.display = 'none';
+            nextBtn.style.setProperty('display', 'inline-flex', 'important');
+            submitBtn.style.setProperty('display', 'none', 'important');
+            if (directSaveBtn) {
+                if (currentStep === 2) {
+                    directSaveBtn.style.setProperty('display', 'inline-flex', 'important');
+                } else {
+                    directSaveBtn.style.setProperty('display', 'none', 'important');
+                }
+            }
+        }
+        if (currentStep === 3) {
+            updateVariantCustomBomUI();
         }
         // Scroll to top of wizard
         document.querySelector('.pz-body').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -818,6 +1143,28 @@ $(document).ready(function() {
             }
         }
         return valid;
+    }
+
+    if (directSaveBtn) {
+        directSaveBtn.addEventListener('click', function() {
+            if (!validateStep(1)) {
+                goTo(1);
+                return;
+            }
+            if (!validateStep(2)) {
+                return;
+            }
+            // Remove empty BOM rows before submitting
+            $('#bomBody tr').each(function() {
+                var rawMat = $(this).find('select').val();
+                var qty = parseFloat($(this).find('input').val()) || 0;
+                if (!rawMat && qty <= 0) {
+                    $(this).remove();
+                }
+            });
+            window.isDirectSaveSubmit = true;
+            form.submit();
+        });
     }
 
     nextBtn.addEventListener('click', function() {
@@ -920,7 +1267,7 @@ $(document).ready(function() {
             document.querySelectorAll('.variant-size-unit-hidden').forEach(input => input.value = radio.value);
             const stockCols = document.querySelectorAll('.variant-stock-col');
             stockCols.forEach(col => {
-                col.style.display = radio.value === 'kg' ? 'none' : 'block';
+                col.style.display = 'block';
             });
             document.querySelectorAll('.variant-name-input').forEach(function(el) {
                 el.placeholder = getVariantPlaceholder(radio.value);
@@ -974,7 +1321,7 @@ $(document).ready(function() {
                     <input type="number" name="variant_cost_price[]" class="pz-control"
                         placeholder="0" step="0.01" min="0" value="0">
                 </div>
-                <div class="col-md-2 variant-stock-col" style="display: ${unitType === 'kg' ? 'none' : 'block'}">
+                <div class="col-md-2 variant-stock-col" style="display: block">
                     <label class="pz-label small fw-bold">Stock</label>
                     <input type="number" name="variant_stock[]" class="pz-control"
                         placeholder="0" step="0.01" min="0" value="0">
@@ -1035,8 +1382,8 @@ $(document).ready(function() {
     });
 
     form.addEventListener('submit', function(e) {
-        const byButton = e.submitter && e.submitter.id === 'submitProductBtn';
-        if (!byButton) {
+        const byButton = e.submitter && (e.submitter.id === 'submitProductBtn' || e.submitter.id === 'pzDirectSaveBtn');
+        if (!byButton && !window.isDirectSaveSubmit) {
             e.preventDefault();
         }
     });
@@ -1124,15 +1471,45 @@ document.getElementById('variantsContainer').addEventListener('click', function(
         }
     });
 
+    function initBomSelect2(target) {
+        var elements = target ? $(target) : $('.bom-item-select');
+        elements.each(function() {
+            if (!$(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2({
+                    placeholder: "Search Raw Material / Ingredient...",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+        });
+    }
+
     // BOM (Recipe) Row Handlers
+    $(document).on('change', '.bom-item-select', function() {
+        var type = $(this).find(':selected').data('type') || 'rm';
+        $(this).closest('tr').find('.bom-type').val(type);
+    });
+
     function addBomRow() {
+        var firstSelect = $('#bomBody tr:first select.bom-item-select');
+        if (firstSelect.data('select2')) {
+            firstSelect.select2('destroy');
+        }
         var row = $('#bomBody tr:first').clone();
-        row.find('select').val('');
-        row.find('input').val('0');
+        row.find('.select2-container').remove();
+        row.find('select.bom-item-select').removeClass('select2-hidden-accessible').removeAttr('data-select2-id').val('');
+        row.find('input[name="qty_per_unit[]"]').val('0');
+        row.find('.bom-type').val('rm');
+
         $('#bomBody').append(row);
+        initBomSelect2();
     }
 
     $('#addBomRow').click(addBomRow);
+
+    $(document).ready(function() {
+        initBomSelect2();
+    });
 
     $(document).on('keydown', '#bomBody select, #bomBody input', function(e) {
         if (e.key === 'Enter') {
@@ -1204,20 +1581,137 @@ function buildReview() {
         variantsBox.innerHTML = html;
     }
 
-    // BOM
+    // BOM Review Summary (Default Base + Custom Variant Recipes)
     const bomBox = document.getElementById('revBom');
     const bomRows = document.querySelectorAll('#bomBody tr');
     let bomHtml = '';
+    let matCount = 0;
+
+    // 1. Default Base Recipe Items
     bomRows.forEach(function(r) {
-        const sel = r.querySelector('select[name="raw_material_id[]"]');
+        const sel = r.querySelector('select[name="bom_item_id[]"]') || r.querySelector('select[name="raw_material_id[]"]');
         const qty = r.querySelector('input[name="qty_per_unit[]"]');
-        if (sel && sel.value && qty) {
+        if (sel && sel.value && qty && (parseFloat(qty.value) || 0) > 0) {
+            matCount++;
             const label = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : 'Material';
-            bomHtml += '<span class="pz-review-chip">' + label + ' × ' + (parseFloat(qty.value) || 0) + '</span>';
+            bomHtml += '<span class="pz-review-chip me-1 mb-1 d-inline-flex align-items-center gap-1"><span class="badge bg-secondary p-1">Base</span> ' + label + ' × ' + (parseFloat(qty.value) || 0) + '</span> ';
         }
     });
-    bomBox.innerHTML = bomHtml || '<span class="pz-hint">No raw materials added.</span>';
+
+    // 2. Custom Variant Recipe Items
+    const vbomBlocks = document.querySelectorAll('.vbom-block');
+    vbomBlocks.forEach(function(block) {
+        const titleEl = block.querySelector('.vbom-title');
+        const vName = titleEl ? titleEl.textContent.trim() : 'Variant';
+        const vRows = block.querySelectorAll('tbody.vbom-body tr');
+
+        vRows.forEach(function(vr) {
+            const sel = vr.querySelector('select');
+            const qty = vr.querySelector('input[type="number"]');
+            if (sel && sel.value && qty && (parseFloat(qty.value) || 0) > 0) {
+                matCount++;
+                const label = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : 'Material';
+                bomHtml += '<span class="pz-review-chip me-1 mb-1 d-inline-flex align-items-center gap-1 border-primary" style="background:#eff6ff; border:1px solid #bfdbfe;"><span class="badge bg-primary p-1">' + vName + '</span> ' + label + ' × ' + (parseFloat(qty.value) || 0) + '</span> ';
+            }
+        });
+    });
+
+    bomBox.innerHTML = bomHtml || '<span class="pz-hint">No raw materials or ingredients added.</span>';
+    const revMatCountEl = document.getElementById('revMaterialCount');
+    if (revMatCountEl) revMatCountEl.textContent = matCount;
 }
+
+function updateVariantCustomBomUI() {
+    const container = document.getElementById('variantCustomBomContainer');
+    if (!container) return;
+
+    const variantRows = document.querySelectorAll('.pz-variant-row');
+    if (variantRows.length === 0) {
+        container.innerHTML = '<div class="text-muted fst-italic p-3 border rounded text-center bg-white" id="noVariantBomMsg">No variants added in Step 2. (Default base recipe above will be used for all sizes).</div>';
+        return;
+    }
+
+    const noMsg = container.querySelector('#noVariantBomMsg');
+    if (noMsg) noMsg.remove();
+
+    variantRows.forEach(function(row, idx) {
+        const nameInput = row.querySelector('.variant-name-input');
+        const vName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : ('Variant #' + (idx + 1));
+
+        let block = container.querySelector('.vbom-block[data-vidx="' + idx + '"]');
+        if (!block) {
+            const html = '<div class="vbom-block card border mb-3 shadow-sm bg-white" data-vidx="' + idx + '">' +
+                '<div class="card-header bg-light py-2 d-flex align-items-center justify-content-between">' +
+                '<span class="fw-bold text-dark"><i class="las la-tag text-primary"></i> <span class="vbom-title">' + vName + '</span></span>' +
+                '<button type="button" class="btn btn-sm btn-outline-primary add-vbom-row-btn" data-vidx="' + idx + '">' +
+                '<i class="las la-plus"></i> Add Custom Ingredient for ' + vName +
+                '</button>' +
+                '</div>' +
+                '<div class="card-body p-2">' +
+                '<table class="table table-sm table-bordered mb-0 vbom-table" data-vidx="' + idx + '">' +
+                '<thead><tr class="table-light"><th>Raw Material / Ingredient</th><th width="40%">Qty per 1 Pack / Unit of this Variant</th><th width="10%" class="text-center">Action</th></tr></thead>' +
+                '<tbody class="vbom-body" data-vidx="' + idx + '"></tbody>' +
+                '</table>' +
+                '<div class="text-muted small mt-1 fst-italic"><i class="las la-info-circle"></i> Leave empty if this variant should use the Default Base Recipe above.</div>' +
+                '</div></div>';
+            container.insertAdjacentHTML('beforeend', html);
+        } else {
+            const titleEl = block.querySelector('.vbom-title');
+            if (titleEl) titleEl.textContent = vName;
+            const btnEl = block.querySelector('.add-vbom-row-btn');
+            if (btnEl) btnEl.innerHTML = '<i class="las la-plus"></i> Add Custom Ingredient for ' + vName;
+        }
+    });
+
+    // Remove obsolete blocks if variants were removed
+    container.querySelectorAll('.vbom-block').forEach(function(block) {
+        const vidx = parseInt(block.getAttribute('data-vidx'));
+        if (vidx >= variantRows.length) {
+            block.remove();
+        }
+    });
+
+    if (typeof initBomSelect2 === 'function') {
+        setTimeout(function() {
+            initBomSelect2();
+        }, 50);
+    }
+}
+
+$(document).on('click', '.add-vbom-row-btn', function() {
+    const vidx = $(this).data('vidx');
+    const tbody = $('tbody.vbom-body[data-vidx="' + vidx + '"]');
+    
+    var firstSelect = $('#bomBody tr:first select.bom-item-select');
+    var selectHtml = '';
+    if (firstSelect.length) {
+        var cloneSelect = firstSelect.clone();
+        cloneSelect.find('option').removeAttr('data-select2-id');
+        selectHtml = cloneSelect.html();
+    }
+
+    const tr = $('<tr>' +
+        '<td>' +
+        '<input type="hidden" name="variant_bom_type[' + vidx + '][]" class="bom-type" value="rm">' +
+        '<select name="variant_bom_item_id[' + vidx + '][]" class="form-select form-select-sm bom-item-select">' +
+        selectHtml +
+        '</select>' +
+        '</td>' +
+        '<td><input type="number" step="0.001" min="0" name="variant_qty_per_unit[' + vidx + '][]" class="form-control form-control-sm" placeholder="Exact qty for 1 unit of this variant"></td>' +
+        '<td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-vbom-row" title="Remove"><i class="las la-trash"></i></button></td>' +
+        '</tr>');
+
+    tbody.append(tr);
+    if (typeof initBomSelect2 === 'function') {
+        setTimeout(function() {
+            initBomSelect2(tr.find('select.bom-item-select'));
+        }, 50);
+    }
+});
+
+$(document).on('click', '.remove-vbom-row', function() {
+    $(this).closest('tr').remove();
+});
 </script>
 
 @endsection

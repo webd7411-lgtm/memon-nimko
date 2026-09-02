@@ -52,4 +52,9 @@ class ProductVariant extends Model
     {
         return $this->hasOne(Stock::class, 'variant_id');
     }
+
+    public function rawMaterialBoms()
+    {
+        return $this->hasMany(ProductRawMaterialBom::class, 'variant_id');
+    }
 }

@@ -911,6 +911,14 @@ $(document).ready(function() {
   $('#mPrice, #mQty').on('input', calcM);
   function calcM() { let p = parseFloat($('#mPrice').val()) || 0, q = parseFloat($('#mQty').val()) || 0; $('#mTot').text((p * q).toFixed(2)); }
 
+  // ─── ENTER KEY IN MODAL TO ADD ITEM ───
+  $('#vModal').on('keydown', 'input, button', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('#addBtn').click();
+    }
+  });
+
   // ─── ADD ───
   $('#addBtn').on('click', function() {
     if (!curProd) return;
@@ -934,7 +942,9 @@ $(document).ready(function() {
 
     renderT(nw ? ex : -1);
     toast(nw ? 'Item added' : 'Quantity updated');
-    $('#mPrice').val(''); $('#mQty').val(1); $('#mTot').text('0.00'); $('#mPrice').focus().select();
+    $('#mPrice').val(''); $('#mQty').val(1); $('#mTot').text('0.00');
+    $('#vModal').modal('hide');
+    setTimeout(function() { $('#srchInp').val('').focus(); }, 300);
   });
 
   function renderT(ni) {

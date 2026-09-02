@@ -119,7 +119,7 @@
             }
 
             .rt_nav_header.horizontal-layout .nav-bottom.header-toggled {
-                display: block;
+                display: block !important;
             }
 
             .rt_nav_header.horizontal-layout .nav-bottom .page-navigation {

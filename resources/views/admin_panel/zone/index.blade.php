@@ -269,8 +269,11 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.ajax({
-                        type: 'GET',
+                        type: 'DELETE',
                         url: url,
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
                         success: function() {
                             $('#row-' + id).remove();
                             $('#mrow-' + id).remove();

@@ -55,6 +55,12 @@ return new class extends Migration
                 $table->foreignId('branch_id')->nullable()->default($defaultBranchId)->constrained('branches')->onDelete('set null')->after('id');
             });
         }
+
+        if (Schema::hasTable('production_entries') && !Schema::hasColumn('production_entries', 'branch_id')) {
+            Schema::table('production_entries', function (Blueprint $table) use ($defaultBranchId) {
+                $table->foreignId('branch_id')->nullable()->default($defaultBranchId)->constrained('branches')->onDelete('set null')->after('id');
+            });
+        }
     }
 
     /**
