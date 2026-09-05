@@ -894,7 +894,7 @@ $(document).ready(function() {
     $('#vBtns').html(b);
     if (p.variants && p.variants.length === 1) $('#vBtns .vbtn:first').trigger('click');
     $('#vModal').modal('show');
-    setTimeout(function() { $('#mPrice').focus().select(); }, 350);
+    setTimeout(function() { $('#mQty').focus().select(); }, 350);
   }
 
   $(document).on('click', '.vbtn', function() {

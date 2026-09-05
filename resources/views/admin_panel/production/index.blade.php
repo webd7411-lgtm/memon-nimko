@@ -419,10 +419,16 @@
               </span>
             </td>
             <td>
+              @if($e->source === 'branch')
+              <span class="pc-badge-source pc-badge-warehouse">
+                <i class="bi bi-building me-1"></i>{{ active_branch_name() }}
+              </span>
+              @else
               <span class="pc-badge-source {{ $e->source === 'kitchen' ? 'pc-badge-kitchen' : 'pc-badge-warehouse' }}">
                 <i class="bi bi-{{ $e->source === 'kitchen' ? 'house-door' : 'building' }} me-1"></i>
                 {{ ucfirst($e->source) }}
               </span>
+              @endif
             </td>
             <td>
               <div class="fw-semibold text-dark" title="{{ $e->product_details }}">
@@ -469,10 +475,16 @@
           <div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>{{ \Carbon\Carbon::parse($e->production_date)->format('d M Y') }}</div>
         </div>
         <div>
+          @if($e->source === 'branch')
+          <span class="pc-badge-source pc-badge-warehouse" style="font-size:.72rem;">
+            <i class="bi bi-building me-1"></i>Branch: {{ active_branch_name() }}
+          </span>
+          @else
           <span class="pc-badge-source {{ $e->source === 'kitchen' ? 'pc-badge-kitchen' : 'pc-badge-warehouse' }}">
             <i class="bi bi-{{ $e->source === 'kitchen' ? 'house-door' : 'building' }} me-1"></i>
             {{ ucfirst($e->source) }}
           </span>
+          @endif
         </div>
       </div>
 

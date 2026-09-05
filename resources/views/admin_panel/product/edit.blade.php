@@ -715,10 +715,10 @@
                                         </div>
                                         <div class="col-12 col-sm-6 col-md-4 col-lg-2">
                                             <label class="pz-label"><i class="las la-certificate"></i> Brand</label>
-                                            <select name="brand_id[]" class="pz-control brand-select">
+                                            <select name="brand_id" class="pz-control brand-select" id="brandSelect">
                                                 <option value="">Select</option>
                                                 @foreach ($brands as $brand)
-                                                <option value="{{ $brand->id }}" {{ $product->brand_id == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
+                                                <option value="{{ $brand->id }}" @if($product->brand_id == $brand->id) selected @endif>{{ $brand->name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -839,7 +839,7 @@
                                                                  <optgroup label="Raw Materials">
                                                                      @if(isset($rawMaterials))
                                                                      @foreach($rawMaterials as $rm)
-                                                                     <option value="{{ $rm->id }}" data-type="rm" {{ $bom->raw_material_id == $rm->id ? 'selected' : '' }}>[RM] {{ $rm->name }} ({{ $rm->unit }})</option>
+                                                                     <option value="{{ $rm->id }}" data-type="rm" {{ $bom->raw_material_id == $rm->id ? 'selected' : '' }}>[RM] {{ $rm->name }} ({{ $rm->consumption_unit ?? $rm->unit }})</option>
                                                                      @endforeach
                                                                      @endif
                                                                  </optgroup>
@@ -868,7 +868,7 @@
                                                                  <optgroup label="Raw Materials">
                                                                      @if(isset($rawMaterials))
                                                                      @foreach($rawMaterials as $rm)
-                                                                     <option value="{{ $rm->id }}" data-type="rm">[RM] {{ $rm->name }} ({{ $rm->unit }})</option>
+                                                                     <option value="{{ $rm->id }}" data-type="rm">[RM] {{ $rm->name }} ({{ $rm->consumption_unit ?? $rm->unit }})</option>
                                                                      @endforeach
                                                                      @endif
                                                                  </optgroup>

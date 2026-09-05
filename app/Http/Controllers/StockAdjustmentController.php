@@ -15,7 +15,7 @@ class StockAdjustmentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = StockAdjustment::with(['user', 'items.product', 'items.variant'])
+        $query = StockAdjustment::with(['user', 'items.product', 'items.variant', 'branch'])
             ->orderBy('created_at', 'desc');
 
         if (!is_all_branches() && \Illuminate\Support\Facades\Schema::hasColumn('stock_adjustments', 'branch_id')) {
@@ -130,7 +130,7 @@ class StockAdjustmentController extends Controller
                      if ($request->type === 'increase') {
                          $stock->qty += $qtyStock;
                      } else {
-                         $stock->qty = max(0, $stock->qty - $qtyStock);
+                         $stock->qty -= $qtyStock;
                      }
                      $stock->save();
                  } elseif ($request->type === 'increase') {

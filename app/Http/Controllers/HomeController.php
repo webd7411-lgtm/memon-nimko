@@ -30,8 +30,11 @@ class HomeController extends Controller
         }
     }
 
-    private function getReportData($startDate, $endDate)
+    private function getReportData($startDate = null, $endDate = null)
     {
+        $startDate = $startDate ?: now()->startOfMonth()->format('Y-m-d');
+        $endDate   = $endDate   ?: now()->endOfMonth()->format('Y-m-d');
+
         $categoryCount = DB::table('categories')->count();
         $subcategoryCount = DB::table('subcategories')->count();
         $productCount = DB::table('products')->count();
@@ -61,12 +64,11 @@ class HomeController extends Controller
         $purchaseData = [];
         $labels = [];
 
-        if ($startDate && $endDate) {
-            $startObj = Carbon::parse($startDate)->startOfMonth();
-            $endObj   = Carbon::parse($endDate)->endOfMonth();
+        $startObj = Carbon::parse($startDate)->startOfMonth();
+        $endObj   = Carbon::parse($endDate)->endOfMonth();
 
-            $start = $startObj->format('Y-m-d 00:00:00');
-            $end   = $endObj->format('Y-m-d 23:59:59');
+        $start = $startObj->format('Y-m-d 00:00:00');
+        $end   = $endObj->format('Y-m-d 23:59:59');
 
             $purchasesQuery = DB::table('purchases')
                 ->whereBetween('purchase_date', [$startObj->format('Y-m-d'), $endObj->format('Y-m-d')]);
@@ -178,11 +180,42 @@ class HomeController extends Controller
 
             $salesChartStats['daily'] = ['categories' => $labels, 'series' => [['name' => 'Sales', 'data' => $salesData]]];
             $purchaseChartStats['daily'] = ['categories' => $labels, 'series' => [['name' => 'Purchases', 'data' => $purchaseData]]];
-            $salesChartStats['weekly'] = $salesChartStats['daily'];
-            $salesChartStats['monthly'] = $salesChartStats['daily'];
-            $purchaseChartStats['weekly'] = $purchaseChartStats['daily'];
-            $purchaseChartStats['monthly'] = $purchaseChartStats['daily'];
-        }
+
+            // Weekly aggregation for dropdown
+            $weeklyLabels = [];
+            $weeklySales = [];
+            $weeklyPurchases = [];
+            $wSalesMap = $getSalesData('YEARWEEK(sales.created_at, 1)');
+            $wPurchaseMap = $getPurchaseData('YEARWEEK(purchase_date, 1)');
+            $wCurrent = $chartStart->copy()->startOfWeek();
+            $wEndWeek = $chartEnd->copy()->endOfWeek();
+            while ($wCurrent <= $wEndWeek) {
+                $wKey = $wCurrent->format('oW');
+                $weeklyLabels[] = "Week " . $wCurrent->weekOfYear . " - " . $wCurrent->format('M Y');
+                $weeklySales[] = $wSalesMap[$wKey] ?? 0;
+                $weeklyPurchases[] = $wPurchaseMap[$wKey] ?? 0;
+                $wCurrent->addWeek();
+            }
+            $salesChartStats['weekly'] = ['categories' => $weeklyLabels, 'series' => [['name' => 'Sales', 'data' => $weeklySales]]];
+            $purchaseChartStats['weekly'] = ['categories' => $weeklyLabels, 'series' => [['name' => 'Purchases', 'data' => $weeklyPurchases]]];
+
+            // Monthly aggregation for dropdown
+            $monthlyLabels = [];
+            $monthlySales = [];
+            $monthlyPurchases = [];
+            $mSalesMap = $getSalesData("DATE_FORMAT(sales.created_at, '%Y-%m')");
+            $mPurchaseMap = $getPurchaseData("DATE_FORMAT(purchase_date, '%Y-%m')");
+            $mCurrent = $chartStart->copy()->startOfMonth();
+            $mEndMonth = $chartEnd->copy()->endOfMonth();
+            while ($mCurrent <= $mEndMonth) {
+                $mKey = $mCurrent->format('Y-m');
+                $monthlyLabels[] = $mCurrent->format('F Y');
+                $monthlySales[] = $mSalesMap[$mKey] ?? 0;
+                $monthlyPurchases[] = $mPurchaseMap[$mKey] ?? 0;
+                $mCurrent->addMonth();
+            }
+            $salesChartStats['monthly'] = ['categories' => $monthlyLabels, 'series' => [['name' => 'Sales', 'data' => $monthlySales]]];
+            $purchaseChartStats['monthly'] = ['categories' => $monthlyLabels, 'series' => [['name' => 'Purchases', 'data' => $monthlyPurchases]]];
 
         $categoryProductData = DB::table('categories')
             ->join('products', 'categories.id', '=', 'products.category_id')
@@ -207,7 +240,7 @@ class HomeController extends Controller
             ->select('products.id', 'products.item_code', 'products.item_name', DB::raw('COALESCE(SUM(stocks.qty), 0) as qty'), 'products.alert_quantity')
             ->groupBy('products.id', 'products.item_code', 'products.item_name', 'products.alert_quantity')
             ->havingRaw('COALESCE(SUM(stocks.qty), 0) <= products.alert_quantity');
-        $lowStockData = $lowStockQuery->get();
+        $lowStockData = $lowStockQuery->orderBy('qty', 'asc')->limit(15)->get();
 
         $lowStockChart = [
             'categories' => $lowStockData->pluck('item_name'),
@@ -232,52 +265,269 @@ class HomeController extends Controller
         ];
 
         $expenseChartData = [];
-        if ($startDate && $endDate) {
-             $startObj = Carbon::parse($startDate)->startOfMonth();
-             $endObj   = Carbon::parse($endDate)->endOfMonth();
+        // Total Expenses
+        $totalExpensesQuery = DB::table('expense_vouchers')
+           ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')]);
+        if (!is_all_branches()) {
+            $totalExpensesQuery->where('expense_vouchers.branch_id', active_branch_id());
+        }
+        $totalExpenses = $totalExpensesQuery->sum('total_amount');
 
-             // Total Expenses
-             $totalExpensesQuery = DB::table('expense_vouchers')
-                ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')]);
-             if (!is_all_branches()) {
-                 $totalExpensesQuery->where('expense_vouchers.branch_id', active_branch_id());
-             }
-             $totalExpenses = $totalExpensesQuery->sum('total_amount');
+        $expenseRawQuery = DB::table('expense_vouchers')
+           ->join('accounts', 'expense_vouchers.party_id', '=', 'accounts.id')
+           ->join('account_heads', 'accounts.head_id', '=', 'account_heads.id')
+           ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')]);
+        if (!is_all_branches()) {
+            $expenseRawQuery->where('expense_vouchers.branch_id', active_branch_id());
+        }
+        $expenseRaw = $expenseRawQuery
+           ->select('account_heads.id as head_id', 'account_heads.name as head_name', 'accounts.title as account_name', DB::raw('SUM(expense_vouchers.total_amount) as total_expense'))
+           ->groupBy('account_heads.id', 'account_heads.name', 'accounts.title')
+           ->get()
+           ->groupBy('head_id');
 
-             $expenseRawQuery = DB::table('expense_vouchers')
-                ->join('accounts', 'expense_vouchers.party_id', '=', 'accounts.id')
-                ->join('account_heads', 'accounts.head_id', '=', 'account_heads.id')
-                ->whereBetween('expense_vouchers.created_at', [$startObj->format('Y-m-d 00:00:00'), $endObj->format('Y-m-d 23:59:59')]);
-             if (!is_all_branches()) {
-                 $expenseRawQuery->where('expense_vouchers.branch_id', active_branch_id());
-             }
-             $expenseRaw = $expenseRawQuery
-                ->select('account_heads.id as head_id', 'account_heads.name as head_name', 'accounts.title as account_name', DB::raw('SUM(expense_vouchers.total_amount) as total_expense'))
-                ->groupBy('account_heads.id', 'account_heads.name', 'accounts.title')
-                ->get()
-                ->groupBy('head_id');
+        foreach ($expenseRaw as $headId => $rows) {
+           $expenseChartData[$headId] = [
+               'head_name' => $rows->first()->head_name,
+               'categories' => $rows->pluck('account_name'),
+               'series' => [['name' => 'Expense', 'data' => $rows->pluck('total_expense')]]
+           ];
+        }
 
-            foreach ($expenseRaw as $headId => $rows) {
-                $expenseChartData[$headId] = [
-                    'head_name' => $rows->first()->head_name,
-                    'categories' => $rows->pluck('account_name'),
-                    'series' => [['name' => 'Expense', 'data' => $rows->pluck('total_expense')]]
+        // Profit/Loss Calculation
+        $netSales = $totalSales - $totalSalesReturns;
+        $netPurchases = $totalPurchases - $totalPurchaseReturns;
+        $grossProfit = $netSales - $netPurchases - $totalExpenses;
+
+        // Additional Metrics for New Dashboard Design
+        $suppliersCount = DB::table('vendors')->count();
+        $employeesCount = DB::table('users')->count();
+
+        // Growth rates calculation vs previous month
+        $prevStart = Carbon::now()->subMonth()->startOfMonth()->format('Y-m-d 00:00:00');
+        $prevEnd = Carbon::now()->subMonth()->endOfMonth()->format('Y-m-d 23:59:59');
+
+        $prevSales = DB::table('sales')->whereBetween('created_at', [$prevStart, $prevEnd])->sum('total_net');
+        $prevPurchases = DB::table('purchases')->whereBetween('created_at', [$prevStart, $prevEnd])->sum('net_amount');
+        $prevExpenses = DB::table('expense_vouchers')->whereBetween('created_at', [$prevStart, $prevEnd])->sum('total_amount');
+        $prevGrossProfit = ($prevSales) - ($prevPurchases) - ($prevExpenses);
+
+        $calcGrowth = function($current, $previous) {
+            if ($previous > 0) {
+                return round((($current - $previous) / $previous) * 100, 1);
+            }
+            return $current > 0 ? 100 : 0;
+        };
+
+        $salesGrowth = $calcGrowth($totalSales, $prevSales);
+        $purchaseGrowth = $calcGrowth($totalPurchases, $prevPurchases);
+        $grossProfitGrowth = $calcGrowth($grossProfit, $prevGrossProfit);
+        $expenseGrowth = $calcGrowth($totalExpenses, $prevExpenses);
+        $netProfit = $grossProfit;
+        $netProfitGrowth = $grossProfitGrowth;
+
+        $prevCustomers = DB::table('customers')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $customersGrowth = $calcGrowth($customerscount, $prevCustomers);
+
+        $prevSuppliers = DB::table('vendors')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $suppliersGrowth = $calcGrowth($suppliersCount, $prevSuppliers);
+
+        $prevProducts = DB::table('products')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $productsGrowth = $calcGrowth($productCount, $prevProducts);
+
+        $prevEmployees = DB::table('users')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $employeesGrowth = $calcGrowth($employeesCount, $prevEmployees);
+
+        // Top Products List
+        $salesForMonth = DB::table('sales')
+            ->whereBetween('created_at', [$start, $end])
+            ->when(!is_all_branches(), function($q) {
+                $q->where('branch_id', active_branch_id());
+            })
+            ->select('product', 'qty', 'per_total')
+            ->get();
+
+        $topProductAgg = [];
+        $allProductsCategoryMap = DB::table('products')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->select('products.id', 'products.item_name', 'categories.name as category_name')
+            ->get()
+            ->keyBy('id');
+
+        $categorySalesTotals = [];
+        foreach ($salesForMonth as $s) {
+            $pIds = explode(',', $s->product);
+            $qtys = explode(',', $s->qty);
+            $totals = explode(',', $s->per_total);
+            foreach ($pIds as $idx => $pid) {
+                $pid = trim($pid);
+                if (!$pid) continue;
+                $q = (float)($qtys[$idx] ?? 0);
+                $t = (float)($totals[$idx] ?? 0);
+
+                if (!isset($topProductAgg[$pid])) {
+                    $topProductAgg[$pid] = ['qty' => 0, 'total' => 0];
+                }
+                $topProductAgg[$pid]['qty'] += $q;
+                $topProductAgg[$pid]['total'] += $t;
+
+                $catName = $allProductsCategoryMap[$pid]->category_name ?? 'General';
+                if (!isset($categorySalesTotals[$catName])) {
+                    $categorySalesTotals[$catName] = 0;
+                }
+                $categorySalesTotals[$catName] += $t;
+            }
+        }
+
+        uasort($topProductAgg, function($a, $b) {
+            return $b['qty'] <=> $a['qty'];
+        });
+
+        $topProducts = [];
+        $rank = 1;
+        foreach (array_slice($topProductAgg, 0, 6, true) as $pid => $data) {
+            if (isset($allProductsCategoryMap[$pid])) {
+                $topProducts[] = [
+                    'rank' => $rank++,
+                    'name' => strtoupper($allProductsCategoryMap[$pid]->item_name),
+                    'units_sold' => (int)$data['qty'],
+                    'revenue' => $data['total']
                 ];
             }
+        }
 
-            // Profit/Loss Calculation
-            $netSales = $totalSales - $totalSalesReturns;
-            $netPurchases = $totalPurchases - $totalPurchaseReturns;
-            $grossProfit = $netSales - $netPurchases - $totalExpenses;
+        // If no sales in current range, populate top active products from database catalog
+        if (empty($topProducts)) {
+            $catalogProds = DB::table('products')->limit(6)->get();
+            foreach ($catalogProds as $idx => $sp) {
+                $topProducts[] = [
+                    'rank' => $idx + 1,
+                    'name' => strtoupper($sp->item_name),
+                    'units_sold' => 0,
+                    'revenue' => (float)($sp->price ?: $sp->wholesale_price)
+                ];
+            }
+        }
+
+        // Category Donut Breakdown Data
+        $catDonutList = [];
+        $totalCategorySales = array_sum($categorySalesTotals);
+        $colorsList = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+        $colorIdx = 0;
+
+        if ($totalCategorySales > 0) {
+            foreach ($categorySalesTotals as $cName => $cAmt) {
+                $pct = round(($cAmt / $totalCategorySales) * 100);
+                $catDonutList[] = [
+                    'name' => $cName,
+                    'percentage' => $pct,
+                    'amount' => $cAmt,
+                    'color' => $colorsList[$colorIdx % count($colorsList)]
+                ];
+                $colorIdx++;
+            }
+        } else {
+            // Group products by category if no sales
+            $categoriesInDb = DB::table('categories')
+                ->leftJoin('products', 'categories.id', '=', 'products.category_id')
+                ->select('categories.name', DB::raw('COUNT(products.id) as p_count'))
+                ->groupBy('categories.id', 'categories.name')
+                ->get();
+            
+            $totalPCount = $categoriesInDb->sum('p_count');
+            foreach ($categoriesInDb as $cRow) {
+                $pct = $totalPCount > 0 ? round(($cRow->p_count / $totalPCount) * 100) : 0;
+                $catDonutList[] = [
+                    'name' => $cRow->name,
+                    'percentage' => $pct,
+                    'amount' => $cRow->p_count,
+                    'color' => $colorsList[$colorIdx % count($colorsList)]
+                ];
+                $colorIdx++;
+            }
+        }
+
+        // Cash Flow Overview Data
+        $todayIn = DB::table('sales')->whereDate('created_at', date('Y-m-d'))->sum('total_net');
+        $todayOut = DB::table('expense_vouchers')->whereDate('created_at', date('Y-m-d'))->sum('total_amount');
+        $totalIn = $totalSales;
+        $totalOut = $totalPurchases + $totalExpenses;
+
+        // Financial Position Metrics
+        $customerReceivables = DB::table('customer_ledgers')
+            ->whereIn('id', function($q) {
+                $q->select(DB::raw('MAX(id)'))->from('customer_ledgers')->groupBy('customer_id');
+            })
+            ->sum('closing_balance');
+
+        $vendorPayables = DB::table('vendor_ledgers')
+            ->whereIn('id', function($q) {
+                $q->select(DB::raw('MAX(id)'))->from('vendor_ledgers')->groupBy('vendor_id');
+            })
+            ->sum('closing_balance');
+
+        $stockInventoryValue = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->sum(DB::raw('stocks.qty * COALESCE(NULLIF(products.price, 0), products.wholesale_price, 0)'));
+
+        $cashInHand = DB::table('accounts')
+            ->where('title', 'like', '%Cash%')
+            ->sum('opening_balance');
+
+        $easyPaisaBalance = DB::table('accounts')
+            ->where(function($q) {
+                $q->where('title', 'like', '%Easy%')
+                  ->orWhere('title', 'like', '%Jazz%');
+            })
+            ->sum('opening_balance');
+
+        $meezanBalance = DB::table('accounts')
+            ->where(function($q) {
+                $q->where('title', 'like', '%Bank%')
+                  ->orWhere('title', 'like', '%Meezan%');
+            })
+            ->sum('opening_balance');
+
+        $cashBalance = DB::table('accounts')->sum('opening_balance');
+
+        // Recent Activities List
+        $recentSales = DB::table('sales')
+            ->select('invoice_no as title', 'total_net as amount', 'created_at', DB::raw("'sale' as type"))
+            ->orderBy('id', 'desc')
+            ->limit(4)
+            ->get();
+
+        $recentPurchases = DB::table('purchases')
+            ->select('invoice_no as title', 'net_amount as amount', 'created_at', DB::raw("'purchase' as type"))
+            ->orderBy('id', 'desc')
+            ->limit(4)
+            ->get();
+
+        $recentActivities = [];
+        foreach ($recentSales->concat($recentPurchases)->sortByDesc('created_at')->take(4) as $actItem) {
+            $recentActivities[] = [
+                'title' => ($actItem->type == 'sale' ? 'Sale Invoice #' : 'Purchase Bill #') . $actItem->title,
+                'category' => $actItem->type == 'sale' ? 'Sale Transaction' : 'Procurement',
+                'time_ago' => Carbon::parse($actItem->created_at)->diffForHumans(),
+                'amount' => (float)$actItem->amount,
+                'type' => $actItem->type
+            ];
         }
 
         return compact(
             'categoryCount', 'subcategoryCount', 'productCount', 'customerscount',
+            'suppliersCount', 'employeesCount',
             'totalPurchases', 'totalPurchaseReturns', 'totalSales', 'totalSalesReturns',
-            'totalExpenses', 'netSales', 'netPurchases', 'grossProfit',
+            'totalExpenses', 'netSales', 'netPurchases', 'grossProfit', 'netProfit', 'cashBalance',
+            'salesGrowth', 'purchaseGrowth', 'grossProfitGrowth', 'expenseGrowth', 'netProfitGrowth',
+            'customersGrowth', 'suppliersGrowth', 'productsGrowth', 'employeesGrowth',
             'salesChartStats', 'purchaseChartStats',
             'categoryProductChart', 'lowStockChart', 'categorySubChart', 'expenseChartData',
-            'labels', 'salesData', 'purchaseData'
+            'labels', 'salesData', 'purchaseData', 'topProducts', 'catDonutList',
+            'todayIn', 'todayOut', 'totalIn', 'totalOut',
+            'customerReceivables', 'vendorPayables', 'stockInventoryValue',
+            'cashInHand', 'easyPaisaBalance', 'meezanBalance', 'recentActivities',
+            'startDate', 'endDate', 'start', 'end'
         );
     }
 

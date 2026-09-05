@@ -11,12 +11,21 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+use function active_branch_id;
+use function is_all_branches;
+
 class RawMaterialController extends Controller
 {
     // ==================== RAW MATERIALS CRUD ====================
     public function index()
     {
-        $materials = RawMaterial::with(['stock', 'stocks.warehouse'])->orderBy('name')->get();
+        $materialsQuery = RawMaterial::with(['stock', 'stocks.warehouse']);
+
+        if (!is_all_branches()) {
+            $materialsQuery->where('branch_id', active_branch_id());
+        }
+
+        $materials = $materialsQuery->orderBy('name')->get();
         $purchases = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse'])
             ->orderBy('date', 'desc')->orderBy('id', 'desc')->take(50)->get();
         $vendors = \App\Models\Vendor::orderBy('name')->get(['id', 'name']);
@@ -47,10 +56,11 @@ class RawMaterialController extends Controller
         }
 
         $material->name = $request->name;
+        $material->branch_id = is_all_branches() ? null : active_branch_id();
         $material->urdu_name = $request->urdu_name;
         $material->unit = $request->unit;
         $material->consumption_unit = $request->consumption_unit ?? $request->unit;
-        $material->conversion_factor = (float)($request->conversion_factor ?? 1) > 0 ? (float)$request->conversion_factor : 1;
+        $material->conversion_factor = number_format((float)($request->conversion_factor ?? 1) > 0 ? (float)$request->conversion_factor : 1, 0, '.', '');
         $material->alert_qty = $request->alert_qty ?? 0;
         $material->notes = $request->notes;
         $material->save();
@@ -82,8 +92,19 @@ class RawMaterialController extends Controller
             }
         }
 
-        // Ensure stock record exists
-        RawMaterialStock::firstOrCreate(['raw_material_id' => $material->id], ['qty' => 0]);
+        // Ensure stock record exists with opening stock (converted to consumption units)
+        $openingQty = (float)($request->opening_stock ?? 0);
+        $factor = (float)($material->conversion_factor ?? 1);
+        $openingQtyInConsumptionUnit = $openingQty * ($factor > 0 ? $factor : 1);
+        $stockRecord = RawMaterialStock::firstOrCreate(
+            ['raw_material_id' => $material->id],
+            ['qty' => $openingQtyInConsumptionUnit]
+        );
+        // If opening stock provided, update it
+        if ($openingQty > 0) {
+            $stockRecord->qty = $openingQtyInConsumptionUnit;
+            $stockRecord->save();
+        }
 
         return response()->json($msg);
     }

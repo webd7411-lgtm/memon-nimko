@@ -301,15 +301,22 @@
                       <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ $purQty }} {{ $m->unit }})</div>
                     @endif
                   </td>
-                  <td class="malert fw-semibold" data-label="Alert Qty">{{ $m->alert_qty }} {{ $m->consumption_unit ?? $m->unit }}</td>
+                  <td class="malert fw-semibold" data-label="Alert Qty">
+                    @php
+                      $factor = (float)($m->conversion_factor ?? 1);
+                      $alertInPurchaseUnit = $factor > 0 ? ($m->alert_qty / $factor) : $m->alert_qty;
+                    @endphp
+                    {{ number_format($alertInPurchaseUnit, 2) }} {{ $m->unit }}
+                  </td>
                   <td class="text-center" data-label="Actions">
                     <div class="d-flex align-items-center justify-content-center gap-1">
                       <button class="rm-btn rm-btn-success rm-btn-sm editMaterial"
                         data-id="{{ $m->id }}" data-name="{{ $m->name }}"
                         data-urdu="{{ $m->urdu_name }}" data-unit="{{ $m->unit }}"
                         data-cunit="{{ $m->consumption_unit ?? $m->unit }}"
-                        data-factor="{{ $m->conversion_factor ?? 1 }}"
+                        data-factor="{{ number_format($m->conversion_factor ?? 1, 4) }}"
                         data-price="{{ $lastCost }}"
+                        data-opening-stock="{{ number_format($m->currentStock() / (($m->conversion_factor ?? 1) > 0 ? ($m->conversion_factor ?? 1) : 1), 2) }}"
                         data-alert="{{ $m->alert_qty }}" data-notes="{{ $m->notes }}" title="Edit">
                         <i class="bi bi-pencil-square"></i>
                       </button>
@@ -516,10 +523,13 @@
               </thead>
               <tbody>
                 @forelse($materials as $m)
-                @php 
-                  $sqty = $m->currentStock(); 
-                  $statusStr = $sqty > $m->alert_qty ? 'In Stock' : ($sqty > 0 ? 'Low Stock' : 'Out of Stock');
-                @endphp
+                  @php 
+                    $sqty = $m->currentStock(); 
+                    $factor = (float)($m->conversion_factor ?? 1);
+                    $purQty = $factor > 0 ? round($sqty / $factor, 2) : $sqty;
+                    $alertInConsumption = (float)($m->alert_qty ?? 0) * ($factor > 0 ? $factor : 1);
+                    $statusStr = $sqty > $alertInConsumption ? 'In Stock' : ($sqty > 0 ? 'Low Stock' : 'Out of Stock');
+                  @endphp
                 <tr class="stock-row" data-status="{{ strtolower($statusStr) }}">
                   <td class="fw-bold" data-label="#">{{ $m->id }}</td>
                   <td style="font-weight:700;" class="text-dark material-name-cell" data-label="Material">{{ $m->name }}</td>
@@ -527,16 +537,26 @@
                   <td class="warehouse-cell" data-label="Warehouse Breakdown">
                     @if($m->stocks && $m->stocks->count() > 0)
                     @foreach($m->stocks as $st)
+                    @php
+                      $stFactor = (float)($m->conversion_factor ?? 1);
+                      $stQtyInPurchaseUnit = $stFactor > 0 ? round($st->qty / $stFactor, 2) : $st->qty;
+                    @endphp
                     <div style="font-size:.78rem;" class="wh-item">
-                      <i class="bi bi-dot me-1"></i><strong>{{ $st->warehouse->warehouse_name ?? $st->warehouse->name ?? 'Main Stock' }}:</strong> {{ $st->qty }} {{ $m->unit }}
+                      <i class="bi bi-dot me-1"></i><strong>{{ $st->warehouse->warehouse_name ?? $st->warehouse->name ?? 'Main Stock' }}:</strong> {{ $stQtyInPurchaseUnit }} {{ $m->unit }}
                     </div>
                     @endforeach
                     @else
-                    <span class="text-muted" style="font-size:.78rem;">Main Stock: {{ $sqty }}</span>
+                    <span class="text-muted" style="font-size:.78rem;">Main Stock: {{ $purQty }} {{ $m->unit }}</span>
                     @endif
                   </td>
-                  <td style="font-weight:800;" class="fs-6" data-label="Total Stock">{{ $sqty }}</td>
-                  <td data-label="Alert Qty">{{ $m->alert_qty }}</td>
+                  <td style="font-weight:800;" class="fs-6" data-label="Total Stock">{{ $purQty }} {{ $m->unit }}</td>
+                  <td data-label="Alert Qty">
+                    @php
+                      $factor = (float)($m->conversion_factor ?? 1);
+                      $alertInPurchaseUnit = $factor > 0 ? ($m->alert_qty / $factor) : $m->alert_qty;
+                    @endphp
+                    {{ number_format($alertInPurchaseUnit, 2) }} {{ $m->unit }}
+                  </td>
                   <td data-label="Status">
                     <span class="stock-badge {{ $sqty > $m->alert_qty ? 'stock-ok' : 'stock-low' }}">
                       {{ $statusStr }}
@@ -582,7 +602,7 @@
                     @foreach($p->bom as $bomItem)
                     <div style="font-size:.82rem;margin-bottom:3px;">
                       <i class="bi bi-record-circle-fill text-primary me-1" style="font-size:.7rem;"></i>
-                      <strong>{{ $bomItem->rawMaterial->name ?? 'Material' }}:</strong> {{ (float)$bomItem->qty_per_unit }} {{ $bomItem->rawMaterial->unit ?? '' }}
+                      <strong>{{ $bomItem->rawMaterial->name ?? 'Material' }}:</strong> {{ (float)$bomItem->qty_per_unit }} {{ $bomItem->rawMaterial->consumption_unit ?? $bomItem->rawMaterial->unit ?? '' }}
                     </div>
                     @endforeach
                   </td>
@@ -649,8 +669,12 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="lbl"><i class="bi bi-calculator"></i> Conversion Ratio</label>
+              <label class="lbl"><i class="bi bi-gear-fill"></i> Conversion Ratio</label>
               <input type="number" step="0.0001" min="0.0001" name="conversion_factor" id="materialConversionFactor" class="fld" value="1" required placeholder="e.g. 1000" />
+            </div>
+            <div class="col-md-6">
+              <label class="lbl"><i class="bi bi-box-seam-fill"></i> Opening Stock (Purchase Unit)</label>
+              <input type="number" step="0.01" min="0" name="opening_stock" id="materialOpeningStock" class="fld" value="0" placeholder="e.g. 50" />
             </div>
             <div class="col-12 mt-1">
               <div class="p-2 rounded bg-light border text-muted" style="font-size:.74rem;">
@@ -733,6 +757,7 @@ $(document).on('click', '.editMaterial', function() {
   $('#materialConversionFactor').val($(this).data('factor') || 1);
   $('#materialPrice').val($(this).data('price') || 0);
   $('#materialAlert').val($(this).data('alert'));
+  $('#materialOpeningStock').val($(this).data('opening-stock') || 0);
   $('#materialNotes').val($(this).data('notes'));
   $('#materialModalLabel').html('<i class="bi bi-pencil-square me-1 text-primary"></i> Edit Raw Material');
   $('#materialModal').modal('show');

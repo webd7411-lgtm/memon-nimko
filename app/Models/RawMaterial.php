@@ -18,6 +18,11 @@ class RawMaterial extends Model
         return $this->hasMany(RawMaterialStock::class);
     }
 
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Branch::class, 'branch_id');
+    }
+
     public function currentStock(?int $warehouseId = null)
     {
         if ($warehouseId) {
@@ -33,7 +38,7 @@ class RawMaterial extends Model
         $cost = (float)(\App\Models\RawMaterialPurchaseItem::where('raw_material_id', $this->id)
             ->latest('id')
             ->value('price_per_unit') ?? 0);
-        $factor = (float)($this->conversion_factor ?? 1);
-        return ($factor > 0) ? ($cost / $factor) : $cost;
+        // Return purchase price per purchase unit (kg, litre, etc.) - NOT converted to consumption unit
+        return $cost;
     }
 }

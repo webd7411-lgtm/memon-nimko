@@ -229,7 +229,7 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
         <table class="pc-tbl">
           <thead>
             <tr>
-              <th>Ref #</th><th>Date</th><th>Type</th><th>Reason</th>
+              <th>Ref #</th><th>Date</th><th>Branch</th><th>Type</th><th>Reason</th>
               <th>Items</th><th>By</th><th>Notes</th><th style="width:90px;">Action</th>
             </tr>
           </thead>
@@ -238,6 +238,7 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
             <tr>
               <td><span class="pc-ref">{{ $adj->ref_no }}</span></td>
               <td><span class="pc-date">{{ \Carbon\Carbon::parse($adj->adjustment_date)->format('d-M-Y') }}</span></td>
+              <td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</span></td>
               <td>
                 <span class="pc-badge {{ $adj->type === 'increase' ? 'pc-badge-inc' : 'pc-badge-dec' }}">
                   <i class="bi bi-{{ $adj->type === 'increase' ? 'plus' : 'dash' }}"></i>
@@ -278,12 +279,13 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
   <div class="adj-list">
     @forelse($adjustments as $adj)
     <div class="adj-card type-{{ $adj->type }}">
-      <div class="adj-top">
+        <div class="adj-top">
         <div class="adj-ref">
           <span class="adj-ref-ic"><i class="bi bi-arrow-left-right"></i></span>
           <div>
             <div class="adj-ref-no">{{ $adj->ref_no }}</div>
             <div class="adj-date"><i class="bi bi-calendar3"></i>{{ \Carbon\Carbon::parse($adj->adjustment_date)->format('d-M-Y') }}</div>
+            <div class="adj-date" style="font-size:.7rem;color:#3b5bb3;font-weight:700;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</div>
           </div>
         </div>
         <span class="pc-badge {{ $adj->type === 'increase' ? 'pc-badge-inc' : 'pc-badge-dec' }}">

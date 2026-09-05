@@ -66,4 +66,9 @@ class ReceiptsVoucher extends Model
     {
         return $this->belongsTo(Account::class, 'row_account_id', 'id');
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
 }

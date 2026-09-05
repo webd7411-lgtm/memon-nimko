@@ -8,13 +8,30 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 
+use function active_branch_id;
+use function is_all_branches;
+
 class DiscountController extends Controller
 {
+    public function __construct()
+    {
+        // No base query scope - branch handled per-method
+    }
+
     // Discount List Page
     public function index()
     {
-        $discounts = ProductDiscount::with('product.category_relation', 'product.sub_category_relation', 'product.unit', 'product.brand')
-            ->orderByDesc('id')->get();
+        $query = ProductDiscount::with('product.category_relation', 'product.sub_category_relation', 'product.unit', 'product.brand');
+
+        if (!is_all_branches()) {
+            // Show current branch discounts + all-branch discounts (branch_id IS NULL)
+            $query->where(function ($q) {
+                $q->where('branch_id', active_branch_id())
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $discounts = $query->orderByDesc('id')->get();
 
         return view('admin_panel.product.discount.discount_index', compact('discounts'));
     }
@@ -55,7 +72,6 @@ class DiscountController extends Controller
     // Store Discount
     public function store(Request $request)
     {
-        
         $request->validate([
             'product_id.*'          => ['required','integer','exists:products,id'],
             'discount_percentage.*' => ['nullable','numeric','min:0','max:100'],
@@ -63,6 +79,9 @@ class DiscountController extends Controller
             'date.*'                => ['required','date'],
             'status.*'              => ['required','in:0,1'],
         ]);
+
+        $allBranches = $request->has('all_branches') && $request->all_branches == '1';
+        $branchId = $allBranches ? null : active_branch_id();
 
         DB::beginTransaction();
         try {
@@ -88,12 +107,11 @@ class DiscountController extends Controller
 
                 $finalPrice = round($product->price - $totalDiscount, 2);
 
-                // retry on rare unique collision at DB level
                 $retries = 0;
                 while (true) {
                     try {
                         ProductDiscount::updateOrCreate(
-                            ['product_id' => $productId],
+                            ['product_id' => $productId, 'branch_id' => $branchId],
                             [
                                 'discount_code'       => !empty($product->barcode_path) ? $product->barcode_path : $this->generateUniqueDiscountCode(),
                                 'actual_price'        => $product->price,
@@ -103,13 +121,13 @@ class DiscountController extends Controller
                                 'final_price'         => $finalPrice,
                                 'date'                => $date,
                                 'status'              => $status,
+                                'branch_id'           => $branchId,
                             ]
                         );
                         break;
                     } catch (QueryException $e) {
-                        // Duplicate code? retry few times.
-                        $isDuplicate = str_contains($e->getMessage(), 'Duplicate entry') // MySQL
-                                   || ($e->errorInfo[0] ?? null) === '23505';             // Postgres
+                        $isDuplicate = str_contains($e->getMessage(), 'Duplicate entry')
+                                   || ($e->errorInfo[0] ?? null) === '23505';
                         if ($isDuplicate && $retries < 5) {
                             $retries++;
                             continue;

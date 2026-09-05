@@ -122,6 +122,7 @@ class ProductionController extends Controller
                 'entry_no' => 'PROD-' . date('Ymd-His'),
                 'production_date' => $request->production_date,
                 'source' => $request->source ?? 'kitchen',
+                'warehouse_id' => ($request->warehouse_id ? $request->warehouse_id : 1), // NEW: selected warehouse
                 'notes' => $request->notes,
                 'production_cost' => $totalProductionCost,
                 'created_by' => Auth::id(),
@@ -178,10 +179,12 @@ class ProductionController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // Update Stock
+                $targetWarehouseId = $request->warehouse_id ?? 1;
+
+                // Update Stock (target selected warehouse, not always shop)
                 $stockQuery = Stock::where('product_id', $productId)
                     ->where('branch_id', $currentBranchId)
-                    ->where('warehouse_id', 1);
+                    ->where('warehouse_id', $targetWarehouseId);
 
                 if ($dbVariantId) {
                     $stockQuery->where('variant_id', $dbVariantId);
@@ -195,11 +198,12 @@ class ProductionController extends Controller
                     $stock->qty += $qtyStock;
                     $stock->save();
                 } else {
+                    $targetWarehouseId = $request->warehouse_id ?? 1;
                     Stock::create([
                         'product_id' => $productId,
                         'variant_id' => $dbVariantId,
                         'branch_id' => $currentBranchId,
-                        'warehouse_id' => 1,
+                        'warehouse_id' => $targetWarehouseId,
                         'qty' => $qtyStock,
                     ]);
                 }
@@ -321,9 +325,10 @@ class ProductionController extends Controller
                 $oldProduct = Product::find($oi->product_id);
                 $oldIsGram = $oldProduct && ($oldProduct->unit_type === 'kg' || str_contains(strtolower($oldProduct->item_name), 'gram'));
 
+                $targetWarehouseId = $request->warehouse_id ?? 1;
                 $stockQuery = Stock::where('product_id', $oi->product_id)
                     ->where('branch_id', $currentBranchId)
-                    ->where('warehouse_id', 1);
+                    ->where('warehouse_id', $targetWarehouseId);
 
                 if ($oldIsGram || !$oi->variant_id) {
                     $stockQuery->whereNull('variant_id');
@@ -346,21 +351,23 @@ class ProductionController extends Controller
                     $isKg = $pModel && ($pModel->unit_type === 'kg');
                     $addStockQty = $isKg ? ($rmu->qty_used * 1000) : $rmu->qty_used;
 
-                    $prodStock = Stock::firstOrCreate(
-                        [
-                            'product_id' => $rmu->ingredient_product_id,
-                            'branch_id' => $currentBranchId,
-                            'warehouse_id' => 1,
-                            'variant_id' => null,
-                        ],
-                        ['qty' => 0]
-                    );
+                        $targetWarehouseId = $request->warehouse_id ?? 1;
+                        $prodStock = Stock::firstOrCreate(
+                            [
+                                'product_id' => $rmId,
+                                'branch_id' => $currentBranchId,
+                                'warehouse_id' => $targetWarehouseId,
+                                'variant_id' => null,
+                            ],
+                            ['qty' => 0]
+                        );
                     $prodStock->qty += $addStockQty;
                     $prodStock->save();
                 } else if ($rmu->raw_material_id) {
+                    $targetWarehouseId = $request->warehouse_id ?? 1;
                     $rmStock = RawMaterialStock::where('raw_material_id', $rmu->raw_material_id)
-                        ->where(function($q) {
-                            $q->where('warehouse_id', 1)->orWhereNull('warehouse_id');
+                        ->where(function($q) use ($targetWarehouseId) {
+                            $q->where('warehouse_id', $targetWarehouseId)->orWhereNull('warehouse_id');
                         })
                         ->orderByRaw('warehouse_id DESC')
                         ->first();
@@ -456,9 +463,10 @@ class ProductionController extends Controller
                     'updated_at' => now(),
                 ]);
 
+                $targetWarehouseId = $request->warehouse_id ?? 1;
                 $stockQuery = Stock::where('product_id', $productId)
                     ->where('branch_id', $currentBranchId)
-                    ->where('warehouse_id', 1);
+                    ->where('warehouse_id', $targetWarehouseId);
 
                 if ($dbVariantId) {
                     $stockQuery->where('variant_id', $dbVariantId);
@@ -471,11 +479,12 @@ class ProductionController extends Controller
                     $stock->qty += $qtyStock;
                     $stock->save();
                 } else {
+                    $targetWarehouseId = $request->warehouse_id ?? 1;
                     Stock::create([
                         'product_id' => $productId,
                         'variant_id' => $dbVariantId,
                         'branch_id' => $currentBranchId,
-                        'warehouse_id' => 1,
+                        'warehouse_id' => $targetWarehouseId,
                         'qty' => $qtyStock,
                     ]);
                 }

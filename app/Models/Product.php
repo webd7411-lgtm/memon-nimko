@@ -41,13 +41,21 @@ class Product extends Model
     public function activeDiscount()
     {
         return $this->hasOne(ProductDiscount::class, 'product_id')
-            ->where('status', 1); // only active discount
+            ->where('status', 1) // only active discount
+            ->where(function ($q) {
+                $q->where('branch_id', active_branch_id())
+                  ->orWhereNull('branch_id'); // all branches discount
+            });
     }
 
     public function discountProduct()
     {
         return $this->hasOne(ProductDiscount::class, 'product_id', 'id')
-            ->where('status', 1);
+            ->where('status', 1)
+            ->where(function ($q) {
+                $q->where('branch_id', active_branch_id())
+                  ->orWhereNull('branch_id');
+            });
     }
 
     public function category_relation()

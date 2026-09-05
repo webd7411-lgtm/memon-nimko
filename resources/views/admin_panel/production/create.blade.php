@@ -287,8 +287,20 @@
         <div class="col-12 col-sm-6 col-md-3">
           <label class="pc-label"><i class="bi bi-geo-alt me-1 text-success"></i> Source</label>
           <select name="source" class="pc-select">
-            <option value="kitchen">Main Kitchen</option>
-            <option value="warehouse">Warehouse</option>
+            <option value="branch">Branch: {{ active_branch_name() }}</option>
+            <option value="warehouse">Warehouse Production</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-building me-1 text-success"></i> Target Warehouse</label>
+          <select name="warehouse_id" class="pc-select">
+            <option value="">Select Warehouse (Optional for Branch)...</option>
+            @foreach(\App\Models\Warehouse::orderBy('warehouse_name')->get() as $w)
+            <option value="{{ $w->id }}" {{ old('warehouse_id') == $w->id ? 'selected' : '' }}>
+              {{ $w->warehouse_name ?? ($w->name ?? 'Warehouse #'.$w->id) }}
+            </option>
+            @endforeach
           </select>
         </div>
 
@@ -404,7 +416,7 @@
                   <optgroup label="Raw Materials">
                     @foreach($rawMaterials as $rm)
                     <option value="{{ $rm->id }}" data-type="rm" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}">
-                      [Raw Material] {{ $rm->name }} ({{ $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
+                      [Raw Material] {{ $rm->name }} (Purchase: {{ $rm->unit }}, Recipe: {{ $rm->consumption_unit ?? $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
                     </option>
                     @endforeach
                   </optgroup>
@@ -597,7 +609,7 @@ $(document).ready(function() {
           var itemType = isProduct ? 'product' : 'rm';
           var itemName = isProduct 
             ? (item.ingredient_product ? item.ingredient_product.item_name + ' [Base Product]' : 'Product #' + itemId)
-            : (item.raw_material ? item.raw_material.name + ' (' + (item.raw_material.unit || '') + ')' : 'RM #' + itemId);
+            : (item.raw_material ? item.raw_material.name + ' (' + (item.raw_material.consumption_unit || item.raw_material.unit || '') + ')' : 'RM #' + itemId);
 
           if (item.is_custom_variant_bom) {
             itemName += ' [Custom Variant Recipe]';

@@ -677,8 +677,7 @@
                     @foreach($product->variants as $variant)
                     <div>
                       <span>
-                        <strong>{{ $variant->variant_name }}</strong> - Rs {{ number_format($variant->price) }}
-                        @if($product->unit_type != 'kg')<span style="color:var(--pc-text-muted)">({{ $variant->stock_qty }})</span>@endif
+                        <strong>{{ $variant->variant_name }}</strong> - Rs {{ number_format($variant->price) }} <span style="color:var(--pc-text-muted)">({{ $variant->stock ? $variant->stock->qty : ($variant->stock_qty ?? 0) }})</span>
                       </span>
                       @if($variant->is_default)<span class="v-default">Default</span>@endif
                     </div>
@@ -706,9 +705,23 @@
                 <td data-label="Stock">
                   <span class="pc-stock">
                     @php
-                      $totalStockValue = $product->total_stock ?? 0;
+                      $totalStockValue = 0;
+                      if ($product->variants && $product->variants->count() > 0) {
+                          foreach ($product->variants as $v) {
+                              $qty = $v->stock_qty ?? ($v->stock ? $v->stock->qty : 0);
+                              $isKg = ($v->size_unit ?? 'kg') === 'kg' || $product->unit_type === 'kg';
+                              if ($isKg) {
+                                  $sizeInKg = floatval($v->size_value ?? 1);
+                                  $totalStockValue += $qty * $sizeInKg;
+                              } else {
+                                  $totalStockValue += $qty;
+                              }
+                          }
+                      } else {
+                          $totalStockValue = $product->total_stock ?? 0;
+                      }
                       if (($product->unit_type ?? '') === 'kg') {
-                        echo number_format($totalStockValue / 1000, 2) . ' KG';
+                        echo number_format($totalStockValue, 2) . ' KG';
                       } else {
                         echo number_format($totalStockValue);
                       }

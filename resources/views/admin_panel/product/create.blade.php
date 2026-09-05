@@ -829,12 +829,12 @@
                                                      <tr>
                                                          <td>
                                                              <input type="hidden" name="bom_type[]" class="bom-type" value="rm">
-                                                             <select name="bom_item_id[]" class="form-select bom-item-select">
+                                                              <select name="bom_item_id[]" class="form-select bom-item-select select2-bom">
                                                                  <option value="">Select Ingredient / Raw Material...</option>
                                                                  <optgroup label="Raw Materials">
                                                                      @if(isset($rawMaterials))
                                                                      @foreach($rawMaterials as $rm)
-                                                                     <option value="{{ $rm->id }}" data-type="rm">[RM] {{ $rm->name }} ({{ $rm->unit }})</option>
+                                                                      <option value="{{ $rm->id }}" data-type="rm">[RM] {{ $rm->name }} ({{ $rm->consumption_unit ?? $rm->unit }})</option>
                                                                      @endforeach
                                                                      @endif
                                                                  </optgroup>

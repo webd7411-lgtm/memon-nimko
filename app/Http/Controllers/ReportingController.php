@@ -380,11 +380,6 @@ class ReportingController extends Controller
                     $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft;
                     $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn - $adjInc + $adjDec;
 
-                    if ($balance <= 0) {
-                        $closingStock = 0;
-                        $openingStock = 0;
-                    }
-
                     $rows[] = [
                         'item_code'       => $code,
                         'item_name'       => $p->item_name . ' (' . ($v->size_label ?: $v->variant_name) . ')',
@@ -482,11 +477,6 @@ class ReportingController extends Controller
 
                 $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft;
                 $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn - $adjInc + $adjDec;
-
-                if ($balance <= 0) {
-                    $closingStock = 0;
-                    $openingStock = 0;
-                }
 
                 $rows[] = [
                     'item_code'       => $code,
