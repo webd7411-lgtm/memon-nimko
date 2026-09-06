@@ -267,6 +267,27 @@
   <form action="{{ route('production.store') }}" method="POST">
     @csrf
 
+    {{-- FLASH MESSAGES --}}
+    @if(session()->has('success'))
+    <div class="alert alert-success alert-dismissible fade show mb-3" style="border:none;border-radius:10px;">
+      <strong><i class="bi bi-check-circle me-1"></i>Success!</strong> {{ session('success') }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session()->has('error'))
+    <div class="alert alert-danger alert-dismissible fade show mb-3" style="border:none;border-radius:10px;">
+      <strong><i class="bi bi-exclamation-triangle me-1"></i>Error!</strong> {{ session('error') }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show mb-3" style="border:none;border-radius:10px;">
+      <strong><i class="bi bi-exclamation-triangle me-1"></i>Error!</strong>
+      <ul class="mb-0 ps-3">@foreach($errors->all() as $error)<li>{{$error}}</li>@endforeach</ul>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     {{-- ══════════ MAIN CARD: BATCH DETAILS ══════════ --}}
     <div class="pc-card">
       <div class="pc-card-header">

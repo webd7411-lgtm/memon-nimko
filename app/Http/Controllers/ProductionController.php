@@ -116,13 +116,14 @@ class ProductionController extends Controller
 
             $totalProductionCost = $totalItemCost + $totalRmCost;
             $currentBranchId = active_branch_id();
+            $targetWarehouseId = !empty($request->warehouse_id) ? (int)$request->warehouse_id : null;
 
             $entryId = DB::table('production_entries')->insertGetId([
                 'branch_id' => $currentBranchId,
                 'entry_no' => 'PROD-' . date('Ymd-His'),
                 'production_date' => $request->production_date,
                 'source' => $request->source ?? 'kitchen',
-                'warehouse_id' => ($request->warehouse_id ? $request->warehouse_id : 1), // NEW: selected warehouse
+                'warehouse_id' => $targetWarehouseId,
                 'notes' => $request->notes,
                 'production_cost' => $totalProductionCost,
                 'created_by' => Auth::id(),
@@ -171,6 +172,7 @@ class ProductionController extends Controller
                     'production_entry_id' => $entryId,
                     'product_id' => $productId,
                     'variant_id' => $variantId,
+                    'branch_id' => $currentBranchId,
                     'unit' => $product->unit->name ?? ($product->unit_type ? strtoupper($product->unit_type) : 'Pc'),
                     'qty_entered' => $qtyTyped,
                     'qty_stock' => $qtyStock,
@@ -178,8 +180,6 @@ class ProductionController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-
-                $targetWarehouseId = $request->warehouse_id ?? 1;
 
                 // Update Stock (target selected warehouse, not always shop)
                 $stockQuery = Stock::where('product_id', $productId)
@@ -198,7 +198,6 @@ class ProductionController extends Controller
                     $stock->qty += $qtyStock;
                     $stock->save();
                 } else {
-                    $targetWarehouseId = $request->warehouse_id ?? 1;
                     Stock::create([
                         'product_id' => $productId,
                         'variant_id' => $dbVariantId,
@@ -228,6 +227,7 @@ class ProductionController extends Controller
                             'qty_used' => $qtyUsed,
                             'cost_per_unit' => $costPerUnit,
                             'total_cost' => $totalCost,
+                            'branch_id' => $currentBranchId,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -240,7 +240,7 @@ class ProductionController extends Controller
                             [
                                 'product_id' => $rmId,
                                 'branch_id' => $currentBranchId,
-                                'warehouse_id' => 1,
+                                'warehouse_id' => $targetWarehouseId,
                                 'variant_id' => null,
                             ],
                             ['qty' => 0]
@@ -255,22 +255,26 @@ class ProductionController extends Controller
                             'qty_used' => $qtyUsed,
                             'cost_per_unit' => $costPerUnit,
                             'total_cost' => $totalCost,
+                            'branch_id' => $currentBranchId,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
 
                         $rmStock = RawMaterialStock::where('raw_material_id', $rmId)
-                            ->where(function($q) {
-                                $q->where('warehouse_id', 1)->orWhereNull('warehouse_id');
+                            ->where('branch_id', $currentBranchId)
+                            ->when($targetWarehouseId, function($q) use ($targetWarehouseId) {
+                                $q->where('warehouse_id', $targetWarehouseId)->orWhereNull('warehouse_id');
                             })
-                            ->orderByRaw('warehouse_id DESC')
+                            ->orderByRaw('warehouse_id IS NOT NULL DESC, warehouse_id DESC')
                             ->first();
 
                         if (!$rmStock) {
-                            $rmStock = RawMaterialStock::firstOrCreate(
-                                ['raw_material_id' => $rmId],
-                                ['qty' => 0]
-                            );
+                            $rmStock = RawMaterialStock::create([
+                                'raw_material_id' => $rmId,
+                                'branch_id' => $currentBranchId,
+                                'warehouse_id' => $targetWarehouseId ?: null,
+                                'qty' => 0,
+                            ]);
                         }
                         $rmStock->qty -= $qtyUsed;
                         $rmStock->save();
@@ -282,7 +286,7 @@ class ProductionController extends Controller
             return redirect()->route('production.index')->with('success', 'Production entry saved with raw material consumption!');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors('Error: ' . $e->getMessage());
+            return back()->withErrors(['Error: ' . $e->getMessage()]);
         }
     }
 
@@ -318,6 +322,7 @@ class ProductionController extends Controller
         try {
             DB::beginTransaction();
             $currentBranchId = active_branch_id();
+            $targetWarehouseId = !empty($request->warehouse_id) ? (int)$request->warehouse_id : null;
 
             // 1. Reverse old finished goods stock
             $oldItems = DB::table('production_entry_items')->where('production_entry_id', $id)->get();
@@ -325,7 +330,6 @@ class ProductionController extends Controller
                 $oldProduct = Product::find($oi->product_id);
                 $oldIsGram = $oldProduct && ($oldProduct->unit_type === 'kg' || str_contains(strtolower($oldProduct->item_name), 'gram'));
 
-                $targetWarehouseId = $request->warehouse_id ?? 1;
                 $stockQuery = Stock::where('product_id', $oi->product_id)
                     ->where('branch_id', $currentBranchId)
                     ->where('warehouse_id', $targetWarehouseId);
@@ -351,32 +355,33 @@ class ProductionController extends Controller
                     $isKg = $pModel && ($pModel->unit_type === 'kg');
                     $addStockQty = $isKg ? ($rmu->qty_used * 1000) : $rmu->qty_used;
 
-                        $targetWarehouseId = $request->warehouse_id ?? 1;
-                        $prodStock = Stock::firstOrCreate(
-                            [
-                                'product_id' => $rmId,
-                                'branch_id' => $currentBranchId,
-                                'warehouse_id' => $targetWarehouseId,
-                                'variant_id' => null,
-                            ],
-                            ['qty' => 0]
-                        );
+                    $prodStock = Stock::firstOrCreate(
+                        [
+                            'product_id' => $rmu->ingredient_product_id,
+                            'branch_id' => $currentBranchId,
+                            'warehouse_id' => $targetWarehouseId,
+                            'variant_id' => null,
+                        ],
+                        ['qty' => 0]
+                    );
                     $prodStock->qty += $addStockQty;
                     $prodStock->save();
                 } else if ($rmu->raw_material_id) {
-                    $targetWarehouseId = $request->warehouse_id ?? 1;
                     $rmStock = RawMaterialStock::where('raw_material_id', $rmu->raw_material_id)
-                        ->where(function($q) use ($targetWarehouseId) {
+                        ->where('branch_id', $currentBranchId)
+                        ->when($targetWarehouseId, function($q) use ($targetWarehouseId) {
                             $q->where('warehouse_id', $targetWarehouseId)->orWhereNull('warehouse_id');
                         })
-                        ->orderByRaw('warehouse_id DESC')
+                        ->orderByRaw('warehouse_id IS NOT NULL DESC, warehouse_id DESC')
                         ->first();
 
                     if (!$rmStock) {
-                        $rmStock = RawMaterialStock::firstOrCreate(
-                            ['raw_material_id' => $rmu->raw_material_id],
-                            ['qty' => 0]
-                        );
+                        $rmStock = RawMaterialStock::create([
+                            'raw_material_id' => $rmu->raw_material_id,
+                            'branch_id' => $currentBranchId,
+                            'warehouse_id' => $targetWarehouseId,
+                            'qty' => 0,
+                        ]);
                     }
                     $rmStock->qty += $rmu->qty_used;
                     $rmStock->save();
@@ -455,6 +460,7 @@ class ProductionController extends Controller
                     'production_entry_id' => $id,
                     'product_id' => $productId,
                     'variant_id' => $variantId,
+                    'branch_id' => $currentBranchId,
                     'unit' => $product->unit->name ?? ($product->unit_type ? strtoupper($product->unit_type) : 'Pc'),
                     'qty_entered' => $qtyTyped,
                     'qty_stock' => $qtyStock,
@@ -463,7 +469,6 @@ class ProductionController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                $targetWarehouseId = $request->warehouse_id ?? 1;
                 $stockQuery = Stock::where('product_id', $productId)
                     ->where('branch_id', $currentBranchId)
                     ->where('warehouse_id', $targetWarehouseId);
@@ -479,7 +484,6 @@ class ProductionController extends Controller
                     $stock->qty += $qtyStock;
                     $stock->save();
                 } else {
-                    $targetWarehouseId = $request->warehouse_id ?? 1;
                     Stock::create([
                         'product_id' => $productId,
                         'variant_id' => $dbVariantId,
@@ -509,6 +513,7 @@ class ProductionController extends Controller
                             'qty_used' => $qtyUsed,
                             'cost_per_unit' => $costPerUnit,
                             'total_cost' => $totalCost,
+                            'branch_id' => $currentBranchId,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -521,7 +526,7 @@ class ProductionController extends Controller
                             [
                                 'product_id' => $rmId,
                                 'branch_id' => $currentBranchId,
-                                'warehouse_id' => 1,
+                                'warehouse_id' => $targetWarehouseId,
                                 'variant_id' => null,
                             ],
                             ['qty' => 0]
@@ -537,22 +542,26 @@ class ProductionController extends Controller
                             'qty_used' => $qtyUsed,
                             'cost_per_unit' => $costPerUnit,
                             'total_cost' => $totalCost,
+                            'branch_id' => $currentBranchId,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
 
                         $rmStock = RawMaterialStock::where('raw_material_id', $rmId)
-                            ->where(function($q) {
-                                $q->where('warehouse_id', 1)->orWhereNull('warehouse_id');
+                            ->where('branch_id', $currentBranchId)
+                            ->when($targetWarehouseId, function($q) use ($targetWarehouseId) {
+                                $q->where('warehouse_id', $targetWarehouseId)->orWhereNull('warehouse_id');
                             })
-                            ->orderByRaw('warehouse_id DESC')
+                            ->orderByRaw('warehouse_id IS NOT NULL DESC, warehouse_id DESC')
                             ->first();
 
                         if (!$rmStock) {
-                            $rmStock = RawMaterialStock::firstOrCreate(
-                                ['raw_material_id' => $rmId],
-                                ['qty' => 0]
-                            );
+                            $rmStock = RawMaterialStock::create([
+                                'raw_material_id' => $rmId,
+                                'branch_id' => $currentBranchId,
+                                'warehouse_id' => $targetWarehouseId ?: null,
+                                'qty' => 0,
+                            ]);
                         }
                         $rmStock->qty -= $qtyUsed;
                         $rmStock->save();
@@ -619,7 +628,9 @@ class ProductionController extends Controller
         foreach ($bom as $item) {
             $item->is_custom_variant_bom = $isCustomVariantBom;
             if ($item->rawMaterial) {
-                $item->unit_cost = $item->rawMaterial->lastPurchaseCost();
+                $purchaseCost = $item->rawMaterial->lastPurchaseCost();
+                $factor = (float)($item->rawMaterial->conversion_factor ?? 1);
+                $item->unit_cost = $factor > 0 ? ($purchaseCost / $factor) : $purchaseCost;
             } elseif ($item->ingredientProduct) {
                 $item->unit_cost = (float)($item->ingredientProduct->price ?? 0);
             } else {

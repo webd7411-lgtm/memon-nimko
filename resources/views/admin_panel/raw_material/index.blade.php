@@ -177,6 +177,19 @@
   .modal-dialog .modal-body { padding: 1rem; }
   .modal-content { border-radius: 14px; }
 }
+/* Fix DataTables conflict with mobile grid CSS */
+@media (max-width: 767.98px) {
+  .dataTables_wrapper .rm-tbl tbody tr,
+  table.dataTable tbody tr {
+    display: table-row !important;
+    grid-template-columns: none !important;
+  }
+  .dataTables_wrapper .rm-tbl tbody td,
+  table.dataTable tbody td {
+    display: table-cell !important;
+    flex-direction: initial !important;
+  }
+}
 </style>
 
 <div class="rm-page">
@@ -969,7 +982,6 @@ $(document).ready(function() {
   if ($.fn.DataTable.isDataTable('#materialTable')) $('#materialTable').DataTable().destroy();
   if ($.fn.DataTable.isDataTable('#purchaseTable')) $('#purchaseTable').DataTable().destroy();
   if ($.fn.DataTable.isDataTable('#recipesTable')) $('#recipesTable').DataTable().destroy();
-
   $('#materialTable').DataTable({ pageLength: 10, order: [[0, 'desc']], language: { search: '_INPUT_', searchPlaceholder: 'Search materials...' } });
   $('#purchaseTable').DataTable({ pageLength: 10, order: [[0, 'desc']], language: { search: '_INPUT_', searchPlaceholder: 'Search purchases...' } });
   $('#recipesTable').DataTable({ pageLength: 10, order: [[0, 'asc']], language: { search: '_INPUT_', searchPlaceholder: 'Search recipes...' } });

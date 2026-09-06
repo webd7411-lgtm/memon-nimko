@@ -22,4 +22,9 @@ class RawMaterialPurchase extends Model
     {
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Branch::class, 'branch_id');
+    }
 }

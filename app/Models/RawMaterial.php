@@ -18,18 +18,18 @@ class RawMaterial extends Model
         return $this->hasMany(RawMaterialStock::class);
     }
 
-    public function branch()
+    public function currentStock(?int $warehouseId = null, ?int $branchId = null)
     {
-        return $this->belongsTo(\App\Models\Branch::class, 'branch_id');
-    }
-
-    public function currentStock(?int $warehouseId = null)
-    {
+        if (!$branchId) {
+            $branchId = session('active_branch_id') === 'all' ? null : active_branch_id();
+        }
+        $query = $this->stocks();
+        if ($branchId) $query->where('branch_id', $branchId);
         if ($warehouseId) {
-            $st = $this->stocks()->where('warehouse_id', $warehouseId)->first();
+            $st = $query->where('warehouse_id', $warehouseId)->first();
             return $st ? (float)$st->qty : 0;
         }
-        $sum = $this->stocks()->sum('qty');
+        $sum = $query->sum('qty');
         return (float)($sum ?? 0);
     }
 
@@ -38,7 +38,6 @@ class RawMaterial extends Model
         $cost = (float)(\App\Models\RawMaterialPurchaseItem::where('raw_material_id', $this->id)
             ->latest('id')
             ->value('price_per_unit') ?? 0);
-        // Return purchase price per purchase unit (kg, litre, etc.) - NOT converted to consumption unit
         return $cost;
     }
 }
