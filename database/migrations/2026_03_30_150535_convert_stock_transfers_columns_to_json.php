@@ -12,25 +12,26 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('stock_transfers', function (Blueprint $table) {
-            // Check if foreign key exists before dropping
-            $foreignKeys = $this->getForeignKeys('stock_transfers');
-            if (in_array('stock_transfers_product_id_foreign', $foreignKeys)) {
-                 $table->dropForeign(['product_id']);
-            }
+        // Drop foreign keys and indexes using raw SQL first
+        $foreignKeys = DB::select("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_transfers' AND COLUMN_NAME = 'product_id' AND REFERENCED_TABLE_NAME IS NOT NULL");
+        foreach ($foreignKeys as $fk) {
+            DB::statement("ALTER TABLE stock_transfers DROP FOREIGN KEY `{$fk->CONSTRAINT_NAME}`");
+        }
 
-            // Check if index exists before dropping
-            $indexes = $this->getIndexes('stock_transfers');
-            if (in_array('stock_transfers_product_id_index', $indexes) || in_array('product_id', $indexes)) {
+        $indexes = DB::select("SHOW INDEX FROM stock_transfers WHERE Column_name = 'product_id'");
+        $droppedIndexes = [];
+        foreach ($indexes as $idx) {
+            if (!in_array($idx->Key_name, $droppedIndexes) && $idx->Key_name !== 'PRIMARY') {
                 try {
-                    $table->dropIndex(['product_id']);
+                    DB::statement("ALTER TABLE stock_transfers DROP INDEX `{$idx->Key_name}`");
+                    $droppedIndexes[] = $idx->Key_name;
                 } catch (\Exception $e) {}
             }
+        }
 
-            // Change product_id and quantity to longText/json
-            $table->longText('product_id')->change();
-            $table->longText('quantity')->change();
-        });
+        // Now safely change column types
+        DB::statement("ALTER TABLE stock_transfers MODIFY product_id LONGTEXT NULL");
+        DB::statement("ALTER TABLE stock_transfers MODIFY quantity LONGTEXT NULL");
     }
 
     private function getForeignKeys($table)

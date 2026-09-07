@@ -12,7 +12,7 @@
   --rp-text: #0f172a;
   --rp-text-sec: #475569;
   --rp-text-muted: #64748b;
-  --rp-primary: #2563eb;
+  --rp-primary: #0f766e;
   --rp-radius: 16px;
   --rp-radius-sm: 10px;
   --rp-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
@@ -33,7 +33,7 @@
 /* ═══════ HERO HEADER ═══════ */
 .rp-hdr {
   position: relative;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%);
+  background: linear-gradient(135deg, #090d16 0%, #1e293b 60%, #0f766e 100%);
   border-radius: var(--rp-radius);
   padding: 1.5rem 1.75rem;
   margin-bottom: 1.5rem;

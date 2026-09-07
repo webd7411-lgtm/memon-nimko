@@ -231,22 +231,35 @@ class HomeController extends Controller
         ];
 
         $lowStockQuery = DB::table('products')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->leftJoin('stocks', function($join) {
                 $join->on('products.id', '=', 'stocks.product_id');
                 if (!is_all_branches()) {
                     $join->where('stocks.branch_id', '=', active_branch_id());
                 }
             })
-            ->select('products.id', 'products.item_code', 'products.item_name', DB::raw('COALESCE(SUM(stocks.qty), 0) as qty'), 'products.alert_quantity')
-            ->groupBy('products.id', 'products.item_code', 'products.item_name', 'products.alert_quantity')
-            ->havingRaw('COALESCE(SUM(stocks.qty), 0) <= products.alert_quantity');
-        $lowStockData = $lowStockQuery->orderBy('qty', 'asc')->limit(15)->get();
+            ->select(
+                'products.id',
+                'products.item_code',
+                'products.item_name',
+                'categories.name as category_name',
+                DB::raw('COALESCE(SUM(stocks.qty), 0) as qty'),
+                DB::raw('COALESCE(products.alert_quantity, 0) as alert_quantity')
+            )
+            ->groupBy('products.id', 'products.item_code', 'products.item_name', 'categories.name', 'products.alert_quantity')
+            ->havingRaw('COALESCE(SUM(stocks.qty), 0) <= COALESCE(products.alert_quantity, 0)');
+
+        $lowStockItems = $lowStockQuery->orderBy('qty', 'asc')->limit(10)->get()->map(function($item) {
+            $item->deficit = max(0, $item->alert_quantity - $item->qty);
+            $item->status = $item->qty <= 0 ? 'Out of Stock' : 'Critical Low';
+            return $item;
+        });
 
         $lowStockChart = [
-            'categories' => $lowStockData->pluck('item_name'),
+            'categories' => $lowStockItems->pluck('item_name'),
             'series' => [
-                ['name' => 'Current Stock', 'data' => $lowStockData->pluck('qty')],
-                ['name' => 'Alert Level', 'data' => $lowStockData->pluck('alert_quantity')],
+                ['name' => 'Current Stock', 'data' => $lowStockItems->pluck('qty')],
+                ['name' => 'Alert Level', 'data' => $lowStockItems->pluck('alert_quantity')],
             ]
         ];
 
@@ -409,13 +422,14 @@ class HomeController extends Controller
             }
         }
 
-        // Category Donut Breakdown Data
+        // Category Donut Breakdown Data (Top 10 Only)
         $catDonutList = [];
         $totalCategorySales = array_sum($categorySalesTotals);
-        $colorsList = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+        $colorsList = ['#0f766e', '#14b8a6', '#334155', '#0d9488', '#475569', '#059669', '#64748b', '#10b981', '#1e293b', '#0f172a'];
         $colorIdx = 0;
 
         if ($totalCategorySales > 0) {
+            arsort($categorySalesTotals);
             foreach ($categorySalesTotals as $cName => $cAmt) {
                 $pct = round(($cAmt / $totalCategorySales) * 100);
                 $catDonutList[] = [
@@ -432,6 +446,7 @@ class HomeController extends Controller
                 ->leftJoin('products', 'categories.id', '=', 'products.category_id')
                 ->select('categories.name', DB::raw('COUNT(products.id) as p_count'))
                 ->groupBy('categories.id', 'categories.name')
+                ->orderByDesc('p_count')
                 ->get();
             
             $totalPCount = $categoriesInDb->sum('p_count');
@@ -446,6 +461,9 @@ class HomeController extends Controller
                 $colorIdx++;
             }
         }
+
+        // Limit strictly to Top 10 categories
+        $catDonutList = array_slice($catDonutList, 0, 10);
 
         // Cash Flow Overview Data
         $todayIn = DB::table('sales')->whereDate('created_at', date('Y-m-d'))->sum('total_net');
@@ -514,6 +532,62 @@ class HomeController extends Controller
             ];
         }
 
+        // Branch Wise Sales Breakdown & History
+        $allBranchesList = DB::table('branches')->get();
+        if ($allBranchesList->isEmpty()) {
+            $allBranchesList = collect([
+                (object)['id' => 1, 'name' => 'Main Branch', 'address' => 'Head Office', 'number' => '00000000000']
+            ]);
+        }
+
+        $branchSalesPerformance = [];
+        $isSuperAdminUser = auth()->check() && (auth()->user()->email === 'admin@admin.com' || auth()->user()->hasRole('Super Admin'));
+        $activeBranchId = active_branch_id();
+        $isAll = is_all_branches();
+
+        foreach ($allBranchesList as $br) {
+            // For restricted branch staff, only include their assigned branch
+            if (!$isSuperAdminUser && !empty(auth()->user()->branch_id) && auth()->user()->branch_id != $br->id) {
+                continue;
+            }
+
+            $brSalesQuery = DB::table('sales')
+                ->whereBetween('created_at', [$start, $end])
+                ->where(function($q) use ($br) {
+                    $q->where('branch_id', $br->id);
+                    if ($br->id == 1) {
+                        $q->orWhereNull('branch_id');
+                    }
+                });
+
+            $brSalesCount = $brSalesQuery->count();
+            $brTotalNet = (float) $brSalesQuery->sum('total_net');
+
+            $brReturnsQuery = DB::table('sales_returns')
+                ->whereBetween('created_at', [$start, $end])
+                ->where(function($q) use ($br) {
+                    $q->where('branch_id', $br->id);
+                    if ($br->id == 1) {
+                        $q->orWhereNull('branch_id');
+                    }
+                });
+            $brTotalReturns = (float) $brReturnsQuery->sum('total_net');
+            $brNetSales = $brTotalNet - $brTotalReturns;
+
+            $branchSalesPerformance[] = [
+                'id' => $br->id,
+                'name' => $br->name,
+                'address' => $br->address ?? 'Main Location',
+                'number' => $br->number ?? 'N/A',
+                'total_sales' => $brTotalNet,
+                'total_returns' => $brTotalReturns,
+                'net_sales' => $brNetSales,
+                'invoice_count' => $brSalesCount,
+                'share_pct' => $totalSales > 0 ? round(($brTotalNet / $totalSales) * 100, 1) : 0,
+                'is_active' => (!$isAll && $activeBranchId == $br->id)
+            ];
+        }
+
         return compact(
             'categoryCount', 'subcategoryCount', 'productCount', 'customerscount',
             'suppliersCount', 'employeesCount',
@@ -527,6 +601,7 @@ class HomeController extends Controller
             'todayIn', 'todayOut', 'totalIn', 'totalOut',
             'customerReceivables', 'vendorPayables', 'stockInventoryValue',
             'cashInHand', 'easyPaisaBalance', 'meezanBalance', 'recentActivities',
+            'branchSalesPerformance', 'lowStockItems',
             'startDate', 'endDate', 'start', 'end'
         );
     }

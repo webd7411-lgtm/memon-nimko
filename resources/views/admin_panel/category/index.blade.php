@@ -8,14 +8,14 @@
   --pc-surface: #ffffff;
   --pc-border: #e9edf2;
   --pc-border-lt: #f1f4f9;
-  --pc-text: #0b1a33;
-  --pc-text-sec: #54657e;
-  --pc-text-muted: #8896ab;
-  --pc-accent: #2b7fff;
-  --pc-accent-drk: #1a6ae8;
-  --pc-success: #0fae6b;
-  --pc-danger: #e54545;
-  --pc-warning: #f5a623;
+  --pc-text: #090d16;
+  --pc-text-sec: #475569;
+  --pc-text-muted: #64748b;
+  --pc-accent: #0f766e;
+  --pc-accent-drk: #0d9488;
+  --pc-success: #0f766e;
+  --pc-danger: #334155;
+  --pc-warning: #334155;
   --pc-radius: 14px;
   --pc-radius-sm: 9px;
   --pc-shadow: 0 1px 2px rgba(0,0,0,.03), 0 1px 3px rgba(0,0,0,.05);
@@ -35,7 +35,7 @@
 /* ═══════ HEADER ═══════ */
 .pc-hdr {
   position: relative;
-  background: linear-gradient(135deg, #0b1a33 0%, #162d50 50%, #1a4d8c 100%);
+  background: linear-gradient(135deg, #090d16 0%, #1e293b 60%, #0f766e 100%);
   border-radius: var(--pc-radius);
   padding: 1.3rem 2rem;
   margin-bottom: 1.5rem;

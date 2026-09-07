@@ -9,10 +9,10 @@
   --coa-surface: #ffffff;
   --coa-border: #e2e8f0;
   --coa-border-lt: #f1f5f9;
-  --coa-text: #0f172a;
+  --coa-text: #090d16;
   --coa-text-sec: #475569;
   --coa-text-muted: #64748b;
-  --coa-primary: #2563eb;
+  --coa-primary: #0f766e;
   --coa-radius: 16px;
   --coa-radius-sm: 10px;
   --coa-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
@@ -33,7 +33,7 @@
 /* ═══════ HERO HEADER ═══════ */
 .coa-hero {
   position: relative;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%);
+  background: linear-gradient(135deg, #090d16 0%, #1e293b 60%, #0f766e 100%);
   border-radius: var(--coa-radius);
   padding: 1.5rem 1.75rem;
   margin-bottom: 1.5rem;
@@ -460,9 +460,21 @@
         </div>
       </div>
 
-      <div class="d-flex gap-2">
-        <button class="coa-btn coa-btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
-          <i class="bi bi-plus-circle me-1"></i> Add New Account
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('Payment-vochers') }}" class="coa-btn coa-btn-primary" style="background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); border: none;">
+          <i class="bi bi-wallet2 me-1"></i> + Vendor Payment Voucher
+        </a>
+
+        <a href="{{ route('recepit-vochers') }}" class="coa-btn coa-btn-glass">
+          <i class="bi bi-receipt-cutoff me-1"></i> + Customer Receipt
+        </a>
+
+        <a href="{{ route('expense-vochers') }}" class="coa-btn coa-btn-glass">
+          <i class="bi bi-receipt me-1"></i> + Expense Voucher
+        </a>
+
+        <button class="coa-btn coa-btn-glass" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+          <i class="bi bi-plus-circle me-1"></i> Add Account
         </button>
 
         <button class="coa-btn coa-btn-glass" data-bs-toggle="modal" data-bs-target="#addHeadModal">
@@ -502,7 +514,7 @@
           <p>Total Accounts</p>
           <h3>{{ number_format($totalAccountsCount) }}</h3>
         </div>
-        <div class="coa-kpi-icon blue">
+        <div class="coa-kpi-icon" style="background:#f0fdf4; color:#0f766e;">
           <i class="bi bi-book-half"></i>
         </div>
       </div>
@@ -512,7 +524,7 @@
           <p>Active Accounts</p>
           <h3>{{ number_format($activeAccountsCount) }}</h3>
         </div>
-        <div class="coa-kpi-icon green">
+        <div class="coa-kpi-icon" style="background:#f0fdf4; color:#0f766e;">
           <i class="bi bi-check-circle-fill"></i>
         </div>
       </div>
@@ -522,7 +534,7 @@
           <p>Expense Heads</p>
           <h3>{{ number_format($totalHeadsCount) }}</h3>
         </div>
-        <div class="coa-kpi-icon purple">
+        <div class="coa-kpi-icon" style="background:#f8fafc; color:#334155;">
           <i class="bi bi-diagram-2"></i>
         </div>
       </div>
@@ -530,10 +542,21 @@
 
     {{-- ═══════ MAIN TABLE CARD ═══════ --}}
     <div class="coa-table-card">
-      <div class="coa-table-header">
-        <h3 class="coa-table-title">
-          <i class="bi bi-journals text-primary me-1"></i> Account Ledger Directory
+      <div class="coa-table-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h3 class="coa-table-title mb-0">
+          <i class="bi bi-journals me-1" style="color:#0f766e;"></i> Account Ledger Directory
         </h3>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <a href="{{ route('Payment-vochers') }}" class="btn btn-sm rounded-pill px-3 py-1 font-weight-bold shadow-sm" style="font-size:0.78rem; background: linear-gradient(135deg, #0f766e, #0d9488); color:#fff; border: none;">
+            <i class="bi bi-cash-stack me-1"></i> + Vendor Payment Voucher
+          </a>
+          <a href="{{ route('all-Payment-vochers') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 font-weight-bold" style="font-size:0.78rem;">
+            <i class="bi bi-journal-text me-1"></i> Vendor Payment History
+          </a>
+          <a href="{{ route('all-recepit-vochers') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 font-weight-bold" style="font-size:0.78rem;">
+            <i class="bi bi-receipt me-1"></i> Receipt History
+          </a>
+        </div>
       </div>
 
       <div class="coa-table-wrapper">
@@ -542,11 +565,11 @@
             <tr>
               <th width="5%">#</th>
               <th width="12%">Account Code</th>
-              <th width="20%">Expense Head</th>
-              <th width="25%">Account Title</th>
+              <th width="18%">Expense Head</th>
+              <th width="22%">Account Title</th>
               <th width="15%">Closing Balance</th>
               <th width="10%" class="text-center">Status</th>
-              <th width="13%" class="text-center">Action</th>
+              <th width="18%" class="text-center">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -559,24 +582,33 @@
                 </span>
               </td>
               <td>
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold">
+                <span class="badge border fw-semibold" style="background:#f0fdf4; color:#0f766e; border-color:#ccfbf1!important;">
                   <i class="bi bi-diagram-2 me-1"></i>{{ $account->head->name ?? 'N/A' }}
                 </span>
               </td>
               <td class="fw-bold text-dark">{{ $account->title }}</td>
-              <td class="fw-bold text-danger">
+              <td class="fw-bold" style="color:#0f766e;">
                 PKR {{ number_format((float)($account->opening_balance ?? 0), 2) }}
               </td>
               <td class="text-center">
                 @if($account->status)
-                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Active</span>
+                  <span class="badge rounded-pill px-2 py-1" style="background:#0f766e; color:#fff;">Active</span>
                 @else
-                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Inactive</span>
+                  <span class="badge rounded-pill px-2 py-1" style="background:#334155; color:#fff;">Inactive</span>
                 @endif
               </td>
               <td class="text-center">
-                <div class="d-flex align-items-center justify-content-center gap-1">
-                  <button class="btn btn-sm btn-outline-primary rounded-2 btn-edit-account"
+                <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                  <a href="{{ route('Payment-vochers') }}" class="btn btn-xs rounded-2 fw-semibold" title="Create Vendor / Account Payment Voucher" style="font-size:0.72rem; padding: 2px 7px; background: #f0fdf4; color: #0f766e; border: 1px solid #ccfbf1; text-decoration: none;">
+                    <i class="bi bi-wallet2 me-1"></i> Pay
+                  </a>
+
+                  <a href="{{ route('recepit-vochers') }}" class="btn btn-xs rounded-2 fw-semibold" title="Create Customer / Account Receipt Voucher" style="font-size:0.72rem; padding: 2px 7px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; text-decoration: none;">
+                    <i class="bi bi-receipt me-1"></i> Rec
+                  </a>
+
+                  <button class="btn btn-xs btn-outline-primary rounded-2 btn-edit-account"
+                    style="font-size:0.72rem; padding: 2px 7px;"
                     data-bs-toggle="modal"
                     data-bs-target="#addAccountModal"
                     data-id="{{ $account->id }}"
@@ -588,7 +620,8 @@
                     <i class="bi bi-pencil-square me-1"></i> Edit
                   </button>
 
-                  <button class="btn btn-sm btn-outline-danger rounded-2 btn-delete-account"
+                  <button class="btn btn-xs btn-outline-danger rounded-2 btn-delete-account"
+                    style="font-size:0.72rem; padding: 2px 7px;"
                     data-id="{{ $account->id }}">
                     <i class="bi bi-trash me-1"></i> Delete
                   </button>

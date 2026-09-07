@@ -32,35 +32,38 @@ class DatabaseSeeder extends Seeder
         ]);
 
         
-        $branchUser = User::create([
-                    'name' => 'soban',
-                    'email' => 'soban@soban.com',
-                    'password' => Hash::make('soban')
-                ]);
-        $adminUser = User::create([
-                    'name' => 'admin',
-                    'email' => 'admin@admin.com',
-                    'password' => Hash::make('admin')
-                ]);
+        $branchUser = User::updateOrCreate(
+                    ['email' => 'soban@soban.com'],
+                    [
+                        'name' => 'soban',
+                        'password' => Hash::make('soban')
+                    ]
+                );
+        $adminUser = User::updateOrCreate(
+                    ['email' => 'admin@admin.com'],
+                    [
+                        'name' => 'Super Admin',
+                        'password' => Hash::make('12345678')
+                    ]
+                );
 
         $allPermissions = Permission::pluck('name')->all();
 
-        // Create admin role if it doesn't exist
+        // Create roles if they don't exist
+        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $branchRole = Role::firstOrCreate(['name' => 'branch']);
 
-        // Grant the full permission set (pages + features) to both roles
+        // Grant the full permission set to roles
+        $superAdminRole->syncPermissions($allPermissions);
         $adminRole->syncPermissions($allPermissions);
         $branchRole->syncPermissions($allPermissions);
 
-        // Optional: Assign role to admin user
-        $adminUser = User::where('email', 'admin@admin.com')->first();
-
         if ($adminUser) {
-            $adminUser->assignRole($adminRole);
+            $adminUser->syncRoles([$superAdminRole, $adminRole]);
         }
         if ($branchUser) {
-            $branchUser->assignRole($branchRole);
+            $branchUser->syncRoles([$branchRole]);
         }
     }
 }

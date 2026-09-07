@@ -270,18 +270,23 @@ class ReportingController extends Controller
         }
 
         // ---- STOCK ADJUSTMENTS within date range ----
+        $hasSaBranchId = \Illuminate\Support\Facades\Schema::hasColumn('stock_adjustments', 'branch_id');
         $adjInRangeQuery = DB::table('stock_adjustment_items as sai')
             ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
             ->leftJoin('users as u', 'u.id', '=', 'sa.created_by')
             ->whereIn('sai.product_id', $productIds)
             ->whereBetween('sa.adjustment_date', [$startDate, $endDate]);
         if (!is_all_branches()) {
-            $adjInRangeQuery->where(function($q) {
-                $q->where('sa.branch_id', active_branch_id())
-                  ->orWhere(function($sq) {
-                      $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
-                  });
-            });
+            if ($hasSaBranchId) {
+                $adjInRangeQuery->where(function($q) {
+                    $q->where('sa.branch_id', active_branch_id())
+                      ->orWhere(function($sq) {
+                          $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
+                      });
+                });
+            } else {
+                $adjInRangeQuery->where('u.branch_id', active_branch_id());
+            }
         }
         if ($resetTime) {
             $adjInRangeQuery->where('sa.created_at', '>=', $resetTime);
@@ -308,12 +313,16 @@ class ReportingController extends Controller
             ->whereIn('sai.product_id', $productIds)
             ->where('sa.adjustment_date', '>', $endDate);
         if (!is_all_branches()) {
-            $adjAfterQuery->where(function($q) {
-                $q->where('sa.branch_id', active_branch_id())
-                  ->orWhere(function($sq) {
-                      $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
-                  });
-            });
+            if ($hasSaBranchId) {
+                $adjAfterQuery->where(function($q) {
+                    $q->where('sa.branch_id', active_branch_id())
+                      ->orWhere(function($sq) {
+                          $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
+                      });
+                });
+            } else {
+                $adjAfterQuery->where('u.branch_id', active_branch_id());
+            }
         }
         if ($resetTime) {
             $adjAfterQuery->where('sa.created_at', '>=', $resetTime);

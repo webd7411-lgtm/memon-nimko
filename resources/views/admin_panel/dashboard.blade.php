@@ -24,13 +24,8 @@
   --text-muted: #64748b;
   --text-sub: #94a3b8;
   
-  --primary-purple: #6366f1;
-  --primary-blue: #3b82f6;
-  --primary-teal: #14b8a6;
-  --primary-amber: #f59e0b;
-  --primary-emerald: #10b981;
-  --primary-rose: #f43f5e;
-  --primary-pink: #ec4899;
+  --primary-brand: #0f766e;
+  --secondary-brand: #334155;
   
   --radius-card: 16px;
   --radius-sm: 10px;
@@ -81,14 +76,14 @@
 }
 
 .btn-sync-cloud {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
   color: #ffffff !important;
   font-weight: 700;
   font-size: 0.85rem;
   padding: 0.65rem 1.35rem;
   border-radius: 12px;
   border: none;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 14px rgba(15, 118, 110, 0.35);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -99,7 +94,7 @@
 
 .btn-sync-cloud:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.45);
 }
 
 /* ─── Quick Filter Report Pills ─── */
@@ -218,12 +213,12 @@
   border-radius: 16px 16px 0 0;
 }
 
-.kpi-card.purple::before { background: linear-gradient(90deg, #818cf8, #6366f1); }
-.kpi-card.pink::before   { background: linear-gradient(90deg, #f43f5e, #ec4899); }
-.kpi-card.amber::before  { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
-.kpi-card.rose::before   { background: linear-gradient(90deg, #ef4444, #f43f5e); }
-.kpi-card.green::before  { background: linear-gradient(90deg, #34d399, #10b981); }
-.kpi-card.blue::before   { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+.kpi-card.purple::before { background: linear-gradient(90deg, #0f766e, #0d9488); }
+.kpi-card.pink::before   { background: linear-gradient(90deg, #334155, #475569); }
+.kpi-card.amber::before  { background: linear-gradient(90deg, #0f766e, #0d9488); }
+.kpi-card.rose::before   { background: linear-gradient(90deg, #334155, #475569); }
+.kpi-card.green::before  { background: linear-gradient(90deg, #0f766e, #0d9488); }
+.kpi-card.blue::before   { background: linear-gradient(90deg, #334155, #475569); }
 
 .kpi-hdr {
   display: flex;
@@ -266,8 +261,8 @@
   gap: 4px;
 }
 
-.kpi-trend.up { color: #10b981; }
-.kpi-trend.down { color: #ef4444; }
+.kpi-trend.up { color: #0f766e; }
+.kpi-trend.down { color: #334155; }
 .kpi-trend-sub { color: var(--text-sub); font-weight: 500; }
 
 /* ─── Category Donut Legend Item ─── */
@@ -315,12 +310,12 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.rank-badge.top-1 { background: #fef3c7; color: #d97706; }
+.rank-badge.top-1 { background: #f0fdf4; color: #0f766e; }
 
 .top-prod-info { flex: 1; margin-left: 10px; }
 .top-prod-name { font-size: 0.8rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; line-height: 1.2; }
 .top-prod-sub { font-size: 0.72rem; color: var(--text-sub); font-weight: 500; margin-top: 2px; }
-.top-prod-val { font-size: 0.85rem; font-weight: 800; color: #4f46e5; text-align: right; }
+.top-prod-val { font-size: 0.85rem; font-weight: 800; color: #0f766e; text-align: right; }
 
 /* ─── Business Summary Grid (Inside Card) ─── */
 .biz-summary-grid {
@@ -352,7 +347,7 @@
 
 .biz-val { font-size: 1.15rem; font-weight: 800; color: var(--text-main); line-height: 1; }
 .biz-title { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
-.biz-growth { font-size: 0.68rem; font-weight: 700; color: #10b981; }
+.biz-growth { font-size: 0.68rem; font-weight: 700; color: #0f766e; }
 
 /* ─── Activity List ─── */
 .activity-item {
@@ -368,8 +363,8 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #ecfdf5;
-  color: #10b981;
+  background: #f0fdf4;
+  color: #0f766e;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -398,7 +393,7 @@
 .fin-title { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
 .fin-icon { font-size: 1.1rem; }
 .fin-val { font-size: 1.3rem; font-weight: 900; color: var(--text-main); margin-bottom: 0.4rem; }
-.fin-link { font-size: 0.72rem; font-weight: 700; color: #4f46e5; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.fin-link { font-size: 0.72rem; font-weight: 700; color: #0f766e; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .fin-link:hover { text-decoration: underline; }
 
 /* ─── Monthly Sparkline Card ─── */
@@ -439,46 +434,46 @@
     {{-- ─── 2. QUICK REPORT PILL BUTTONS ─── --}}
     <div class="quick-reports-wrapper">
       <a href="{{ route('report.sale') }}" class="quick-report-pill">
-        <i class="fa fa-file-text-o fas fa-file-alt" style="color:#10b981;"></i> Sales Report
+        <i class="fa fa-file-text-o fas fa-file-alt" style="color:#0f766e;"></i> Sales Report
       </a>
       <a href="{{ route('report.purchase') }}" class="quick-report-pill">
-        <i class="fa fa-shopping-cart fas fa-shopping-cart" style="color:#3b82f6;"></i> Purchase Report
+        <i class="fa fa-shopping-cart fas fa-shopping-cart" style="color:#334155;"></i> Purchase Report
       </a>
       <a href="{{ route('System.Reports') }}" class="quick-report-pill">
-        <i class="fa fa-line-chart fas fa-chart-line" style="color:#14b8a6;"></i> Profit & Loss
+        <i class="fa fa-line-chart fas fa-chart-line" style="color:#0f766e;"></i> Profit & Loss
       </a>
       <a href="{{ route('System.Reports') }}" class="quick-report-pill">
-        <i class="fa fa-briefcase fas fa-briefcase" style="color:#8b5cf6;"></i> Executive Report
+        <i class="fa fa-briefcase fas fa-briefcase" style="color:#334155;"></i> Executive Report
       </a>
       <a href="{{ route('report.customer.ledger') }}" class="quick-report-pill">
-        <i class="fa fa-money fas fa-file-invoice" style="color:#f59e0b;"></i> Recovery Report
+        <i class="fa fa-money fas fa-file-invoice" style="color:#0f766e;"></i> Recovery Report
       </a>
       <a href="{{ route('report.vendor.ledger') }}" class="quick-report-pill">
-        <i class="fa fa-arrow-down fas fa-arrow-down" style="color:#ef4444;"></i> Payable Report
+        <i class="fa fa-arrow-down fas fa-arrow-down" style="color:#334155;"></i> Payable Report
       </a>
       <a href="{{ route('report.customer.ledger') }}" class="quick-report-pill">
-        <i class="fa fa-users fas fa-user-friends" style="color:#06b6d4;"></i> Parties Balance
+        <i class="fa fa-users fas fa-user-friends" style="color:#0f766e;"></i> Parties Balance
       </a>
       <a href="{{ route('report.item_stock') }}" class="quick-report-pill">
-        <i class="fa fa-cubes fas fa-boxes" style="color:#10b981;"></i> On-Hand Stock
+        <i class="fa fa-cubes fas fa-boxes" style="color:#334155;"></i> On-Hand Stock
       </a>
       <a href="{{ route('view_all') }}" class="quick-report-pill">
-        <i class="fa fa-balance-scale fas fa-balance-scale" style="color:#475569;"></i> Balance Sheet
+        <i class="fa fa-balance-scale fas fa-balance-scale" style="color:#0f766e;"></i> Balance Sheet
       </a>
     </div>
 
     {{-- ─── 3. KEY PERFORMANCE INDICATORS ─── --}}
     <div class="dash-section-label">
-      <i class="fa fa-pie-chart fas fa-chart-pie" style="color:#6366f1;"></i> Key Performance Indicators
+      <i class="fa fa-pie-chart fas fa-chart-pie" style="color:#0f766e;"></i> Key Performance Indicators
     </div>
 
     <div class="row g-2 g-md-3 mb-4">
       {{-- Total Sales --}}
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card kpi-card purple">
+        <div class="t-card kpi-card green" style="border-top: 3px solid #0f766e;">
           <div class="kpi-hdr">
             <span class="kpi-label">TOTAL SALES (THIS MONTH)</span>
-            <div class="kpi-icon-box" style="background:#f3e8ff;color:#9333ea;">
+            <div class="kpi-icon-box" style="background:#f0fdf4;color:#0f766e;">
               <i class="fa fa-shopping-bag fas fa-shopping-bag"></i>
             </div>
           </div>
@@ -491,10 +486,10 @@
 
       {{-- Total Purchases --}}
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card kpi-card pink">
+        <div class="t-card kpi-card blue" style="border-top: 3px solid #334155;">
           <div class="kpi-hdr">
             <span class="kpi-label">TOTAL PURCHASES (THIS MONTH)</span>
-            <div class="kpi-icon-box" style="background:#ffe4e6;color:#e11d48;">
+            <div class="kpi-icon-box" style="background:#f8fafc;color:#334155;">
               <i class="fa fa-shopping-cart fas fa-shopping-basket"></i>
             </div>
           </div>
@@ -507,10 +502,10 @@
 
       {{-- Gross Profit --}}
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card kpi-card amber">
+        <div class="t-card kpi-card green" style="border-top: 3px solid #0f766e;">
           <div class="kpi-hdr">
             <span class="kpi-label">GROSS PROFIT (THIS MONTH)</span>
-            <div class="kpi-icon-box" style="background:#fef3c7;color:#d97706;">
+            <div class="kpi-icon-box" style="background:#f0fdf4;color:#0f766e;">
               <i class="fa fa-line-chart fas fa-chart-line"></i>
             </div>
           </div>
@@ -523,10 +518,10 @@
 
       {{-- Total Expenses --}}
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card kpi-card rose">
+        <div class="t-card kpi-card blue" style="border-top: 3px solid #334155;">
           <div class="kpi-hdr">
             <span class="kpi-label">TOTAL EXPENSES (THIS MONTH)</span>
-            <div class="kpi-icon-box" style="background:#fef2f2;color:#dc2626;">
+            <div class="kpi-icon-box" style="background:#f8fafc;color:#334155;">
               <i class="fa fa-file-text-o fas fa-file-invoice-dollar"></i>
             </div>
           </div>
@@ -539,10 +534,10 @@
 
       {{-- Net Profit --}}
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card kpi-card green">
+        <div class="t-card kpi-card green" style="border-top: 3px solid #0f766e;">
           <div class="kpi-hdr">
             <span class="kpi-label">NET PROFIT (THIS MONTH)</span>
-            <div class="kpi-icon-box" style="background:#dcfce7;color:#16a34a;">
+            <div class="kpi-icon-box" style="background:#f0fdf4;color:#0f766e;">
               <i class="fa fa-shield fas fa-shield-alt"></i>
             </div>
           </div>
@@ -555,10 +550,10 @@
 
       {{-- Cash Balance --}}
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card kpi-card blue">
+        <div class="t-card kpi-card blue" style="border-top: 3px solid #334155;">
           <div class="kpi-hdr">
             <span class="kpi-label">CASH BALANCE</span>
-            <div class="kpi-icon-box" style="background:#dbeafe;color:#2563eb;">
+            <div class="kpi-icon-box" style="background:#f8fafc;color:#334155;">
               <i class="fa fa-wallet fas fa-wallet"></i>
             </div>
           </div>
@@ -568,9 +563,100 @@
       </div>
     </div>
 
+    {{-- ─── BRANCH SALES PERFORMANCE & HISTORY ─── --}}
+    <div class="dash-section-label">
+      <i class="fas fa-store-alt" style="color:#0f766e;"></i> Branch Sales Performance & History
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-12">
+        <div class="t-card">
+          <div class="t-card-header flex-wrap gap-2">
+            <h3 class="t-card-title d-flex align-items-center flex-wrap gap-1.5">
+              <span><i class="fas fa-building me-1" style="color:#0f766e;"></i> Branch Wise Sales Breakdown</span>
+              @if(is_all_branches() || (auth()->check() && (auth()->user()->email === 'admin@admin.com' || auth()->user()->hasRole('Super Admin'))))
+                <span class="badge fw-bold rounded-pill px-2.5 py-1" style="font-size:0.72rem; background: #f0fdf4; color: #0f766e; border: 1px solid #ccfbf1;">
+                  <i class="fas fa-globe me-1"></i> Multi-Branch Enterprise Overview
+                </span>
+              @else
+                <span class="badge fw-bold rounded-pill px-2.5 py-1" style="font-size:0.72rem; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0;">
+                  <i class="fas fa-lock me-1"></i> {{ active_branch_name() }} Only
+                </span>
+              @endif
+            </h3>
+            <div class="d-flex align-items-center gap-2">
+              <a href="{{ route('report.sale') }}" class="btn btn-sm btn-primary rounded-pill px-3 py-1 shadow-sm font-weight-bold" style="font-size:0.78rem; background: linear-gradient(135deg, #0f766e, #0d9488); border: none;">
+                <i class="fas fa-file-invoice me-1"></i> View Detailed Sales History →
+              </a>
+            </div>
+          </div>
+          <div class="t-card-body p-3">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                <thead class="bg-light text-secondary text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                  <tr>
+                    <th style="width: 28%;">Branch Name</th>
+                    <th class="text-center" style="width: 15%;">Invoices</th>
+                    <th class="text-end" style="width: 18%;">Gross Sales</th>
+                    <th class="text-end" style="width: 15%;">Returns</th>
+                    <th class="text-end" style="width: 16%;">Net Sales</th>
+                    <th class="text-center" style="width: 8%;">History</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @forelse($branchSalesPerformance as $bItem)
+                  <tr style="{{ $bItem['is_active'] ? 'background-color: #f8fafc;' : '' }}">
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 34px; height: 34px; font-size: 0.85rem; background: #f0fdf4; color: #0f766e;">
+                          <i class="fas fa-store"></i>
+                        </div>
+                        <div>
+                          <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.88rem;">
+                            {{ $bItem['name'] }}
+                            @if($bItem['is_active'])
+                              <span class="badge rounded-pill px-2" style="font-size: 0.65rem; background: #0f766e; color: #fff;">Active View</span>
+                            @endif
+                          </div>
+                          <div class="text-muted" style="font-size: 0.72rem;">{{ $bItem['address'] }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <span class="badge bg-light text-dark border px-2.5 py-1 fw-bold" style="font-size: 0.78rem;">
+                        {{ number_format($bItem['invoice_count']) }} Orders
+                      </span>
+                    </td>
+                    <td class="text-end fw-bold text-dark">Rs {{ number_format($bItem['total_sales'], 0) }}</td>
+                    <td class="text-end fw-semibold" style="color: #334155;">Rs {{ number_format($bItem['total_returns'], 0) }}</td>
+                    <td class="text-end fw-bold" style="font-size: 0.9rem; color: #0f766e;">
+                      Rs {{ number_format($bItem['net_sales'], 0) }}
+                      <div class="progress mt-1" style="height: 4px; background: #e2e8f0; border-radius: 4px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ max($bItem['share_pct'], 4) }}%; background-color: #0f766e;"></div>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <a href="{{ route('report.sale') }}" class="btn btn-sm rounded-circle p-1 d-inline-flex align-items-center justify-content-center" title="View Branch Sales History" style="width: 28px; height: 28px; border: 1px solid #0f766e; color: #0f766e;">
+                        <i class="fas fa-arrow-right" style="font-size: 0.72rem;"></i>
+                      </a>
+                    </td>
+                  </tr>
+                  @empty
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No branch sales data recorded for this period.</td>
+                  </tr>
+                  @endforelse
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {{-- ─── 4. SALES ANALYTICS ─── --}}
     <div class="dash-section-label">
-      <i class="fas fa-chart-bar" style="color:#3b82f6;"></i> Sales Analytics
+      <i class="fas fa-chart-bar" style="color:#0f766e;"></i> Sales Analytics
     </div>
 
     <div class="row g-3 mb-4">
@@ -578,7 +664,7 @@
       <div class="col-12 col-lg-5">
         <div class="t-card">
           <div class="t-card-header">
-            <h3 class="t-card-title"><i class="fas fa-chart-line text-indigo-500"></i> Sales Overview</h3>
+            <h3 class="t-card-title"><i class="fas fa-chart-line me-1" style="color:#0f766e;"></i> Sales Overview</h3>
             <select id="salesFilter" class="form-select form-select-sm border-0 bg-light fw-bold" style="width:auto;font-size:0.75rem;">
               <option value="daily">Last 7 Days</option>
               <option value="weekly">Last 30 Days</option>
@@ -594,20 +680,28 @@
       {{-- By Category (Donut Chart & Legend) --}}
       <div class="col-12 col-lg-4">
         <div class="t-card">
-          <div class="t-card-header">
-            <h3 class="t-card-title"><i class="fas fa-chart-pie text-cyan-500"></i> By Category</h3>
+          <div class="t-card-header d-flex align-items-center justify-content-between">
+            <h3 class="t-card-title mb-0"><i class="fas fa-chart-pie me-2" style="color:#0f766e;"></i> Top 10 Categories</h3>
+            <a href="{{ route('report.sale.category') }}" class="btn btn-sm rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1" title="View All Category Sales" style="font-size: 0.75rem; font-weight: 600; border: 1px solid #0f766e; color: #0f766e;">
+              <i class="fas fa-eye" style="font-size: 0.75rem;"></i> View Detail
+            </a>
           </div>
-          <div class="t-card-body d-flex flex-column justify-content-between p-3">
+          <div class="t-card-body d-flex flex-column justify-content-between p-3" style="max-height: 440px; overflow-y: auto;">
             <div id="categoryDonutChart" style="min-height: 180px;"></div>
             <div class="mt-2">
-              @foreach($catDonutList as $item)
-              <div class="cat-legend-item">
-                <div>
-                  <span class="cat-dot" style="background:{{ $item['color'] }};"></span>
-                  <span class="cat-name">{{ $item['name'] }}</span>
-                  <span class="cat-pct">{{ $item['percentage'] }}%</span>
+              @foreach(array_slice($catDonutList, 0, 10) as $item)
+              <div class="cat-legend-item d-flex align-items-center justify-content-between p-2 mb-1 rounded-2" style="transition: background 0.15s ease;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="cat-dot" style="background:{{ $item['color'] }}; width: 10px; height: 10px; border-radius: 50%; display: inline-block;"></span>
+                  <span class="cat-name fw-bold text-dark" style="font-size: 0.84rem;">{{ $item['name'] }}</span>
+                  <span class="cat-pct badge bg-light text-secondary border" style="font-size: 0.7rem;">{{ $item['percentage'] }}%</span>
                 </div>
-                <div class="cat-amt">Rs {{ number_format($item['amount'], 0) }}</div>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="cat-amt fw-bold text-dark" style="font-size: 0.83rem;">Rs {{ number_format($item['amount'], 0) }}</div>
+                  <a href="{{ route('report.sale.category') }}" class="btn btn-xs btn-light border rounded-circle p-1 d-inline-flex align-items-center justify-content-center" title="View Category Detail" style="width: 24px; height: 24px; color: #0f766e;">
+                    <i class="fas fa-external-link-alt" style="font-size: 0.68rem;"></i>
+                  </a>
+                </div>
               </div>
               @endforeach
             </div>
@@ -619,7 +713,7 @@
       <div class="col-12 col-lg-3">
         <div class="t-card">
           <div class="t-card-header">
-            <h3 class="t-card-title"><i class="fas fa-fire text-amber-500"></i> Top Products</h3>
+            <h3 class="t-card-title"><i class="fas fa-fire me-1" style="color:#0f766e;"></i> Top Products</h3>
             <span class="badge bg-light text-dark border" style="font-size:0.7rem;">By Qty</span>
           </div>
           <div class="t-card-body p-3">
@@ -640,7 +734,7 @@
 
     {{-- ─── 5. BUSINESS SUMMARY & CASH FLOW ─── --}}
     <div class="dash-section-label">
-      <i class="fas fa-briefcase" style="color:#f59e0b;"></i> Business Summary & Cash Flow
+      <i class="fas fa-briefcase" style="color:#0f766e;"></i> Business Summary & Cash Flow
     </div>
 
     <div class="row g-3 mb-4">
@@ -648,48 +742,48 @@
       <div class="col-12 col-lg-3">
         <div class="t-card">
           <div class="t-card-header">
-            <h3 class="t-card-title"><i class="fa fa-building fas fa-building text-blue-500"></i> Business Summary</h3>
+            <h3 class="t-card-title"><i class="fa fa-building fas fa-building" style="color:#0f766e;"></i> Business Summary</h3>
           </div>
           <div class="t-card-body p-3">
             <div class="biz-summary-grid">
               <div class="biz-box">
-                <div class="biz-icon" style="background:#dbeafe;color:#2563eb;">
+                <div class="biz-icon" style="background:#f0fdf4;color:#0f766e;">
                   <i class="fa fa-users fas fa-users"></i>
                 </div>
                 <div>
                   <div class="biz-val">{{ $customerscount }}</div>
                   <div class="biz-title">Customers</div>
-                  <div class="biz-growth">↑ {{ $customersGrowth }}%</div>
+                  <div class="biz-growth" style="color:#0f766e;">↑ {{ $customersGrowth }}%</div>
                 </div>
               </div>
               <div class="biz-box">
-                <div class="biz-icon" style="background:#f3e8ff;color:#9333ea;">
+                <div class="biz-icon" style="background:#f8fafc;color:#334155;">
                   <i class="fa fa-truck fas fa-truck"></i>
                 </div>
                 <div>
                   <div class="biz-val">{{ $suppliersCount }}</div>
                   <div class="biz-title">Suppliers</div>
-                  <div class="biz-growth">↑ {{ $suppliersGrowth }}%</div>
+                  <div class="biz-growth" style="color:#334155;">↑ {{ $suppliersGrowth }}%</div>
                 </div>
               </div>
               <div class="biz-box">
-                <div class="biz-icon" style="background:#fef3c7;color:#d97706;">
+                <div class="biz-icon" style="background:#f0fdf4;color:#0f766e;">
                   <i class="fa fa-cubes fas fa-box"></i>
                 </div>
                 <div>
                   <div class="biz-val">{{ $productCount }}</div>
                   <div class="biz-title">Products</div>
-                  <div class="biz-growth">↑ {{ $productsGrowth }}%</div>
+                  <div class="biz-growth" style="color:#0f766e;">↑ {{ $productsGrowth }}%</div>
                 </div>
               </div>
               <div class="biz-box">
-                <div class="biz-icon" style="background:#dcfce7;color:#16a34a;">
+                <div class="biz-icon" style="background:#f8fafc;color:#334155;">
                   <i class="fa fa-user fas fa-user-tie"></i>
                 </div>
                 <div>
                   <div class="biz-val">{{ $employeesCount }}</div>
                   <div class="biz-title">Employees</div>
-                  <div class="biz-growth">↑ {{ $employeesGrowth }}%</div>
+                  <div class="biz-growth" style="color:#334155;">↑ {{ $employeesGrowth }}%</div>
                 </div>
               </div>
             </div>
@@ -701,7 +795,7 @@
       <div class="col-12 col-lg-3">
         <div class="t-card">
           <div class="t-card-header">
-            <h3 class="t-card-title"><i class="fa fa-exchange fas fa-exchange-alt text-emerald-500"></i> Cash Flow Overview</h3>
+            <h3 class="t-card-title"><i class="fa fa-exchange fas fa-exchange-alt" style="color:#0f766e;"></i> Cash Flow Overview</h3>
             <span class="badge bg-light text-dark border" style="font-size:0.7rem;">This Month</span>
           </div>
           <div class="t-card-body p-2">
@@ -714,13 +808,13 @@
       <div class="col-12 col-lg-3">
         <div class="t-card">
           <div class="t-card-header">
-            <h3 class="t-card-title"><i class="fa fa-file-text-o fas fa-receipt text-rose-500"></i> Expense Breakdown</h3>
+            <h3 class="t-card-title"><i class="fa fa-file-text-o fas fa-receipt" style="color:#0f766e;"></i> Expense Breakdown</h3>
           </div>
           <div class="t-card-body p-3 d-flex flex-column justify-content-between">
             <div id="expenseDonutChart" style="min-height:160px;"></div>
             <div class="mt-2">
               @php
-                $expenseColors = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444'];
+                $expenseColors = ['#0f766e', '#14b8a6', '#334155', '#0d9488', '#475569'];
                 $expTotalAll = $totalExpenses > 0 ? $totalExpenses : 1;
                 $idx = 0;
               @endphp
@@ -739,7 +833,7 @@
                 @endforeach
               @else
                 <div class="cat-legend-item">
-                  <div><span class="cat-dot" style="background:#6366f1;"></span> <span class="cat-name">No Data</span> <span class="cat-pct">0%</span></div>
+                  <div><span class="cat-dot" style="background:#0f766e;"></span> <span class="cat-name">No Data</span> <span class="cat-pct">0%</span></div>
                   <div class="cat-amt">Rs 0</div>
                 </div>
               @endif
@@ -752,13 +846,13 @@
       <div class="col-12 col-lg-3">
         <div class="t-card">
           <div class="t-card-header">
-            <h3 class="t-card-title"><i class="fa fa-bell-o fas fa-bell text-amber-500"></i> Recent Activities</h3>
-            <a href="{{ route('report.sale') }}" class="text-indigo-600 text-decoration-none fw-bold" style="font-size:0.72rem;">View All →</a>
+            <h3 class="t-card-title"><i class="fa fa-bell-o fas fa-bell" style="color:#0f766e;"></i> Recent Activities</h3>
+            <a href="{{ route('report.sale') }}" class="text-teal text-decoration-none fw-bold" style="font-size:0.72rem; color: #0f766e;">View All →</a>
           </div>
           <div class="t-card-body p-3">
             @foreach($recentActivities as $act)
             <div class="activity-item">
-              <div class="activity-icon">
+              <div class="activity-icon" style="background: #f0fdf4; color: #0f766e;">
                 <i class="fa {{ $act['type'] == 'sale' ? 'fa-file-text-o fas fa-file-invoice' : 'fa-shopping-bag fas fa-shopping-bag' }}"></i>
               </div>
               <div>
@@ -776,73 +870,73 @@
 
     {{-- ─── 6. FINANCIAL POSITION ─── --}}
     <div class="dash-section-label">
-      <i class="fa fa-money fas fa-coins" style="color:#0ea5e9;"></i> Financial Position
+      <i class="fa fa-money fas fa-coins" style="color:#0f766e;"></i> Financial Position
     </div>
 
     <div class="row g-2 g-md-3 mb-4">
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card fin-card" style="border-top:3px solid #3b82f6;">
+        <div class="t-card fin-card" style="border-top:3px solid #0f766e;">
           <div class="fin-hdr">
             <span class="fin-title">CUSTOMER RECEIVABLES</span>
-            <i class="fa fa-file-text-o fas fa-file-invoice text-blue-500 fin-icon"></i>
+            <i class="fa fa-file-text-o fas fa-file-invoice fin-icon" style="color:#0f766e;"></i>
           </div>
           <div class="fin-val">Rs {{ number_format($customerReceivables, 0) }}</div>
-          <a href="{{ route('report.customer.ledger') }}" class="fin-link">View Recovery Report →</a>
+          <a href="{{ route('report.customer.ledger') }}" class="fin-link" style="color:#0f766e;">View Recovery Report →</a>
         </div>
       </div>
 
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card fin-card" style="border-top:3px solid #f59e0b;">
+        <div class="t-card fin-card" style="border-top:3px solid #334155;">
           <div class="fin-hdr">
             <span class="fin-title">VENDOR PAYABLES</span>
-            <i class="fa fa-money fas fa-hand-holding-usd text-amber-500 fin-icon"></i>
+            <i class="fa fa-money fas fa-hand-holding-usd fin-icon" style="color:#334155;"></i>
           </div>
           <div class="fin-val">Rs {{ number_format($vendorPayables, 0) }}</div>
-          <a href="{{ route('report.vendor.ledger') }}" class="fin-link">View Payable Report →</a>
+          <a href="{{ route('report.vendor.ledger') }}" class="fin-link" style="color:#334155;">View Payable Report →</a>
         </div>
       </div>
 
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card fin-card" style="border-top:3px solid #8b5cf6;">
+        <div class="t-card fin-card" style="border-top:3px solid #0f766e;">
           <div class="fin-hdr">
             <span class="fin-title">STOCK INVENTORY VALUE</span>
-            <i class="fa fa-cubes fas fa-boxes text-purple-500 fin-icon"></i>
+            <i class="fa fa-cubes fas fa-boxes fin-icon" style="color:#0f766e;"></i>
           </div>
           <div class="fin-val">Rs {{ number_format($stockInventoryValue, 0) }}</div>
-          <a href="{{ route('report.item_stock') }}" class="fin-link">View On-Hand Stock →</a>
+          <a href="{{ route('report.item_stock') }}" class="fin-link" style="color:#0f766e;">View On-Hand Stock →</a>
         </div>
       </div>
 
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card fin-card" style="border-top:3px solid #3b82f6;">
+        <div class="t-card fin-card" style="border-top:3px solid #334155;">
           <div class="fin-hdr">
             <span class="fin-title">CASH IN HAND</span>
-            <i class="fa fa-wallet fas fa-wallet text-blue-500 fin-icon"></i>
+            <i class="fa fa-wallet fas fa-wallet fin-icon" style="color:#334155;"></i>
           </div>
           <div class="fin-val">Rs {{ number_format($cashInHand, 0) }}</div>
-          <a href="{{ route('cashbook') }}" class="fin-link">View Ledger →</a>
+          <a href="{{ route('cashbook') }}" class="fin-link" style="color:#334155;">View Ledger →</a>
         </div>
       </div>
 
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card fin-card" style="border-top:3px solid #06b6d4;">
+        <div class="t-card fin-card" style="border-top:3px solid #0f766e;">
           <div class="fin-hdr">
             <span class="fin-title">EASY PAISA</span>
-            <i class="fa fa-mobile fas fa-mobile-alt text-cyan-500 fin-icon"></i>
+            <i class="fa fa-mobile fas fa-mobile-alt fin-icon" style="color:#0f766e;"></i>
           </div>
           <div class="fin-val">Rs {{ number_format($easyPaisaBalance, 0) }}</div>
-          <a href="{{ route('view_all') }}" class="fin-link">View Ledger →</a>
+          <a href="{{ route('view_all') }}" class="fin-link" style="color:#0f766e;">View Ledger →</a>
         </div>
       </div>
 
       <div class="col-12 col-sm-6 col-lg-2">
-        <div class="t-card fin-card" style="border-top:3px solid #06b6d4;">
+        <div class="t-card fin-card" style="border-top:3px solid #334155;">
           <div class="fin-hdr">
             <span class="fin-title">MEEZAN</span>
-            <i class="fa fa-university fas fa-university text-cyan-500 fin-icon"></i>
+            <i class="fa fa-university fas fa-university fin-icon" style="color:#334155;"></i>
           </div>
           <div class="fin-val">Rs {{ number_format($meezanBalance, 0) }}</div>
-          <a href="{{ route('view_all') }}" class="fin-link">View Ledger →</a>
+          <a href="{{ route('view_all') }}" class="fin-link" style="color:#334155;">View Ledger →</a>
         </div>
       </div>
     </div>
@@ -860,7 +954,7 @@
             <div class="spark-val">Rs {{ number_format($totalSales, 0) }}</div>
             <div class="kpi-trend up" style="font-size:0.72rem;">↑ {{ $salesGrowth }}% vs last month</div>
           </div>
-          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 24C10 20 18 26 26 14C34 2 42 18 58 6" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 24C10 20 18 26 26 14C34 2 42 18 58 6" stroke="#0f766e" stroke-width="2.5" stroke-linecap="round"/></svg>
         </div>
       </div>
 
@@ -871,7 +965,7 @@
             <div class="spark-val">Rs {{ number_format($totalPurchases, 0) }}</div>
             <div class="kpi-trend up" style="font-size:0.72rem;">↑ {{ $purchaseGrowth }}% vs last month</div>
           </div>
-          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 20C12 24 22 10 32 16C42 22 50 8 58 12" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 20C12 24 22 10 32 16C42 22 50 8 58 12" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/></svg>
         </div>
       </div>
 
@@ -882,7 +976,7 @@
             <div class="spark-val">Rs {{ number_format($grossProfit, 0) }}</div>
             <div class="kpi-trend up" style="font-size:0.72rem;">↑ {{ $grossProfitGrowth }}% vs last month</div>
           </div>
-          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 22C14 18 24 24 34 12C44 0 50 14 58 8" stroke="#14b8a6" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 22C14 18 24 24 34 12C44 0 50 14 58 8" stroke="#0f766e" stroke-width="2.5" stroke-linecap="round"/></svg>
         </div>
       </div>
 
@@ -893,30 +987,92 @@
             <div class="spark-val">Rs {{ number_format($netProfit, 0) }}</div>
             <div class="kpi-trend up" style="font-size:0.72rem;">↑ {{ $netProfitGrowth }}% vs last month</div>
           </div>
-          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 26C12 20 22 22 32 14C42 6 50 16 58 4" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <svg width="60" height="30" viewBox="0 0 60 30" fill="none"><path d="M2 26C12 20 22 22 32 14C42 6 50 16 58 4" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/></svg>
         </div>
       </div>
     </div>
 
-    {{-- ─── 8. LOW STOCK ALARM ─── --}}
+    {{-- ─── 8. LOW STOCK ALARM & INVENTORY ALERTS ─── --}}
     <div class="dash-section-label">
-      <i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> Low Stock Alarm
+      <i class="fas fa-exclamation-triangle" style="color:#0f766e;"></i> Low Stock Alarm & Inventory Alerts
     </div>
 
-    <div class="row g-3">
-      <div class="col-12">
+    <div class="row g-3 mb-4">
+      {{-- Left Side: Chart (7 Cols) --}}
+      <div class="col-12 col-lg-7">
         <div class="t-card">
-          <div class="t-card-header">
-            <h3 class="t-card-title text-danger">
-              <i class="fas fa-exclamation-triangle"></i> Low Stock Alert Products
-              <span class="badge bg-danger-subtle text-danger rounded-pill px-2" style="font-size:0.75rem;">
-                {{ count($lowStockChart['categories']) }} Items
+          <div class="t-card-header flex-wrap gap-2">
+            <h3 class="t-card-title text-dark d-flex align-items-center flex-wrap gap-1.5">
+              <span><i class="fas fa-chart-bar me-1" style="color:#0f766e;"></i> Stock Level vs Alert Threshold</span>
+              <span class="badge rounded-pill px-2.5 py-1" style="font-size:0.75rem; background: #f8fafc; color: #334155; border: 1px solid #cbd5e1;">
+                {{ count($lowStockItems) }} Items Requiring Action
               </span>
             </h3>
-            <a href="{{ route('report.item_stock') }}" class="text-danger text-decoration-none fw-bold" style="font-size:0.75rem;">Manage Inventory →</a>
+            <a href="{{ route('report.item_stock') }}" class="text-decoration-none fw-bold" style="font-size:0.78rem; color:#0f766e;">
+              <i class="fas fa-boxes me-1"></i> Full Inventory Report →
+            </a>
           </div>
           <div class="t-card-body p-3">
-            <div id="lowStockBarChart" style="min-height: 260px;"></div>
+            @if(count($lowStockItems) > 0)
+              <div id="lowStockBarChart" style="min-height: 290px;"></div>
+            @else
+              <div class="text-center py-5">
+                <div class="avatar-lg rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 54px; height: 54px; background: #f0fdf4; color: #0f766e; font-size: 1.5rem;">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">All Stock Levels are Healthy!</h5>
+                <p class="text-muted small mb-0">No items are currently at or below their alert quantity threshold.</p>
+              </div>
+            @endif
+          </div>
+        </div>
+      </div>
+
+      {{-- Right Side: Critical Items List (5 Cols) --}}
+      <div class="col-12 col-lg-5">
+        <div class="t-card">
+          <div class="t-card-header flex-wrap gap-2">
+            <h3 class="t-card-title text-dark">
+              <i class="fas fa-list-ul me-1" style="color:#0f766e;"></i> Critical Stock Reorder List
+            </h3>
+            <a href="{{ route('add_purchase') }}" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold shadow-sm" style="font-size:0.75rem; background: linear-gradient(135deg, #0f766e, #0d9488); border: none;">
+              <i class="fas fa-plus me-1"></i> + Purchase Order
+            </a>
+          </div>
+          <div class="t-card-body p-2 d-flex flex-column justify-content-between" style="max-height: 330px; overflow-y: auto;">
+            @forelse($lowStockItems as $lItem)
+            <div class="d-flex align-items-center justify-content-between p-2 mb-1 rounded-3 border-bottom" style="transition: background 0.15s ease;">
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-sm rounded-3 d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0;">
+                  <i class="fas {{ $lItem->qty <= 0 ? 'fa-times-circle' : 'fa-exclamation-circle' }}"></i>
+                </div>
+                <div>
+                  <div class="fw-bold text-dark" style="font-size: 0.84rem; line-height: 1.2;">
+                    {{ $lItem->item_name }}
+                  </div>
+                  <div class="text-muted" style="font-size: 0.72rem;">
+                    Code: <span class="fw-semibold text-dark">{{ $lItem->item_code }}</span> | {{ $lItem->category_name ?? 'General' }}
+                  </div>
+                </div>
+              </div>
+              <div class="text-end">
+                <div class="d-flex align-items-center gap-1.5 justify-content-end">
+                  <span class="badge rounded-pill px-2" style="font-size: 0.68rem; background: #334155; color: #fff;">
+                    {{ $lItem->status }}
+                  </span>
+                </div>
+                <div class="fw-bold mt-0.5" style="font-size: 0.78rem;">
+                  <span class="fw-extrabold" style="color: #0f766e;">{{ $lItem->qty }}</span> / <span class="text-secondary">{{ $lItem->alert_quantity }}</span>
+                  <span class="text-muted" style="font-size: 0.68rem;">(Deficit: +{{ $lItem->deficit }})</span>
+                </div>
+              </div>
+            </div>
+            @empty
+            <div class="text-center py-4 text-muted">
+              <i class="fas fa-shield-alt mb-2 d-block" style="font-size: 1.8rem; color:#0f766e;"></i>
+              No critical stock alerts at this time.
+            </div>
+            @endforelse
           </div>
         </div>
       </div>
@@ -960,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     },
     yaxis: { labels: { formatter: v => 'Rs ' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v), style: { colors: '#94a3b8', fontSize: '10px' } } },
     stroke: { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
-    colors: ['#6366f1', '#cbd5e1'],
+    colors: ['#0f766e', '#94a3b8'],
     fill: { type: ['gradient', 'solid'], gradient: { opacityFrom: 0.25, opacityTo: 0.05 } },
     dataLabels: { enabled: false },
     grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
@@ -997,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     chart: { type: 'donut', height: 190 },
     series: catSeries.length ? catSeries : [1],
     labels: catLabels.length ? catLabels : ['No Data'],
-    colors: catColors.length ? catColors : ['#6366f1'],
+    colors: catColors.length ? catColors : ['#0f766e'],
     legend: { show: false },
     dataLabels: { enabled: false },
     plotOptions: {
@@ -1031,7 +1187,7 @@ document.addEventListener('DOMContentLoaded', function() {
     },
     yaxis: { labels: { formatter: v => 'Rs ' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v), style: { colors: '#94a3b8', fontSize: '10px' } } },
     plotOptions: { bar: { columnWidth: '45%', borderRadius: 6, distributed: true } },
-    colors: ['#34d399', '#f87171', '#34d399', '#f87171'],
+    colors: ['#0f766e', '#334155', '#0f766e', '#334155'],
     legend: { show: false },
     dataLabels: { enabled: false },
     grid: { borderColor: '#f1f5f9', strokeDashArray: 4 }
@@ -1058,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', function() {
     chart: { type: 'donut', height: 160 },
     series: expHeadSeries.length && expHeadSeries.some(v => v > 0) ? expHeadSeries : [1],
     labels: expHeadNames.length ? expHeadNames : ['No Expenses'],
-    colors: ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444'],
+    colors: ['#0f766e', '#334155', '#0d9488', '#475569', '#14b8a6'],
     legend: { show: false },
     dataLabels: { enabled: false },
     plotOptions: {
@@ -1103,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', function() {
     },
     yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
     plotOptions: { bar: { columnWidth: '55%', borderRadius: 4 } },
-    colors: ['#ff4d4d', '#818cf8'],
+    colors: ['#0f766e', '#334155'],
     dataLabels: { enabled: false },
     legend: { position: 'top', horizontalAlign: 'right', fontSize: '11px' },
     grid: { borderColor: '#f1f5f9', strokeDashArray: 4 }
