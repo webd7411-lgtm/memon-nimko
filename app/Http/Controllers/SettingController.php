@@ -18,7 +18,6 @@ class SettingController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'software_name' => 'required|string|max:255',
-            'software_name_urdu' => 'nullable|string|max:255',
             'tagline' => 'nullable|string|max:500',
             'footer_text' => 'nullable|string|max:500',
             'timezone' => 'nullable|string|max:100',
@@ -43,7 +42,7 @@ class SettingController extends Controller
         }
 
         $keys = [
-            'software_name', 'software_name_urdu', 'tagline', 'footer_text',
+            'software_name', 'tagline', 'footer_text',
             'timezone', 'language',
             'address', 'phone', 'mobile', 'email', 'support_email', 'website',
             'facebook', 'instagram', 'twitter', 'tiktok', 'youtube', 'linkedin', 'whatsapp',

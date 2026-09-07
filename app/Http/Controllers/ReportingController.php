@@ -342,6 +342,34 @@ class ReportingController extends Controller
             }
         }
 
+        // ---- STOCK TRANSFERS within date range ----
+        $transferQuery = DB::table('stock_transfers')
+            ->whereBetween('created_at', [$startDT, $endDT]);
+        if (!is_all_branches()) {
+            $transferQuery->where('branch_id', active_branch_id());
+        }
+        if ($resetTime) {
+            $transferQuery->where('created_at', '>=', $resetTime);
+        }
+        $transfers = $transferQuery->get();
+        $mapTransfer = [];
+        foreach ($transfers as $tr) {
+            $rawPids = is_array($tr->product_id) ? $tr->product_id : (json_decode($tr->product_id, true) ?: []);
+            $rawQtys = is_array($tr->quantity) ? $tr->quantity : (json_decode($tr->quantity, true) ?: []);
+            if (!is_array($rawPids)) $rawPids = ($rawPids !== null && $rawPids !== '') ? [$rawPids] : [];
+            if (!is_array($rawQtys)) $rawQtys = ($rawQtys !== null && $rawQtys !== '') ? [$rawQtys] : [];
+            $pids = $rawPids;
+            $qtys = $rawQtys;
+            foreach ($pids as $i => $pid) {
+                $pid = trim($pid);
+                if ($pid === '') continue;
+                if (!in_array((int)$pid, $productIds)) continue;
+                $qty = floatval($qtys[$i] ?? 0);
+                $key = $pid . '_0';
+                $mapTransfer[$key] = ($mapTransfer[$key] ?? 0) + $qty;
+            }
+        }
+
         $rows = [];
         $grandTotalValue = 0;
 
@@ -387,7 +415,9 @@ class ReportingController extends Controller
                     $adjDecAft = (float)($mapAdjDecAft[$p->id . '_0'] ?? 0);
                     
                     $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft;
-                    $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn - $adjInc + $adjDec;
+                    $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn;
+
+                    $transferQty = (float)($mapTransfer[$p->id . '_0'] ?? 0);
 
                     $rows[] = [
                         'item_code'       => $code,
@@ -397,6 +427,7 @@ class ReportingController extends Controller
                         'produced'        => $produced,
                         'purchased'       => $purchased,
                         'purchase_return' => $pReturn,
+                        'transfer'        => $transferQty,
                         'adj_increase'    => $adjInc,
                         'adj_decrease'    => $adjDec,
                         'sold'            => $sold,
@@ -485,7 +516,9 @@ class ReportingController extends Controller
                 $adjDecAft = (float)($mapAdjDecAft[$p->id . '_0'] ?? 0);
 
                 $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft;
-                $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn - $adjInc + $adjDec;
+                $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn;
+
+                $transferQty = (float)($mapTransfer[$p->id . '_0'] ?? 0);
 
                 $rows[] = [
                     'item_code'       => $code,
@@ -495,6 +528,7 @@ class ReportingController extends Controller
                     'produced'        => $produced,
                     'purchased'       => $purchased,
                     'purchase_return' => $pReturn,
+                    'transfer'        => $transferQty,
                     'adj_increase'    => $adjInc,
                     'adj_decrease'    => $adjDec,
                     'sold'            => $sold,

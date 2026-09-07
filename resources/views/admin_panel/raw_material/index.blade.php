@@ -308,10 +308,10 @@
                       $cUnit = $m->consumption_unit ?? $m->unit;
                     @endphp
                     <span class="stock-badge {{ $sqty > $m->alert_qty ? 'stock-ok' : 'stock-low' }}">
-                      {{ number_format($sqty, 2) }} {{ $cUnit }}
+                      {{ number_format($purQty, 2) }} {{ $m->unit }}
                     </span>
                     @if($factor > 1)
-                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ $purQty }} {{ $m->unit }})</div>
+                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ number_format($sqty, 2) }} {{ $cUnit }})</div>
                     @endif
                   </td>
                   <td class="malert fw-semibold" data-label="Alert Qty">

@@ -619,6 +619,7 @@
                   <th>#</th><th>Item Code</th><th>Item Name</th>
                   <th class="num">Initial</th><th class="num">Produced</th>
                   <th class="num">Purchased</th><th class="num">Purch. Return</th>
+                  <th class="num" style="color:#8e44ad">Transfer</th>
                   <th class="num" style="color:var(--pc-success)">Adj ➕</th>
                   <th class="num" style="color:var(--pc-danger)">Adj ➖</th>
                   <th class="num">Sold</th><th class="num">Sale Return</th>
@@ -633,6 +634,7 @@
                   <td colspan="3" style="text-align:right;color:var(--pc-text-sec);font-size:.72rem;text-transform:uppercase">Totals:</td>
                   <td class="num" id="ftInitial">–</td><td class="num" id="ftProduced">–</td>
                   <td class="num" id="ftPurch">–</td><td class="num" id="ftPReturn">–</td>
+                  <td class="num" id="ftTransfer" style="color:#8e44ad;font-weight:700">–</td>
                   <td class="num" id="ftAdjInc" style="color:var(--pc-success)">–</td>
                   <td class="num" id="ftAdjDec" style="color:var(--pc-danger)">–</td>
                   <td class="num" id="ftSold">–</td><td class="num" id="ftSReturn">–</td>
@@ -807,6 +809,7 @@ function renderRows(rows) {
         h += '<td class="num">' + formatVal(r.produced, r.is_kg, r.unit) + '</td>';
         h += '<td class="num">' + formatVal(r.purchased, r.is_kg, r.unit) + '</td>';
         h += '<td class="num" style="color:var(--pc-danger)">' + formatVal(r.purchase_return, r.is_kg, r.unit) + '</td>';
+        h += '<td class="num" style="color:#8e44ad;font-weight:700">' + formatVal(r.transfer || 0, r.is_kg, r.unit) + '</td>';
         h += '<td class="num" style="color:var(--pc-success);font-weight:700">' + (adjInc > 0 ? '+' + formatVal(adjInc, r.is_kg, r.unit) : '–') + '</td>';
         h += '<td class="num" style="color:var(--pc-danger);font-weight:700">' + (adjDec > 0 ? '-' + formatVal(adjDec, r.is_kg, r.unit) : '–') + '</td>';
         h += '<td class="num" style="color:#8e44ad">' + formatVal(r.sold, r.is_kg, r.unit) + '</td>';
@@ -837,6 +840,7 @@ function updateFooter(rows) {
     setText('ftProduced', fmt(sm('produced')));
     setText('ftPurch', fmt(sm('purchased')));
     setText('ftPReturn', fmt(sm('purchase_return')));
+    setText('ftTransfer', fmt(sm('transfer')));
     setText('ftAdjInc', fmt(sm('adj_increase')));
     setText('ftAdjDec', fmt(sm('adj_decrease')));
     setText('ftSold', fmt(sm('sold')));

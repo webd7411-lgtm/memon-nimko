@@ -989,15 +989,15 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Reset all stock values in stocks table
-            DB::table('stocks')->update([
+            // 1. Reset all stock values in stocks table (branch-wise)
+            DB::table('stocks')->where('branch_id', active_branch_id())->update([
                 'qty' => 0,
                 'reserved_qty' => 0,
                 'updated_at' => now()
             ]);
 
-            // 2. Reset all stock values in warehouse_stocks table
-            DB::table('warehouse_stocks')->update([
+            // 2. Reset all stock values in warehouse_stocks table (branch-wise)
+            DB::table('warehouse_stocks')->where('branch_id', active_branch_id())->update([
                 'quantity' => 0,
                 'updated_at' => now()
             ]);

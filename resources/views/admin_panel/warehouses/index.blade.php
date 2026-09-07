@@ -549,7 +549,7 @@
               </td>
               <td data-label="Remarks">{{ $w->remarks ?? '—' }}</td>
               <td class="text-center" data-label="Action">
-                <button class="btn btn-sm btn-outline-primary edit-warehouse-btn rounded-2"
+                <button class="btn btn-sm btn-primary edit-warehouse-btn rounded-2" style="background:#2563eb; border:none; color:#fff; font-weight:600; min-width:70px;"
                   data-id="{{ $w->id }}"
                   data-name="{{ $w->warehouse_name }}"
                   data-location="{{ $w->location }}"
@@ -558,6 +558,9 @@
                   data-bs-target="#warehouseModal">
                   <i class="bi bi-pencil-square me-1"></i> Edit
                 </button>
+                <a href="#" onclick="confirmWarehouseDelete('{{ $w->id }}'); return false;" class="btn btn-sm btn-danger rounded-2 ms-1" style="background:#ef4444; border:none; color:#fff; font-weight:600; min-width:70px;" title="Delete">
+                  <i class="bi bi-trash-fill me-1"></i> Delete
+                </a>
               </td>
             </tr>
             @endforeach
@@ -618,6 +621,26 @@ function clearWarehouse() {
   $('#warehouse_name').val('');
   $('#location').val('');
   $('#remarks').val('');
+}
+
+function confirmWarehouseDelete(id) {
+  if (confirm('Are you sure you want to delete this warehouse? This action cannot be undone.')) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/warehouse/delete/' + id;
+    var csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = '_token';
+    csrf.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    form.appendChild(csrf);
+    var method = document.createElement('input');
+    method.type = 'hidden';
+    method.name = '_method';
+    method.value = 'DELETE';
+    form.appendChild(method);
+    document.body.appendChild(form);
+    form.submit();
+  }
 }
 
 $(document).on('click', '.edit-warehouse-btn', function () {

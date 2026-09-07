@@ -206,10 +206,6 @@ textarea.set-fld { resize: vertical; min-height: 80px; }
               <label class="set-lbl"><i class="bi bi-code-slash"></i> Software Name (English)</label>
               <input type="text" name="software_name" class="set-fld" value="{{ $settings['software_name'] ?? '' }}" placeholder="Enter software name" />
             </div>
-            <div class="col-md-6">
-              <label class="set-lbl"><i class="bi bi-translate"></i> Software Name (Urdu)</label>
-              <input type="text" name="software_name_urdu" class="set-fld" value="{{ $settings['software_name_urdu'] ?? '' }}" placeholder="سافٹ ویئر کا نام" />
-            </div>
             <div class="col-md-8">
               <label class="set-lbl"><i class="bi bi-quote"></i> Tagline</label>
               <input type="text" name="tagline" class="set-fld" value="{{ $settings['tagline'] ?? '' }}" placeholder="Enter business tagline" />

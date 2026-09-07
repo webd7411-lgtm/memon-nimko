@@ -590,6 +590,8 @@ $(document).ready(function() {
     loadBomForRow(row);
   });
 
+  var pendingBomAjax = {};
+
   function loadBomForRow(row) {
     var productId = row.find('.product-select').val();
     var variantId = row.find('.variant-select').val() || '';
@@ -606,6 +608,11 @@ $(document).ready(function() {
       row.attr('data-row-id', rowId);
     }
 
+    // Abort previous AJAX for this product row to prevent duplicate BOM rows
+    if (pendingBomAjax[rowId]) {
+      pendingBomAjax[rowId].abort();
+    }
+
     // Remove old BOM rows for THIS specific product row only
     $('#rmUsageBody .bom-row[data-parent-row="' + rowId + '"]').remove();
 
@@ -614,7 +621,7 @@ $(document).ready(function() {
       url += '?variant_id=' + variantId;
     }
 
-    $.ajax({
+    pendingBomAjax[rowId] = $.ajax({
       url: url,
       type: 'GET',
       success: function(bom) {
@@ -653,6 +660,9 @@ $(document).ready(function() {
           tbody.insertBefore(tr, tbody.firstChild);
         });
         calcTotalCost();
+      },
+      complete: function() {
+        pendingBomAjax[rowId] = null;
       }
     });
   }

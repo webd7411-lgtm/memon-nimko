@@ -402,7 +402,8 @@ class StockTransferController extends Controller
         if ($warehouseId === 'Shop' || empty($warehouseId)) {
             $activeBranch = active_branch_id();
             $query = Stock::where('product_id', $productId)
-                ->where('branch_id', $activeBranch);
+                ->where('branch_id', $activeBranch)
+                ->whereNull('warehouse_id');
 
             if (!empty($variantId)) {
                 $variantStock = (clone $query)->where('variant_id', $variantId)->sum('qty');
