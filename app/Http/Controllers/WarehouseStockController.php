@@ -16,6 +16,7 @@ class WarehouseStockController extends Controller
         $type      = $request->stock_type ?? 'all';
         $startDate = $request->start_date;
         $endDate   = $request->end_date;
+        $warehouseFilter = $request->warehouse_id;
 
         /* ======================================================
        1️⃣ PRODUCTS (BASE = 3754)
@@ -44,6 +45,10 @@ class WarehouseStockController extends Controller
        3️⃣ WAREHOUSE STOCK (DATE FILTER)
     ====================================================== */
         $warehouseQuery = WarehouseStock::with('warehouse');
+
+        if ($warehouseFilter) {
+            $warehouseQuery->where('warehouse_id', $warehouseFilter);
+        }
 
         if ($startDate && $endDate) {
             $warehouseQuery->whereBetween('updated_at', [

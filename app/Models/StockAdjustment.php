@@ -22,4 +22,9 @@ class StockAdjustment extends Model
     {
         return $this->belongsTo(\App\Models\Branch::class, 'branch_id');
     }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(\App\Models\Warehouse::class, 'warehouse_id');
+    }
 }

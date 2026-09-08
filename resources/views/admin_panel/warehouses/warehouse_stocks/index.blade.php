@@ -513,6 +513,16 @@
         </div>
 
         <div class="col-12 col-md-3">
+          <label class="ws-label"><i class="bi bi-building me-1 text-primary"></i> Specific Warehouse</label>
+          <select name="warehouse_id" class="ws-input">
+            <option value="">All Warehouses</option>
+            @foreach(\App\Models\Warehouse::all() as $wh)
+            <option value="{{ $wh->id }}" {{ request('warehouse_id') == $wh->id ? 'selected' : '' }}>{{ $wh->warehouse_name }}</option>
+            @endforeach
+          </select>
+        </div>
+
+        <div class="col-12 col-md-3">
           <label class="ws-label"><i class="bi bi-calendar-minus me-1 text-primary"></i> Start Date</label>
           <input type="date" name="start_date" class="ws-input" value="{{ request('start_date') }}">
         </div>

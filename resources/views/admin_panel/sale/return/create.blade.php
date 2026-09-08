@@ -1,43 +1,94 @@
 @extends('admin_panel.layout.app')
 @section('content')
 <style>
-    /* small helpers */
-    .searchResults {
-        position: absolute;
-        z-index: 9999;
-        width: 100%;
-        max-height: 200px;
-        overflow-y: auto;
-        background: #fff;
-        text-align: start;
+    :root {
+        --pr-bg: #f6f7fb;
+        --pr-card: #ffffff;
+        --pr-border: #e4e6ef;
+        --pr-text: #0f172a;
+        --pr-text-sec: #475569;
+        --pr-text-muted: #94a3b8;
+        --pr-header: #111827;
+        --pr-primary: #059669;
+        --pr-danger: #dc2626;
+        --pr-secondary: #334155;
+        --pr-input: #ffffff;
+        --pr-focus: rgba(15, 23, 42, 0.08);
+        --pr-radius: 14px;
+        --pr-radius-sm: 10px;
+        --pr-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06);
     }
 
-    .search-result-item.active {
-        background: #007bff;
-        color: #fff;
-    }
+    body { background: var(--pr-bg); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
 
-    .small-muted {
-        font-size: 11px;
-        color: #6c757d;
-    }
+    /* Functional helpers (unchanged logic) */
+    .searchResults { position: absolute; z-index: 9999; width: 100%; max-height: 200px; overflow-y: auto; background: #fff; text-align: start; border: 1px solid var(--pr-border); border-radius: 8px; box-shadow: var(--pr-shadow); }
+    .search-result-item.active { background: var(--pr-header); color: #fff; }
+    .small-muted { font-size: 11px; color: var(--pr-text-muted); }
+    .table-scroll tbody { display: block; max-height: calc(60px * 5); overflow-y: auto; }
+    .table-scroll thead, .table-scroll tbody tr { display: table; width: 100%; table-layout: fixed; }
+    .disabled-row input { background-color: #f8fafc; pointer-events: none; }
 
-    .table-scroll tbody {
-        display: block;
-        max-height: calc(60px * 5);
-        overflow-y: auto;
-    }
+    /* Premium professional layout */
+    .card { border-radius: var(--pr-radius); border: 1px solid var(--pr-border); background: var(--pr-card); box-shadow: var(--pr-shadow); overflow: hidden; }
+    .card-header { background: linear-gradient(135deg, #111827 0%, #1f2937 100%) !important; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 1rem 1.25rem; }
+    .card-header h5, .card-header h5.text-dark { font-weight: 700; letter-spacing: 0.03em; font-size: 1.1rem; color: #fff !important; margin-bottom: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    .card-body { padding: 1.5rem; }
 
-    .table-scroll thead,
-    .table-scroll tbody tr {
-        display: table;
-        width: 100%;
-        table-layout: fixed;
-    }
+    /* Labels */
+    .row.mb-3 > .col-md-6 { padding-top: 0.25rem; }
+    label.form-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--pr-text-sec); margin-bottom: 0.35rem; display: block; }
 
-    .disabled-row input {
-        background-color: #f8f9fa;
-        pointer-events: none;
+    /* Inputs */
+    .form-control, .form-select, input.form-control, select.form-control, textarea.form-control {
+        border: 1px solid #d1d5db; border-radius: var(--pr-radius-sm); padding: 0.5rem 0.75rem; font-size: 0.88rem; color: var(--pr-text); background: var(--pr-input); transition: all 0.2s ease;
+    }
+    .form-control:focus, .form-select:focus, input.form-control:focus, select.form-control:focus, textarea.form-control:focus {
+        border-color: #334155; outline: none; box-shadow: 0 0 0 3px var(--pr-focus);
+    }
+    input[type="number"], input[type="text"], textarea { background: var(--pr-input); }
+
+    /* Tables */
+    .table { border-color: var(--pr-border); font-size: 0.82rem; color: var(--pr-text-sec); }
+    .table thead th { background: #f8fafc; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.68rem; color: var(--pr-text-muted); border-bottom: 1.5px solid var(--pr-text); padding: 0.75rem 0.6rem; white-space: nowrap; }
+    .table tbody td { padding: 0.6rem 0.55rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .table tbody tr:hover td { background: #f8fafc; }
+    .table-bordered { border: 1px solid var(--pr-border); }
+
+    /* Buttons */
+    .btn { border-radius: var(--pr-radius-sm); font-weight: 600; letter-spacing: 0.01em; padding: 0.5rem 1rem; font-size: 0.82rem; transition: all 0.2s ease; }
+    .btn-success { background: linear-gradient(135deg, #059669, #047857); border: none; color: #fff; box-shadow: 0 2px 8px rgba(5,150,105,0.25); }
+    .btn-success:hover { background: linear-gradient(135deg, #047857, #065f46); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(5,150,105,0.35); }
+    .btn-secondary { background: #334155; border: none; color: #fff; }
+    .btn-secondary:hover { background: #1f2937; transform: translateY(-1px); }
+    .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); border: none; color: #fff; }
+    .btn-danger:hover { background: linear-gradient(135deg, #b91c1c, #991b1b); transform: translateY(-1px); }
+    .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.78rem; }
+
+    /* Sections */
+    h6 { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--pr-text-sec); margin: 1.25rem 0 0.75rem 0; padding-bottom: 0.25rem; border-bottom: 1px solid var(--pr-border); }
+    hr { border-top: 1px solid var(--pr-border); opacity: 1; margin: 1.25rem 0; }
+
+    /* Alert */
+    .alert { border-radius: 10px; font-size: 0.82rem; padding: 0.6rem 0.9rem; border: none; }
+    .alert-success { background: #ecfdf5; color: #064e3b; }
+    .alert-danger { background: #fef2f2; color: #7f1d1d; }
+
+    /* Scrollbars */
+    .table-responsive::-webkit-scrollbar { height: 8px; }
+    .table-responsive::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .table-responsive::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .table-responsive::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Mobile adjustments (no logic change) */
+    @media (max-width: 767.98px) {
+        body { overflow-x: hidden; }
+        .card-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+        .card-body { padding: 1rem; }
+        .table { font-size: 0.75rem; }
+        .table thead th { font-size: 0.62rem; padding: 0.6rem 0.4rem; }
+        .table tbody td { padding: 0.5rem 0.35rem; }
+        h6 { font-size: 0.75rem; }
     }
 </style>
 

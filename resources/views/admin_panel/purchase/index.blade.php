@@ -642,7 +642,7 @@
                   @php
                   $type = $purchase instanceof \App\Models\InwardGatepass
                     ? $purchase->receive_type
-                    : ($purchase->purchase_to ?? 'shop');
+                    : ($purchase->warehouse_id ? 'warehouse' : 'shop');
                   @endphp
                   <span class="pi-badge {{ $type === 'warehouse' ? 'pi-badge-wh' : 'pi-badge-shop' }}">
                     <i class="bi {{ $type === 'warehouse' ? 'bi-building' : 'bi-shop' }}"></i>
@@ -654,7 +654,7 @@
                   @if($purchase instanceof \App\Models\InwardGatepass)
                     {{ $purchase->warehouse->warehouse_name ?? 'Shop' }}
                   @else
-                    {{ ($purchase->purchase_to ?? 'shop') === 'warehouse'
+                    {{ $purchase->warehouse_id
                       ? ($purchase->warehouse->warehouse_name ?? '-')
                       : 'Shop' }}
                   @endif

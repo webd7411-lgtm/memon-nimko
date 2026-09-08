@@ -545,6 +545,16 @@ select.sa-fld {
             </div>
 
             <div class="col-md-3">
+              <label class="sa-lbl"><i class="bi bi-building"></i>Warehouse <span class="sa-req">*</span></label>
+              <select name="warehouse_id" class="sa-fld">
+                <option value="">-- Select Warehouse --</option>
+                @foreach($warehouses as $w)
+                <option value="{{ $w->id }}">{{ $w->warehouse_name }}</option>
+                @endforeach
+              </select>
+            </div>
+
+            <div class="col-md-3">
               <label class="sa-lbl"><i class="bi bi-collection"></i>Reason <span class="sa-req">*</span></label>
               <select name="reason" class="sa-fld" required>
                 <option value="">-- Select Reason --</option>
@@ -558,7 +568,7 @@ select.sa-fld {
               </select>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-3">
               <label class="sa-lbl"><i class="bi bi-chat-text"></i>Internal Notes</label>
               <input type="text" name="notes" class="sa-fld" placeholder="Optional internal reference...">
             </div>

@@ -150,6 +150,13 @@
             </div>
           </div>
           <div class="pc-info-row">
+            <span class="pc-info-ic"><i class="bi bi-building"></i></span>
+            <div>
+              <div class="pc-info-lb">Warehouse</div>
+              <div class="pc-info-val">{{ $adjustment->warehouse ? $adjustment->warehouse->warehouse_name : 'N/A' }}</div>
+            </div>
+          </div>
+          <div class="pc-info-row">
             <span class="pc-info-ic"><i class="bi bi-person"></i></span>
             <div>
               <div class="pc-info-lb">Created By</div>

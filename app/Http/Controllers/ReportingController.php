@@ -69,6 +69,7 @@ class ReportingController extends Controller
         $purchasesQuery = DB::table('purchase_items')
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->whereIn('purchase_items.product_id', $productIds)
+            ->whereNull('purchases.warehouse_id')  // ✅ EXCLUDE warehouse purchases
             ->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
         if (!is_all_branches()) {
             $purchasesQuery->where('purchases.branch_id', active_branch_id());
@@ -98,6 +99,7 @@ class ReportingController extends Controller
         $purchaseReturnsQuery = DB::table('purchase_return_items')
             ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
             ->whereIn('purchase_return_items.product_id', $productIds)
+            ->whereNull('purchase_returns.warehouse_id')
             ->whereBetween('purchase_returns.return_date', [$startDate, $endDate]);
         if (!is_all_branches()) {
             $purchaseReturnsQuery->where('purchase_returns.branch_id', active_branch_id());
@@ -185,6 +187,7 @@ class ReportingController extends Controller
         $purchAfterQuery = DB::table('purchase_items')
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->whereIn('purchase_items.product_id', $productIds)
+            ->whereNull('purchases.warehouse_id')  // ✅ EXCLUDE warehouse purchases (after)
             ->where('purchases.purchase_date', '>', $endDate);
         if (!is_all_branches()) {
             $purchAfterQuery->where('purchases.branch_id', active_branch_id());
@@ -215,6 +218,7 @@ class ReportingController extends Controller
         $prAfterQuery = DB::table('purchase_return_items')
             ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
             ->whereIn('purchase_return_items.product_id', $productIds)
+            ->whereNull('purchase_returns.warehouse_id')
             ->where('purchase_returns.return_date', '>', $endDate);
         if (!is_all_branches()) {
             $prAfterQuery->where('purchase_returns.branch_id', active_branch_id());
@@ -342,31 +346,139 @@ class ReportingController extends Controller
             }
         }
 
-        // ---- STOCK TRANSFERS within date range ----
-        $transferQuery = DB::table('stock_transfers')
+        // ---- STOCK TRANSFERS (OUT) within date range ----
+        $transferOutQuery = DB::table('stock_transfers')
             ->whereBetween('created_at', [$startDT, $endDT]);
         if (!is_all_branches()) {
-            $transferQuery->where('branch_id', active_branch_id());
+            $transferOutQuery->where('branch_id', active_branch_id());
         }
         if ($resetTime) {
-            $transferQuery->where('created_at', '>=', $resetTime);
+            $transferOutQuery->where('created_at', '>=', $resetTime);
         }
-        $transfers = $transferQuery->get();
+        $transfersOut = $transferOutQuery->get();
         $mapTransfer = [];
-        foreach ($transfers as $tr) {
-            $rawPids = is_array($tr->product_id) ? $tr->product_id : (json_decode($tr->product_id, true) ?: []);
-            $rawQtys = is_array($tr->quantity) ? $tr->quantity : (json_decode($tr->quantity, true) ?: []);
-            if (!is_array($rawPids)) $rawPids = ($rawPids !== null && $rawPids !== '') ? [$rawPids] : [];
-            if (!is_array($rawQtys)) $rawQtys = ($rawQtys !== null && $rawQtys !== '') ? [$rawQtys] : [];
+        foreach ($transfersOut as $tr) {
+            $decodedPids = json_decode($tr->product_id, true);
+            if (is_string($decodedPids)) {
+                $decodedPids = json_decode($decodedPids, true);
+            }
+            $rawPids = is_array($decodedPids) ? $decodedPids : ($decodedPids !== null && $decodedPids !== '' ? [$decodedPids] : []);
+
+            $decodedQtys = json_decode($tr->quantity, true);
+            if (is_string($decodedQtys)) {
+                $decodedQtys = json_decode($decodedQtys, true);
+            }
+            $rawQtys = is_array($decodedQtys) ? $decodedQtys : ($decodedQtys !== null && $decodedQtys !== '' ? [$decodedQtys] : []);
             $pids = $rawPids;
             $qtys = $rawQtys;
             foreach ($pids as $i => $pid) {
+                if (is_array($pid)) {
+                    $pid = $pid[0] ?? '';
+                }
                 $pid = trim($pid);
                 if ($pid === '') continue;
                 if (!in_array((int)$pid, $productIds)) continue;
-                $qty = floatval($qtys[$i] ?? 0);
+                $qtyRaw = $qtys[$i] ?? 0;
+                if (is_array($qtyRaw)) $qtyRaw = $qtyRaw[0] ?? 0;
+                $qty = floatval($qtyRaw);
                 $key = $pid . '_0';
                 $mapTransfer[$key] = ($mapTransfer[$key] ?? 0) + $qty;
+            }
+        }
+
+        // ---- STOCK TRANSFERS (IN) within date range ----
+        $transferInQuery = DB::table('stock_transfers')
+            ->where('transfer_to', 'branch')
+            ->where('to_branch_id', active_branch_id())
+            ->whereBetween('created_at', [$startDT, $endDT]);
+        if ($resetTime) {
+            $transferInQuery->where('created_at', '>=', $resetTime);
+        }
+        $transfersIn = $transferInQuery->get();
+        $mapTransferIn = [];
+        foreach ($transfersIn as $tr) {
+            $decodedPids = json_decode($tr->product_id, true);
+            if (is_string($decodedPids)) {
+                $decodedPids = json_decode($decodedPids, true);
+            }
+            $rawPids = is_array($decodedPids) ? $decodedPids : ($decodedPids !== null && $decodedPids !== '' ? [$decodedPids] : []);
+
+            $decodedQtys = json_decode($tr->quantity, true);
+            if (is_string($decodedQtys)) {
+                $decodedQtys = json_decode($decodedQtys, true);
+            }
+            $rawQtys = is_array($decodedQtys) ? $decodedQtys : ($decodedQtys !== null && $decodedQtys !== '' ? [$decodedQtys] : []);
+            $pids = $rawPids;
+            $qtys = $rawQtys;
+            foreach ($pids as $i => $pid) {
+                if (is_array($pid)) {
+                    $pid = $pid[0] ?? '';
+                }
+                $pid = trim($pid);
+                if ($pid === '') continue;
+                if (!in_array((int)$pid, $productIds)) continue;
+                $qtyRaw = $qtys[$i] ?? 0;
+                if (is_array($qtyRaw)) $qtyRaw = $qtyRaw[0] ?? 0;
+                $qty = floatval($qtyRaw);
+                $key = $pid . '_0';
+                $mapTransferIn[$key] = ($mapTransferIn[$key] ?? 0) + $qty;
+            }
+        }
+
+        // ---- STOCK TRANSFERS (OUT) AFTER end_date ----
+        $transferOutAfterQuery = DB::table('stock_transfers')
+            ->where('created_at', '>', $endDT);
+        if (!is_all_branches()) {
+            $transferOutAfterQuery->where('branch_id', active_branch_id());
+        }
+        if ($resetTime) {
+            $transferOutAfterQuery->where('created_at', '>=', $resetTime);
+        }
+        $transfersOutAfter = $transferOutAfterQuery->get();
+        $mapTransferAft = [];
+        foreach ($transfersOutAfter as $tr) {
+            $decodedPids = json_decode($tr->product_id, true);
+            if (is_string($decodedPids)) $decodedPids = json_decode($decodedPids, true);
+            $rawPids = is_array($decodedPids) ? $decodedPids : ($decodedPids !== null && $decodedPids !== '' ? [$decodedPids] : []);
+            $decodedQtys = json_decode($tr->quantity, true);
+            if (is_string($decodedQtys)) $decodedQtys = json_decode($decodedQtys, true);
+            $rawQtys = is_array($decodedQtys) ? $decodedQtys : ($decodedQtys !== null && $decodedQtys !== '' ? [$decodedQtys] : []);
+            foreach ($rawPids as $i => $pid) {
+                $pid = trim($pid); if ($pid === '') continue;
+                if (!in_array((int)$pid, $productIds)) continue;
+                $qtyRaw = $rawQtys[$i] ?? 0;
+                if (is_array($qtyRaw)) $qtyRaw = $qtyRaw[0] ?? 0;
+                $qty = floatval($qtyRaw);
+                $key = $pid . '_0';
+                $mapTransferAft[$key] = ($mapTransferAft[$key] ?? 0) + $qty;
+            }
+        }
+
+        // ---- STOCK TRANSFERS (IN) AFTER end_date ----
+        $transferInAfterQuery = DB::table('stock_transfers')
+            ->where('transfer_to', 'branch')
+            ->where('to_branch_id', active_branch_id())
+            ->where('created_at', '>', $endDT);
+        if ($resetTime) {
+            $transferInAfterQuery->where('created_at', '>=', $resetTime);
+        }
+        $transfersInAfter = $transferInAfterQuery->get();
+        $mapTransferInAft = [];
+        foreach ($transfersInAfter as $tr) {
+            $decodedPids = json_decode($tr->product_id, true);
+            if (is_string($decodedPids)) $decodedPids = json_decode($decodedPids, true);
+            $rawPids = is_array($decodedPids) ? $decodedPids : ($decodedPids !== null && $decodedPids !== '' ? [$decodedPids] : []);
+            $decodedQtys = json_decode($tr->quantity, true);
+            if (is_string($decodedQtys)) $decodedQtys = json_decode($decodedQtys, true);
+            $rawQtys = is_array($decodedQtys) ? $decodedQtys : ($decodedQtys !== null && $decodedQtys !== '' ? [$decodedQtys] : []);
+            foreach ($rawPids as $i => $pid) {
+                $pid = trim($pid); if ($pid === '') continue;
+                if (!in_array((int)$pid, $productIds)) continue;
+                $qtyRaw = $rawQtys[$i] ?? 0;
+                if (is_array($qtyRaw)) $qtyRaw = $qtyRaw[0] ?? 0;
+                $qty = floatval($qtyRaw);
+                $key = $pid . '_0';
+                $mapTransferInAft[$key] = ($mapTransferInAft[$key] ?? 0) + $qty;
             }
         }
 
@@ -414,10 +526,13 @@ class ReportingController extends Controller
                     $adjIncAft = (float)($mapAdjIncAft[$p->id . '_0'] ?? 0);
                     $adjDecAft = (float)($mapAdjDecAft[$p->id . '_0'] ?? 0);
                     
-                    $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft;
-                    $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn;
-
                     $transferQty = (float)($mapTransfer[$p->id . '_0'] ?? 0);
+                    $transferInQty = (float)($mapTransferIn[$p->id . '_0'] ?? 0);
+                    $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
+                    $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
+
+                    $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $pReturn - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
+                    $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
 
                     $rows[] = [
                         'item_code'       => $code,
@@ -428,6 +543,7 @@ class ReportingController extends Controller
                         'purchased'       => $purchased,
                         'purchase_return' => $pReturn,
                         'transfer'        => $transferQty,
+                        'transfer_in'     => $transferInQty,
                         'adj_increase'    => $adjInc,
                         'adj_decrease'    => $adjDec,
                         'sold'            => $sold,
@@ -515,10 +631,13 @@ class ReportingController extends Controller
                 $adjIncAft = (float)($mapAdjIncAft[$p->id . '_0'] ?? 0);
                 $adjDecAft = (float)($mapAdjDecAft[$p->id . '_0'] ?? 0);
 
-                $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft;
-                $openingStock = $closingStock - $purchased - $produced - $sReturn + $sold + $pReturn;
-
                 $transferQty = (float)($mapTransfer[$p->id . '_0'] ?? 0);
+                $transferInQty = (float)($mapTransferIn[$p->id . '_0'] ?? 0);
+                $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
+                $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
+
+                $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $pReturn - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
+                $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
 
                 $rows[] = [
                     'item_code'       => $code,
@@ -529,6 +648,7 @@ class ReportingController extends Controller
                     'purchased'       => $purchased,
                     'purchase_return' => $pReturn,
                     'transfer'        => $transferQty,
+                    'transfer_in'     => $transferInQty,
                     'adj_increase'    => $adjInc,
                     'adj_decrease'    => $adjDec,
                     'sold'            => $sold,

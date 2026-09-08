@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockAdjustment;
 use App\Models\StockAdjustmentItem;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -40,7 +41,8 @@ class StockAdjustmentController extends Controller
     public function create()
     {
         $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
-        return view('admin_panel.stock_adjustment.create', compact('products'));
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        return view('admin_panel.stock_adjustment.create', compact('products', 'warehouses'));
     }
 
     public function store(Request $request)
@@ -49,6 +51,7 @@ class StockAdjustmentController extends Controller
             'adjustment_date' => 'required|date',
             'type'            => 'required|in:increase,decrease',
             'reason'          => 'required|string|max:255',
+            'warehouse_id'    => 'nullable|exists:warehouses,id',
             'product_id'      => 'required|array|min:1',
             'qty'             => 'required|array',
         ]);
@@ -67,6 +70,7 @@ class StockAdjustmentController extends Controller
                 'notes'           => $request->notes,
                 'created_by'      => Auth::id(),
                 'branch_id'       => active_branch_id(),
+                'warehouse_id'    => ($request->warehouse_id ?: 1),
             ]);
 
             foreach ($request->product_id as $idx => $productId) {
@@ -115,9 +119,9 @@ class StockAdjustmentController extends Controller
                  ]);
  
                  // Apply stock adjustment
-                  $stockQuery = Stock::where('product_id', $productId)
-                      ->where('branch_id', active_branch_id())
-                      ->where('warehouse_id', 1);
+$stockQuery = Stock::where('product_id', $productId)
+                       ->where('branch_id', active_branch_id())
+                       ->where('warehouse_id', $request->warehouse_id ?: 1);
  
                  if ($dbVariantId) {
                      $stockQuery->where('variant_id', $dbVariantId);
@@ -134,13 +138,13 @@ class StockAdjustmentController extends Controller
                      }
                      $stock->save();
                  } elseif ($request->type === 'increase') {
-                      Stock::create([
-                          'branch_id'    => active_branch_id(),
-                          'warehouse_id' => 1,
-                         'product_id'   => $productId,
-                         'variant_id'   => $dbVariantId,
-                         'qty'          => $qtyStock,
-                     ]);
+Stock::create([
+                           'branch_id'    => active_branch_id(),
+                           'warehouse_id' => ($request->warehouse_id ?: 1),
+                          'product_id'   => $productId,
+                          'variant_id'   => $dbVariantId,
+                          'qty'          => $qtyStock,
+                      ]);
                  }
             }
 

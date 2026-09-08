@@ -880,10 +880,13 @@ class PurchaseController extends Controller
                 $subtotal          += $lineTotal;
                 $totalItemDiscount += $itemDiscTotal;
 
-                // stock minus
-                if ($request->purchase_to === 'warehouse') {
+                // stock minus — check original purchase (not request input)
+                $originalPurchase = \App\Models\Purchase::find($validated['purchase_id']);
+                $isWarehousePurchase = $originalPurchase && $originalPurchase->warehouse_id;
 
-                    $stock = Stock::where('warehouse_id', $validated['warehouse_id'] ?? null)
+                if ($isWarehousePurchase) {
+
+                    $stock = \App\Models\WarehouseStock::where('warehouse_id', $originalPurchase->warehouse_id)
                         ->where('product_id', $productId)
                         ->first();
                 } else {
@@ -896,7 +899,11 @@ class PurchaseController extends Controller
 
 
                 if ($stock) {
-                    $stock->qty -= $qty;
+                    if ($isWarehousePurchase) {
+                        $stock->quantity -= $qty;
+                    } else {
+                        $stock->qty -= $qty;
+                    }
                     $stock->save();
                 }
             }

@@ -228,18 +228,19 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
       <div class="pc-tbl-wrap">
         <table class="pc-tbl">
           <thead>
-            <tr>
-              <th>Ref #</th><th>Date</th><th>Branch</th><th>Type</th><th>Reason</th>
-              <th>Items</th><th>By</th><th>Notes</th><th style="width:90px;">Action</th>
-            </tr>
+<tr>
+               <th>Ref #</th><th>Date</th><th>Warehouse</th><th>Branch</th><th>Type</th><th>Reason</th>
+               <th>Items</th><th>By</th><th>Notes</th><th style="width:90px;">Action</th>
+             </tr>
           </thead>
           <tbody>
             @forelse($adjustments as $adj)
             <tr>
               <td><span class="pc-ref">{{ $adj->ref_no }}</span></td>
               <td><span class="pc-date">{{ \Carbon\Carbon::parse($adj->adjustment_date)->format('d-M-Y') }}</span></td>
-              <td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</span></td>
-              <td>
+<td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->warehouse ? $adj->warehouse->warehouse_name : 'N/A' }}</span></td>
+               <td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</span></td>
+               <td>
                 <span class="pc-badge {{ $adj->type === 'increase' ? 'pc-badge-inc' : 'pc-badge-dec' }}">
                   <i class="bi bi-{{ $adj->type === 'increase' ? 'plus' : 'dash' }}"></i>
                   {{ ucfirst($adj->type) }}
@@ -266,7 +267,7 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
               </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="pc-empty"><i class="bi bi-inbox"></i><span>No adjustments found.</span></td></tr>
+            <tr><td colspan="9" class="pc-empty"><i class="bi bi-inbox"></i><span>No adjustments found.</span></td></tr>
             @endforelse
           </tbody>
         </table>
@@ -284,8 +285,9 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
           <span class="adj-ref-ic"><i class="bi bi-arrow-left-right"></i></span>
           <div>
             <div class="adj-ref-no">{{ $adj->ref_no }}</div>
-            <div class="adj-date"><i class="bi bi-calendar3"></i>{{ \Carbon\Carbon::parse($adj->adjustment_date)->format('d-M-Y') }}</div>
-            <div class="adj-date" style="font-size:.7rem;color:#3b5bb3;font-weight:700;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</div>
+<div class="adj-date"><i class="bi bi-calendar3"></i>{{ \Carbon\Carbon::parse($adj->adjustment_date)->format('d-M-Y') }}</div>
+             <div class="adj-date" style="font-size:.7rem;color:#3b5bb3;font-weight:700;">{{ $adj->warehouse ? $adj->warehouse->warehouse_name : 'N/A' }}</div>
+             <div class="adj-date" style="font-size:.7rem;color:#3b5bb3;font-weight:700;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</div>
           </div>
         </div>
         <span class="pc-badge {{ $adj->type === 'increase' ? 'pc-badge-inc' : 'pc-badge-dec' }}">
