@@ -70,7 +70,7 @@ class StockAdjustmentController extends Controller
                 'notes'           => $request->notes,
                 'created_by'      => Auth::id(),
                 'branch_id'       => active_branch_id(),
-                'warehouse_id'    => ($request->warehouse_id ?: 1),
+                'warehouse_id'    => $request->warehouse_id ?: null,
             ]);
 
             foreach ($request->product_id as $idx => $productId) {
@@ -118,10 +118,14 @@ class StockAdjustmentController extends Controller
                      'notes'         => $request->item_note[$idx] ?? null,
                  ]);
  
-                 // Apply stock adjustment
-$stockQuery = Stock::where('product_id', $productId)
-                       ->where('branch_id', active_branch_id())
-                       ->where('warehouse_id', $request->warehouse_id ?: 1);
+                  // Apply stock adjustment
+                  $stockQuery = Stock::where('product_id', $productId)
+                      ->where('branch_id', active_branch_id());
+                  if ($request->warehouse_id) {
+                      $stockQuery->where('warehouse_id', $request->warehouse_id);
+                  } else {
+                      $stockQuery->whereNull('warehouse_id');
+                  }
  
                  if ($dbVariantId) {
                      $stockQuery->where('variant_id', $dbVariantId);
@@ -140,11 +144,11 @@ $stockQuery = Stock::where('product_id', $productId)
                  } elseif ($request->type === 'increase') {
 Stock::create([
                            'branch_id'    => active_branch_id(),
-                           'warehouse_id' => ($request->warehouse_id ?: 1),
-                          'product_id'   => $productId,
-                          'variant_id'   => $dbVariantId,
-                          'qty'          => $qtyStock,
-                      ]);
+                           'warehouse_id' => $request->warehouse_id ?: null,
+                           'product_id'   => $productId,
+                           'variant_id'   => $dbVariantId,
+                           'qty'          => $qtyStock,
+                       ]);
                  }
             }
 

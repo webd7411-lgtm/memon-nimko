@@ -406,28 +406,18 @@ class StockTransferController extends Controller
                 ->whereNull('warehouse_id');
 
             if (!empty($variantId)) {
-                $variantStock = (clone $query)->where('variant_id', $variantId)->sum('qty');
-                if ($variantStock > 0) {
-                    $totalQty = $variantStock;
-                } else {
-                    $totalQty = $query->sum('qty');
-                }
+                $totalQty = (clone $query)->where('variant_id', $variantId)->sum('qty');
             } else {
-                $totalQty = $query->sum('qty');
+                $totalQty = (clone $query)->whereNull('variant_id')->sum('qty');
             }
         } else {
             $query = WarehouseStock::where('product_id', $productId)
                 ->where('warehouse_id', $warehouseId);
 
             if (!empty($variantId)) {
-                $variantStock = (clone $query)->where('variant_id', $variantId)->sum('quantity');
-                if ($variantStock > 0) {
-                    $totalQty = $variantStock;
-                } else {
-                    $totalQty = $query->sum('quantity');
-                }
+                $totalQty = (clone $query)->where('variant_id', $variantId)->sum('quantity');
             } else {
-                $totalQty = $query->sum('quantity');
+                $totalQty = (clone $query)->whereNull('variant_id')->sum('quantity');
             }
         }
 

@@ -496,6 +496,7 @@ class SaleController extends Controller
             // Get real stock from stocks table for this variant
             $vStock = Stock::where('product_id', $product->id)
                 ->where('branch_id', $branchId)
+                ->whereNull('warehouse_id')
                 ->where('variant_id', $v->id)
                 ->first();
             
@@ -513,6 +514,7 @@ class SaleController extends Controller
         });
         $totalStock = Stock::where('product_id', $product->id)
             ->where('branch_id', $branchId)
+            ->whereNull('warehouse_id')
             ->sum('qty');
 
         return response()->json([
@@ -1749,9 +1751,6 @@ class SaleController extends Controller
                 count($prices)
             );
 
-            // Build a map of returns by code for updating original sale quantities
-            $returnByCode = []; // code => qty to reduce
-
             for ($i = 0; $i < $rows; $i++) {
                 $name = isset($product_names[$i]) ? trim($product_names[$i]) : '';
                 $pid  = isset($product_ids[$i]) ? trim($product_ids[$i]) : '';
@@ -1880,11 +1879,6 @@ class SaleController extends Controller
                     }
                 }
 
-                // accumulate for sale update
-                $key = $code ?: ($foundProduct ? ('ID_' . $foundProduct->id) : $name);
-                if (!isset($returnByCode[$key])) $returnByCode[$key] = 0;
-                $returnByCode[$key] += $qty;
-
                 $total_items += $qty;
             }
 
@@ -1917,68 +1911,6 @@ class SaleController extends Controller
             $saleReturn->total_items = $total_items;
             $saleReturn->return_note = $request->return_note ?? null;
             $saleReturn->save();
-
-            // -----------------------
-            // Update original Sale quantities by matching product_code positions.
-            // We will try to reduce quantities based on product_code matching. This handles multi-item sales correctly.
-            // -----------------------
-            // Convert sale comma fields to arrays
-            $sale_products  = array_map('trim', explode(',', $sale->product ?? ''));
-            $sale_codes     = array_map('trim', explode(',', $sale->product_code ?? ''));
-            $sale_qtys      = array_map('trim', explode(',', $sale->qty ?? ''));
-            $sale_prices    = array_map('trim', explode(',', $sale->per_price ?? ''));
-            $sale_totals    = array_map('trim', explode(',', $sale->per_total ?? ''));
-
-            // initialize numeric arrays safely
-            $sale_qtys = array_map(function ($v) {
-                return is_numeric($v) ? floatval($v) : 0;
-            }, $sale_qtys);
-            $sale_totals = array_map(function ($v) {
-                return is_numeric($v) ? floatval($v) : 0;
-            }, $sale_totals);
-            $sale_prices = array_map(function ($v) {
-                return is_numeric($v) ? floatval($v) : 0;
-            }, $sale_prices);
-
-            // For each returnByCode entry, reduce sale_qtys in first matching positions until consumed
-            foreach ($returnByCode as $codeKey => $qtyToReduce) {
-                // We stored keys as actual code string or 'ID_xxx' or name; prefer matching code
-                $matchCode = $codeKey;
-                if (strpos($codeKey, 'ID_') === 0) {
-                    // try to resolve to item_code via product id
-                    $pid = intval(substr($codeKey, 3));
-                    $prod = \App\Models\Product::find($pid);
-                    if ($prod) $matchCode = $prod->item_code;
-                }
-
-                // search through sale_codes left-to-right and reduce where equal
-                for ($j = 0; $j < count($sale_codes) && $qtyToReduce > 0; $j++) {
-                    $sc = trim($sale_codes[$j] ?? '');
-                    if ($sc === $matchCode) {
-                        $availableHere = $sale_qtys[$j] ?? 0;
-                        if ($availableHere <= 0) continue;
-                        $deduct = min($availableHere, $qtyToReduce);
-                        $sale_qtys[$j] = max(0, $sale_qtys[$j] - $deduct);
-
-                        // recalc per_total for that line using sale_prices[$j]
-                        $priceHere = $sale_prices[$j] ?? 0;
-                        $sale_totals[$j] = $priceHere * $sale_qtys[$j];
-
-                        $qtyToReduce -= $deduct;
-                    }
-                }
-                // if qtyToReduce still >0, we attempted best-effort; ignore remainder
-            }
-
-            // update sale fields back
-            $sale->qty = implode(',', $sale_qtys);
-            $sale->per_total = implode(',', $sale_totals);
-            $sale->total_net = array_sum($sale_totals);
-            $sale->total_bill_amount = $sale->total_net;
-            $sale->total_items = array_sum($sale_qtys);
-            // optionally update sale_status: mark as partially returned (1) or fully returned
-            $sale->sale_status = 1;
-            $sale->save();
 
             // -----------------------
             // Customer ledger update (simple)

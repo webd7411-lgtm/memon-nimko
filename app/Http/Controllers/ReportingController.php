@@ -111,7 +111,7 @@ class ReportingController extends Controller
             ->groupBy('purchase_return_items.product_id')
             ->get();
 
-        $currStocksQuery = DB::table('stocks')->whereIn('product_id', $productIds);
+        $currStocksQuery = DB::table('stocks')->whereIn('product_id', $productIds)->whereNull('warehouse_id');
         if (!is_all_branches()) {
             $currStocksQuery->where('branch_id', active_branch_id());
         }
@@ -155,32 +155,32 @@ class ReportingController extends Controller
         }
 
         $hasVariantIdInReturns = \Illuminate\Support\Facades\Schema::hasColumn('sales_returns', 'variant_id');
-        $allReturnsQuery = DB::table('sales_returns')->whereBetween('created_at', [$startDT, $endDT])->whereNotNull('product')->select('product', 'qty');
+        $allReturnsQuery = DB::table('sales_returns')
+            ->leftJoin('products', 'products.item_name', '=', 'sales_returns.product')
+            ->whereBetween('sales_returns.created_at', [$startDT, $endDT])->whereNotNull('sales_returns.product')
+            ->select('products.id as product_id', 'sales_returns.qty');
         if (!is_all_branches()) {
-            $allReturnsQuery->where('branch_id', active_branch_id());
+            $allReturnsQuery->where('sales_returns.branch_id', active_branch_id());
         }
         if ($hasVariantIdInReturns) {
-            $allReturnsQuery->addSelect('variant_id');
+            $allReturnsQuery->addSelect('sales_returns.variant_id');
         }
         if ($resetTime) {
-            $allReturnsQuery->where('created_at', '>=', $resetTime);
+            $allReturnsQuery->where('sales_returns.created_at', '>=', $resetTime);
         }
         $allReturns = $allReturnsQuery->get();
 
         $retMap = [];
         foreach ($allReturns as $r) {
-            $pids = explode(',', $r->product);
-            $qtys = explode(',', $r->qty);
-            $vids = $hasVariantIdInReturns ? explode(',', $r->variant_id ?? '') : [];
-            
-            foreach ($pids as $idx => $pid) {
-                $pid = trim($pid);
-                if ($pid === '') continue;
-                $vid = trim($vids[$idx] ?? '0');
-                if ($vid === '') $vid = '0';
-                $key = $pid . '_' . $vid;
-                $retMap[$key] = ($retMap[$key] ?? 0) + floatval($qtys[$idx] ?? 0);
+            $pid = $r->product_id;
+            if ($pid === null || $pid === '') continue;
+            $vid = '0';
+            if ($hasVariantIdInReturns && !empty($r->variant_id)) {
+                $vid = trim($r->variant_id);
             }
+            if ($vid === '') $vid = '0';
+            $key = $pid . '_' . $vid;
+            $retMap[$key] = ($retMap[$key] ?? 0) + floatval($r->qty);
         }
 
         // 3. Transactions AFTER end_date to perform backward calculation for Balance
@@ -279,6 +279,7 @@ class ReportingController extends Controller
             ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
             ->leftJoin('users as u', 'u.id', '=', 'sa.created_by')
             ->whereIn('sai.product_id', $productIds)
+            ->whereNull('sa.warehouse_id')  // ✅ Only branch-level adjustments (exclude warehouse-level)
             ->whereBetween('sa.adjustment_date', [$startDate, $endDate]);
         if (!is_all_branches()) {
             if ($hasSaBranchId) {
@@ -315,6 +316,7 @@ class ReportingController extends Controller
             ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
             ->leftJoin('users as u', 'u.id', '=', 'sa.created_by')
             ->whereIn('sai.product_id', $productIds)
+            ->whereNull('sa.warehouse_id')  // ✅ Only branch-level adjustments (exclude warehouse-level)
             ->where('sa.adjustment_date', '>', $endDate);
         if (!is_all_branches()) {
             if ($hasSaBranchId) {
@@ -501,10 +503,12 @@ class ReportingController extends Controller
                         $produced += (float)($mapProd[$p->id . '_0'] ?? 0);
                     }
 
-                    $pReturn   = (float)($mapPR[$p->id . '_0'] ?? 0); 
-                    if ($pReturn == 0) { }
-                    $sold      = (float)($soldMap[$key] ?? 0);
+                    $pReturn   = (float)($mapPR[$p->id . '_0'] ?? 0);
                     $sReturn   = (float)($retMap[$key] ?? 0);
+                    if ($v->is_default || $p->variants->first()->id == $v->id) {
+                        $sReturn += (float)($retMap[$p->id . '_0'] ?? 0);
+                    }
+                    $sold      = (float)($soldMap[$key] ?? 0);
                     $balance   = (float)($mapS[$key] ?? 0);
                     
                     // If this is default variant, also include base product stock if any
@@ -531,8 +535,8 @@ class ReportingController extends Controller
                     $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
                     $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
 
-                    $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $pReturn - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
-                    $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
+                    $openingStock = $balance;
+                    $closingStock = $openingStock + $produced + $purchased + $transferInQty + $adjInc + $sReturn - $pReturn - $transferQty - $adjDec - $sold;
 
                     $rows[] = [
                         'item_code'       => $code,
@@ -636,8 +640,8 @@ class ReportingController extends Controller
                 $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
                 $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
 
-                $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $pReturn - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
-                $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
+                $openingStock = $balance;
+                $closingStock = $openingStock + $produced + $purchased + $transferInQty + $adjInc + $sReturn - $pReturn - $transferQty - $adjDec - $sold;
 
                 $rows[] = [
                     'item_code'       => $code,
@@ -716,7 +720,7 @@ class ReportingController extends Controller
         $variants = $query->get();
         $productIds = $variants->pluck('product_id')->unique()->toArray();
         
-        $stocksQuery = DB::table('stocks')->whereIn('product_id', $productIds);
+        $stocksQuery = DB::table('stocks')->whereIn('product_id', $productIds)->whereNull('warehouse_id');
         if (!is_all_branches()) {
             $stocksQuery->where('branch_id', active_branch_id());
         }

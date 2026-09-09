@@ -449,7 +449,7 @@
         </a>
 
         <a href="{{ url('sale-returns') }}" class="sl-btn sl-btn-glass">
-          <i class="bi bi-arrow-return-left me-1"></i> Sale Returns
+          <i class="bi bi-arrow-counterclockwise me-1"></i> Sale Returns
         </a>
 
         <a href="{{ url()->previous() }}" class="sl-btn sl-btn-glass">
