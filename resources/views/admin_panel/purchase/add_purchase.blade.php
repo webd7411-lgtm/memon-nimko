@@ -894,8 +894,11 @@ $(document).ready(function() {
     $('#vBtns').html(b);
     if (p.variants && p.variants.length === 1) $('#vBtns .vbtn:first').trigger('click');
     $('#vModal').modal('show');
-    setTimeout(function() { $('#mQty').focus().select(); }, 350);
   }
+
+  $('#vModal').on('shown.bs.modal', function() {
+    $('#mQty').focus().select();
+  });
 
   $(document).on('click', '.vbtn', function() {
     $('.vbtn').removeClass('sel'); $(this).addClass('sel');

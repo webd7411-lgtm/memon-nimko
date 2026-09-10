@@ -36,9 +36,13 @@ class ReportingController extends Controller
         $startDT = $startDate . ' ' . $startTime;
         $endDT   = $endDate   . ' ' . $endTime;
 
-        // Check if there is a stock reset timestamp
+        // Check if there is a stock reset timestamp (branch-specific, with backward compatibility)
         $resetTime = null;
-        if (\Illuminate\Support\Facades\Storage::exists('stock_reset_timestamp.txt')) {
+        $branchIdForReset = active_branch_id();
+        $resetFileName = 'stock_reset_timestamp_' . $branchIdForReset . '.txt';
+        if (\Illuminate\Support\Facades\Storage::exists($resetFileName)) {
+            $resetTime = trim(\Illuminate\Support\Facades\Storage::get($resetFileName));
+        } elseif (\Illuminate\Support\Facades\Storage::exists('stock_reset_timestamp.txt')) {
             $resetTime = trim(\Illuminate\Support\Facades\Storage::get('stock_reset_timestamp.txt'));
         }
 
@@ -251,28 +255,26 @@ class ReportingController extends Controller
                 $soldAftMap[$key] = ($soldAftMap[$key] ?? 0) + floatval($qtys[$idx] ?? 0);
             }
         }
-
-        $allRetAfterQ = DB::table('sales_returns')->where('created_at', '>', $endDT)->whereNotNull('product')->select('product', 'qty');
+        $allRetAfterQ = DB::table('sales_returns')
+            ->leftJoin('products', 'products.item_name', '=', 'sales_returns.product')
+            ->where('sales_returns.created_at', '>', $endDT)->whereNotNull('sales_returns.product')
+            ->select('products.id as product_id', 'sales_returns.qty');
         if (!is_all_branches()) {
-            $allRetAfterQ->where('branch_id', active_branch_id());
+            $allRetAfterQ->where('sales_returns.branch_id', active_branch_id());
         }
-        if ($hasVariantIdInReturns) { $allRetAfterQ->addSelect('variant_id'); }
         if ($resetTime) {
-            $allRetAfterQ->where('created_at', '>=', $resetTime);
+            $allRetAfterQ->where('sales_returns.created_at', '>=', $resetTime);
         }
         $allRetAfter = $allRetAfterQ->get();
         
         $retAftMap = [];
         foreach ($allRetAfter as $r) {
-            $pids = explode(',', $r->product); $qtys = explode(',', $r->qty); $vids = $hasVariantIdInReturns ? explode(',', $r->variant_id ?? '') : [];
-            foreach ($pids as $idx => $pid) {
-                $pid = trim($pid); if ($pid === '') continue;
-                $vid = trim($vids[$idx] ?? '0'); if ($vid === '') $vid = '0';
-                $key = $pid . '_' . $vid;
-                $retAftMap[$key] = ($retAftMap[$key] ?? 0) + floatval($qtys[$idx] ?? 0);
-            }
+            $pid = $r->product_id;
+            if ($pid === null || $pid === '') continue;
+            $vid = '0';
+            $key = $pid . '_' . $vid;
+            $retAftMap[$key] = ($retAftMap[$key] ?? 0) + floatval($r->qty);
         }
-
         // ---- STOCK ADJUSTMENTS within date range ----
         $hasSaBranchId = \Illuminate\Support\Facades\Schema::hasColumn('stock_adjustments', 'branch_id');
         $adjInRangeQuery = DB::table('stock_adjustment_items as sai')
@@ -535,8 +537,13 @@ class ReportingController extends Controller
                     $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
                     $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
 
-                    $openingStock = $balance;
-                    $closingStock = $openingStock + $produced + $purchased + $transferInQty + $adjInc + $sReturn - $pReturn - $transferQty - $adjDec - $sold;
+                    $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
+                    $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
+
+                    if ($resetTime && $startDate >= substr($resetTime, 0, 10)) {
+                        $openingStock = 0;
+                        $closingStock = $balance;
+                    }
 
                     $rows[] = [
                         'item_code'       => $code,
@@ -626,7 +633,7 @@ class ReportingController extends Controller
                         $sReturn   += (float)($retMap[$vKey] ?? 0) * $mul;
                         $sRetAft   += (float)($retAftMap[$vKey] ?? 0) * $mul;
 
-                        $balance   += (float)($mapS[$vKey] ?? 0);
+                        $balance   += (float)($mapS[$vKey] ?? ($mapS[$p->id . '_0'] ?? 0));
                     }
                 }
 
@@ -640,8 +647,13 @@ class ReportingController extends Controller
                 $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
                 $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
 
-                $openingStock = $balance;
-                $closingStock = $openingStock + $produced + $purchased + $transferInQty + $adjInc + $sReturn - $pReturn - $transferQty - $adjDec - $sold;
+                $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
+                $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
+
+                if ($resetTime && $startDate >= substr($resetTime, 0, 10)) {
+                    $openingStock = 0;
+                    $closingStock = $balance;
+                }
 
                 $rows[] = [
                     'item_code'       => $code,

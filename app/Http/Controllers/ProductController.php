@@ -1002,20 +1002,34 @@ class ProductController extends Controller
                 'updated_at' => now()
             ]);
 
-            // 3. Reset all stock values in product_variants table
-            DB::table('product_variants')->update([
-                'stock_qty' => 0,
-                'updated_at' => now()
-            ]);
+            // 3. Reset stock values in product_variants for products that have stock in active branch
+            $branchProductsForReset = \DB::table('stocks')
+                ->where('branch_id', active_branch_id())
+                ->where('qty', '>', 0)
+                ->pluck('product_id')
+                ->toArray();
+            if (!empty($branchProductsForReset)) {
+                \DB::table('product_variants')
+                    ->whereIn('product_id', $branchProductsForReset)
+                    ->update([
+                        'stock_qty' => 0,
+                        'updated_at' => now()
+                    ]);
+            }
 
-            // 4. Reset initial_stock in products table
-            DB::table('products')->update([
-                'initial_stock' => 0,
-                'updated_at' => now()
-            ]);
+            // 4. Reset initial_stock in products that have stock in active branch
+            if (!empty($branchProductsForReset)) {
+                \DB::table('products')
+                    ->whereIn('id', $branchProductsForReset)
+                    ->update([
+                        'initial_stock' => 0,
+                        'updated_at' => now()
+                    ]);
+            }
 
-            // 5. Store reset timestamp in storage to filter stock reports
-            \Illuminate\Support\Facades\Storage::put('stock_reset_timestamp.txt', now()->toDateTimeString());
+            // 5. Store reset timestamp in storage to filter stock reports (branch-specific)
+            $branchIdForReset = active_branch_id();
+            \Illuminate\Support\Facades\Storage::put('stock_reset_timestamp_' . $branchIdForReset . '.txt', now()->toDateTimeString());
 
             DB::commit();
 

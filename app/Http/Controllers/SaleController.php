@@ -912,7 +912,8 @@ class SaleController extends Controller
                 // Default branch/warehouse to 1 for POS for now
                 $currentBranchId = active_branch_id();
                 $stockQuery = Stock::where('product_id', $product_id)
-                                   ->where('branch_id', $currentBranchId);
+                                   ->where('branch_id', $currentBranchId)
+                                   ->whereNull('warehouse_id');
                 
                 $prodModel = $productsMap[$product_id] ?? null;
                 $isGram = $prodModel && $prodModel->unit_type === 'kg';
@@ -950,10 +951,10 @@ class SaleController extends Controller
                         $stock->qty = $stock->qty - $deductQty;
                         $stock->save();
                     } else {
-                        $firstWh = \App\Models\Warehouse::where('branch_id', $currentBranchId)->value('id') ?? 1;
+                        // For shop sales, create with null warehouse (shop stock)
                         $stock = \App\Models\Stock::create([
                             'branch_id'  => $currentBranchId,
-                            'warehouse_id' => $firstWh,
+                            'warehouse_id' => null,
                             'product_id' => $product_id,
                             'variant_id' => $dbVariantId,
                             'qty'        => 0 - $deductQty,
@@ -1212,8 +1213,12 @@ class SaleController extends Controller
                     }
 
                     $stockQuery = \App\Models\Stock::where('product_id', $product_id)
-                                                    ->where('branch_id', 1)
-                                                    ->where('warehouse_id', 1);
+                                                    ->where('branch_id', $sale->branch_id);
+                    if (!empty($sale->warehouse_id)) {
+                        $stockQuery->where('warehouse_id', $sale->warehouse_id);
+                    } else {
+                        $stockQuery->whereNull('warehouse_id');
+                    }
                     if ($dbVariantId) $stockQuery->where('variant_id', $dbVariantId);
                     else $stockQuery->whereNull('variant_id');
                     $stock = $stockQuery->first();
@@ -1264,8 +1269,12 @@ class SaleController extends Controller
                     }
 
                     $stockQuery = \App\Models\Stock::where('product_id', $pid)
-                                                    ->where('branch_id', 1)
-                                                    ->where('warehouse_id', 1);
+                                                    ->where('branch_id', $sale->branch_id);
+                    if (!empty($sale->warehouse_id)) {
+                        $stockQuery->where('warehouse_id', $sale->warehouse_id);
+                    } else {
+                        $stockQuery->whereNull('warehouse_id');
+                    }
                     if ($dbVariantId) $stockQuery->where('variant_id', $dbVariantId);
                     else $stockQuery->whereNull('variant_id');
                     
@@ -1816,13 +1825,15 @@ class SaleController extends Controller
                 }
 
                 if ($foundProduct) {
-                    // Update stock: find stock row for product in same branch/warehouse
+                    // Update stock: find stock row for product in same branch/warehouse as the original sale
+                    $saleBranchId = $sale->branch_id ?? 1;
                     $stockQuery = \App\Models\Stock::where('product_id', $foundProduct->id)
-                                                    ->where('branch_id', 1)
-                                                    ->where('warehouse_id', 1);
+                                                    ->where('branch_id', $saleBranchId);
 
                     if (!empty($sale->warehouse_id)) {
                         $stockQuery->where('warehouse_id', $sale->warehouse_id);
+                    } else {
+                        $stockQuery->whereNull('warehouse_id');
                     }
 
                     // For KG items, we store stock in GRAMS and use variant_id = NULL
@@ -1860,11 +1871,12 @@ class SaleController extends Controller
                         $stock->save();
                     } else {
                         // Create if not exists (defensive)
+                        $saleBranchForCreate = $sale->branch_id ?? 1;
                         \App\Models\Stock::create([
                             'product_id'   => $foundProduct->id,
                             'variant_id'   => ($isKg ? null : (!empty($vId) ? $vId : null)),
-                            'branch_id'    => 1,
-                            'warehouse_id' => $sale->warehouse_id ?? 1,
+                            'branch_id'    => $saleBranchForCreate,
+                            'warehouse_id' => $sale->warehouse_id ?? null,
                             'qty'          => $returnQtyInDb
                         ]);
                     }

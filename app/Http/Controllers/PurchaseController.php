@@ -229,20 +229,22 @@ class PurchaseController extends Controller
                 if ($validated['purchase_to'] === 'shop') {
 
                     // ➕ SHOP STOCK
-                    $stock = Stock::where('branch_id', $currentBranchId)
+                    $stockQuery = Stock::where('branch_id', $currentBranchId)
                         ->where('product_id', $productId)
                         ->where('variant_id', $variantId)
-                        ->first();
+                        ->whereNull('warehouse_id');
+                    $stock = $stockQuery->first();
 
                     if ($stock) {
                         $stock->qty += $qtyStock;
                         $stock->save();
                     } else {
                         Stock::create([
-                            'branch_id'  => $currentBranchId,
-                            'product_id' => $productId,
-                            'variant_id' => $variantId,
-                            'qty'        => $qtyStock,
+                            'branch_id'     => $currentBranchId,
+                            'warehouse_id' => null,
+                            'product_id'  => $productId,
+                            'variant_id'  => $variantId,
+                            'qty'         => $qtyStock,
                         ]);
                     }
                 } else {
@@ -842,10 +844,11 @@ class PurchaseController extends Controller
             $last = \App\Models\PurchaseReturn::latest()->first();
             $invoice = 'RTN-' . str_pad(($last->id ?? 0) + 1, 5, '0', STR_PAD_LEFT);
 
+            $purchase = \App\Models\Purchase::find($validated['purchase_id']);
             $return = \App\Models\PurchaseReturn::create([
                 'purchase_id'    => $validated['purchase_id'],
                 'vendor_id'      => $validated['vendor_id'],
-                'warehouse_id'   => $validated['warehouse_id'] ?? null, // ✅ SAFE
+                'warehouse_id'   => $validated['warehouse_id'] ?? $purchase->warehouse_id ?? null, // ✅ COPY FROM PURCHASE IF FORM EMPTY
                 'return_invoice' => $invoice,
                 'return_date'    => $validated['return_date'],
                 'remarks'        => $request->remarks ?? null,
@@ -888,12 +891,14 @@ class PurchaseController extends Controller
 
                     $stock = \App\Models\WarehouseStock::where('warehouse_id', $originalPurchase->warehouse_id)
                         ->where('product_id', $productId)
+                        ->where('branch_id', $originalPurchase->branch_id)
                         ->first();
                 } else {
 
                     // SHOP stock
                     $stock = Stock::whereNull('warehouse_id')
                         ->where('product_id', $productId)
+                        ->where('branch_id', $originalPurchase->branch_id)
                         ->first();
                 }
 

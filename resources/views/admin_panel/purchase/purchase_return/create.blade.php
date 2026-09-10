@@ -395,6 +395,7 @@
                 if ($('.pr-return-row[data-product-id="' + productId + '"]').length) return;
                 let returnQtyDefault = (availableQty < 1) ? availableQty : 1;
                 buildReturnPair(productId, productName, itemCode, brand, unit, price, $row.data('item-note') || '', availableQty, returnQtyDefault);
+                setTimeout(function() { $('.pr-return-row[data-product-id="' + productId + '"] .qty-input').focus().select(); }, 100);
                 let displayAvail = parseFloat((availableQty - returnQtyDefault).toFixed(2));
                 $row.find('.available-qty').html('<span class="pr-badge pr-badge-avail">' + displayAvail + '</span>');
                 if (displayAvail <= 0) $row.find('.select-return-item').prop('disabled', true);
