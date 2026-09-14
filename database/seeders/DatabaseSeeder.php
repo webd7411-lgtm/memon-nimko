@@ -31,14 +31,6 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
         ]);
 
-        
-        $branchUser = User::updateOrCreate(
-                    ['email' => 'soban@soban.com'],
-                    [
-                        'name' => 'soban',
-                        'password' => Hash::make('soban')
-                    ]
-                );
         $adminUser = User::updateOrCreate(
                     ['email' => 'admin@admin.com'],
                     [
@@ -61,9 +53,6 @@ class DatabaseSeeder extends Seeder
 
         if ($adminUser) {
             $adminUser->syncRoles([$superAdminRole, $adminRole]);
-        }
-        if ($branchUser) {
-            $branchUser->syncRoles([$branchRole]);
         }
     }
 }

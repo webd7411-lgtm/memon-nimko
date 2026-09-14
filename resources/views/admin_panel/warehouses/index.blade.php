@@ -144,6 +144,18 @@
   transform: translateY(-1px);
 }
 
+.wh-btn-outline {
+  background: #ffffff;
+  color: #1e293b !important;
+  border: 1.5px solid #cbd5e1;
+}
+.wh-btn-outline:hover {
+  background: #f1f5f9;
+  color: #0f172a !important;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
 /* ═══════ KPI SUMMARY CARDS ═══════ */
 .wh-kpi-grid {
   display: grid;
@@ -603,7 +615,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="wh-btn wh-btn-glass text-dark border" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="wh-btn wh-btn-outline" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="wh-btn wh-btn-primary">
             <i class="bi bi-check-lg me-1"></i> Save Warehouse
           </button>

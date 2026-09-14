@@ -136,6 +136,18 @@
   transform: translateY(-1px);
 }
 
+.ev-btn-outline {
+  background: #ffffff;
+  color: #1e293b !important;
+  border: 1.5px solid #cbd5e1;
+}
+.ev-btn-outline:hover {
+  background: #f1f5f9;
+  color: #0f172a !important;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
 /* ═══════ KPI SUMMARY CARDS ═══════ */
 .ev-kpi-grid {
   display: grid;
@@ -580,7 +592,7 @@
           <button type="submit" class="ev-btn ev-btn-primary w-100">
             <i class="bi bi-filter me-1"></i> Filter
           </button>
-          <a href="{{ route('all-expense-vochers') }}" class="ev-btn ev-btn-glass text-dark border w-100">
+          <a href="{{ route('all-expense-vochers') }}" class="ev-btn ev-btn-outline w-100">
             <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
           </a>
         </div>
@@ -613,7 +625,7 @@
           <tbody>
             @foreach($vouchers as $voucher)
             <tr>
-              <td class="fw-bold">#{{ $voucher->id }}</td>
+              <td class="fw-bold" data-order="{{ $voucher->id }}">#{{ $voucher->id }}</td>
               <td>
                 <span class="badge bg-light text-dark border font-monospace fw-bold">
                   {{ $voucher->evid }}
@@ -646,7 +658,7 @@
               <td class="text-end fw-bold text-success">
                 Rs {{ number_format($voucher->total_amount, 2) }}
               </td>
-              <td>
+              <td data-order="{{ \Carbon\Carbon::parse($voucher->date)->format('Y-m-d') }}">
                 <span class="badge bg-light text-dark border fw-normal">
                   {{ \Carbon\Carbon::parse($voucher->date)->format('d-m-Y') }}
                 </span>
@@ -765,12 +777,9 @@ $(document).ready(function() {
             [10, 25, 50, "All"]
         ],
         order: [
-            [1, 'desc']
+            [0, 'desc']
         ],
-        columnDefs: [{
-            targets: 0,
-            orderable: false
-        }],
+        columnDefs: [],
         language: {
             search: "_INPUT_",
             searchPlaceholder: "Search vouchers..."

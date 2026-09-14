@@ -143,6 +143,18 @@
   transform: translateY(-1px);
 }
 
+.ws-btn-outline {
+  background: #ffffff;
+  color: #1e293b !important;
+  border: 1.5px solid #cbd5e1;
+}
+.ws-btn-outline:hover {
+  background: #f1f5f9;
+  color: #0f172a !important;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
 /* ═══════ KPI SUMMARY CARDS ═══════ */
 .ws-kpi-grid {
   display: grid;
@@ -448,7 +460,7 @@
         </a>
 
         <a id="exportStockAllBtn" href="javascript:void(0)" class="ws-btn ws-btn-glass">
-          <i class="bi bi-file-earmark-excel me-1 text-success"></i> Export All
+          <i class="bi bi-file-earmark-excel me-1" style="color: #4ade80;"></i> Export All
         </a>
 
         <button id="exportStockSelectedBtn" type="button" class="ws-btn ws-btn-glass">
@@ -536,7 +548,7 @@
           <button type="submit" class="ws-btn ws-btn-primary w-100">
             <i class="bi bi-filter me-1"></i> Filter
           </button>
-          <a href="{{ route('warehouse_stocks.index') }}" class="ws-btn ws-btn-glass text-dark border w-100">
+          <a href="{{ route('warehouse_stocks.index') }}" class="ws-btn ws-btn-outline w-100">
             <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
           </a>
         </div>
@@ -596,12 +608,12 @@
                 @endif
               </td>
               <td class="fw-bold text-dark" data-label="Product">{{ $stock->product?->item_name }}</td>
-              <td data-label="Unit"><span class="badge bg-secondary-subtle text-secondary">{{ $stock->product?->unit?->name ?? $stock->product?->unit_id }}</span></td>
+              <td data-label="Unit"><span class="badge bg-secondary-subtle text-secondary">{{ $stock->unit_label ?? strtoupper($stock->product?->unit_type ?? 'PC') }}</span></td>
               <td data-label="Brand">{{ $stock->product?->brand?->name ?? 'N/A' }}</td>
               <td class="fw-semibold" data-label="Price">PKR {{ number_format((float)($stock->product?->price ?? 0), 2) }}</td>
-              <td class="text-center fw-bold text-success" data-label="Shop Stock">{{ number_format($stock->shop_stock ?? 0, 2) }}</td>
-              <td class="text-center fw-bold text-primary" data-label="Whs Stock">{{ number_format($stock->warehouse_stock ?? ($stock->quantity ?? 0), 2) }}</td>
-              <td class="text-center fw-bold text-dark" data-label="Total Stock">{{ number_format($stock->total_stock ?? ($stock->quantity ?? 0), 2) }}</td>
+              <td class="text-center fw-bold text-success" data-label="Shop Stock">{{ ($stock->unit_label === 'KG') ? number_format($stock->shop_stock ?? 0, 3) . ' KG' : number_format($stock->shop_stock ?? 0, 0) }}</td>
+              <td class="text-center fw-bold text-primary" data-label="Whs Stock">{{ ($stock->unit_label === 'KG') ? number_format($stock->warehouse_stock ?? 0, 3) . ' KG' : number_format($stock->warehouse_stock ?? ($stock->quantity ?? 0), 0) }}</td>
+              <td class="text-center fw-bold text-dark" data-label="Total Stock">{{ ($stock->unit_label === 'KG') ? number_format($stock->total_stock ?? 0, 3) . ' KG' : number_format($stock->total_stock ?? ($stock->quantity ?? 0), 0) }}</td>
               <td data-label="Remarks"><small class="text-muted">{{ $stock->remarks ?? '—' }}</small></td>
             </tr>
             @endforeach

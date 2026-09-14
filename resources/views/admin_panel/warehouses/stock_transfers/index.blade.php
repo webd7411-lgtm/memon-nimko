@@ -649,7 +649,7 @@
               <input type="checkbox" class="row-checkbox form-check-input" value="{{ $transfer->id }}">
             </td>
 
-            <td>
+            <td data-order="{{ $transfer->id }}">
               <span class="fw-bold text-dark">#{{ $transfer->id }}</span>
             </td>
 
@@ -863,7 +863,8 @@ $(document).ready(function() {
             "searchPlaceholder": "Search transfers..."
         },
         "columnDefs": [
-            { "orderable": false, "targets": [0, 5, 7] }
+            { "orderable": false, "targets": [0, 5, 7] },
+            { "type": "num", "targets": 1 }
         ]
     });
 

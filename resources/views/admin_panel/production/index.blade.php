@@ -412,8 +412,8 @@
         <tbody>
           @forelse($entries as $e)
           <tr>
-            <td><span class="fw-bold text-dark">#{{ $e->entry_no }}</span></td>
-            <td>
+            <td data-order="{{ $e->id }}"><span class="fw-bold text-dark">#{{ $e->entry_no }}</span></td>
+            <td data-order="{{ \Carbon\Carbon::parse($e->production_date)->format('Y-m-d') }}">
               <span class="font-monospace text-muted">
                 {{ \Carbon\Carbon::parse($e->production_date)->format('d M Y') }}
               </span>
@@ -522,7 +522,7 @@
     $('#productionTable').DataTable({
       pageLength: 25,
       lengthMenu: [10, 25, 50, 100],
-      order: [[1, 'desc']],
+      order: [[1, 'desc'], [0, 'desc']],
       language: {
         search: "_INPUT_",
         searchPlaceholder: "Search production entries...",

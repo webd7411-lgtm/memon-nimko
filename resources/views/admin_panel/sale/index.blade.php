@@ -150,6 +150,18 @@
   transform: translateY(-1px);
 }
 
+.sl-btn-outline {
+  background: #ffffff;
+  color: #1e293b !important;
+  border: 1.5px solid #cbd5e1;
+}
+.sl-btn-outline:hover {
+  background: #f1f5f9;
+  color: #0f172a !important;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
 /* ═══════ CASHIER SUMMARY BADGES ═══════ */
 .cashier-chips {
   display: flex;
@@ -487,7 +499,7 @@
           <button id="btnFilter" class="sl-btn sl-btn-primary w-100">
             <i class="bi bi-funnel me-1"></i> Filter
           </button>
-          <button id="btnReset" class="sl-btn sl-btn-glass text-dark border w-100">
+          <button id="btnReset" class="sl-btn sl-btn-outline w-100">
             <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
           </button>
         </div>

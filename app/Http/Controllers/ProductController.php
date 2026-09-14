@@ -67,6 +67,7 @@ class ProductController extends Controller
                 if (!is_all_branches()) {
                     $q->where('branch_id', active_branch_id());
                 }
+                $q->whereNull('warehouse_id');
             }], 'qty')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {

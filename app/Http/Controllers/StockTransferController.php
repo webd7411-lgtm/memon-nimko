@@ -119,8 +119,13 @@ class StockTransferController extends Controller
                     continue;
                 }
 
-                $prodObj = Product::find($productId);
-                $isKgItem = $prodObj && ($prodObj->unit_type === 'kg');
+                $prodObj = Product::with('unit')->find($productId);
+                $unitStr = strtolower($prodObj->unit->name ?? '');
+                $prodNameStr = strtolower($prodObj->item_name ?? '');
+                $isKgItem = $prodObj && ($prodObj->unit_type === 'kg' || str_contains($unitStr, 'kg') || str_contains($unitStr, 'gram') || str_contains($prodNameStr, 'gram'));
+                if ($isKgItem) {
+                    $variantId = null;
+                }
                 $stockQtyToApply = $isKgItem ? ($qty * 1000) : $qty;
 
                 // ---------- SENDER DEDUCTION ----------
@@ -140,9 +145,10 @@ class StockTransferController extends Controller
                 } else {
                     $sourceStock = Stock::firstOrCreate(
                         [
-                            'product_id' => $productId,
-                            'variant_id' => $variantId,
-                            'branch_id'  => active_branch_id()
+                            'product_id'   => $productId,
+                            'variant_id'   => $variantId,
+                            'branch_id'    => active_branch_id(),
+                            'warehouse_id' => null,
                         ],
                         ['qty' => 0]
                     );
@@ -168,9 +174,10 @@ class StockTransferController extends Controller
                 } elseif ($transferTo === 'shop') {
                     $shopStock = Stock::firstOrCreate(
                         [
-                            'product_id' => $productId,
-                            'variant_id' => $variantId,
-                            'branch_id'  => active_branch_id()
+                            'product_id'   => $productId,
+                            'variant_id'   => $variantId,
+                            'branch_id'    => active_branch_id(),
+                            'warehouse_id' => null,
                         ],
                         ['qty' => 0]
                     );
@@ -244,15 +251,21 @@ class StockTransferController extends Controller
                 $variantId = $variantIds[$index] ?? null;
                 if ($variantId === 'null' || empty($variantId)) $variantId = null;
 
-                $prodObj = Product::find($productId);
-                $isKgItem = $prodObj && ($prodObj->unit_type === 'kg');
+                $prodObj = Product::with('unit')->find($productId);
+                $unitStr = strtolower($prodObj->unit->name ?? '');
+                $prodNameStr = strtolower($prodObj->item_name ?? '');
+                $isKgItem = $prodObj && ($prodObj->unit_type === 'kg' || str_contains($unitStr, 'kg') || str_contains($unitStr, 'gram') || str_contains($prodNameStr, 'gram'));
+                if ($isKgItem) {
+                    $variantId = null;
+                }
                 $stockQtyToApply = $isKgItem ? ($qty * 1000) : $qty;
 
                 $branchStock = Stock::firstOrCreate(
                     [
-                        'product_id' => $productId,
-                        'variant_id' => $variantId,
-                        'branch_id'  => $destBranchId
+                        'product_id'   => $productId,
+                        'variant_id'   => $variantId,
+                        'branch_id'    => $destBranchId,
+                        'warehouse_id' => null,
                     ],
                     ['qty' => 0]
                 );
@@ -300,8 +313,13 @@ class StockTransferController extends Controller
                 $variantId = $variantIds[$index] ?? null;
                 if ($variantId === 'null' || empty($variantId)) $variantId = null;
 
-                $prodObj = Product::find($productId);
-                $isKgItem = $prodObj && ($prodObj->unit_type === 'kg');
+                $prodObj = Product::with('unit')->find($productId);
+                $unitStr = strtolower($prodObj->unit->name ?? '');
+                $prodNameStr = strtolower($prodObj->item_name ?? '');
+                $isKgItem = $prodObj && ($prodObj->unit_type === 'kg' || str_contains($unitStr, 'kg') || str_contains($unitStr, 'gram') || str_contains($prodNameStr, 'gram'));
+                if ($isKgItem) {
+                    $variantId = null;
+                }
                 $stockQtyToApply = $isKgItem ? ($qty * 1000) : $qty;
 
                 if ($transfer->from_warehouse_id) {
@@ -319,9 +337,10 @@ class StockTransferController extends Controller
                 } else {
                     $sourceStock = Stock::firstOrCreate(
                         [
-                            'product_id' => $productId,
-                            'variant_id' => $variantId,
-                            'branch_id'  => $transfer->branch_id
+                            'product_id'   => $productId,
+                            'variant_id'   => $variantId,
+                            'branch_id'    => $transfer->branch_id,
+                            'warehouse_id' => null,
                         ],
                         ['qty' => 0]
                     );
@@ -385,14 +404,19 @@ class StockTransferController extends Controller
             $variantId = null;
         }
 
-        $product = Product::find($productId);
+        $product = Product::with('unit')->find($productId);
         if (!$product) {
             return response()->json(['quantity' => 0, 'unit' => '']);
         }
 
         $unitName = 'Pc';
-        if ($product->unit_type === 'kg') {
+        $unitStr = strtolower($product->unit->name ?? '');
+        $prodNameStr = strtolower($product->item_name ?? '');
+        $isKg = ($product->unit_type === 'kg') || str_contains($unitStr, 'kg') || str_contains($unitStr, 'gram') || str_contains($prodNameStr, 'gram');
+
+        if ($isKg) {
             $unitName = 'KG';
+            $variantId = null;
         } elseif ($product->unit) {
             $unitName = $product->unit->name ?? 'Pc';
         }
@@ -421,7 +445,7 @@ class StockTransferController extends Controller
             }
         }
 
-        if ($product->unit_type === 'kg') {
+        if ($isKg) {
             $displayQty = round($totalQty / 1000, 3);
         } else {
             $displayQty = round($totalQty, 2);

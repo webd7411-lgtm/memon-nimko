@@ -887,6 +887,15 @@ class PurchaseController extends Controller
                 $originalPurchase = \App\Models\Purchase::find($validated['purchase_id']);
                 $isWarehousePurchase = $originalPurchase && $originalPurchase->warehouse_id;
 
+                $productRecord = \App\Models\Product::with('unit')->find($productId);
+                $unitName = strtolower($productRecord->unit->name ?? '');
+                $prodName = strtolower($productRecord->item_name ?? '');
+                $isGram   = str_contains($unitName, 'gram') || str_contains($unitName, 'gm') || 
+                            str_contains($prodName, 'gram') || str_contains($prodName, ' gm') || 
+                            ($productRecord->unit_type ?? '') === 'kg';
+                
+                $qtyDeductStock = $isGram ? ($qty * 1000) : $qty;
+
                 if ($isWarehousePurchase) {
 
                     $stock = \App\Models\WarehouseStock::where('warehouse_id', $originalPurchase->warehouse_id)
@@ -905,9 +914,9 @@ class PurchaseController extends Controller
 
                 if ($stock) {
                     if ($isWarehousePurchase) {
-                        $stock->quantity -= $qty;
+                        $stock->quantity -= $qtyDeductStock;
                     } else {
-                        $stock->qty -= $qty;
+                        $stock->qty -= $qtyDeductStock;
                     }
                     $stock->save();
                 }

@@ -542,7 +542,7 @@
               $remaining = $totalNet - $paid;
             @endphp
             <tr>
-              <td class="fw-bold" data-label="#">#{{ $booking->id }}</td>
+              <td class="fw-bold" data-label="#" data-order="{{ $booking->id }}">#{{ $booking->id }}</td>
               <td class="fw-bold text-dark" data-label="Customer">
                 {{ $booking->customer_relation->customer_name ?? 'Walk-in Customer' }}
               </td>
@@ -596,7 +596,7 @@
                 @endif
               </td>
 
-              <td data-label="Date">
+              <td data-label="Date" data-order="{{ $booking->created_at->format('Y-m-d H:i:s') }}">
                 <span class="badge bg-light text-dark border fw-normal">
                   {{ $booking->created_at->format('d-m-Y') }}
                 </span>
@@ -646,6 +646,7 @@ $(document).ready(function() {
   }
   $('.datanew').DataTable({
     "pageLength": 25,
+    "order": [[0, 'desc']],
     "language": {
       "search": "_INPUT_",
       "searchPlaceholder": "Search bookings..."

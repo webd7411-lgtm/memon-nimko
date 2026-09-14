@@ -88,6 +88,7 @@ class ReportingController extends Controller
         $productionsQuery = DB::table('production_entry_items')
             ->join('production_entries', 'production_entries.id', '=', 'production_entry_items.production_entry_id')
             ->whereIn('production_entry_items.product_id', $productIds)
+            ->whereNull('production_entries.warehouse_id')
             ->whereDate('production_entries.production_date', '>=', $startDate)
             ->whereDate('production_entries.production_date', '<=', $endDate);
         if (!is_all_branches()) {
@@ -158,33 +159,96 @@ class ReportingController extends Controller
             }
         }
 
-        $hasVariantIdInReturns = \Illuminate\Support\Facades\Schema::hasColumn('sales_returns', 'variant_id');
+        $hasVariantIdInReturns   = \Illuminate\Support\Facades\Schema::hasColumn('sales_returns', 'variant_id');
+        $hasProductCodeInReturns = \Illuminate\Support\Facades\Schema::hasColumn('sales_returns', 'product_code');
+        
         $allReturnsQuery = DB::table('sales_returns')
-            ->leftJoin('products', 'products.item_name', '=', 'sales_returns.product')
-            ->whereBetween('sales_returns.created_at', [$startDT, $endDT])->whereNotNull('sales_returns.product')
-            ->select('products.id as product_id', 'sales_returns.qty');
+            ->whereBetween('created_at', [$startDT, $endDT])
+            ->whereNotNull('product')
+            ->select('product', 'qty');
         if (!is_all_branches()) {
-            $allReturnsQuery->where('sales_returns.branch_id', active_branch_id());
+            $allReturnsQuery->where('branch_id', active_branch_id());
         }
         if ($hasVariantIdInReturns) {
-            $allReturnsQuery->addSelect('sales_returns.variant_id');
+            $allReturnsQuery->addSelect('variant_id');
+        }
+        if ($hasProductCodeInReturns) {
+            $allReturnsQuery->addSelect('product_code');
         }
         if ($resetTime) {
-            $allReturnsQuery->where('sales_returns.created_at', '>=', $resetTime);
+            $allReturnsQuery->where('created_at', '>=', $resetTime);
         }
         $allReturns = $allReturnsQuery->get();
 
+        $productMapByName = [];
+        $productMapById   = [];
+        $productMapByCode = [];
+        foreach ($products as $prodItem) {
+            $productMapById[$prodItem->id] = $prodItem->id;
+            
+            $cleanName = trim(strtolower($prodItem->item_name));
+            if ($cleanName !== '') {
+                $productMapByName[$cleanName] = $prodItem->id;
+            }
+
+            $cleanCode = trim(strtolower($prodItem->item_code));
+            if ($cleanCode !== '') {
+                $productMapByCode[$cleanCode] = $prodItem->id;
+            }
+
+            if ($prodItem->variants) {
+                foreach ($prodItem->variants as $vItem) {
+                    $vLabel = trim(strtolower($vItem->size_label ?: $vItem->variant_name));
+                    if ($vLabel !== '') {
+                        $fullName = $cleanName . ' (' . $vLabel . ')';
+                        $productMapByName[$fullName] = $prodItem->id;
+                        $productMapByName[$vLabel] = $prodItem->id;
+                    }
+                }
+            }
+        }
+
         $retMap = [];
         foreach ($allReturns as $r) {
-            $pid = $r->product_id;
-            if ($pid === null || $pid === '') continue;
-            $vid = '0';
-            if ($hasVariantIdInReturns && !empty($r->variant_id)) {
-                $vid = trim($r->variant_id);
+            $pnames = explode(',', $r->product ?? '');
+            $pcodes = $hasProductCodeInReturns ? explode(',', $r->product_code ?? '') : [];
+            $qtys   = explode(',', $r->qty ?? '');
+            $vids   = $hasVariantIdInReturns ? explode(',', $r->variant_id ?? '') : [];
+
+            foreach ($pnames as $idx => $pNameOrId) {
+                $pNameOrId = trim($pNameOrId);
+                if ($pNameOrId === '') continue;
+
+                $pid = null;
+                if (is_numeric($pNameOrId) && isset($productMapById[(int)$pNameOrId])) {
+                    $pid = (int)$pNameOrId;
+                } else {
+                    $lowerStr = strtolower($pNameOrId);
+                    $pid = $productMapByName[$lowerStr] ?? ($productMapByCode[$lowerStr] ?? null);
+
+                    if (!$pid && isset($pcodes[$idx])) {
+                        $cCode = trim(strtolower($pcodes[$idx]));
+                        $pid = $productMapByCode[$cCode] ?? null;
+                    }
+
+                    if (!$pid) {
+                        foreach ($products as $prodItem) {
+                            $pNameLower = strtolower($prodItem->item_name);
+                            if ($pNameLower !== '' && (str_contains($lowerStr, $pNameLower) || str_contains($pNameLower, $lowerStr))) {
+                                $pid = $prodItem->id;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!$pid) continue;
+
+                $vid = trim($vids[$idx] ?? '0');
+                if ($vid === '') $vid = '0';
+                $key = $pid . '_' . $vid;
+                $retMap[$key] = ($retMap[$key] ?? 0) + floatval($qtys[$idx] ?? 0);
             }
-            if ($vid === '') $vid = '0';
-            $key = $pid . '_' . $vid;
-            $retMap[$key] = ($retMap[$key] ?? 0) + floatval($r->qty);
         }
 
         // 3. Transactions AFTER end_date to perform backward calculation for Balance
@@ -207,6 +271,7 @@ class ReportingController extends Controller
         $prodAfterQuery = DB::table('production_entry_items')
             ->join('production_entries', 'production_entries.id', '=', 'production_entry_items.production_entry_id')
             ->whereIn('production_entry_items.product_id', $productIds)
+            ->whereNull('production_entries.warehouse_id')
             ->whereDate('production_entries.production_date', '>', $endDate);
         if (!is_all_branches()) {
             $prodAfterQuery->where('production_entries.branch_id', active_branch_id());
@@ -256,24 +321,64 @@ class ReportingController extends Controller
             }
         }
         $allRetAfterQ = DB::table('sales_returns')
-            ->leftJoin('products', 'products.item_name', '=', 'sales_returns.product')
-            ->where('sales_returns.created_at', '>', $endDT)->whereNotNull('sales_returns.product')
-            ->select('products.id as product_id', 'sales_returns.qty');
+            ->where('created_at', '>', $endDT)
+            ->whereNotNull('product')
+            ->select('product', 'qty');
         if (!is_all_branches()) {
-            $allRetAfterQ->where('sales_returns.branch_id', active_branch_id());
+            $allRetAfterQ->where('branch_id', active_branch_id());
+        }
+        if ($hasVariantIdInReturns) {
+            $allRetAfterQ->addSelect('variant_id');
+        }
+        if ($hasProductCodeInReturns) {
+            $allRetAfterQ->addSelect('product_code');
         }
         if ($resetTime) {
-            $allRetAfterQ->where('sales_returns.created_at', '>=', $resetTime);
+            $allRetAfterQ->where('created_at', '>=', $resetTime);
         }
         $allRetAfter = $allRetAfterQ->get();
         
         $retAftMap = [];
         foreach ($allRetAfter as $r) {
-            $pid = $r->product_id;
-            if ($pid === null || $pid === '') continue;
-            $vid = '0';
-            $key = $pid . '_' . $vid;
-            $retAftMap[$key] = ($retAftMap[$key] ?? 0) + floatval($r->qty);
+            $pnames = explode(',', $r->product ?? '');
+            $pcodes = $hasProductCodeInReturns ? explode(',', $r->product_code ?? '') : [];
+            $qtys   = explode(',', $r->qty ?? '');
+            $vids   = $hasVariantIdInReturns ? explode(',', $r->variant_id ?? '') : [];
+
+            foreach ($pnames as $idx => $pNameOrId) {
+                $pNameOrId = trim($pNameOrId);
+                if ($pNameOrId === '') continue;
+
+                $pid = null;
+                if (is_numeric($pNameOrId) && isset($productMapById[(int)$pNameOrId])) {
+                    $pid = (int)$pNameOrId;
+                } else {
+                    $lowerStr = strtolower($pNameOrId);
+                    $pid = $productMapByName[$lowerStr] ?? ($productMapByCode[$lowerStr] ?? null);
+
+                    if (!$pid && isset($pcodes[$idx])) {
+                        $cCode = trim(strtolower($pcodes[$idx]));
+                        $pid = $productMapByCode[$cCode] ?? null;
+                    }
+
+                    if (!$pid) {
+                        foreach ($products as $prodItem) {
+                            $pNameLower = strtolower($prodItem->item_name);
+                            if ($pNameLower !== '' && (str_contains($lowerStr, $pNameLower) || str_contains($pNameLower, $lowerStr))) {
+                                $pid = $prodItem->id;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!$pid) continue;
+
+                $vid = trim($vids[$idx] ?? '0');
+                if ($vid === '') $vid = '0';
+                $key = $pid . '_' . $vid;
+                $retAftMap[$key] = ($retAftMap[$key] ?? 0) + floatval($qtys[$idx] ?? 0);
+            }
         }
         // ---- STOCK ADJUSTMENTS within date range ----
         $hasSaBranchId = \Illuminate\Support\Facades\Schema::hasColumn('stock_adjustments', 'branch_id');
@@ -351,8 +456,16 @@ class ReportingController extends Controller
         }
 
         // ---- STOCK TRANSFERS (OUT) within date range ----
+        // Stock leaving Shop: source is Shop (from_warehouse_id is null / '' / 'Shop' / 0)
         $transferOutQuery = DB::table('stock_transfers')
-            ->whereBetween('created_at', [$startDT, $endDT]);
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$startDT, $endDT])
+            ->where(function($q) {
+                $q->whereNull('from_warehouse_id')
+                  ->orWhere('from_warehouse_id', '')
+                  ->orWhere('from_warehouse_id', 'Shop')
+                  ->orWhere('from_warehouse_id', 0);
+            });
         if (!is_all_branches()) {
             $transferOutQuery->where('branch_id', active_branch_id());
         }
@@ -391,10 +504,23 @@ class ReportingController extends Controller
         }
 
         // ---- STOCK TRANSFERS (IN) within date range ----
+        // Stock entering Shop: destination is active branch shop
         $transferInQuery = DB::table('stock_transfers')
-            ->where('transfer_to', 'branch')
-            ->where('to_branch_id', active_branch_id())
-            ->whereBetween('created_at', [$startDT, $endDT]);
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$startDT, $endDT])
+            ->where(function($q) {
+                $activeBranchId = active_branch_id();
+                $q->where(function($sq) use ($activeBranchId) {
+                    $sq->where('transfer_to', 'branch')
+                       ->where('to_branch_id', $activeBranchId);
+                })->orWhere(function($sq) use ($activeBranchId) {
+                    $sq->where('transfer_to', 'shop')
+                       ->where('branch_id', $activeBranchId);
+                })->orWhere(function($sq) use ($activeBranchId) {
+                    $sq->where('to_branch_id', $activeBranchId)
+                       ->whereNull('to_warehouse_id');
+                });
+            });
         if ($resetTime) {
             $transferInQuery->where('created_at', '>=', $resetTime);
         }
@@ -431,7 +557,14 @@ class ReportingController extends Controller
 
         // ---- STOCK TRANSFERS (OUT) AFTER end_date ----
         $transferOutAfterQuery = DB::table('stock_transfers')
-            ->where('created_at', '>', $endDT);
+            ->where('status', 'completed')
+            ->where('created_at', '>', $endDT)
+            ->where(function($q) {
+                $q->whereNull('from_warehouse_id')
+                  ->orWhere('from_warehouse_id', '')
+                  ->orWhere('from_warehouse_id', 'Shop')
+                  ->orWhere('from_warehouse_id', 0);
+            });
         if (!is_all_branches()) {
             $transferOutAfterQuery->where('branch_id', active_branch_id());
         }
@@ -460,9 +593,21 @@ class ReportingController extends Controller
 
         // ---- STOCK TRANSFERS (IN) AFTER end_date ----
         $transferInAfterQuery = DB::table('stock_transfers')
-            ->where('transfer_to', 'branch')
-            ->where('to_branch_id', active_branch_id())
-            ->where('created_at', '>', $endDT);
+            ->where('status', 'completed')
+            ->where('created_at', '>', $endDT)
+            ->where(function($q) {
+                $activeBranchId = active_branch_id();
+                $q->where(function($sq) use ($activeBranchId) {
+                    $sq->where('transfer_to', 'branch')
+                       ->where('to_branch_id', $activeBranchId);
+                })->orWhere(function($sq) use ($activeBranchId) {
+                    $sq->where('transfer_to', 'shop')
+                       ->where('branch_id', $activeBranchId);
+                })->orWhere(function($sq) use ($activeBranchId) {
+                    $sq->where('to_branch_id', $activeBranchId)
+                       ->whereNull('to_warehouse_id');
+                });
+            });
         if ($resetTime) {
             $transferInAfterQuery->where('created_at', '>=', $resetTime);
         }
@@ -570,35 +715,39 @@ class ReportingController extends Controller
                 $code = $p->item_code;
 
                 $purchased_kg = (float)($mapP[$key] ?? 0);
-                $produced  = (float)($mapProd[$key] ?? 0); // already in grams from qty_stock
-                $pReturn   = (float)($mapPR[$p->id . '_0'] ?? 0);
-                $balance   = (float)($mapS[$key] ?? 0); // already in grams
+                $produced     = (float)($mapProd[$key] ?? 0); // already in grams from qty_stock
+                $pReturn_kg   = (float)($mapPR[$p->id . '_0'] ?? 0);
+                $balance      = (float)($mapS[$key] ?? 0); // already in grams
 
-                // For KG products: purchased qty in purchase_items is in KG → convert to grams
+                // For KG products: purchased & purchase return qty in DB is in KG → convert to grams
                 // For KG products: sold qty in sales is in KG → convert to grams
                 $rawSold    = (float)($soldMap[$key] ?? 0);
                 $rawSReturn = (float)($retMap[$key] ?? 0);
                 
                 $purchAft_kg = (float)($mapPAft[$key] ?? 0);
                 $prodAft     = (float)($mapProdAft[$key] ?? 0); 
-                $prAft       = (float)($mapPRAft[$p->id . '_0'] ?? 0);
+                $prAft_kg   = (float)($mapPRAft[$p->id . '_0'] ?? 0);
                 $rawSoldAft  = (float)($soldAftMap[$key] ?? 0);
                 $rawSRetAft  = (float)($retAftMap[$key] ?? 0);
 
                 if ($is_kg) {
                     $purchased = $purchased_kg * 1000;
+                    $pReturn   = $pReturn_kg * 1000;
                     $sold      = $rawSold * 1000;
                     $sReturn   = $rawSReturn * 1000;
 
                     $purchAft = $purchAft_kg * 1000;
+                    $prAft    = $prAft_kg * 1000;
                     $soldAft  = $rawSoldAft * 1000;
                     $sRetAft  = $rawSRetAft * 1000;
                 } else {
                     $purchased = $purchased_kg;
+                    $pReturn   = $pReturn_kg;
                     $sold      = $rawSold;
                     $sReturn   = $rawSReturn;
 
                     $purchAft = $purchAft_kg;
+                    $prAft    = $prAft_kg;
                     $soldAft  = $rawSoldAft;
                     $sRetAft  = $rawSRetAft;
                 }
@@ -624,8 +773,10 @@ class ReportingController extends Controller
                         $produced  += (float)($mapProd[$vKey] ?? 0);
                         $prodAft   += (float)($mapProdAft[$vKey] ?? 0);
 
-                        $pReturn   += (float)($mapPR[$vKey] ?? 0);
-                        $prAft     += (float)($mapPRAft[$vKey] ?? 0);
+                        $vPRetRaw  = (float)($mapPR[$vKey] ?? 0);
+                        $vPRAftRaw = (float)($mapPRAft[$vKey] ?? 0);
+                        $pReturn   += $vPRetRaw * 1000;
+                        $prAft     += $vPRAftRaw * 1000;
 
                         $sold      += (float)($soldMap[$vKey] ?? 0) * $mul;
                         $soldAft   += (float)($soldAftMap[$vKey] ?? 0) * $mul;
@@ -633,7 +784,7 @@ class ReportingController extends Controller
                         $sReturn   += (float)($retMap[$vKey] ?? 0) * $mul;
                         $sRetAft   += (float)($retAftMap[$vKey] ?? 0) * $mul;
 
-                        $balance   += (float)($mapS[$vKey] ?? ($mapS[$p->id . '_0'] ?? 0));
+                        $balance   += (float)($mapS[$vKey] ?? 0);
                     }
                 }
 
@@ -642,10 +793,22 @@ class ReportingController extends Controller
                 $adjIncAft = (float)($mapAdjIncAft[$p->id . '_0'] ?? 0);
                 $adjDecAft = (float)($mapAdjDecAft[$p->id . '_0'] ?? 0);
 
-                $transferQty = (float)($mapTransfer[$p->id . '_0'] ?? 0);
-                $transferInQty = (float)($mapTransferIn[$p->id . '_0'] ?? 0);
-                $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
-                $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
+                $rawTransferQty   = (float)($mapTransfer[$p->id . '_0'] ?? 0);
+                $rawTransferInQty = (float)($mapTransferIn[$p->id . '_0'] ?? 0);
+                $rawTransferAft   = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
+                $rawTransferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
+
+                if ($is_kg) {
+                    $transferQty   = $rawTransferQty * 1000;
+                    $transferInQty = $rawTransferInQty * 1000;
+                    $transferAft   = $rawTransferAft * 1000;
+                    $transferInAft = $rawTransferInAft * 1000;
+                } else {
+                    $transferQty   = $rawTransferQty;
+                    $transferInQty = $rawTransferInQty;
+                    $transferAft   = $rawTransferAft;
+                    $transferInAft = $rawTransferInAft;
+                }
 
                 $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
                 $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
@@ -773,7 +936,13 @@ class ReportingController extends Controller
             $label = $v->size_label ?: $v->variant_name ?: ('Size ' . $v->size_value . ' ' . $v->size_unit);
             $vid   = $v->variant_id;
 
-            $rawStock = isset($stocksMap[$pid][$vid]) ? (float)$stocksMap[$pid][$vid] : (float)$v->stock_qty;
+            if (isset($stocksMap[$pid][$vid])) {
+                $rawStock = (float)$stocksMap[$pid][$vid];
+            } elseif (isset($nullStocksMap[$pid])) {
+                $rawStock = 0;
+            } else {
+                $rawStock = (float)$v->stock_qty;
+            }
 
             // Combine unassigned main product stock (variant_id IS NULL) with default variant or single variant
             if (($v->is_default || count($productVariantCounts[$pid] ?? []) === 1) && isset($nullStocksMap[$pid])) {

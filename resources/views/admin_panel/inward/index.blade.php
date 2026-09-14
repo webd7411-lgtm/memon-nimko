@@ -106,7 +106,7 @@
                                                     <td>
                                                         <input type="checkbox" class="row-check-gatepass">
                                                     </td>
-                                                    <td>{{ $gp->id }}</td>
+                                                    <td data-order="{{ $gp->id }}">{{ $gp->id }}</td>
 
                                                     <!-- Inv -->
                                                     <td style="white-space:nowrap;">
@@ -149,7 +149,7 @@
                                                     </td>
 
                                                     <!-- Date -->
-                                                    <td style="white-space:nowrap;">
+                                                    <td style="white-space:nowrap;" data-order="{{ \Carbon\Carbon::parse($gp->gatepass_date)->format('Y-m-d') }}">
                                                         {{ \Carbon\Carbon::parse($gp->gatepass_date)->format('d-m-Y') }}
                                                     </td>
 
@@ -274,7 +274,7 @@
             "pageLength": 10,
             "lengthMenu": [5, 10, 25, 50, 100],
             "order": [
-                [0, 'desc']
+                [1, 'desc']
             ],
             "language": {
                 "search": "Search Gatepass:",

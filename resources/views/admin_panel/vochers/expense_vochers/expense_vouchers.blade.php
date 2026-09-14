@@ -136,6 +136,18 @@
   transform: translateY(-1px);
 }
 
+.evf-btn-outline {
+  background: #ffffff;
+  color: #1e293b !important;
+  border: 1.5px solid #cbd5e1;
+}
+.evf-btn-outline:hover {
+  background: #f1f5f9;
+  color: #0f172a !important;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
 /* ═══════ FORM CARD ═══════ */
 .evf-card {
   background: var(--evf-surface);
@@ -320,7 +332,7 @@
           <button type="submit" class="evf-btn evf-btn-primary px-4">
             <i class="bi bi-save me-1"></i> Save Voucher
           </button>
-          <a href="{{ url()->previous() }}" class="evf-btn evf-btn-glass text-dark border">
+          <a href="{{ url()->previous() }}" class="evf-btn evf-btn-outline">
             <i class="bi bi-x-circle me-1"></i> Cancel
           </a>
         </div>

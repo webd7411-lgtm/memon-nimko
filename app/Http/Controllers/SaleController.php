@@ -288,7 +288,7 @@ class SaleController extends Controller
         $branchId = active_branch_id();
         $query = Product::with(['brand', 'stock', 'variants', 'activeDiscount', 'category_relation'])
             ->withSum(['stocks as total_stock' => function($q) use ($branchId) {
-                $q->where('branch_id', $branchId);
+                $q->where('branch_id', $branchId)->whereNull('warehouse_id');
             }], 'qty');
 
         if ($q !== '') {
@@ -368,7 +368,7 @@ class SaleController extends Controller
         $branchId = active_branch_id();
         $products = Product::with(['brand', 'stock', 'variants', 'activeDiscount', 'category_relation'])
             ->withSum(['stocks as total_stock' => function($q) use ($branchId) {
-                $q->where('branch_id', $branchId);
+                $q->where('branch_id', $branchId)->whereNull('warehouse_id');
             }], 'qty')
             ->whereIn('id', $ids)
             ->get()
@@ -871,7 +871,13 @@ class SaleController extends Controller
             // Using logic from loop: we need stock for each product
             $stocksMap = \App\Models\Stock::whereIn('product_id', $unique_product_ids)->get()->keyBy('product_id');
 
+            $processedProducts = [];
             foreach ($product_ids as $index => $product_id) {
+                if (in_array($product_id, $processedProducts)) {
+                    continue;
+                }
+                $processedProducts[] = $product_id;
+                
                 $qty   = isset($quantities[$index]) ? floatval($quantities[$index]) : 0;
                 $price = isset($prices[$index]) ? floatval($prices[$index]) : 0;
 
@@ -2285,25 +2291,25 @@ class SaleController extends Controller
                 }
 
                 $stockQuery = \App\Models\Stock::where('product_id', $product_id)
-                                                ->where('branch_id', 1)
-                                                ->where('warehouse_id', 1);
+                                                ->where('branch_id', $sale->branch_id)
+                                                ->whereNull('warehouse_id');
                 if ($dbVariantId) {
                     $stockQuery->where('variant_id', $dbVariantId);
                 } else {
                     $stockQuery->whereNull('variant_id');
                 }
                 $stock = $stockQuery->first();
-
+                
                 if ($stock) {
                     $stock->qty -= $deductQtyDiff;
                     $stock->save();
                 } else {
                     \App\Models\Stock::create([
-                        'branch_id'  => 1,
-                        'warehouse_id' => 1,
+                        'branch_id'  => $sale->branch_id,
+                        'warehouse_id' => null,
                         'product_id' => $product_id,
                         'variant_id' => $dbVariantId ?: null,
-                        'qty'        => -$deductQtyDiff,
+                        'qty'        => -$deductQtyDiff
                     ]);
                 }
             }

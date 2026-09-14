@@ -625,7 +625,7 @@
             <tbody>
               @forelse ($Purchase as $purchase)
               <tr @if($purchase->return) class="pi-returned" @endif>
-                <td data-label="#" class="fw-semibold" style="color:var(--pi-text-muted);">{{ $purchase->id }}</td>
+                <td data-label="#" class="fw-semibold" style="color:var(--pi-text-muted);" data-order="{{ $purchase->id }}">{{ $purchase->id }}</td>
 
                 <td data-label="Invoice">
                   @if($purchase instanceof \App\Models\InwardGatepass)
@@ -694,7 +694,8 @@
 
                 <td data-label="Due" class="pi-amount pi-amount-due">{{ number_format($purchase->due_amount ?? 0, 2) }}</td>
 
-                <td data-label="Date" style="font-size:.82rem;color:var(--pi-text-sec);white-space:nowrap;">
+                <td data-label="Date" style="font-size:.82rem;color:var(--pi-text-sec);white-space:nowrap;"
+                  data-order="{{ \Carbon\Carbon::parse($purchase instanceof \App\Models\InwardGatepass ? $purchase->gatepass_date : $purchase->purchase_date)->format('Y-m-d') }}">
                   {{ \Carbon\Carbon::parse(
                     $purchase instanceof \App\Models\InwardGatepass
                       ? $purchase->gatepass_date
@@ -815,7 +816,8 @@
     $('#pi-table').DataTable({
       pageLength: 10,
       lengthMenu: [5, 10, 25, 50, 100],
-      ordering: false,
+      ordering: true,
+      order: [[0, 'desc']],
       language: {
         search: "Search Purchase:",
         lengthMenu: "Show _MENU_ entries",

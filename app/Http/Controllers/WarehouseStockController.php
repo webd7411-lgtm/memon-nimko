@@ -19,42 +19,30 @@ class WarehouseStockController extends Controller
         $warehouseFilter = $request->warehouse_id;
 
         /* ======================================================
-       1️⃣ PRODUCTS (BASE = 3754)
+       1️⃣ PRODUCTS
     ====================================================== */
-        $products = Product::with('unit','brand')->get();
+        $products = Product::with('unit', 'brand')->get();
+
         /* ======================================================
-       2️⃣ SHOP STOCK (DATE + BRANCH FILTER)
+       2️⃣ SHOP STOCK — current balance from stocks table (same as Item Stock Report)
+          stocks table has one row per product per variant per branch — SUM gives current total
     ====================================================== */
-        $shopQuery = DB::table('stocks')
+        $shopStocksRaw = DB::table('stocks')
             ->select('product_id', DB::raw('SUM(qty) as shop_qty'))
-            ->where('branch_id', $branchId);
-
-        if ($startDate && $endDate) {
-            $shopQuery->whereBetween('updated_at', [
-                $startDate . ' 00:00:00',
-                $endDate . ' 23:59:59'
-            ]);
-        }
-
-        $shopSums = $shopQuery
+            ->where('branch_id', $branchId)
+            ->whereNull('warehouse_id')   // only branch/shop stock, not warehouse rows
             ->groupBy('product_id')
             ->pluck('shop_qty', 'product_id')
             ->toArray();
 
         /* ======================================================
-       3️⃣ WAREHOUSE STOCK (DATE FILTER)
+       3️⃣ WAREHOUSE STOCK
     ====================================================== */
-        $warehouseQuery = WarehouseStock::with('warehouse');
+        $warehouseQuery = WarehouseStock::with('warehouse')
+            ->where('branch_id', $branchId);
 
         if ($warehouseFilter) {
             $warehouseQuery->where('warehouse_id', $warehouseFilter);
-        }
-
-        if ($startDate && $endDate) {
-            $warehouseQuery->whereBetween('updated_at', [
-                $startDate . ' 00:00:00',
-                $endDate . ' 23:59:59'
-            ]);
         }
 
         $warehouseRows = $warehouseQuery->get();
@@ -64,13 +52,7 @@ class WarehouseStockController extends Controller
 
         foreach ($warehouseRows as $ws) {
             $pid = $ws->product_id;
-
-            if (!isset($warehouseQtyByProduct[$pid])) {
-                $warehouseQtyByProduct[$pid] = 0;
-            }
-
-            $warehouseQtyByProduct[$pid] += (float) $ws->quantity;
-
+            $warehouseQtyByProduct[$pid] = ($warehouseQtyByProduct[$pid] ?? 0) + (float) $ws->quantity;
             if (!isset($warehouseByProduct[$pid])) {
                 $warehouseByProduct[$pid] = $ws->warehouse;
             }
@@ -85,33 +67,39 @@ class WarehouseStockController extends Controller
 
             $pid = $product->id;
 
-            $shopQty      = $shopSums[$pid] ?? 0;
-            $warehouseQty = $warehouseQtyByProduct[$pid] ?? 0;
+            // ✅ Unit: use unit_type directly (most products have null unit_id)
+            $unitType  = strtolower($product->unit_type ?? 'piece');
+            $unitName  = strtolower($product->unit->name ?? '');
+            $isKg      = ($unitType === 'kg' || $unitType === 'kilogram' || $unitName === 'kg');
+            $unitLabel = $isKg ? 'KG' : ($unitType === 'pound' ? 'LB' : ($product->unit->name ?? 'PC'));
+
+            // ✅ Raw shop qty (in grams for KG products)
+            $shopQtyRaw   = (float)($shopStocksRaw[$pid] ?? 0);
+            $warehouseQty = (float)($warehouseQtyByProduct[$pid] ?? 0);
+
+            // ✅ Convert grams → KG for KG products
+            $shopQty = $isKg ? round($shopQtyRaw / 1000, 3) : $shopQtyRaw;
+            if ($isKg) {
+                $warehouseQty = round($warehouseQty / 1000, 3);
+            }
 
             // 🔴 FILTER LOGIC
-            if ($type === 'shop' && $shopQty == 0) {
-                continue;
-            }
-
-            if ($type === 'warehouse' && $warehouseQty == 0) {
-                continue;
-            }
+            if ($type === 'shop'      && $shopQty == 0) continue;
+            if ($type === 'warehouse' && $warehouseQty == 0) continue;
+            if ($type === 'all'       && $shopQty == 0 && $warehouseQty == 0) continue;
 
             $row = new WarehouseStock();
-
-            $row->product_id = $pid;
-            $row->product    = $product;
-
-            $row->warehouse      = $warehouseByProduct[$pid] ?? null;
-            $row->warehouse_id   = isset($warehouseByProduct[$pid]) ? $warehouseByProduct[$pid]->id : null;
-
+            $row->product_id      = $pid;
+            $row->product         = $product;
+            $row->unit_label      = $unitLabel;
+            $row->warehouse       = $warehouseByProduct[$pid] ?? null;
+            $row->warehouse_id    = isset($warehouseByProduct[$pid]) ? $warehouseByProduct[$pid]->id : null;
             $row->shop_stock      = $shopQty;
             $row->warehouse_stock = $warehouseQty;
             $row->total_stock     = $shopQty + $warehouseQty;
-
-            $row->quantity   = $warehouseQty;
-            $row->remarks    = ($warehouseQty == 0 && $shopQty > 0) ? 'Shop Only' : null;
-            $row->created_at = now();
+            $row->quantity        = $warehouseQty;
+            $row->remarks         = ($warehouseQty == 0 && $shopQty > 0) ? 'Shop Only' : null;
+            $row->created_at      = now();
 
             $stocks->push($row);
         }
