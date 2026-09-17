@@ -87,14 +87,37 @@
                                     </div>
                                 </div>
 
-                                <!-- Opening Balance -->
-                                <div class="mb-5">
-                                    <label class="form-label fw-bold text-secondary">Opening Balance (Rs)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light"><i class="fas fa-wallet text-success"></i></span>
-                                        <input type="number" step="0.01" class="form-control" name="opening_balance" placeholder="0.00" value="{{ old('opening_balance') }}">
+                                <!-- Branch & Opening Balance Row -->
+                                <div class="row mb-5">
+                                    @php
+                                        $user = auth()->user();
+                                        $canSelectBranch = ($user && ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin') || $user->hasRole('Admin')));
+                                    @endphp
+                                    <div class="{{ $canSelectBranch ? 'col-md-6' : 'col-md-12' }}">
+                                        <label class="form-label fw-bold text-secondary">Opening Balance (Rs)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-wallet text-success"></i></span>
+                                            <input type="number" step="0.01" class="form-control" name="opening_balance" placeholder="0.00" value="{{ old('opening_balance') }}">
+                                        </div>
+                                        <div class="form-text text-muted">Positive value = Receivable (Debit)</div>
                                     </div>
-                                    <div class="form-text text-muted">Positive value = Receivable (Debit)</div>
+                                    @if($canSelectBranch)
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-secondary">Branch <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-code-branch text-primary"></i></span>
+                                            <select class="form-select" name="branch_id" required>
+                                                @foreach($branches as $branch)
+                                                    <option value="{{ $branch->id }}" {{ (old('branch_id', $activeBranchId) == $branch->id) ? 'selected' : '' }}>
+                                                        {{ $branch->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    @else
+                                    <input type="hidden" name="branch_id" value="{{ $activeBranchId }}">
+                                    @endif
                                 </div>
 
                                 <!-- Action Buttons -->

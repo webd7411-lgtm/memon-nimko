@@ -28,7 +28,7 @@
   --p-font: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-.pp * { font-family: var(--p-font); }
+.pp *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) { font-family: var(--p-font); }
 
 .pp {
   background: var(--p-bg);

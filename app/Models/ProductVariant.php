@@ -50,7 +50,19 @@ class ProductVariant extends Model
 
     public function stock()
     {
-        return $this->hasOne(Stock::class, 'variant_id');
+        $query = $this->hasOne(Stock::class, 'variant_id')
+            ->where(function($q) {
+                $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+            });
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+        return $query;
+    }
+
+    public function stocks()
+    {
+        return $this->hasMany(Stock::class, 'variant_id');
     }
 
     public function rawMaterialBoms()

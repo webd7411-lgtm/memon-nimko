@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Customer extends Model
 {
-    protected $guarded = [];
-    
     use HasFactory;
+
+    protected $guarded = [];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
 }

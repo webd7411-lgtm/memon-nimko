@@ -17,8 +17,8 @@
                         </div>
 
                         <div class="col-md-3">
-                            <label class="form-label">نام</label>
-                            <input type="text" class="form-control text-end" name="name_ur" dir="rtl"
+                            <label class="form-label">Name (Urdu)</label>
+                            <input type="text" class="form-control" name="name_ur"
                                 value="{{ old('name_ur', $transport->name_ur ?? '') }}">
                         </div>
 
@@ -35,9 +35,8 @@
                                 rows="3">{{ old('address', $transport->address) }}</textarea>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">پتہ</label>
-                            <textarea rows="3" class="form-control text-end" name="address_ur"
-                                dir="rtl">{{ old('address_ur', $transport->address_ur ?? '') }}</textarea>
+                            <label class="form-label">Address (Urdu)</label>
+                            <textarea rows="3" class="form-control" name="address_ur">{{ old('address_ur', $transport->address_ur ?? '') }}</textarea>
                         </div>
                     </div>
                     <div class="row mb-4">

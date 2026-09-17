@@ -23,7 +23,7 @@ class SaleController extends Controller
         if ($request->ajax()) {
             
             // 🔹 Base Query
-            $query = Sale::with(['customer_relation', 'user', 'branch']);
+            $query = Sale::with(['customer_relation', 'user', 'branch'])->withCount('returns');
 
             // 🔹 Multi-Branch Scoping
             if (!is_all_branches()) {
@@ -199,12 +199,13 @@ class SaleController extends Controller
 
                 // Status Badge
                 $statusBadge = '<span class="badge bg-secondary">Unknown</span>';
-                if($sale->sale_status === null || $sale->sale_status == 0) 
-                    $statusBadge = '<span class="badge bg-success">Sale</span>';
-                elseif($sale->sale_status == 1) 
-                    $statusBadge = '<span class="badge bg-danger">Return</span>';
-                elseif($sale->sale_status == 2) 
-                    $statusBadge = '<span class="badge" style="background:#8e44ad; color:#fff;">Exchange</span>';
+                if ((string)$sale->sale_status === '2') {
+                    $statusBadge = '<span class="badge" style="background:#8e44ad; color:#fff;"><i class="bi bi-arrow-repeat me-1"></i>Exchange</span>';
+                } elseif ((string)$sale->sale_status === '1' || ($sale->returns_count ?? 0) > 0) {
+                    $statusBadge = '<span class="badge bg-danger"><i class="bi bi-arrow-return-left me-1"></i>Return</span>';
+                } else {
+                    $statusBadge = '<span class="badge bg-success"><i class="bi bi-check2 me-1"></i>Sale</span>';
+                }
 
                 // Action Buttons
                 $actions = '<div class="btn-group btn-group-sm" role="group">
@@ -212,6 +213,7 @@ class SaleController extends Controller
                     <a href="'.route('sales.invoice', $sale->id).'" class="btn btn-info text-white" target="_blank"><i class="fas fa-file-invoice"></i> Invoice</a>
                     <a href="'.route('sales.dc', $sale->id).'" class="btn btn-success text-white" target="_blank">DC</a>
                     <a href="'.route('sales.edit', $sale->id).'" class="btn btn-primary"><i class="fas fa-edit"></i> Edit</a>
+                    <a href="'.route('sale.add', ['exchange_invoice' => $sale->invoice_no]).'" class="btn btn-purple text-white" style="background:#8e44ad;"><i class="fas fa-sync-alt"></i> Exchange</a>
                     <a href="'.route('sales.return.create', $sale->id).'" class="btn btn-warning"><i class="fas fa-undo"></i> Return</a>
                 </div>';
                 
@@ -273,7 +275,11 @@ class SaleController extends Controller
 
     public function addsale()
     {
-        $Customer = Customer::get();
+        $customerQuery = Customer::where('status', '!=', 'inactive');
+        if (!is_all_branches()) {
+            $customerQuery->where('branch_id', active_branch_id());
+        }
+        $Customer = $customerQuery->get();
         $categories = \App\Models\Category::orderBy('name')->get();
         $tables = \App\Models\Table::orderBy('table_name')->get();
         return view('admin_panel.sale.add_sale', compact('Customer', 'categories', 'tables'));
@@ -306,10 +312,10 @@ class SaleController extends Controller
 
         $items = $products->getCollection()->map(function ($product) {
             // ─── Price Resolution ───────────────────────────────────────────
-            // اگر product کی خود کی price 0 یا خالی ہو تو variants سے لیں
+            // If product price is 0 or empty, fetch price from variants
             $rawPrice = (float) $product->price;
             if ($rawPrice <= 0 && $product->variants->count() > 0) {
-                // پہلے default variant تلاش کریں
+                // Find default variant first
                 $defaultVariant = $product->variants->firstWhere('is_default', true)
                     ?? $product->variants->first();
                 $rawPrice = (float) ($defaultVariant->price ?? 0);
@@ -503,7 +509,7 @@ class SaleController extends Controller
             return [
                 'id'              => $v->id,
                 'name'            => $v->variant_name,
-                'size_label'      => $v->size_label ?? $v->variant_name,
+                'size_label'      => $v->size_label ?: $v->variant_name,
                 'size_value'      => $v->size_value,
                 'size_unit'       => $v->size_unit,
                 'price'           => (float) $v->price,
@@ -858,8 +864,31 @@ class SaleController extends Controller
 
             $variant_ids = is_array($request->variant_id) ? $request->variant_id : [];
 
+            // Prevent sale exchange if only return items are present without any new items
+            $checkHasReturn = false;
+            $checkHasNew = false;
+            foreach ($product_ids as $idx => $pid) {
+                $q = isset($quantities[$idx]) ? floatval($quantities[$idx]) : 0;
+                $pr = isset($prices[$idx]) ? floatval($prices[$idx]) : 0;
+                if (!empty($pid) && $pr > 0) {
+                    if ($q < 0) $checkHasReturn = true;
+                    if ($q > 0) $checkHasNew = true;
+                }
+            }
+
+            if ($checkHasReturn && !$checkHasNew) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'sale exchange is not allowed without add any new item'
+                    ], 422);
+                }
+                return redirect()->back()->with('error', 'sale exchange is not allowed without add any new item')->withInput();
+            }
+
             $total_items = 0;
             $hasExchangeReturn = false;
+            $hasNewItem = false;
 
             // Pre-fetch all necessary models to avoid N+1 queries inside the loop
             $unique_product_ids = array_unique(array_filter($product_ids));
@@ -888,6 +917,8 @@ class SaleController extends Controller
 
                 if ($qty < 0) {
                     $hasExchangeReturn = true;
+                } elseif ($qty > 0) {
+                    $hasNewItem = true;
                 }
 
                 $combined_product_ids[] = $product_id;
@@ -927,21 +958,8 @@ class SaleController extends Controller
                 $dbVariantId = $vId;
                 $deductQty = $qty;
 
-                if ($isGram) {
-                    $dbVariantId = null; // Always deduct from main product for KG
-                    if ($vId) {
-                        $vModel = \App\Models\ProductVariant::find($vId);
-                        if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
-                                $deductQty = ($kgSize * $qty * 1000);
-                            } else {
-                                $deductQty = ($kgSize * $qty);
-                            }
-                        }
-                    } else {
-                        $deductQty = $qty * 1000; // If no variant, assuming qty was inputted in KG
-                    }
+                if (!$dbVariantId && $isGram) {
+                    $deductQty = $qty * 1000; // If no variant, assuming qty was inputted in KG
                 }
 
                 if ($dbVariantId) {
@@ -1036,7 +1054,7 @@ class SaleController extends Controller
                 $model->user_id = auth()->id();
                 $model->order_type = $request->order_type ?? 'Walk-in';
                 $model->table_id = $request->table_id ?? null;
-                if ($hasExchangeReturn) {
+                if ($hasExchangeReturn && $hasNewItem) {
                     $model->sale_status = 2; // 2 = Exchange
                 }
             }
@@ -1201,21 +1219,8 @@ class SaleController extends Controller
                     $dbVariantId = $vId === '' ? null : $vId;
                     $deductQtyDiff = $qty_diff;
 
-                    if ($isGram) {
-                        $dbVariantId = null;
-                        if ($vId) {
-                            $vModel = \App\Models\ProductVariant::find($vId);
-                            if ($vModel) {
-                                $kgSize = floatval($vModel->size_value);
-                                if ($vModel->size_unit === 'kg') {
-                                    $deductQtyDiff = ($kgSize * $qty_diff * 1000);
-                                } else {
-                                    $deductQtyDiff = ($kgSize * $qty_diff);
-                                }
-                            }
-                        } else {
-                            $deductQtyDiff = $qty_diff * 1000;
-                        }
+                    if (!$dbVariantId && $isGram) {
+                        $deductQtyDiff = $qty_diff * 1000;
                     }
 
                     $stockQuery = \App\Models\Stock::where('product_id', $product_id)
@@ -1257,21 +1262,8 @@ class SaleController extends Controller
                     $dbVariantId = $vid;
                     $addBackQty = $old_qty;
 
-                    if ($isGram) {
-                        $dbVariantId = null;
-                        if ($vid) {
-                            $vModel = \App\Models\ProductVariant::find($vid);
-                            if ($vModel) {
-                                $kgSize = floatval($vModel->size_value);
-                                if ($vModel->size_unit === 'kg') {
-                                    $addBackQty = ($kgSize * $old_qty * 1000);
-                                } else {
-                                    $addBackQty = ($kgSize * $old_qty);
-                                }
-                            }
-                        } else {
-                            $addBackQty = $old_qty * 1000;
-                        }
+                    if (!$dbVariantId && $isGram) {
+                        $addBackQty = $old_qty * 1000;
                     }
 
                     $stockQuery = \App\Models\Stock::where('product_id', $pid)
@@ -1373,7 +1365,18 @@ class SaleController extends Controller
     public function convertFromBooking($id)
     {
         $booking = ProductBooking::with('customer_relation')->findOrFail($id);
-        $customers = Customer::all();
+        
+        $customerQuery = Customer::where('status', '!=', 'inactive');
+        if (!is_all_branches()) {
+            $branchId = $booking->branch_id ?? active_branch_id();
+            $customerQuery->where(function($q) use ($branchId, $booking) {
+                $q->where('branch_id', $branchId);
+                if ($booking->customer) {
+                    $q->orWhere('id', $booking->customer);
+                }
+            });
+        }
+        $customers = $customerQuery->get();
 
         // --- Parsing logic (identical to ProductBookingController@receipt) ---
         $products    = explode(',', $booking->product);
@@ -1457,7 +1460,18 @@ class SaleController extends Controller
     public function saleretun($id)
     {
         $sale = \App\Models\Sale::findOrFail($id);
-        $customers = \App\Models\Customer::all();
+        
+        $customerQuery = Customer::where('status', '!=', 'inactive');
+        if (!is_all_branches()) {
+            $branchId = $sale->branch_id ?? active_branch_id();
+            $customerQuery->where(function($q) use ($branchId, $sale) {
+                $q->where('branch_id', $branchId);
+                if ($sale->customer) {
+                    $q->orWhere('id', $sale->customer);
+                }
+            });
+        }
+        $customers = $customerQuery->get();
 
         // Split comma-based fields from the sale row
         $products  = array_map('trim', explode(',', $sale->product ?? ''));
@@ -1479,31 +1493,22 @@ class SaleController extends Controller
         // Fetch all previous returns for this sale from sales_returns table
         $previousReturns = \DB::table('sales_returns')->where('sale_id', $sale->id)->get();
 
-        // Build an aggregated map: returnedQtyByProductIdOrCode[productId_or_code] = totalReturnedQty
-        $returnedQtyMap = [];
-
+        // Build list of previous return item records
+        $returnedRows = [];
         foreach ($previousReturns as $ret) {
-            // ret->product and ret->qty are comma separated strings, same shape as sale
             $retProducts = array_map('trim', explode(',', $ret->product ?? ''));
+            $retCodes    = array_map('trim', explode(',', $ret->product_code ?? ''));
             $retQtys     = array_map('trim', explode(',', $ret->qty ?? ''));
 
-            // loop indices and accumulate
             foreach ($retProducts as $ri => $rprod) {
                 $rqty = isset($retQtys[$ri]) ? floatval($retQtys[$ri]) : 0;
                 if ($rqty <= 0) continue;
-
-                // try to treat rprod as product id (numeric) else treat as code
-                $keyId = null;
-                if (is_numeric($rprod)) {
-                    $keyId = 'id_' . intval($rprod);
-                    if (!isset($returnedQtyMap[$keyId])) $returnedQtyMap[$keyId] = 0;
-                    $returnedQtyMap[$keyId] += $rqty;
-                } else {
-                    // store by code string
-                    $keyCode = 'code_' . $rprod;
-                    if (!isset($returnedQtyMap[$keyCode])) $returnedQtyMap[$keyCode] = 0;
-                    $returnedQtyMap[$keyCode] += $rqty;
-                }
+                $rcode = isset($retCodes[$ri]) ? trim($retCodes[$ri]) : '';
+                $returnedRows[] = [
+                    'product' => $rprod,
+                    'code'    => $rcode,
+                    'qty'     => $rqty
+                ];
             }
         }
 
@@ -1551,36 +1556,35 @@ class SaleController extends Controller
             // ---------- end note parsing ----------
 
             $soldQty = isset($qtys[$index]) && is_numeric($qtys[$index]) ? floatval($qtys[$index]) : 0;
+            $productNameCandidate = $product->item_name ?? (string)$p;
 
-            // compute returned qty using our map:
+            // compute returned qty matching against $returnedRows
             $returnedQty = 0;
-            if ($productIdCandidate) {
-                $k = 'id_' . $productIdCandidate;
-                if (isset($returnedQtyMap[$k])) {
-                    // take as much as needed from the map to reduce this row's available qty
-                    // but we must not consume more than soldQty for this specific row if we want to be safe, 
-                    // OR we consume across multiple rows. The map is global for the sale.
-                    // Strategy: We deduct from the map as we iterate.
-                    $deduct = min($returnedQtyMap[$k], $soldQty);
+            foreach ($returnedRows as &$rRow) {
+                if ($rRow['qty'] <= 0) continue;
+                $match = false;
+                if (!empty($itemCodeCandidate) && !empty($rRow['code']) && $itemCodeCandidate === $rRow['code']) {
+                    $match = true;
+                } elseif (!empty($productIdCandidate) && !empty($rRow['product']) && ($rRow['product'] == $productIdCandidate || $rRow['product'] === $productNameCandidate)) {
+                    $match = true;
+                } elseif (!empty($p) && !empty($rRow['product']) && ($rRow['product'] === $p || $rRow['product'] === $productNameCandidate)) {
+                    $match = true;
+                }
+
+                if ($match) {
+                    $deduct = min($rRow['qty'], $soldQty - $returnedQty);
                     $returnedQty += $deduct;
-                    $returnedQtyMap[$k] -= $deduct; 
+                    $rRow['qty'] -= $deduct;
                 }
             }
-            if ($returnedQty == 0 && !empty($itemCodeCandidate)) { // fallback to code if id didn't match
-                $kc = 'code_' . $itemCodeCandidate;
-                if (isset($returnedQtyMap[$kc])) {
-                    $deduct = min($returnedQtyMap[$kc], $soldQty);
-                    $returnedQty += $deduct;
-                    $returnedQtyMap[$kc] -= $deduct;
-                }
-            }
+            unset($rRow);
 
             $available = max(0, $soldQty - $returnedQty);
 
             $items[] = [
                 'product_id'    => $product->id ?? ($productIdCandidate ?? ''),
                 'variant_id'    => $vIds[$index] ?? null,
-                'item_name'     => !empty($note_value) ? $note_value : ($product->item_name ?? (string)($p)),
+                'item_name'     => !empty($note_value) ? $note_value : $productNameCandidate,
                 'item_code'     => $product->item_code ?? ($itemCodeCandidate ?? ''),
                 'brand'         => $product->brand->name ?? ($brands[$index] ?? ''),
                 'unit'          => $product->unit ?? ($units[$index] ?? ''),
@@ -1732,6 +1736,57 @@ class SaleController extends Controller
             $saleId = $request->sale_id;
             $sale = \App\Models\Sale::findOrFail($saleId);
 
+            // Pre-calculate available returnable quantities per item for strict validation
+            $previousReturns = \DB::table('sales_returns')->where('sale_id', $sale->id)->get();
+            $returnedRows = [];
+            foreach ($previousReturns as $ret) {
+                $retProducts = array_map('trim', explode(',', $ret->product ?? ''));
+                $retCodes    = array_map('trim', explode(',', $ret->product_code ?? ''));
+                $retQtys     = array_map('trim', explode(',', $ret->qty ?? ''));
+
+                foreach ($retProducts as $ri => $rprod) {
+                    $rqty = isset($retQtys[$ri]) ? floatval($retQtys[$ri]) : 0;
+                    if ($rqty <= 0) continue;
+                    $rcode = isset($retCodes[$ri]) ? trim($retCodes[$ri]) : '';
+                    $returnedRows[] = [
+                        'product' => $rprod,
+                        'code'    => $rcode,
+                        'qty'     => $rqty
+                    ];
+                }
+            }
+
+            $saleProducts = array_map('trim', explode(',', $sale->product ?? ''));
+            $saleCodes    = array_map('trim', explode(',', $sale->product_code ?? ''));
+            $saleQtys     = array_map('trim', explode(',', $sale->qty ?? ''));
+
+            $availableQtyMap = [];
+            foreach ($saleProducts as $idx => $sp) {
+                $sqty = isset($saleQtys[$idx]) ? floatval($saleQtys[$idx]) : 0;
+                $scode = isset($saleCodes[$idx]) ? trim($saleCodes[$idx]) : '';
+
+                $retQty = 0;
+                foreach ($returnedRows as &$rRow) {
+                    if ($rRow['qty'] <= 0) continue;
+                    $match = false;
+                    if (!empty($scode) && !empty($rRow['code']) && $scode === $rRow['code']) {
+                        $match = true;
+                    } elseif (!empty($sp) && !empty($rRow['product']) && ($sp === $rRow['product'] || (is_numeric($sp) && intval($sp) == intval($rRow['product'])))) {
+                        $match = true;
+                    }
+                    if ($match) {
+                        $deduct = min($rRow['qty'], $sqty - $retQty);
+                        $retQty += $deduct;
+                        $rRow['qty'] -= $deduct;
+                    }
+                }
+                unset($rRow);
+
+                $avail = max(0, $sqty - $retQty);
+                if (!empty($scode)) $availableQtyMap['code_' . $scode] = $avail;
+                if (!empty($sp)) $availableQtyMap['sp_' . $sp] = $avail;
+            }
+
             // Incoming arrays (may contain only selected return rows)
             $product_names = $request->input('product', []);     // product name or id text
             $product_ids   = $request->input('product_id', []);  // may be empty strings for some rows
@@ -1781,6 +1836,22 @@ class SaleController extends Controller
 
                 // Skip rows with zero qty (not selected)
                 if ($qty <= 0) continue;
+
+                // 🛑 Strict Server-Side Validation: Ensure requested return qty doesn't exceed available returnable qty
+                $maxAvailable = null;
+                if (!empty($code) && isset($availableQtyMap['code_' . $code])) {
+                    $maxAvailable = $availableQtyMap['code_' . $code];
+                } elseif (!empty($pid) && isset($availableQtyMap['sp_' . $pid])) {
+                    $maxAvailable = $availableQtyMap['sp_' . $pid];
+                } elseif (!empty($name) && isset($availableQtyMap['sp_' . $name])) {
+                    $maxAvailable = $availableQtyMap['sp_' . $name];
+                }
+
+                if ($maxAvailable !== null && $qty > ($maxAvailable + 0.0001)) {
+                    DB::rollBack();
+                    $prodLabel = !empty($name) ? $name : (!empty($code) ? $code : 'Item');
+                    return redirect()->back()->with('error', "Cannot return {$qty} units of '{$prodLabel}'. Maximum available returnable quantity is {$maxAvailable}.");
+                }
 
                 // Push to combined arrays (preserve name/code even if id missing)
                 $combined_products[]  = $name;
@@ -1842,33 +1913,18 @@ class SaleController extends Controller
                         $stockQuery->whereNull('warehouse_id');
                     }
 
-                    // For KG items, we store stock in GRAMS and use variant_id = NULL
                     $isKg = strtolower($foundProduct->unit_type ?? '') === 'kg';
                     $returnQtyInDb = $qty;
+                    $dbVariantId = !empty($vId) ? $vId : null;
 
-                    if ($isKg) {
-                        $stockQuery->whereNull('variant_id');
-                        if (!empty($vId)) {
-                            $vModel = \App\Models\ProductVariant::find($vId);
-                            if ($vModel) {
-                                $kgSize = floatval($vModel->size_value);
-                                if (strtolower($vModel->size_unit) === 'kg') {
-                                    $returnQtyInDb = ($kgSize * $qty * 1000);
-                                } else {
-                                    $returnQtyInDb = ($kgSize * $qty);
-                                }
-                            } else {
-                                $returnQtyInDb = $qty * 1000;
-                            }
-                        } else {
-                            $returnQtyInDb = $qty * 1000;
-                        }
+                    if (!$dbVariantId && $isKg) {
+                        $returnQtyInDb = $qty * 1000;
+                    }
+
+                    if ($dbVariantId) {
+                        $stockQuery->where('variant_id', $dbVariantId);
                     } else {
-                        if (!empty($vId)) {
-                            $stockQuery->where('variant_id', $vId);
-                        } else {
-                            $stockQuery->whereNull('variant_id');
-                        }
+                        $stockQuery->whereNull('variant_id');
                     }
 
                     $stock = $stockQuery->first();
@@ -1880,7 +1936,7 @@ class SaleController extends Controller
                         $saleBranchForCreate = $sale->branch_id ?? 1;
                         \App\Models\Stock::create([
                             'product_id'   => $foundProduct->id,
-                            'variant_id'   => ($isKg ? null : (!empty($vId) ? $vId : null)),
+                            'variant_id'   => $dbVariantId,
                             'branch_id'    => $saleBranchForCreate,
                             'warehouse_id' => $sale->warehouse_id ?? null,
                             'qty'          => $returnQtyInDb
@@ -1907,7 +1963,7 @@ class SaleController extends Controller
             // Save sales_returns row (CSV arrays + json color array)
             $saleReturn = new \App\Models\SalesReturn();
             $saleReturn->sale_id = $saleId;
-            $saleReturn->customer = $request->customer;
+            $saleReturn->customer = $sale->customer ?? $request->customer;
             $saleReturn->reference = $request->reference;
             $saleReturn->product = implode(',', $combined_products);
             $saleReturn->product_code = implode(',', $combined_codes);
@@ -1928,12 +1984,18 @@ class SaleController extends Controller
             $saleReturn->change = $request->change ?? 0;
             $saleReturn->total_items = $total_items;
             $saleReturn->return_note = $request->return_note ?? null;
+            $saleReturn->branch_id = $sale->branch_id ?? active_branch_id() ?? 1;
             $saleReturn->save();
+
+            // Mark sale status as Returned
+            $sale->sale_status = '1';
+            $sale->save();
+
 
             // -----------------------
             // Customer ledger update (simple)
             // -----------------------
-            $customer_id = $request->customer;
+            $customer_id = $sale->customer ?? $request->customer;
             $netAmount = $saleReturn->total_net;
 
             // Only update ledger if customer is numeric (i.e., normal customer)
@@ -1977,7 +2039,7 @@ class SaleController extends Controller
 
     public function saleinvoice($id)
     {
-        $sale = Sale::with('customer_relation')->findOrFail($id);
+        $sale = Sale::with(['customer_relation', 'branch'])->findOrFail($id);
 
         $saleReturn = \App\Models\SalesReturn::where('sale_id', $sale->id)->first();
 
@@ -2104,19 +2166,36 @@ class SaleController extends Controller
             }
         }
 
+        $receiptBranch = $sale->branch 
+            ?? ($sale->branch_id ? \App\Models\Branch::find($sale->branch_id) : null)
+            ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+            ?? \App\Models\Branch::find(active_branch_id())
+            ?? \App\Models\Branch::first();
+
         return view('admin_panel.sale.saleinvoice', [
-            'sale'       => $sale,
-            'bill'       => $bill,        // 👈 unified object
-            'saleItems'  => $items,
-            'saleReturn' => $saleReturn,
-            'mode'       => $mode,
+            'sale'          => $sale,
+            'bill'          => $bill,        // 👈 unified object
+            'saleItems'     => $items,
+            'saleReturn'    => $saleReturn,
+            'mode'          => $mode,
+            'receiptBranch' => $receiptBranch,
         ]);
     }
     public function saleedit($id)
     {
         $sale = Sale::findOrFail($id);
 
-        $customers = Customer::all();
+        $customerQuery = Customer::where('status', '!=', 'inactive');
+        if (!is_all_branches()) {
+            $branchId = $sale->branch_id ?? active_branch_id();
+            $customerQuery->where(function($q) use ($branchId, $sale) {
+                $q->where('branch_id', $branchId);
+                if ($sale->customer) {
+                    $q->orWhere('id', $sale->customer);
+                }
+            });
+        }
+        $customers = $customerQuery->get();
 
         $products   = explode(',', $sale->product);
         $codes      = explode(',', $sale->product_code);
@@ -2126,6 +2205,7 @@ class SaleController extends Controller
         $discounts  = explode(',', $sale->per_discount);
         $qtys       = explode(',', $sale->qty);
         $totals     = explode(',', $sale->per_total);
+        $vIds       = explode(',', $sale->variant_id ?? '');
 
         // Expecting sale->color to be JSON array (each element a JSON-encoded note or plain string)
         $colors_json = json_decode($sale->color, true);
@@ -2171,13 +2251,14 @@ class SaleController extends Controller
 
             $items[] = [
                 'product_id' => $product->id ?? '',
+                'variant_id' => $vIds[$index] ?? '',
                 'item_name'  => $product->item_name ?? $p,
                 'item_code'  => $product->item_code ?? ($codes[$index] ?? ''),
                 'brand'      => $product->brand->name ?? ($brands[$index] ?? ''),
                 'unit'       => $product->unit ?? ($units[$index] ?? ''),
                 'price'      => floatval($prices[$index] ?? 0),
                 'discount'   => floatval($discounts[$index] ?? 0),
-                'qty'        => floatval($qtys[$index] ?? 1), // <-- use floatval
+                'qty'        => floatval($qtys[$index] ?? 1),
                 'total'      => floatval($totals[$index] ?? 0),
                 'note'       => $note_value,
             ];
@@ -2227,25 +2308,48 @@ class SaleController extends Controller
 
             // --- Get old sale to update stock differences ---
             $sale = Sale::findOrFail($id);
+            $saleBranchId = $sale->branch_id ?? active_branch_id();
             $old_quantities = explode(',', $sale->qty);
-            $old_variant_ids = explode(',', $sale->variant_id);
+            $old_variant_ids = explode(',', $sale->variant_id ?? '');
             $old_product_ids = explode(',', $sale->product);
 
             // Create a map of existing items for easy diff: key = pid_vid
             $oldMap = [];
             foreach ($old_product_ids as $idx => $pid) {
-                $vid = $old_variant_ids[$idx] ?? '';
+                $pid = trim($pid);
+                if (empty($pid)) continue;
+                $vid = trim($old_variant_ids[$idx] ?? '');
+
+                // Fallback: If product has variants but vid is empty, attempt to resolve default variant ID
+                if (empty($vid)) {
+                    $prodModel = \App\Models\Product::with('variants')->find($pid);
+                    if ($prodModel && strtolower($prodModel->unit_type ?? '') !== 'kg' && $prodModel->variants->count() > 0) {
+                        $defV = $prodModel->variants->where('is_default', 1)->first() ?? $prodModel->variants->first();
+                        if ($defV) $vid = (string)$defV->id;
+                    }
+                }
+
                 $key = $pid . '_' . ($vid ?: '0');
                 $oldMap[$key] = ($oldMap[$key] ?? 0) + floatval($old_quantities[$idx] ?? 0);
             }
 
             foreach ($product_ids as $index => $product_id) {
-                $vId   = $variant_ids[$index] ?? '';
-                $key   = $product_id . '_' . ($vId ?: '0');
+                $product_id = trim($product_id);
+                $vId   = trim($variant_ids[$index] ?? '');
                 $qty   = isset($quantities[$index]) ? floatval($quantities[$index]) : 0;
                 $price = isset($prices[$index]) ? floatval($prices[$index]) : 0;
 
                 if (!$product_id || $qty <= 0 || $price <= 0) continue;
+
+                $prodModel = \App\Models\Product::with('variants')->find($product_id);
+                $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
+
+                if (!$isGram && empty($vId) && $prodModel && $prodModel->variants->count() > 0) {
+                    $defV = $prodModel->variants->where('is_default', 1)->first() ?? $prodModel->variants->first();
+                    if ($defV) $vId = (string)$defV->id;
+                }
+
+                $key = $product_id . '_' . ($vId ?: '0');
 
                 $combined_products[]    = $product_id;
                 $combined_variant_ids[] = $vId;
@@ -2267,23 +2371,21 @@ class SaleController extends Controller
                 // Clear from map so we know it's handled
                 unset($oldMap[$key]);
 
-                $prodModel = \App\Models\Product::find($product_id);
-                $isGram = $prodModel && $prodModel->unit_type === 'kg';
-                
-                $dbVariantId = $vId;
+                $dbVariantId = $isGram ? null : ($vId ?: null);
                 $deductQtyDiff = $qty_diff;
 
                 if ($isGram) {
-                    $dbVariantId = null; // Always manage stock on the main product for KG
-                    if ($vId) {
+                    if (!empty($vId)) {
                         $vModel = \App\Models\ProductVariant::find($vId);
                         if ($vModel) {
                             $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
+                            if (strtolower($vModel->size_unit ?? '') === 'kg') {
                                 $deductQtyDiff = ($kgSize * $qty_diff * 1000);
                             } else {
                                 $deductQtyDiff = ($kgSize * $qty_diff);
                             }
+                        } else {
+                            $deductQtyDiff = $qty_diff * 1000;
                         }
                     } else {
                         $deductQtyDiff = $qty_diff * 1000;
@@ -2291,8 +2393,14 @@ class SaleController extends Controller
                 }
 
                 $stockQuery = \App\Models\Stock::where('product_id', $product_id)
-                                                ->where('branch_id', $sale->branch_id)
-                                                ->whereNull('warehouse_id');
+                                                ->where('branch_id', $saleBranchId);
+
+                if (!empty($sale->warehouse_id)) {
+                    $stockQuery->where('warehouse_id', $sale->warehouse_id);
+                } else {
+                    $stockQuery->whereNull('warehouse_id');
+                }
+
                 if ($dbVariantId) {
                     $stockQuery->where('variant_id', $dbVariantId);
                 } else {
@@ -2305,11 +2413,11 @@ class SaleController extends Controller
                     $stock->save();
                 } else {
                     \App\Models\Stock::create([
-                        'branch_id'  => $sale->branch_id,
-                        'warehouse_id' => null,
-                        'product_id' => $product_id,
-                        'variant_id' => $dbVariantId ?: null,
-                        'qty'        => -$deductQtyDiff
+                        'branch_id'    => $saleBranchId,
+                        'warehouse_id' => $sale->warehouse_id ?? null,
+                        'product_id'   => $product_id,
+                        'variant_id'   => $dbVariantId,
+                        'qty'          => -$deductQtyDiff
                     ]);
                 }
             }
@@ -2322,22 +2430,23 @@ class SaleController extends Controller
                 $vid = $parts[1] === '0' ? null : $parts[1];
 
                 $prodModel = \App\Models\Product::find($pid);
-                $isGram = $prodModel && $prodModel->unit_type === 'kg';
+                $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
                 
-                $dbVariantId = $vid;
+                $dbVariantId = $isGram ? null : $vid;
                 $addBackQty = $old_qty;
 
                 if ($isGram) {
-                    $dbVariantId = null;
                     if ($vid) {
                         $vModel = \App\Models\ProductVariant::find($vid);
                         if ($vModel) {
                             $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
+                            if (strtolower($vModel->size_unit ?? '') === 'kg') {
                                 $addBackQty = ($kgSize * $old_qty * 1000);
                             } else {
                                 $addBackQty = ($kgSize * $old_qty);
                             }
+                        } else {
+                            $addBackQty = $old_qty * 1000;
                         }
                     } else {
                         $addBackQty = $old_qty * 1000;
@@ -2345,8 +2454,13 @@ class SaleController extends Controller
                 }
 
                 $stockQuery = \App\Models\Stock::where('product_id', $pid)
-                                                ->where('branch_id', 1)
-                                                ->where('warehouse_id', 1);
+                                                ->where('branch_id', $saleBranchId);
+
+                if (!empty($sale->warehouse_id)) {
+                    $stockQuery->where('warehouse_id', $sale->warehouse_id);
+                } else {
+                    $stockQuery->whereNull('warehouse_id');
+                }
                 
                 if ($dbVariantId) {
                     $stockQuery->where('variant_id', $dbVariantId);
@@ -2356,10 +2470,11 @@ class SaleController extends Controller
                 
                 $stock = $stockQuery->first();
                 if ($stock) {
-                    $stock->qty += $addBackQty; // Add back the removed quantity
+                    $stock->qty += $addBackQty;
                     $stock->save();
                 }
             }
+
 
             // --- Save updated Sale ---
             $old_total = $sale->total_net;
@@ -2467,7 +2582,7 @@ class SaleController extends Controller
 
     public function salerecepit($id)
     {
-        $sale = Sale::with('customer_relation')->findOrFail($id);
+        $sale = Sale::with(['customer_relation', 'branch'])->findOrFail($id);
 
         // Decode sale pivot or comma fields
         $products = explode(',', $sale->product);
@@ -2551,9 +2666,16 @@ class SaleController extends Controller
             ];
         }
 
+        $currentBranch = $sale->branch 
+            ?? ($sale->branch_id ? \App\Models\Branch::find($sale->branch_id) : null)
+            ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+            ?? \App\Models\Branch::find(active_branch_id())
+            ?? \App\Models\Branch::first();
+
         return view('admin_panel.sale.salerecepit', [
-            'sale' => $sale,
-            'saleItems' => $items,
+            'sale'          => $sale,
+            'saleItems'     => $items,
+            'currentBranch' => $currentBranch,
         ]);
     }
 

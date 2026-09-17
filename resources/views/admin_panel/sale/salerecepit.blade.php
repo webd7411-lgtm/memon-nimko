@@ -135,10 +135,21 @@
             }
 
             $isExchange = count($returnItems) > 0 || ($sale->sale_status == 2);
+
+            $currentBranch = $currentBranch 
+                ?? $sale->branch 
+                ?? ($sale->branch_id ? \App\Models\Branch::find($sale->branch_id) : null)
+                ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+                ?? \App\Models\Branch::find(active_branch_id())
+                ?? \App\Models\Branch::first();
+
+            $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : 'A-16/B Block-D Unit No. 6 Latifabad, Hyderabad';
+            $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '0334 2615888');
+            $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
         @endphp
         <p style="margin:2px 0 0 0;font-weight:bold;font-size:12px;text-transform:uppercase;">BRANCH: {{ $currentBranch->name ?? 'Main Branch' }}</p>
-        <p style="margin:0;font-size:11px;">{{ $currentBranch->address ?? 'A-16/B Block-D Unit No. 6 Latifabad, Hyderabad' }}</p>
-        <p style="margin:0;font-size:11px;">Phone: {{ $currentBranch->phone ?? '0334 2615888' }}</p>
+        <p style="margin:0;font-size:11px;">{{ $bAddress }}</p>
+        <p style="margin:0;font-size:11px;">Phone: {{ $bPhone }}</p>
     </div>
 
     <div class="line"></div>

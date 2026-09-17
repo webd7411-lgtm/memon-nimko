@@ -97,7 +97,11 @@ class ProductBookingController extends Controller
     public function create()
     {
         $products = Product::get();
-        $Customer = Customer::get();
+        $customerQuery = Customer::where('status', '!=', 'inactive');
+        if (!is_all_branches()) {
+            $customerQuery->where('branch_id', active_branch_id());
+        }
+        $Customer = $customerQuery->get();
         return view('admin_panel.booking.create', compact('products', 'Customer'));
     }
 

@@ -116,6 +116,27 @@ class ReportingController extends Controller
             ->groupBy('purchase_return_items.product_id')
             ->get();
 
+        // Production ingredient usage within date range
+        $prodUsageQuery = DB::table('production_raw_material_usage as prmu')
+            ->join('production_entries as pe', 'pe.id', '=', 'prmu.production_entry_id')
+            ->whereIn('prmu.ingredient_product_id', $productIds)
+            ->whereNull('pe.warehouse_id')
+            ->whereDate('pe.production_date', '>=', $startDate)
+            ->whereDate('pe.production_date', '<=', $endDate);
+        if (!is_all_branches()) {
+            $activeBranchId = active_branch_id();
+            $prodUsageQuery->where(function($q) use ($activeBranchId) {
+                $q->where('prmu.branch_id', $activeBranchId)
+                  ->orWhere('pe.branch_id', $activeBranchId);
+            });
+        }
+        if ($resetTime) {
+            $prodUsageQuery->where('pe.created_at', '>=', $resetTime);
+        }
+        $prodUsage = $prodUsageQuery->select('prmu.ingredient_product_id as product_id', DB::raw('SUM(prmu.qty_used) as total_qty'))
+            ->groupBy('prmu.ingredient_product_id')
+            ->get();
+
         $currStocksQuery = DB::table('stocks')->whereIn('product_id', $productIds)->whereNull('warehouse_id');
         if (!is_all_branches()) {
             $currStocksQuery->where('branch_id', active_branch_id());
@@ -125,6 +146,7 @@ class ReportingController extends Controller
         // Mapping helper: key = pid_vid (use 0 for null variant)
         $mapP = []; foreach($purchases as $p) { $mapP[$p->product_id . '_' . ($p->variant_id ?? 0)] = $p->total_qty; }
         $mapProd = []; foreach($productions as $pd) { $mapProd[$pd->product_id . '_' . ($pd->variant_id ?? 0)] = ($mapProd[$pd->product_id . '_' . ($pd->variant_id ?? 0)] ?? 0) + $pd->total_qty; }
+        $mapProdUsage = []; foreach($prodUsage as $pu) { $mapProdUsage[$pu->product_id . '_0'] = (float)$pu->total_qty; }
         // purchase_return_items has no variant_id — map by product only (key pid_0)
         $mapPR = []; foreach($purchaseReturns as $pr) { $mapPR[$pr->product_id . '_0'] = ($mapPR[$pr->product_id . '_0'] ?? 0) + $pr->total_qty; }
         $mapS = []; foreach($currStocks as $cs) { $mapS[$cs->product_id . '_' . ($cs->variant_id ?? 0)] = ($mapS[$cs->product_id . '_' . ($cs->variant_id ?? 0)] ?? 0) + $cs->qty; }
@@ -154,6 +176,16 @@ class ReportingController extends Controller
                 if ($pid === '') continue;
                 $vid = trim($vids[$idx] ?? '0');
                 if ($vid === '') $vid = '0';
+
+                // Fallback: If product has variants but vid is '0', map to default variant ID
+                if ($vid === '0') {
+                    $prodObj = $products->firstWhere('id', (int)$pid);
+                    if ($prodObj && strtolower($prodObj->unit_type ?? '') !== 'kg' && $prodObj->variants->count() > 0) {
+                        $defV = $prodObj->variants->where('is_default', 1)->first() ?? $prodObj->variants->first();
+                        if ($defV) $vid = (string)$defV->id;
+                    }
+                }
+
                 $key = $pid . '_' . $vid;
                 $soldMap[$key] = ($soldMap[$key] ?? 0) + floatval($qtys[$idx] ?? 0);
             }
@@ -284,6 +316,26 @@ class ReportingController extends Controller
             ->get();
         $mapProdAft = []; foreach($prodAfter as $pd) { $mapProdAft[$pd->product_id . '_' . ($pd->variant_id ?? 0)] = ($mapProdAft[$pd->product_id . '_' . ($pd->variant_id ?? 0)] ?? 0) + $pd->total_qty; }
 
+        $prodUsageAfterQuery = DB::table('production_raw_material_usage as prmu')
+            ->join('production_entries as pe', 'pe.id', '=', 'prmu.production_entry_id')
+            ->whereIn('prmu.ingredient_product_id', $productIds)
+            ->whereNull('pe.warehouse_id')
+            ->whereDate('pe.production_date', '>', $endDate);
+        if (!is_all_branches()) {
+            $activeBranchId = active_branch_id();
+            $prodUsageAfterQuery->where(function($q) use ($activeBranchId) {
+                $q->where('prmu.branch_id', $activeBranchId)
+                  ->orWhere('pe.branch_id', $activeBranchId);
+            });
+        }
+        if ($resetTime) {
+            $prodUsageAfterQuery->where('pe.created_at', '>=', $resetTime);
+        }
+        $prodUsageAfter = $prodUsageAfterQuery->select('prmu.ingredient_product_id as product_id', DB::raw('SUM(prmu.qty_used) as total_qty'))
+            ->groupBy('prmu.ingredient_product_id')
+            ->get();
+        $mapProdUsageAft = []; foreach($prodUsageAfter as $pua) { $mapProdUsageAft[$pua->product_id . '_0'] = (float)$pua->total_qty; }
+
         $prAfterQuery = DB::table('purchase_return_items')
             ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
             ->whereIn('purchase_return_items.product_id', $productIds)
@@ -316,6 +368,13 @@ class ReportingController extends Controller
             foreach ($pids as $idx => $pid) {
                 $pid = trim($pid); if ($pid === '') continue;
                 $vid = trim($vids[$idx] ?? '0'); if ($vid === '') $vid = '0';
+                if ($vid === '0') {
+                    $prodObj = $products->firstWhere('id', (int)$pid);
+                    if ($prodObj && strtolower($prodObj->unit_type ?? '') !== 'kg' && $prodObj->variants->count() > 0) {
+                        $defV = $prodObj->variants->where('is_default', 1)->first() ?? $prodObj->variants->first();
+                        if ($defV) $vid = (string)$defV->id;
+                    }
+                }
                 $key = $pid . '_' . $vid;
                 $soldAftMap[$key] = ($soldAftMap[$key] ?? 0) + floatval($qtys[$idx] ?? 0);
             }
@@ -677,13 +736,20 @@ class ReportingController extends Controller
                     $adjIncAft = (float)($mapAdjIncAft[$p->id . '_0'] ?? 0);
                     $adjDecAft = (float)($mapAdjDecAft[$p->id . '_0'] ?? 0);
                     
+                    $prodUsage = (float)($mapProdUsage[$p->id . '_0'] ?? 0);
+                    $prodUsageAft = (float)($mapProdUsageAft[$p->id . '_0'] ?? 0);
+                    if ($p->variants->count() > 1 && !$v->is_default && $p->variants->first()->id != $v->id) {
+                        $prodUsage = 0;
+                        $prodUsageAft = 0;
+                    }
+
                     $transferQty = (float)($mapTransfer[$p->id . '_0'] ?? 0);
                     $transferInQty = (float)($mapTransferIn[$p->id . '_0'] ?? 0);
                     $transferAft = (float)($mapTransferAft[$p->id . '_0'] ?? 0);
                     $transferInAft = (float)($mapTransferInAft[$p->id . '_0'] ?? 0);
 
-                    $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
-                    $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
+                    $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft - $transferInAft + $transferAft + $prodUsageAft;
+                    $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec + $prodUsage;
 
                     if ($resetTime && $startDate >= substr($resetTime, 0, 10)) {
                         $openingStock = 0;
@@ -696,6 +762,7 @@ class ReportingController extends Controller
                         'is_kg'           => false,
                         'initial_stock'   => $openingStock,
                         'produced'        => $produced,
+                        'prod_usage'      => $prodUsage,
                         'purchased'       => $purchased,
                         'purchase_return' => $pReturn,
                         'transfer'        => $transferQty,
@@ -730,26 +797,33 @@ class ReportingController extends Controller
                 $rawSoldAft  = (float)($soldAftMap[$key] ?? 0);
                 $rawSRetAft  = (float)($retAftMap[$key] ?? 0);
 
+                $rawProdUsage    = (float)($mapProdUsage[$p->id . '_0'] ?? 0);
+                $rawProdUsageAft = (float)($mapProdUsageAft[$p->id . '_0'] ?? 0);
+
                 if ($is_kg) {
                     $purchased = $purchased_kg * 1000;
                     $pReturn   = $pReturn_kg * 1000;
                     $sold      = $rawSold * 1000;
                     $sReturn   = $rawSReturn * 1000;
+                    $prodUsage = $rawProdUsage * 1000;
 
                     $purchAft = $purchAft_kg * 1000;
                     $prAft    = $prAft_kg * 1000;
                     $soldAft  = $rawSoldAft * 1000;
                     $sRetAft  = $rawSRetAft * 1000;
+                    $prodUsageAft = $rawProdUsageAft * 1000;
                 } else {
                     $purchased = $purchased_kg;
                     $pReturn   = $pReturn_kg;
                     $sold      = $rawSold;
                     $sReturn   = $rawSReturn;
+                    $prodUsage = $rawProdUsage;
 
                     $purchAft = $purchAft_kg;
                     $prAft    = $prAft_kg;
                     $soldAft  = $rawSoldAft;
                     $sRetAft  = $rawSRetAft;
+                    $prodUsageAft = $rawProdUsageAft;
                 }
 
                 if ($is_kg && $p->variants->count() > 0) {
@@ -784,7 +858,7 @@ class ReportingController extends Controller
                         $sReturn   += (float)($retMap[$vKey] ?? 0) * $mul;
                         $sRetAft   += (float)($retAftMap[$vKey] ?? 0) * $mul;
 
-                        $balance   += (float)($mapS[$vKey] ?? 0);
+                        $balance   += (float)($mapS[$vKey] ?? 0) * $mul;
                     }
                 }
 
@@ -810,8 +884,8 @@ class ReportingController extends Controller
                     $transferInAft = $rawTransferInAft;
                 }
 
-                $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft - $transferInAft + $transferAft;
-                $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec;
+                $closingStock = $balance - $purchAft - $prodAft - $sRetAft + $soldAft + $prAft - $adjIncAft + $adjDecAft - $transferInAft + $transferAft + $prodUsageAft;
+                $openingStock = $closingStock - $purchased - $produced - $sReturn - $transferInQty - $adjInc + $sold + $pReturn + $transferQty + $adjDec + $prodUsage;
 
                 if ($resetTime && $startDate >= substr($resetTime, 0, 10)) {
                     $openingStock = 0;
@@ -824,6 +898,7 @@ class ReportingController extends Controller
                     'is_kg'           => $is_kg,
                     'initial_stock'   => $openingStock,
                     'produced'        => $produced,
+                    'prod_usage'      => $prodUsage,
                     'purchased'       => $purchased,
                     'purchase_return' => $pReturn,
                     'transfer'        => $transferQty,
@@ -944,27 +1019,40 @@ class ReportingController extends Controller
                 $rawStock = (float)$v->stock_qty;
             }
 
-            // Combine unassigned main product stock (variant_id IS NULL) with default variant or single variant
-            if (($v->is_default || count($productVariantCounts[$pid] ?? []) === 1) && isset($nullStocksMap[$pid])) {
+            // Combine unassigned main product stock (variant_id IS NULL) with single variant products
+            if (count($productVariantCounts[$pid] ?? []) === 1 && isset($nullStocksMap[$pid])) {
                 $rawStock += $nullStocksMap[$pid];
                 unset($nullStocksMap[$pid]); // consume null stock so it's not added twice
             }
 
-            // For KG items: raw stock in DB is in grams -> convert to KG for display
             $isKg = $v->unit_type === 'kg';
-            $stock = $isKg ? ($rawStock / 1000) : $rawStock;
+            $isSingleVar = count($productVariantCounts[$pid] ?? []) === 1;
+            $stock = ($isKg && $isSingleVar) ? ($rawStock / 1000) : $rawStock;
             
             $grouped[$pid]['sizes'][] = [
                 'variant_id'  => $v->variant_id,
                 'label'       => $label,
                 'price'       => (float)$v->price,
                 'stock_qty'   => $stock,
-                'is_kg'       => $isKg,
+                'is_kg'       => ($isKg && $isSingleVar),
                 'alert_qty'   => (int)$v->alert_qty,
                 'is_default'  => (bool)$v->is_default,
                 'status'      => $stock <= 0 ? 'out' : ($stock <= ($v->alert_qty ?: 5) ? 'low' : 'ok'),
             ];
-            $grouped[$pid]['total_stock'] += $stock;
+
+            if ($isKg) {
+                if ($isSingleVar) {
+                    $grouped[$pid]['total_stock'] += $stock;
+                } else {
+                    $vMul = (float)$v->size_value;
+                    if (in_array(strtolower($v->size_unit ?? ''), ['g', 'gm', 'gram', 'grams'])) {
+                        $vMul /= 1000;
+                    }
+                    $grouped[$pid]['total_stock'] += $stock * ($vMul ?: 1);
+                }
+            } else {
+                $grouped[$pid]['total_stock'] += $stock;
+            }
         }
 
         return response()->json([

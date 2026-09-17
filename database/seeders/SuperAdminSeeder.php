@@ -15,7 +15,7 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        // Super Admin User بنائیں
+        // Create Super Admin User
         $superAdmin = User::updateOrCreate(
             ['email' => 'admin@admin.com'],
             [
@@ -25,16 +25,16 @@ class SuperAdminSeeder extends Seeder
             ]
         );
 
-        // super-admin role بنائیں (اگر نہیں ہے)
+        // Create super-admin role if it doesn't exist
         $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
 
-        // تمام permissions assign کریں super-admin role کو
+        // Assign all permissions to super-admin role
         $allPermissions = Permission::all();
         $superAdminRole->syncPermissions($allPermissions);
 
-        // Super Admin کو role assign کریں
+        // Assign role to Super Admin
         $superAdmin->syncRoles([$superAdminRole]);
 
-        $this->command->info('✅ Super Admin بن گیا: admin@admin.com | Password: 12345678');
+        $this->command->info('✅ Super Admin created: admin@admin.com | Password: 12345678');
     }
 }

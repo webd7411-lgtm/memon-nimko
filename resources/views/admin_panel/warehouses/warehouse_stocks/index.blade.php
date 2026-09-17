@@ -20,7 +20,7 @@
   --ws-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.ws-page * {
+.ws-page *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) {
   font-family: var(--ws-font);
 }
 

@@ -21,7 +21,7 @@
 
     body { background: var(--pr-bg); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
 
-    /* Functional helpers (unchanged logic) */
+    /* Functional helpers */
     .searchResults { position: absolute; z-index: 9999; width: 100%; max-height: 200px; overflow-y: auto; background: #fff; text-align: start; border: 1px solid var(--pr-border); border-radius: 8px; box-shadow: var(--pr-shadow); }
     .search-result-item.active { background: var(--pr-header); color: #fff; }
     .small-muted { font-size: 11px; color: var(--pr-text-muted); }
@@ -29,7 +29,7 @@
     .table-scroll thead, .table-scroll tbody tr { display: table; width: 100%; table-layout: fixed; }
     .disabled-row input { background-color: #f8fafc; pointer-events: none; }
 
-    /* Premium professional layout */
+    /* Premium layout */
     .card { border-radius: var(--pr-radius); border: 1px solid var(--pr-border); background: var(--pr-card); box-shadow: var(--pr-shadow); overflow: hidden; }
     .card-header { background: linear-gradient(135deg, #111827 0%, #1f2937 100%) !important; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 1rem 1.25rem; }
     .card-header h5, .card-header h5.text-dark { font-weight: 700; letter-spacing: 0.03em; font-size: 1.1rem; color: #fff !important; margin-bottom: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
@@ -39,21 +39,81 @@
     .row.mb-3 > .col-md-6 { padding-top: 0.25rem; }
     label.form-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--pr-text-sec); margin-bottom: 0.35rem; display: block; }
 
-    /* Inputs */
+    /* Inputs & Selects - Prevents vertical text clipping */
     .form-control, .form-select, input.form-control, select.form-control, textarea.form-control {
-        border: 1px solid #d1d5db; border-radius: var(--pr-radius-sm); padding: 0.5rem 0.75rem; font-size: 0.88rem; color: var(--pr-text); background: var(--pr-input); transition: all 0.2s ease;
+        border: 1.5px solid #cbd5e1 !important; 
+        border-radius: var(--pr-radius-sm) !important; 
+        padding: 0.45rem 0.75rem !important; 
+        font-size: 0.9rem !important; 
+        line-height: 1.4 !important;
+        height: auto !important;
+        min-height: 40px !important;
+        color: var(--pr-text) !important; 
+        background-color: var(--pr-input) !important; 
+        transition: all 0.2s ease;
+        box-sizing: border-box !important;
+    }
+    .form-control-sm, select.form-control-sm {
+        min-height: 38px !important;
+        padding: 0.35rem 0.65rem !important;
+        font-size: 0.86rem !important;
+        line-height: 1.4 !important;
     }
     .form-control:focus, .form-select:focus, input.form-control:focus, select.form-control:focus, textarea.form-control:focus {
-        border-color: #334155; outline: none; box-shadow: 0 0 0 3px var(--pr-focus);
+        border-color: #334155 !important; outline: none !important; box-shadow: 0 0 0 3px var(--pr-focus) !important;
     }
     input[type="number"], input[type="text"], textarea { background: var(--pr-input); }
 
-    /* Tables */
-    .table { border-color: var(--pr-border); font-size: 0.82rem; color: var(--pr-text-sec); }
-    .table thead th { background: #f8fafc; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.68rem; color: var(--pr-text-muted); border-bottom: 1.5px solid var(--pr-text); padding: 0.75rem 0.6rem; white-space: nowrap; }
-    .table tbody td { padding: 0.6rem 0.55rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    /* Tables & Column Safety */
+    .table { border-color: var(--pr-border); font-size: 0.82rem; color: var(--pr-text-sec); width: 100% !important; }
+    .table thead th { 
+        background: #f8fafc; 
+        font-weight: 700; 
+        letter-spacing: 0.02em; 
+        text-transform: uppercase; 
+        font-size: 0.68rem; 
+        color: var(--pr-text-muted); 
+        border-bottom: 1.5px solid var(--pr-text); 
+        padding: 0.75rem 0.6rem; 
+        white-space: normal; 
+        word-break: break-word; 
+        vertical-align: middle; 
+    }
+    .table tbody td { 
+        padding: 0.6rem 0.55rem; 
+        border-bottom: 1px solid #f1f5f9; 
+        vertical-align: middle; 
+        white-space: normal; 
+        word-break: break-word; 
+    }
     .table tbody tr:hover td { background: #f8fafc; }
     .table-bordered { border: 1px solid var(--pr-border); }
+
+    /* Specific column widths for soldItemsTable */
+    #soldItemsTable th:nth-child(1) { min-width: 55px; }
+    #soldItemsTable th:nth-child(2) { min-width: 150px; text-align: left; }
+    #soldItemsTable th:nth-child(3) { min-width: 90px; }
+    #soldItemsTable th:nth-child(4) { min-width: 120px; text-align: left; }
+    #soldItemsTable th:nth-child(5) { min-width: 80px; }
+    #soldItemsTable th:nth-child(6) { min-width: 60px; }
+    #soldItemsTable th:nth-child(7) { min-width: 80px; }
+    #soldItemsTable th:nth-child(8) { min-width: 70px; }
+    #soldItemsTable th:nth-child(9) { min-width: 70px; }
+
+    /* Specific column widths for returnItemsTable */
+    #returnItemsTable th:nth-child(1) { min-width: 150px; text-align: left; }
+    #returnItemsTable th:nth-child(2) { min-width: 90px; }
+    #returnItemsTable th:nth-child(3) { min-width: 120px; text-align: left; }
+    #returnItemsTable th:nth-child(4) { min-width: 80px; }
+    #returnItemsTable th:nth-child(5) { min-width: 60px; }
+    #returnItemsTable th:nth-child(6) { min-width: 85px; }
+    #returnItemsTable th:nth-child(7) { min-width: 80px; }
+    #returnItemsTable th:nth-child(8) { min-width: 130px; }
+    #returnItemsTable th:nth-child(9) { min-width: 90px; }
+    #returnItemsTable th:nth-child(10) { min-width: 50px; }
+
+    .summary-table th { font-size: 0.68rem; font-weight: 700; white-space: normal; word-break: break-word; min-width: 90px; }
+    .summary-table th:first-child { min-width: 180px; }
 
     /* Buttons */
     .btn { border-radius: var(--pr-radius-sm); font-weight: 600; letter-spacing: 0.01em; padding: 0.5rem 1rem; font-size: 0.82rem; transition: all 0.2s ease; }
@@ -80,7 +140,7 @@
     .table-responsive::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .table-responsive::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-    /* Mobile adjustments (no logic change) */
+    /* Mobile adjustments */
     @media (max-width: 767.98px) {
         body { overflow-x: hidden; }
         .card-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
@@ -94,12 +154,12 @@
 
 <div class="container-fluid">
     <div class="card shadow-sm border-0 mt-3">
-        <div class="card-header ">
-            <h5 class="mb-0 text-dark">SALES RETURN</h5>
-            <a href="{{ url()->previous() }}" class="btn btn-danger btn-sm">Back</a>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-dark"><i class="bi bi-arrow-return-left me-1"></i> SALES RETURN</h5>
+            <a href="{{ url()->previous() }}" class="btn btn-danger btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
         </div>
 
-        <form action="{{ route('sales.return.store') }}" method="POST">
+        <form action="{{ route('sales.return.store') }}" method="POST" id="saleReturnForm">
             @csrf
             <input type="hidden" name="sale_id" value="{{ $sale->id }}">
 
@@ -114,18 +174,19 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label fw-bold">Customer:</label>
-                        <select name="customer" class="form-control form-control-sm">
-                            @php
-                            // Optional: make a placeholder Walk-in customer with ID = 0
-                            $walkInId = 0;
-                            @endphp
-                            <option value="{{ $walkInId }}" {{ $sale->customer == $walkInId ? 'selected' : '' }}>Walk-in Customer</option>
-                            @foreach ($Customer as $c)
-                            <option value="{{ $c->id }}" {{ $sale->customer == $c->id ? 'selected' : '' }}>
-                                {{ $c->customer_name }}
-                            </option>
-                            @endforeach
-                        </select>
+                        @php
+                            $customerName = 'Walk-in Customer';
+                            if (!empty($sale->customer_relation->customer_name)) {
+                                $customerName = $sale->customer_relation->customer_name;
+                            } elseif ($sale->customer && $sale->customer != 0) {
+                                $foundC = $Customer->firstWhere('id', $sale->customer);
+                                if ($foundC) {
+                                    $customerName = $foundC->customer_name;
+                                }
+                            }
+                        @endphp
+                        <input type="text" class="form-control form-control-sm bg-light fw-bold text-dark" value="{{ $customerName }}" readonly style="cursor: not-allowed; background-color: #f1f5f9 !important;">
+                        <input type="hidden" name="customer" value="{{ $sale->customer }}">
                     </div>
 
                     <div class="col-md-6">
@@ -140,7 +201,7 @@
                     <table class="table table-bordered table-sm align-middle text-center" id="soldItemsTable">
                         <thead>
                             <tr>
-                                <th style="width:60px">Return?</th>
+                                <th style="width:55px">Return?</th>
                                 <th>Product</th>
                                 <th>Item Code</th>
                                 <th>Note</th>
@@ -162,7 +223,7 @@
                                 <td>
                                     <input type="checkbox" class="select-return-item" {{ ($item['available_qty'] ?? 0) <= 0 ? 'disabled' : '' }}>
                                 </td>
-                                <td class="text-start">{{ $item['item_name'] }}</td>
+                                <td class="text-start fw-semibold">{{ $item['item_name'] }}</td>
                                 <td>{{ $item['item_code'] }}</td>
                                 <td class="text-start">
                                     @if(!empty($item['note']))
@@ -175,7 +236,7 @@
                                 <td>{{ $item['unit'] }}</td>
                                 <td>{{ number_format($item['price'],2) }}</td>
                                 <td>{{ $item['qty'] }}</td>
-                                <td class="available-qty">{{ $item['available_qty'] }}</td>
+                                <td class="available-qty fw-bold text-success">{{ $item['available_qty'] }}</td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -209,34 +270,40 @@
                 </div>
 
                 <!-- ===== Summary ===== -->
-                <table class="table table-bordered table-sm mt-3 text-center">
-                    <tr>
-                        <th>Amount In Words</th>
-                        <th>BILL AMOUNT</th>
-                        <th>ITEM DISCOUNT</th>
-                        <th>EXTRA DISCOUNT</th>
-                        <th>NET AMOUNT</th>
-                        <th>Cash</th>
-                        <th>Card</th>
-                        <th>Change</th>
-                    </tr>
-                    <tr>
-                        <td><input type="text" id="amountInWords" class="form-control form-control-sm" name="total_amount_Words" readonly></td>
-                        <td><input type="text" id="billAmount" class="form-control form-control-sm text-center" name="total_subtotal" readonly></td>
-                        <td><input type="text" id="itemDiscount" class="form-control form-control-sm text-center" name="total_discount" readonly></td>
-                        <td><input type="number" id="extraDiscount" name="total_extra_cost" class="form-control form-control-sm text-center" value="0"></td>
-                        <td><input type="text" id="netAmount" name="total_net" class="form-control form-control-sm text-center" readonly></td>
-                        <td><input type="number" id="cash" name="cash" class="form-control form-control-sm text-center" value="0"></td>
-                        <td><input type="number" id="card" name="card" class="form-control form-control-sm text-center" value="0"></td>
-                        <td><input type="text" id="change" name="change" class="form-control form-control-sm text-center" readonly></td>
-                    </tr>
-                </table>
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered table-sm summary-table text-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>Amount In Words</th>
+                                <th>BILL AMOUNT</th>
+                                <th>ITEM DISCOUNT</th>
+                                <th>EXTRA DISCOUNT</th>
+                                <th>NET AMOUNT</th>
+                                <th>Cash</th>
+                                <th>Card</th>
+                                <th>Change</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="text" id="amountInWords" class="form-control form-control-sm" name="total_amount_Words" readonly></td>
+                                <td><input type="text" id="billAmount" class="form-control form-control-sm text-center fw-bold" name="total_subtotal" readonly></td>
+                                <td><input type="text" id="itemDiscount" class="form-control form-control-sm text-center" name="total_discount" readonly></td>
+                                <td><input type="number" id="extraDiscount" name="total_extra_cost" class="form-control form-control-sm text-center" value="0"></td>
+                                <td><input type="text" id="netAmount" name="total_net" class="form-control form-control-sm text-center fw-bold text-primary" readonly></td>
+                                <td><input type="number" id="cash" name="cash" class="form-control form-control-sm text-center fw-bold" value="0"></td>
+                                <td><input type="number" id="card" name="card" class="form-control form-control-sm text-center fw-bold" value="0"></td>
+                                <td><input type="text" id="change" name="change" class="form-control form-control-sm text-center fw-bold" readonly></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div><strong>TOTAL PIECES : </strong> <span id="totalPieces">0</span></div>
+                    <div><strong>TOTAL PIECES : </strong> <span id="totalPieces" class="badge bg-primary text-white fs-6 ms-1">0</span></div>
                     <div>
-                        <button type="submit" class="btn btn-success">Return Sale</button>
-                        <a href="{{ url()->previous() }}" class="btn btn-secondary">Close</a>
+                        <button type="submit" id="btnSubmitReturn" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Return Sale</button>
+                        <a href="{{ url()->previous() }}" class="btn btn-secondary"><i class="bi bi-x-lg me-1"></i>Close</a>
                     </div>
                 </div>
 
@@ -252,15 +319,14 @@
     $(document).ready(function() {
         // Prevent Double Submission
         let isSubmitting = false;
-        $('form').on('submit', function(e) {
+        $('#saleReturnForm').on('submit', function(e) {
             if (isSubmitting) {
                 e.preventDefault();
                 return;
             }
             isSubmitting = true;
-            $(this).find('button[type="submit"]').prop('disabled', true).text('Processing...');
+            $(this).find('button[type="submit"]').prop('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i>Processing...');
         });
-
 
         function escapeHtml(text) {
             if (text === null || text === undefined) return '';
@@ -314,10 +380,10 @@
 
                 const returnQtyDefault = Math.min(availableQty, 1);
 
-                // Build return row with textarea for note (and keep name color[] for backend)
+                // Build return row
                 const rowHtml = `
 <tr data-product-id="${escapeHtml(productId)}" data-variant-id="${escapeHtml(variantId)}" data-unique-id="${escapeHtml(uniqueId)}">
-    <td class="text-start">
+    <td class="text-start fw-semibold">
         ${escapeHtml(productName)}
         <input type="hidden" name="product[]" value="${escapeHtml(productName)}">
         <input type="hidden" name="product_id[]" value="${escapeHtml(productId)}">
@@ -326,7 +392,7 @@
     </td>
     <td>${escapeHtml(itemCode)}</td>
     <td>
-        <textarea name="color[]" class="form-control form-control-sm note-textarea" rows="2" readonly>${escapeHtml(note)}</textarea>
+        <textarea name="color[]" class="form-control form-control-sm note-textarea" rows="1" readonly>${escapeHtml(note)}</textarea>
     </td>
     <td>
         ${escapeHtml(brand)}
@@ -337,23 +403,23 @@
         <input type="hidden" name="unit[]" value="${escapeHtml(unit)}">
     </td>
     <td>
-        <input type="number" step="any" name="price[]" class="form-control form-control-sm price-input" value="${price}">
+        <input type="number" step="any" name="price[]" class="form-control form-control-sm price-input text-center" value="${price}">
     </td>
     <td>
-        <input type="number" step="any" name="item_disc[]" class="form-control form-control-sm disc-input" value="${itemDisc}">
+        <input type="number" step="any" name="item_disc[]" class="form-control form-control-sm disc-input text-center" value="${itemDisc}">
     </td>
     <td>
         <div class="input-group input-group-sm">
-            <input type="number" step="any" name="qty[]" class="form-control qty-input" value="${returnQtyDefault}" max="${availableQty}">
+            <input type="number" step="any" name="qty[]" class="form-control qty-input text-center fw-bold" value="${returnQtyDefault}" max="${availableQty}">
             <span class="input-group-text">${escapeHtml(unit)}</span>
         </div>
         <div class="small-muted">Max: <span class="max-qty">${availableQty}</span></div>
     </td>
     <td>
-        <input type="text" name="total[]" class="form-control form-control-sm row-total" value="${(price*returnQtyDefault - itemDisc).toFixed(2)}" readonly>
+        <input type="text" name="total[]" class="form-control form-control-sm row-total text-center fw-bold" value="${(price*returnQtyDefault - itemDisc).toFixed(2)}" readonly>
     </td>
     <td>
-        <button type="button" class="btn btn-sm btn-danger remove-return-item">X</button>
+        <button type="button" class="btn btn-sm btn-danger remove-return-item" title="Remove"><i class="bi bi-x-lg"></i></button>
     </td>
 </tr>
 `;
@@ -363,6 +429,12 @@
                 const newAvailable = availableQty - returnQtyDefault;
                 $row.find('.available-qty').text(newAvailable);
                 if (newAvailable <= 0) $row.find('.select-return-item').prop('disabled', true);
+
+                // 🔹 Auto-focus & select the Qty input of the newly added row
+                setTimeout(function() {
+                    $('#returnItemsTable tbody tr[data-unique-id="' + uniqueId + '"]').find('.qty-input').focus().select();
+                }, 50);
+
             } else {
                 // unchecked: remove from return table and restore available qty
                 const $returnRow = $('#returnItemsTable tbody tr[data-unique-id="' + uniqueId + '"]');
@@ -425,6 +497,41 @@
             }
 
             recalcAll();
+        });
+
+        // 🔹 KEYBOARD NAVIGATION: Enter Key Chain (Qty -> Next Qty -> Cash -> Card -> Submit)
+        $('#returnItemsTable').on('keydown', '.qty-input', function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                const $allQtys = $('#returnItemsTable tbody .qty-input');
+                const currentIndex = $allQtys.index(this);
+                if (currentIndex < $allQtys.length - 1) {
+                    $allQtys.eq(currentIndex + 1).focus().select();
+                } else {
+                    $('#cash').focus().select();
+                }
+            }
+        });
+
+        $('#extraDiscount').on('keydown', function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                $('#cash').focus().select();
+            }
+        });
+
+        $('#cash').on('keydown', function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                $('#card').focus().select();
+            }
+        });
+
+        $('#card').on('keydown', function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                $('#btnSubmitReturn').click();
+            }
         });
 
         // recalc summary totals & pieces

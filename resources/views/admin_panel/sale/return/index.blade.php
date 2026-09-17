@@ -252,6 +252,59 @@
   background-color: #f8fafc;
 }
 
+/* ═══════ TABLE ACTION BUTTONS ═══════ */
+.sr-act-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.sr-act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none !important;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  line-height: 1.2;
+  border: 1px solid transparent;
+}
+
+.sr-act-slip {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff !important;
+  border-color: #0284c7;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.28);
+}
+
+.sr-act-slip:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff !important;
+  border-color: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.38);
+}
+
+.sr-act-inv {
+  background: #f1f5f9;
+  color: #1e293b !important;
+  border-color: #cbd5e1;
+}
+
+.sr-act-inv:hover {
+  background: #0f172a;
+  color: #ffffff !important;
+  border-color: #0f172a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22);
+}
+
 /* ═══════════════════════════════════════════════════
    MOBILE PREMIUM — return cards, no horizontal scroll
 ═══════════════════════════════════════════════════ */
@@ -445,7 +498,7 @@
               <th width="14%">Return Note</th>
               <th width="10%" class="text-center">Date</th>
               <th width="8%" class="text-center">Status</th>
-              <th width="8%" class="text-center">Action</th>
+              <th width="12%" class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -486,9 +539,16 @@
                 </span>
               </td>
               <td class="text-center">
-                <a href="{{ route('saleReturn.invoice', $return->id) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-2 fw-semibold">
-                  <i class="bi bi-printer-fill me-1"></i> Slip
-                </a>
+                <div class="sr-act-group">
+                  <a href="{{ route('saleReturn.invoice', $return->id) }}" target="_blank" class="sr-act-btn sr-act-slip" title="View / Print Return Slip">
+                    <i class="bi bi-printer-fill"></i> Slip
+                  </a>
+                  @if($return->sale_id)
+                  <a href="{{ route('sales.invoice', $return->sale_id) }}" target="_blank" class="sr-act-btn sr-act-inv" title="View Original Sale Invoice">
+                    <i class="bi bi-file-earmark-text"></i> Invoice
+                  </a>
+                  @endif
+                </div>
               </td>
             </tr>
             @endforeach

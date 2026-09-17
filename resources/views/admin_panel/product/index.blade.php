@@ -24,7 +24,7 @@
   --pc-font: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-.pc-page * { font-family: var(--pc-font); }
+.pc-page *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) { font-family: var(--pc-font); }
 
 .pc-page {
   background: var(--pc-bg);
@@ -674,10 +674,26 @@
                 <td data-label="Variants">
                   @if($product->variants && $product->variants->count() > 0)
                   <div class="pc-variant-list">
+                    @php
+                      $variantCount = $product->variants->count();
+                    @endphp
                     @foreach($product->variants as $variant)
+                    @php
+                      if ($variantCount === 1) {
+                          $vStock = (float)($product->total_stock ?? 0);
+                          $isKg = ($product->unit_type ?? '') === 'kg' || ($variant->size_unit ?? '') === 'kg';
+                          if ($isKg) {
+                              $vStock = $vStock / 1000;
+                          }
+                      } else {
+                          $vStock = (float)($variant->variant_stock ?? 0);
+                      }
+                      $vFormatted = (floor($vStock) == $vStock) ? number_format($vStock) : number_format($vStock, 2);
+                      $vStockDisplay = $vFormatted;
+                    @endphp
                     <div>
                       <span>
-                        <strong>{{ $variant->variant_name }}</strong> - Rs {{ number_format($variant->price) }} <span style="color:var(--pc-text-muted)">({{ $variant->stock ? $variant->stock->qty : ($variant->stock_qty ?? 0) }})</span>
+                        <strong>{{ $variant->variant_name }}</strong> - Rs {{ number_format($variant->price) }} <span style="color:var(--pc-text-muted)">({{ $vStockDisplay }})</span>
                       </span>
                       @if($variant->is_default)<span class="v-default">Default</span>@endif
                     </div>
@@ -689,41 +705,56 @@
                 </td>
                 <td data-label="Price">
                   <div class="pc-price">
+                    @php
+                      $defaultVariant = $product->defaultVariant ?? ($product->variants ? ($product->variants->firstWhere('is_default', true) ?? $product->variants->first()) : null);
+                      $baseSalePrice = $defaultVariant ? $defaultVariant->price : ($product->price ?? 0);
+                    @endphp
                     @if($product->discountProduct)
                     @php
                       $discount = $product->discountProduct;
-                      $discountedPrice = $discount->final_price;
+                      $discountedPrice = max(0, $baseSalePrice - ($baseSalePrice * ($discount->discount_percentage / 100)));
                     @endphp
                     <div class="pc-disc-badge">{{ $discount->discount_percentage }}% OFF</div>
-                    <del style="color:var(--pc-text-muted);font-size:.75rem;">PKR {{ number_format($product->price) }}</del><br>
+                    <del style="color:var(--pc-text-muted);font-size:.75rem;">PKR {{ number_format($baseSalePrice) }}</del><br>
                     <span style="color:var(--pc-success)">PKR {{ number_format($discountedPrice) }}</span>
                     @else
-                    PKR {{ number_format($product->price) }}
+                    PKR {{ number_format($baseSalePrice) }}
                     @endif
                   </div>
                 </td>
                 <td data-label="Stock">
                   <span class="pc-stock">
                     @php
-                      $totalStockValue = 0;
-                      if ($product->variants && $product->variants->count() > 0) {
+                      if ($product->variants && $product->variants->count() > 1) {
+                          $totalKg = 0;
+                          $totalPieces = 0;
                           foreach ($product->variants as $v) {
-                              $qty = $v->stock_qty ?? ($v->stock ? $v->stock->qty : 0);
-                              $isKg = ($v->size_unit ?? 'kg') === 'kg' || $product->unit_type === 'kg';
-                              if ($isKg) {
-                                  $sizeInKg = floatval($v->size_value ?? 1);
-                                  $totalStockValue += $qty * $sizeInKg;
+                              $vQty = (float)($v->variant_stock ?? 0);
+                              if (($product->unit_type ?? '') === 'kg') {
+                                  $mul = (float)$v->size_value;
+                                  if (in_array(strtolower($v->size_unit ?? ''), ['g', 'gm', 'gram', 'grams'])) {
+                                      $mul /= 1000;
+                                  }
+                                  $totalKg += $vQty * ($mul ?: 1);
                               } else {
-                                  $totalStockValue += $qty;
+                                  $totalPieces += $vQty;
                               }
                           }
+                          if (($product->unit_type ?? '') === 'kg') {
+                              $formatted = (floor($totalKg) == $totalKg) ? number_format($totalKg) : number_format($totalKg, 2);
+                              echo $formatted . ' KG';
+                          } else {
+                              echo (floor($totalPieces) == $totalPieces) ? number_format($totalPieces) : number_format($totalPieces, 2);
+                          }
                       } else {
-                          $totalStockValue = $product->total_stock ?? 0;
-                      }
-                      if (($product->unit_type ?? '') === 'kg') {
-                        echo number_format($totalStockValue, 2) . ' KG';
-                      } else {
-                        echo number_format($totalStockValue);
+                          $rawStock = (float)($product->total_stock ?? 0);
+                          if (($product->unit_type ?? '') === 'kg') {
+                              $stockInKg = $rawStock / 1000;
+                              $formatted = (floor($stockInKg) == $stockInKg) ? number_format($stockInKg) : number_format($stockInKg, 2);
+                              echo $formatted . ' KG';
+                          } else {
+                              echo (floor($rawStock) == $rawStock) ? number_format($rawStock) : number_format($rawStock, 2);
+                          }
                       }
                     @endphp
                   </span>

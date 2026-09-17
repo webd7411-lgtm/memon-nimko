@@ -194,13 +194,29 @@
   </div>
 
   <div class="receipt-container">
+    @php
+      $receiptBranch = $return->branch 
+          ?? ($return->branch_id ? \App\Models\Branch::find($return->branch_id) : null)
+          ?? $return->sale?->branch 
+          ?? ($return->sale?->branch_id ? \App\Models\Branch::find($return->sale->branch_id) : null)
+          ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+          ?? \App\Models\Branch::find(active_branch_id())
+          ?? \App\Models\Branch::first();
+
+      $branchAddress = !empty($receiptBranch?->address) ? $receiptBranch->address : 'A-16/B Block-D Unit No. 6 Latifabad, Hyderabad';
+      $rawPhone = !empty($receiptBranch?->number) ? $receiptBranch->number : (!empty($receiptBranch?->phone) ? $receiptBranch->phone : '0334 2615888');
+      $branchPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+    @endphp
     <!-- Header -->
     <div class="center">
       <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
       <div class="store-name">Memon Nimko</div>
       <div class="store-info">Sweets & Bakers</div>
-      <div class="store-info">A-16/B Block-D Unit No. 6 Latifabad, Hyderabad</div>
-      <div class="store-info">Phone: 0334 2615888</div>
+      @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))
+      <div class="store-info" style="font-weight: 700; text-transform: uppercase;">{{ $receiptBranch->name }}</div>
+      @endif
+      <div class="store-info">{{ $branchAddress }}</div>
+      <div class="store-info">Phone: {{ $branchPhone }}</div>
       
       <div class="receipt-title">Return Receipt</div>
     </div>

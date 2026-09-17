@@ -38,7 +38,14 @@ class RawMaterialController extends Controller
 
         $productsWithBom = \App\Models\Product::has('bom')->with(['bom.rawMaterial'])->orderBy('item_name')->get();
 
-        return view('admin_panel.raw_material.index', compact('materials', 'purchases', 'vendors', 'warehouses', 'productsWithBom'));
+        // Warehouse stocks for raw materials (strictly warehouse inventory)
+        $warehouseStocks = RawMaterialStock::with(['rawMaterial', 'warehouse'])
+            ->whereNotNull('warehouse_id')
+            ->where('warehouse_id', '>', 0)
+            ->orderBy('warehouse_id')
+            ->get();
+
+        return view('admin_panel.raw_material.index', compact('materials', 'purchases', 'vendors', 'warehouses', 'productsWithBom', 'warehouseStocks'));
     }
 
     public function storeRawMaterial(Request $request)
@@ -195,14 +202,27 @@ class RawMaterialController extends Controller
                 $addQty = $item['qty'] * $factor;
                 $warehouseId = $request->warehouse_id ?: null;
 
-                $stock = RawMaterialStock::firstOrCreate(
-                    [
-                        'raw_material_id' => $rmId,
-                        'warehouse_id' => $warehouseId,
-                        'branch_id' => $branchId,
-                    ],
-                    ['qty' => 0]
-                );
+                if ($warehouseId) {
+                    $stock = RawMaterialStock::firstOrCreate(
+                        [
+                            'raw_material_id' => $rmId,
+                            'warehouse_id' => $warehouseId,
+                        ],
+                        [
+                            'branch_id' => $branchId,
+                            'qty' => 0
+                        ]
+                    );
+                } else {
+                    $stock = RawMaterialStock::firstOrCreate(
+                        [
+                            'raw_material_id' => $rmId,
+                            'warehouse_id' => null,
+                            'branch_id' => $branchId,
+                        ],
+                        ['qty' => 0]
+                    );
+                }
                 $stock->qty += $addQty;
                 $stock->save();
             }
@@ -231,15 +251,17 @@ class RawMaterialController extends Controller
                 $factor = ($rawMat && (float)$rawMat->conversion_factor > 0) ? (float)$rawMat->conversion_factor : 1;
                 $deductQty = $item->qty * $factor;
 
-                $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)
-                    ->where('warehouse_id', $purchase->warehouse_id)
-                    ->where('branch_id', is_all_branches() ? null : active_branch_id());
-                if (!is_all_branches()) {
-                    $stock->where('branch_id', active_branch_id());
-                }
-                $stock = $stock->first();
-                if (!$stock) {
-                    $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)->first();
+                if ($purchase->warehouse_id) {
+                    $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)
+                        ->where('warehouse_id', $purchase->warehouse_id)
+                        ->first();
+                } else {
+                    $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)
+                        ->whereNull('warehouse_id');
+                    if (!is_all_branches()) {
+                        $stock->where('branch_id', active_branch_id());
+                    }
+                    $stock = $stock->first();
                 }
                 if ($stock) {
                     $stock->qty = max(0, $stock->qty - $deductQty);
@@ -263,16 +285,22 @@ class RawMaterialController extends Controller
     }
 
     // ==================== STOCK AJAX ====================
-    public function getStock()
+    public function getStock(Request $request)
     {
         $branchId = is_all_branches() ? null : active_branch_id();
+        $warehouseId = $request->warehouse_id ? (int)$request->warehouse_id : null;
 
-        $materials = RawMaterial::with(['stocks' => function($q) use ($branchId) {
-            if ($branchId) $q->where('branch_id', $branchId);
-        }, 'stocks.warehouse'])->orderBy('name')->get()->map(function ($m) use ($branchId) {
-            $stockQuery = $m->stocks();
-            if ($branchId) $stockQuery->where('branch_id', $branchId);
-            $totalStock = (float)$stockQuery->sum('qty');
+        $materials = RawMaterial::with(['stocks' => function($q) use ($branchId, $warehouseId) {
+            if ($warehouseId) {
+                $q->where('warehouse_id', $warehouseId);
+            } else {
+                $q->where(function($sq) {
+                    $sq->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                });
+                if ($branchId) $q->where('branch_id', $branchId);
+            }
+        }, 'stocks.warehouse'])->orderBy('name')->get()->map(function ($m) use ($warehouseId, $branchId) {
+            $totalStock = $m->currentStock($warehouseId, $branchId);
             return [
                 'id' => $m->id,
                 'name' => $m->name,

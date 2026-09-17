@@ -126,8 +126,8 @@
                             <input type="text" name="name" class="form-control" required />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">نام</label>
-                            <input type="text" name="name_urdu" class="form-control text-end" dir="rtl" required />
+                            <label class="form-label">Name (Urdu)</label>
+                            <input type="text" name="name_urdu" class="form-control" required />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mobile</label>
@@ -159,8 +159,8 @@
                             <input type="text" name="name" id="edit_name" class="form-control" required />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">نام</label>
-                            <input type="text" name="name_urdu" id="edit_name_urdu" class="form-control text-end" dir="rtl" required />
+                            <label class="form-label">Name (Urdu)</label>
+                            <input type="text" name="name_urdu" id="edit_name_urdu" class="form-control" required />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mobile</label>

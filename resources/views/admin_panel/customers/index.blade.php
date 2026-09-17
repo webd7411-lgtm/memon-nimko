@@ -20,7 +20,7 @@
   --cs-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.cs-page * {
+.cs-page *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) {
   font-family: var(--cs-font);
 }
 
@@ -472,15 +472,16 @@
         <table id="customerTable" class="table cs-table align-middle mb-0" style="width:100%">
           <thead>
             <tr>
-              <th width="5%">#</th>
-              <th width="10%">Date</th>
+              <th width="4%">#</th>
+              <th width="9%">Date</th>
               <th width="8%">ID</th>
-              <th width="20%">Customer Name</th>
+              <th width="18%">Customer Name</th>
+              <th width="11%">Branch</th>
               <th width="10%">Type</th>
-              <th width="12%">Category</th>
-              <th width="12%">Mobile</th>
-              <th width="13%" class="text-end">Closing Balance</th>
-              <th width="5%" class="text-center">Status</th>
+              <th width="10%">Category</th>
+              <th width="11%">Mobile</th>
+              <th width="12%" class="text-end">Closing Balance</th>
+              <th width="4%" class="text-center">Status</th>
               <th width="5%" class="text-center">Actions</th>
             </tr>
           </thead>
@@ -497,6 +498,9 @@
                   </div>
                   <span class="fw-bold text-dark">{{ $customer->customer_name }}</span>
                 </div>
+              </td>
+              <td data-label="Branch">
+                <span class="badge bg-light text-dark border"><i class="bi bi-shop me-1 text-primary"></i>{{ $customer->branch->name ?? 'Main Branch' }}</span>
               </td>
               <td data-label="Type"><span class="badge bg-secondary-subtle text-secondary border">{{ $customer->customer_type }}</span></td>
               <td data-label="Category">

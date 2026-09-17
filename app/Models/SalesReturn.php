@@ -14,7 +14,7 @@ class SalesReturn extends Model
         'unit', 'per_price', 'per_discount', 'qty', 'per_total',
         'total_amount_Words', 'total_bill_amount', 'total_extradiscount',
         'total_net', 'cash', 'card', 'change', 'color', 'total_items',
-        'return_note',
+        'return_note', 'branch_id',
     ];
 
     public function sale()

@@ -416,7 +416,7 @@ let cart = [
     @foreach($saleItems as $item)
     {
         id: "{{ $item["product_id"] }}",
-        variantId: "",
+        variantId: "{{ $item["variant_id"] ?? "" }}",
         code: "{{ addslashes($item["item_code"]) }}",
         name: "{{ addslashes($item["item_name"]) }}",
         price: parseFloat({{ $item["price"] }}),

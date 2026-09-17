@@ -99,6 +99,49 @@
 .btn-book:hover{transform:translateY(-1px)}
 .btn-clr{width:40px;background:#fff;border:1.5px solid #e0e4ef;border-radius:11px;color:#334155;cursor:pointer;font-size:15px;transition:.18s;display:flex;align-items:center;justify-content:center}
 .btn-clr:hover{background:#f8fafc;border-color:#334155}
+
+/* EXCHANGE STATUS BANNER */
+.exchange-status-banner {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin: 8px 0;
+    font-size: 12px;
+    line-height: 1.35;
+}
+.exchange-status-banner i {
+    font-size: 26px;
+    flex-shrink: 0;
+}
+.exchange-status-banner .ex-badge-title {
+    font-weight: 800;
+    font-size: 12.5px;
+    margin-bottom: 2px;
+}
+.exchange-status-banner .ex-badge-desc {
+    font-size: 11px;
+    opacity: 0.95;
+}
+.exchange-status-banner.refund-mode {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    border: 1.5px solid #f87171;
+    color: #991b1b;
+}
+.exchange-status-banner.refund-mode i { color: #dc2626; }
+.exchange-status-banner.pay-mode {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 1.5px solid #4ade80;
+    color: #166534;
+}
+.exchange-status-banner.pay-mode i { color: #16a34a; }
+.exchange-status-banner.even-mode {
+    background: linear-gradient(135deg, #f3e8ff, #ede9fe);
+    border: 1.5px solid #c084fc;
+    color: #6b21a8;
+}
+.exchange-status-banner.even-mode i { color: #9333ea; }
 /* MODAL */
 .modal-content{border-radius:16px!important;border:none!important;overflow:hidden}
 .mod-hdr{background:linear-gradient(135deg,#090d16,#1e293b,#0f766e);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
@@ -315,12 +358,16 @@
             <input type="number" id="extraDisc" class="disc-i" value="0" min="0" placeholder="%" step="any">
             <input type="hidden" id="hExtraDisc" name="total_extra_cost" value="0">
         </div>
-        <div class="sr big"><span>NET TOTAL</span><span id="sNet">Rs 0.00</span></div>
-        <div class="cash-row">
-            <div class="cg"><label>💵 Cash</label><input type="number" id="cashI" name="cash" placeholder="0" min="0"></div>
-            <div class="cg"><label>💳 Card</label><input type="number" id="cardI" name="card" placeholder="0" min="0"></div>
+        <div class="sr big"><span id="sNetTitle">NET TOTAL</span><span id="sNet">Rs 0.00</span></div>
+
+        {{-- Exchange Payment Direction Banner --}}
+        <div id="exchangeStatusBanner" class="exchange-status-banner" style="display:none;"></div>
+
+        <div class="cash-row" id="cashRow">
+            <div class="cg"><label id="cashLabel">💵 Cash</label><input type="number" id="cashI" name="cash" placeholder="0" min="0"></div>
+            <div class="cg"><label id="cardLabel">💳 Card</label><input type="number" id="cardI" name="card" placeholder="0" min="0"></div>
         </div>
-        <div class="chng-bar"><span>Change / Balance</span><span id="chngAmt">0.00</span></div>
+        <div class="chng-bar" id="chngBar"><span id="chngLabel">Change / Balance</span><span id="chngAmt">0.00</span></div>
         <input type="hidden" name="total_subtotal" id="hSub">
         <input type="hidden" name="total_discount" id="hDisc">
         <input type="hidden" name="total_net" id="hNet">
@@ -437,12 +484,12 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="mod-hdr" style="background:linear-gradient(135deg, #8e44ad, #9b59b6)">
-                <h5>🔄 Sale Exchange (سیل ایکسچینج)</h5>
+                <h5>🔄 Sale Exchange</h5>
                 <button type="button" class="mod-x" id="exchangeClose">✕</button>
             </div>
             <div class="modal-body">
                 <div class="p-3 mb-3 bg-light rounded border">
-                    <label class="form-label fw-bold text-dark" style="font-size:13px;"><i class="la la-barcode"></i> Invoice # Enter Karein ya Search Karein:</label>
+                    <label class="form-label fw-bold text-dark" style="font-size:13px;"><i class="la la-barcode"></i> Enter or Search Invoice #:</label>
                     <div class="input-group">
                         <input type="text" id="exInvoiceInput" class="form-control form-control-lg fw-bold" placeholder="e.g. INV-0001" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchInvoiceExchange();}">
                         <button class="btn text-white fw-bold px-4" type="button" style="background:#8e44ad;" onclick="searchInvoiceExchange()"><i class="la la-search"></i> Search Invoice</button>
@@ -478,7 +525,7 @@
                 </div>
             </div>
             <div class="modal-footer justify-content-between bg-light">
-                <small class="text-muted"><i class="la la-info-circle"></i> Ek se zyada items return karne ke liye 'Return' dabayein, phir 'Done' par click karein.</small>
+                <small class="text-muted"><i class="la la-info-circle"></i> Click 'Return' on items to add them to cart, then click 'Done Exchange'.</small>
                 <button type="button" class="btn btn-success fw-bold px-4" onclick="hideModal('exchangeModal')">✓ Done Exchange</button>
             </div>
         </div>
@@ -491,7 +538,7 @@
 <script>
 const POS_URL     = "{{ route('pos.products') }}";
 const VAR_URL     = "{{ url('/pos/product-variants') }}";
-const CURRENT_USER_ID = {{ auth()->id() }}; // ہر user کا unique ID
+const CURRENT_USER_ID = {{ auth()->id() }}; // Unique ID for current user
 
 let cart     = [];
 let curProd  = null;
@@ -521,6 +568,7 @@ function showModal(id) {
 }
 function hideModal(id) {
     const el = document.getElementById(id);
+    if (!el) return;
     el.classList.remove('show');
     el.style.display = 'none';
     if (!document.querySelector('.modal.show')) {
@@ -562,7 +610,7 @@ function loadOrderTypePref() {
 /* ---- SPECIFIC FUNCS FOR ORDER TYPE ---- */
 function handleOrderTypeChange(saveToStorage) {
     let orderType = document.getElementById('orderTypeSel').value;
-    // صرف جب user خود change کرے تو save کریں (page load پر نہیں)
+    // Save only when user explicitly changes (not on initial page load)
     if (saveToStorage !== false) {
         saveOrderTypePref(orderType);
     }
@@ -884,7 +932,7 @@ loadProds(true);
     const sel = document.getElementById('orderTypeSel');
     if (saved && sel) {
         sel.value = saved;
-        // false = page load ہے، localStorage میں save نہ کریں
+        // false = page load, do not overwrite in localStorage
         handleOrderTypeChange(false);
     }
 })();
@@ -1130,7 +1178,7 @@ function openSingleModal(p) {
     document.getElementById('mLabel').value=p.item_name; document.getElementById('mQty').value=1;
     document.getElementById('mPrice').value=p.price; document.getElementById('mDisc').value=0;
     showModal('szModal');
-    // ⌨️ Modal کھلنے پر qty field پر focus
+    // Focus qty field on modal open
     setTimeout(function() {
         const qEl = document.getElementById('mQty');
         if (qEl) { qEl.focus(); qEl.select(); }
@@ -1156,8 +1204,8 @@ function addToOrder() {
         }
     }
 
-    if (qty <= 0)   { toast('Qty enter karein'); return; }
-    if (price <= 0) { toast('Price enter karein'); return; }
+    if (qty <= 0)   { toast('Please enter Qty'); return; }
+    if (price <= 0) { toast('Please enter Price'); return; }
 
     // Close modal FIRST (user sees immediate feedback)
     hideModal('szModal');
@@ -1197,7 +1245,7 @@ function addToOrder() {
     ol.style.background = '#e8f5e9';
     setTimeout(function() { ol.style.transition = 'background .6s'; ol.style.background = ''; }, 100);
 
-    // ⌨️ Product add ہونے کے بعد Cash field پر focus
+    // Focus Cash field after adding product
     setTimeout(function() {
         const cashEl = document.getElementById('cashI');
         if (cashEl) { cashEl.focus(); cashEl.select(); }
@@ -1370,44 +1418,172 @@ function clearOrder(prompt = true){
 
 /* ---- RECALC ---- */
 function recalc(){
-    let sub=0,iDisc=0,pcs=0;
-    cart.forEach(item=>{ 
-        const t=rowTotal(item); 
-        sub+=t; 
-        if (item.qty > 0) {
-            const r=item.qty*item.price; 
-            iDisc+=r-t; 
-            pcs+=item.qty; 
+    let sub=0, iDisc=0, pcs=0;
+    let newItemsCount = 0, returnItemsCount = 0;
+    let newItemsTotal = 0, returnItemsTotal = 0;
+
+    cart.forEach(item => { 
+        const t = rowTotal(item); 
+        sub += t; 
+        if (item.is_exchange_return || item.qty < 0) {
+            returnItemsCount++;
+            returnItemsTotal += Math.abs(t);
+        } else {
+            const r = item.qty * item.price; 
+            iDisc += r - t; 
+            pcs += item.qty; 
+            newItemsCount++;
+            newItemsTotal += t;
         }
     });
-    const ex_pct=parseFloat(document.getElementById('extraDisc').value)||0;
+
+    const ex_pct = parseFloat(document.getElementById('extraDisc').value) || 0;
     const ex = sub > 0 ? sub * (ex_pct / 100) : 0;
     if(document.getElementById('hExtraDisc')) document.getElementById('hExtraDisc').value = ex.toFixed(2);
-    const cs=parseFloat(document.getElementById('cashI').value)||0;
-    const cd=parseFloat(document.getElementById('cardI').value)||0;
-    const net=sub-ex, chng=(cs+cd)-net;
+
+    const cs = parseFloat(document.getElementById('cashI').value) || 0;
+    const cd = parseFloat(document.getElementById('cardI').value) || 0;
+    const net = sub - ex;
     
-    document.getElementById('sSubtotal').textContent='Rs '+sub.toFixed(2);
-    document.getElementById('sItemDisc').textContent='Rs '+iDisc.toFixed(2);
-    document.getElementById('sNet').textContent='Rs '+net.toFixed(2);
-    document.getElementById('chngAmt').textContent=chng.toFixed(2);
-    document.getElementById('hSub').value=sub.toFixed(2);
-    document.getElementById('hDisc').value=(iDisc+ex).toFixed(2);
-    document.getElementById('hNet').value=net.toFixed(2);
-    document.getElementById('hChng').value=chng.toFixed(2);
-    document.getElementById('hItems').value=pcs;
-    document.getElementById('hPieces').value=pcs;
+    document.getElementById('sSubtotal').textContent = 'Rs ' + (sub < 0 ? '-' : '') + fmt(Math.abs(sub));
+    document.getElementById('sItemDisc').textContent = 'Rs ' + fmt(iDisc);
+    
+    const sNetEl = document.getElementById('sNet');
+    const netTitleEl = document.getElementById('sNetTitle');
+    const banner = document.getElementById('exchangeStatusBanner');
+    const chngBar = document.getElementById('chngBar');
+    const chngLabel = document.getElementById('chngLabel');
+    const chngAmt = document.getElementById('chngAmt');
+    const cashLabel = document.getElementById('cashLabel');
+    const cardLabel = document.getElementById('cardLabel');
+
+    if (returnItemsCount > 0) {
+        if (net < 0) {
+            // SHOPKEEPER PAYS CUSTOMER (REFUND)
+            if (netTitleEl) netTitleEl.innerHTML = '<span class="text-danger fw-bold"><i class="la la-arrow-circle-down"></i> NET REFUND</span>';
+            sNetEl.textContent = 'Rs -' + fmt(Math.abs(net));
+            sNetEl.style.color = '#dc2626';
+
+            if (banner) {
+                banner.style.display = 'flex';
+                banner.className = 'exchange-status-banner refund-mode';
+                banner.innerHTML = `<i class="la la-hand-holding-usd"></i>
+                    <div>
+                        <div class="ex-badge-title">🔴 Refund to Customer</div>
+                        <div class="ex-badge-desc">Shopkeeper will refund <strong>Rs ${fmt(Math.abs(net))}</strong> in cash to Customer.</div>
+                    </div>`;
+            }
+
+            if (chngBar) {
+                chngBar.style.background = '#fef2f2';
+                chngBar.style.borderColor = '#fca5a5';
+            }
+            if (chngLabel) {
+                chngLabel.style.color = '#dc2626';
+                chngLabel.innerHTML = '🔴 Refund to Customer:';
+            }
+            if (chngAmt) {
+                chngAmt.style.color = '#dc2626';
+                chngAmt.textContent = 'Rs ' + fmt(Math.abs(net));
+            }
+        } else if (net > 0) {
+            // CUSTOMER PAYS SHOPKEEPER
+            if (netTitleEl) netTitleEl.innerHTML = '<span class="text-success fw-bold"><i class="la la-arrow-circle-up"></i> NET PAYABLE</span>';
+            sNetEl.textContent = 'Rs ' + fmt(net);
+            sNetEl.style.color = '#0f766e';
+
+            if (banner) {
+                banner.style.display = 'flex';
+                banner.className = 'exchange-status-banner pay-mode';
+                banner.innerHTML = `<i class="la la-money-bill-wave"></i>
+                    <div>
+                        <div class="ex-badge-title">🟢 Receive from Customer</div>
+                        <div class="ex-badge-desc">Customer will pay additional <strong>Rs ${fmt(net)}</strong> to Shopkeeper.</div>
+                    </div>`;
+            }
+
+            const paid = cs + cd;
+            const chng = paid - net;
+            if (chngBar) {
+                chngBar.style.background = '#f0fdf4';
+                chngBar.style.borderColor = '#ccfbf1';
+            }
+            if (chngLabel) {
+                chngLabel.style.color = '#0f766e';
+                chngLabel.textContent = 'Change / Balance:';
+            }
+            if (chngAmt) {
+                chngAmt.style.color = '#0f766e';
+                chngAmt.textContent = chng.toFixed(2);
+            }
+        } else {
+            // ZERO PAYABLE - EVEN EXCHANGE
+            if (netTitleEl) netTitleEl.innerHTML = '<span style="color:#8e44ad; font-weight:800;"><i class="la la-balance-scale"></i> EVEN EXCHANGE</span>';
+            sNetEl.textContent = 'Rs 0.00';
+            sNetEl.style.color = '#8e44ad';
+
+            if (banner) {
+                banner.style.display = 'flex';
+                banner.className = 'exchange-status-banner even-mode';
+                banner.innerHTML = `<i class="la la-balance-scale"></i>
+                    <div>
+                        <div class="ex-badge-title">⚖️ Even Exchange</div>
+                        <div class="ex-badge-desc">Zero Payable / Zero Refund.</div>
+                    </div>`;
+            }
+
+            if (chngBar) {
+                chngBar.style.background = '#f3e8ff';
+                chngBar.style.borderColor = '#d8b4fe';
+            }
+            if (chngLabel) {
+                chngLabel.style.color = '#8e44ad';
+                chngLabel.textContent = 'Balance:';
+            }
+            if (chngAmt) {
+                chngAmt.style.color = '#8e44ad';
+                chngAmt.textContent = '0.00 (Even)';
+            }
+        }
+    } else {
+        // REGULAR SALE
+        if (banner) banner.style.display = 'none';
+        if (netTitleEl) netTitleEl.textContent = 'NET TOTAL';
+        sNetEl.textContent = 'Rs ' + fmt(net);
+        sNetEl.style.color = '#2d3748';
+
+        const chng = (cs + cd) - net;
+        if (chngBar) {
+            chngBar.style.background = '#f0fdf4';
+            chngBar.style.borderColor = '#ccfbf1';
+        }
+        if (chngLabel) {
+            chngLabel.style.color = '#0f766e';
+            chngLabel.textContent = 'Change / Balance';
+        }
+        if (chngAmt) {
+            chngAmt.style.color = '#0f766e';
+            chngAmt.textContent = chng.toFixed(2);
+        }
+    }
+
+    document.getElementById('hSub').value = sub.toFixed(2);
+    document.getElementById('hDisc').value = (iDisc + ex).toFixed(2);
+    document.getElementById('hNet').value = net.toFixed(2);
+    document.getElementById('hChng').value = (net < 0 ? 0 : (cs + cd) - net).toFixed(2);
+    document.getElementById('hItems').value = pcs;
+    document.getElementById('hPieces').value = pcs;
     
     let w = '';
     if (net > 0) {
-        w = n2w(Math.round(net));
+        w = (returnItemsCount > 0 ? 'Customer Payable: ' : '') + n2w(Math.round(net));
     } else if (net < 0) {
-        w = 'Refund to Customer: Rs ' + fmt(Math.abs(net));
-    } else {
-        w = 'Even Exchange (Zero Payable)';
+        w = '🔴 Refund to Customer: Rs ' + fmt(Math.abs(net)) + ' (' + n2w(Math.round(Math.abs(net))) + ' to be refunded)';
+    } else if (returnItemsCount > 0) {
+        w = '⚖️ Even Exchange (Zero Payable / Zero Refund)';
     }
-    document.getElementById('wordsSpan').textContent=w||'–';
-    document.getElementById('hWords').value=w;
+    document.getElementById('wordsSpan').textContent = w || '–';
+    document.getElementById('hWords').value = w;
 }
 document.getElementById('extraDisc').addEventListener('input',recalc);
 document.getElementById('cashI').addEventListener('input',recalc);
@@ -1416,7 +1592,7 @@ document.getElementById('cardI').addEventListener('input',recalc);
 /* ---- INVOICE SEARCH FOR SALE EXCHANGE ---- */
 function searchInvoiceExchange() {
     const q = (document.getElementById('exInvoiceInput').value || '').trim();
-    if (!q) { toast('Invoice number enter karein'); return; }
+    if (!q) { toast('Please enter Invoice number'); return; }
 
     const body = document.getElementById('exItemsBody');
     body.innerHTML = '<tr><td colspan="5" class="text-center py-3"><i class="la la-spinner la-spin" style="font-size:24px"></i> Searching invoice...</td></tr>';
@@ -1436,7 +1612,7 @@ function searchInvoiceExchange() {
 
         body.innerHTML = '';
         if (!data.items || data.items.length === 0) {
-            body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Is invoice me koi returnable item nahi hai.</td></tr>';
+            body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No returnable items found in this invoice.</td></tr>';
             return;
         }
 
@@ -1463,7 +1639,7 @@ function searchInvoiceExchange() {
         window._exCurrentItems = data.items;
     })
     .catch(err => {
-        body.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Invoice search karne me error aaya.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Error searching invoice.</td></tr>';
     });
 }
 
@@ -1474,8 +1650,8 @@ function addExchangeReturnToCart(i) {
     const retQtyInput = document.getElementById(`exRetQty_${i}`);
     let returnQty = parseFloat(retQtyInput ? retQtyInput.value : item.qty) || item.qty;
 
-    if (returnQty <= 0) { toast('Return Qty sahi enter karein'); return; }
-    if (returnQty > (item.qty + 0.0001)) { toast(`Return Qty purchased Qty (${item.qty}) se zyada nahi ho sakti`); return; }
+    if (returnQty <= 0) { toast('Please enter valid Return Qty'); return; }
+    if (returnQty > (item.qty + 0.0001)) { toast(`Return Qty cannot exceed purchased Qty (${item.qty})`); return; }
 
     const label = '[EXCHANGE RETURN] ' + item.name;
 
@@ -1510,7 +1686,7 @@ function addExchangeReturnToCart(i) {
         btn.innerHTML = '✓ Added';
     }
 
-    toast(`${item.name} return cart me add ho gaya hai!`);
+    toast(`${item.name} added to return cart!`);
 }
 
 /* ---- SUBMIT ---- */
@@ -1566,7 +1742,22 @@ function savePosState() {
 
 function doSale(){
     if (submitting) return;
-    if (!cart.length){ toast('Koi product nahi add kiya'); return; }
+    if (!cart.length){ toast('No products added to cart'); return; }
+
+    const returnItems = cart.filter(i => i.is_exchange_return || i.qty < 0);
+    const newItems = cart.filter(i => !i.is_exchange_return && i.qty > 0);
+
+    // If there are return items but NO new items in exchange
+    if (returnItems.length > 0 && newItems.length === 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Exchange Not Allowed',
+            text: 'sale exchange is not allowed without add any new item',
+            confirmButtonColor: '#e53935',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
 
     savePosState();
     const net = parseFloat(document.getElementById('hNet').value) || 0;
@@ -1588,7 +1779,7 @@ function doSale(){
     document.getElementById('salesForm').submit();
 }
 function openBook(){
-    if (!cart.length){ toast('Koi product nahi add kiya'); return; }
+    if (!cart.length){ toast('No products added to cart'); return; }
     const net=parseFloat(document.getElementById('hNet').value)||0;
     document.getElementById('bkNet').value=net.toFixed(2);
     document.getElementById('bkAdv').value=0;
@@ -1625,18 +1816,18 @@ function n2w(n){
     return s.trim()+' Rupees Only';
 }
 /* ========================================================
-   ⌨️  KEYBOARD FLOW
+   KEYBOARD FLOW
    ─────────────────────────────────────────────────────────
-   Modal کھلے    → qty focus (openSingleModal / renderSizes)
-   qty → Enter  → addToOrder()
+   Modal open  → qty focus (openSingleModal / renderSizes)
+   qty → Enter → addToOrder()
    price → Enter → qty focus
    ─────────────────────────────────────────────────────────
-   Cart میں products ہوں:
+   Cart has products:
    cashI → Enter → cardI focus
    cardI → Enter → Sale button pulse/highlight
    Sale highlighted + Enter → doSale()
    ─────────────────────────────────────────────────────────
-   Ctrl+S → ہمیشہ doSale()
+   Ctrl+S → doSale()
    ======================================================== */
 
 let kbState = 'idle'; // 'idle' | 'cash' | 'card' | 'sale-ready'
@@ -1671,8 +1862,8 @@ document.getElementById('cashI').addEventListener('keydown', function(e) {
 document.getElementById('cardI').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
-        if (!cart.length) { toast('Koi product nahi add kiya'); return; }
-        // Sale button کو highlight کریں
+        if (!cart.length) { toast('No products added to cart'); return; }
+        // Highlight Sale button
         const btnSale = document.getElementById('btnSale');
         btnSale.style.transform = 'scale(1.06)';
         btnSale.style.boxShadow = '0 0 0 4px rgba(39,174,96,.55)';
@@ -1681,7 +1872,7 @@ document.getElementById('cardI').addEventListener('keydown', function(e) {
     }
 });
 
-// Sale button پر Enter → doSale
+// Sale button Enter → doSale
 document.getElementById('btnSale').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -1692,7 +1883,7 @@ document.getElementById('btnSale').addEventListener('keydown', function(e) {
     }
 });
 
-// Sale button کا blur reset
+// Sale button blur reset
 document.getElementById('btnSale').addEventListener('blur', function() {
     this.style.transform = '';
     this.style.boxShadow = '';
@@ -1740,5 +1931,23 @@ function fixHeights() {
 }
 fixHeights();
 window.addEventListener('resize', fixHeights);
+
+// Auto-open Exchange Modal if query parameter present
+try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const exchangeInv = urlParams.get('exchange_invoice') || urlParams.get('exchange');
+    if (exchangeInv) {
+        setTimeout(() => {
+            const input = document.getElementById('exInvoiceInput');
+            if (input) {
+                input.value = exchangeInv;
+                openExchangeModal();
+                searchInvoiceExchange();
+            }
+        }, 200);
+    }
+} catch(e) {
+    console.error(e);
+}
 </script>
 @endsection

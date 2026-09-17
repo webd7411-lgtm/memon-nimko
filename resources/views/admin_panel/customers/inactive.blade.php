@@ -94,6 +94,7 @@
                             <tr>
                                 <th>Customer ID</th>
                                 <th>Name</th>
+                                <th>Branch</th>
                                 <th>Mobile</th>
                                 <th>Zone</th>
                             </tr>
@@ -103,6 +104,7 @@
                             <tr>
                                 <td><span class="rp-chip bg-slate">{{ $customer->customer_id }}</span></td>
                                 <td class="ci-nm"><i class="bi bi-person-x me-2 text-muted"></i>{{ $customer->customer_name }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ $customer->branch->name ?? 'Main Branch' }}</span></td>
                                 <td><i class="bi bi-telephone me-2 text-muted"></i>{{ $customer->mobile }}</td>
                                 <td><span class="rp-chip bg-rose">{{ $customer->zone }}</span></td>
                             </tr>

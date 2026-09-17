@@ -24,7 +24,7 @@
   --pi-font: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-.pi-page * { font-family: var(--pi-font); }
+.pi-page *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) { font-family: var(--pi-font); }
 
 .pi-page {
   background: var(--pi-bg);

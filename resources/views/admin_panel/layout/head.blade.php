@@ -24,6 +24,39 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    /* ════ GLOBAL ICON FONT FAMILY PROTECTOR ════ */
+    i.bi, i[class*="bi-"], [class^="bi-"], [class*=" bi-"], .bi {
+        font-family: 'bootstrap-icons' !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+        display: inline-block;
+        line-height: 1;
+    }
+
+    i.fas, i.far, i.fa-solid, i.fa-regular, i[class*="fa-"], .fa, .fas, .far, .fab, .fa-solid, .fa-regular {
+        font-family: 'Font Awesome 6 Free', 'FontAwesome' !important;
+        font-style: normal !important;
+        font-weight: 900 !important;
+        display: inline-block;
+        line-height: 1;
+    }
+
+    i.fab, i.fa-brands {
+        font-family: 'Font Awesome 6 Brands', 'FontAwesome' !important;
+        font-style: normal !important;
+        font-weight: 400 !important;
+        display: inline-block;
+        line-height: 1;
+    }
+
+    i.feather, i[class*="ft-"], .feather {
+        font-family: 'feather' !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+        display: inline-block;
+        line-height: 1;
+    }
+
     /* ═════════════════════════════════════════════════════════════════════
        MEMON NIMKO — FULL-WIDTH ENTERPRISE DARK HEADER (SIDAZ PHARMA STYLE)
     ═════════════════════════════════════════════════════════════════════ */
@@ -89,14 +122,14 @@
         color: #ffffff !important;
     }
 
-    /* Outline Buttons */
-    .pc-btn-outline, .btn-outline-primary, .btn-outline-info {
+    /* Header Outline Buttons */
+    .pc-btn-outline, .pc-hdr .btn-outline-primary, .pc-hdr .btn-outline-info, .page-header .btn-outline-primary, .page-header .btn-outline-info, .sr-hero .btn-outline-primary, .sr-hero .btn-outline-info {
         background: rgba(255, 255, 255, 0.12) !important;
         border: 1px solid rgba(255, 255, 255, 0.22) !important;
         color: #ffffff !important;
     }
 
-    .pc-btn-outline:hover, .btn-outline-primary:hover, .btn-outline-info:hover {
+    .pc-btn-outline:hover, .pc-hdr .btn-outline-primary:hover, .pc-hdr .btn-outline-info:hover, .page-header .btn-outline-primary:hover, .page-header .btn-outline-info:hover, .sr-hero .btn-outline-primary:hover, .sr-hero .btn-outline-info:hover {
         background: rgba(255, 255, 255, 0.25) !important;
         color: #ffffff !important;
     }

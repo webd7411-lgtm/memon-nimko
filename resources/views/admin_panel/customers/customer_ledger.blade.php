@@ -106,6 +106,7 @@
                             <tr>
                                 <th class="text-center">#</th>
                                 <th>Customer</th>
+                                <th>Branch</th>
                                 <th class="text-end">Opening Balance</th>
                                 <th class="text-end">Previous Balance</th>
                                 <th class="text-end">Closing Balance</th>
@@ -117,6 +118,7 @@
                             <tr>
                                 <td class="text-center"><span class="rp-chip bg-violet">{{ $key + 1 }}</span></td>
                                 <td class="cl-nm"><i class="bi bi-person me-2 text-muted"></i>{{ $ledger->customer->customer_name ?? 'N/A' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ $ledger->customer->branch->name ?? 'Main Branch' }}</span></td>
                                 <td class="cl-amt text-end">{{ number_format($ledger->opening_balance, 2) }}</td>
                                 <td class="cl-amt text-end">{{ number_format($ledger->previous_balance, 2) }}</td>
                                 <td class="cl-amt close text-end">{{ number_format($ledger->closing_balance, 2) }}</td>

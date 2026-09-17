@@ -82,6 +82,19 @@ class Product extends Model
         return $this->hasOne(Stock::class)->orderByRaw('variant_id IS NULL DESC, id DESC');
     }
 
+    public function baseStock()
+    {
+        $query = $this->hasOne(Stock::class, 'product_id')
+            ->whereNull('variant_id')
+            ->where(function($q) {
+                $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+            });
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+        return $query;
+    }
+
     public function stocks()
     {
         return $this->hasMany(Stock::class);

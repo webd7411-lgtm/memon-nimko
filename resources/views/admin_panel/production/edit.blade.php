@@ -1,401 +1,832 @@
 @extends('admin_panel.layout.app')
+
 @section('content')
-<div class="main-content">
-    <div class="main-content-inner">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="body-wrapper">
-                    <div class="bodywrapper__inner">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h2 class="page-title m-0">🏭 Edit Production Entry — {{ $entry->entry_no }}</h2>
-                            <a href="{{ route('production.index') }}" class="btn btn-danger">Back</a>
-                        </div>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-                        @if($errors->any())
-                        <div class="alert alert-danger">
-                            @foreach($errors->all() as $err)
-                                <p class="mb-0">{{ $err }}</p>
-                            @endforeach
-                        </div>
-                        @endif
-                        
-                        <div class="card">
-                            <div class="card-body">
-                                <form action="{{ route('production.update', $entry->id) }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-                                    <div class="row g-3 mb-4">
-                                        <div class="col-md-4">
-                                            <label>Production Date</label>
-                                            <input type="date" name="production_date" value="{{ $entry->production_date }}" class="form-control" required>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label>Batch / Entry #</label>
-                                            <input type="text" name="entry_no" value="{{ $entry->entry_no }}" class="form-control" readonly>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label>Source (Kitchen/Warehouse)</label>
-                                            <select name="source" class="form-control">
-                                                <option value="kitchen" {{ $entry->source == 'kitchen' ? 'selected' : '' }}>Main Kitchen</option>
-                                                <option value="warehouse" {{ $entry->source == 'warehouse' ? 'selected' : '' }}>Warehouse</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-12">
-                                            <label>Notes</label>
-                                            <input type="text" name="notes" class="form-control" placeholder="Optional notes for this batch..." value="{{ $entry->notes }}">
-                                        </div>
-                                    </div>
+:root {
+  --pc-green: #0e8349;
+  --pc-green-hover: #0b6b3b;
+  --pc-bg: #f8fafc;
+  --pc-card-bg: #ffffff;
+  --pc-border: #e2e8f0;
+  --pc-text-dark: #0f172a;
+  --pc-text-muted: #64748b;
+  --pc-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <thead class="bg-light">
-                                                <tr>
-                                                    <th width="40%">Product</th>
-                                                    <th>Code</th>
-                                                    <th>Unit</th>
-                                                    <th>Entered Qty (KG/Pc)</th>
-                                                    <th>Cost (Rs)</th>
-                                                    <th>Note</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="productionItems">
-                                                @foreach($items as $item)
-                                                <tr>
-                                                    <td>
-                                                        <select name="product_id[]" class="form-control select2 product-select" required>
-                                                            <option value="">Search Product...</option>
-                                                            @foreach($products as $p)
-                                                                <option value="{{ $p->id }}" 
-                                                                    data-code="{{ $p->item_code }}"
-                                                                    data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
-                                                                    data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}"
-                                                                    {{ $item->product_id == $p->id ? 'selected' : '' }}>
-                                                                    {{ $p->item_code }} - {{ $p->item_name }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        
-                                                        <div class="variant-container mt-2" style="display:none;">
-                                                            <select name="variant_id[]" class="form-control variant-select">
-                                                                <option value="">Select Size (Optional)</option>
-                                                            </select>
-                                                        </div>
-                                                    </td>
-                                                    <td><input type="text" class="form-control code-display" value="{{ $item->item_code }}" readonly></td>
-                                                    <td><input type="text" class="form-control unit-display" value="{{ $item->unit }}" readonly></td>
-                                                    <td>
-                                                        <input type="number" step="0.001" name="qty[]" class="form-control qty-input" required min="0.001" value="{{ $item->qty_entered }}">
-                                                        <small class="text-muted conversion-display"></small>
-                                                    </td>
-                                                    <td><input type="number" step="0.01" min="0" name="item_cost[]" class="form-control item-cost" value="0" placeholder="0"></td>
-                                                    <td><input type="text" name="item_note[]" class="form-control" value="{{ $item->notes }}"></td>
-                                                    <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                                                     <div class="d-flex align-items-center justify-content-between mt-3 mb-2">
-                                        <span style="font-weight:600;">Total Cost: <strong id="editTotalCost" style="color:var(--pc-accent);">Rs {{ number_format($entry->production_cost ?? 0, 0) }}</strong></span>
-                                        <button type="submit" class="btn btn-primary btn-lg px-5">💾 Update Entry</button>
-                                    </div>
+.pc-container * {
+  font-family: var(--pc-font);
+  box-sizing: border-box;
+}
 
-                                    <hr>
-                                    <h5 style="font-weight:700;"><i class="fas fa-boxes"></i> Raw Materials Consumed</h5>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <thead class="bg-light">
-                                                <tr>
-                                                    <th width="35%">Raw Material</th>
-                                                    <th width="20%">Qty Used</th>
-                                                    <th width="20%">Cost/Unit (Rs)</th>
-                                                    <th width="20%">Total Cost</th>
-                                                    <th style="width:50px;">Action</th>
-                                                </tr>
-                                            </thead>
-                                             <tbody id="rmEditBody">
-                                                  @forelse($rawMaterialUsage as $rmu)
-                                                  <tr class="rm-row">
-                                                      <td>
-                                                          <input type="hidden" name="rm_type[]" class="rm-type" value="{{ $rmu->ingredient_product_id ? 'product' : 'rm' }}">
-                                                          <select name="rm_id[]" class="form-control">
-                                                              <option value="">Select...</option>
-                                                              <optgroup label="Raw Materials">
-                                                              @foreach($rawMaterials as $rm)
-                                                               <option value="{{ $rm->id }}" data-type="rm" data-cost="{{ $rm->lastPurchaseCost() }}" {{ $rmu->raw_material_id == $rm->id ? 'selected' : '' }}>
-                                                                   [RM] {{ $rm->name }} ({{ $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
-                                                               </option>
-                                                               @endforeach
-                                                               </optgroup>
-                                                               <optgroup label="Semi-Finished / Base Products">
-                                                               @foreach($products as $p)
-                                                               <option value="{{ $p->id }}" data-type="product" data-cost="{{ $p->price ?? 0 }}" {{ $rmu->ingredient_product_id == $p->id ? 'selected' : '' }}>
-                                                                   [Product] {{ $p->item_code }} - {{ $p->item_name }} ({{ strtoupper($p->unit_type ?? 'Piece') }})
-                                                               </option>
-                                                               @endforeach
-                                                               </optgroup>
-                                                           </select>
-                                                      </td>
-                                                      <td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="{{ $rmu->qty_used }}" min="0"></td>
-                                                      <td><input type="number" step="0.01" min="0" name="rm_cost[]" class="form-control rm-cost" value="{{ $rmu->cost_per_unit }}" placeholder="0"></td>
-                                                      <td><span class="rm-total fw-bold">Rs {{ number_format($rmu->total_cost, 0) }}</span></td>
-                                                      <td><button type="button" class="btn btn-danger btn-sm remove-rm-row"><i class="fas fa-times"></i></button></td>
-                                                  </tr>
-                                                  @empty
-                                                  @endforelse
-                                              </tbody>
-                                          </table>
-                                      </div>
-                                      <button type="button" class="btn btn-success btn-sm" id="addEditRmRow">+ Add More Raw Material</button>
+.pc-container {
+  background-color: var(--pc-bg);
+  min-height: 100vh;
+  padding: 1.25rem;
+  overflow-x: hidden !important;
+}
 
-{{-- Hidden template for manual RM rows --}}
-<table style="display:none;" id="editRmTemplateWrap">
-  <tr class="rm-row manual-rm-row">
-    <td>
-      <input type="hidden" name="rm_type[]" class="rm-type" value="rm">
-      <select name="rm_id[]" class="form-control">
-        <option value="">Select Raw Material...</option>
-        <optgroup label="Raw Materials">
-        @foreach($rawMaterials as $rm)
-        <option value="{{ $rm->id }}" data-type="rm" data-cost="{{ $rm->lastPurchaseCost() }}">[RM] {{ $rm->name }} ({{ $rm->unit }})</option>
-        @endforeach
-        </optgroup>
-        <optgroup label="Semi-Finished / Base Products">
-        @foreach($products as $p)
-        <option value="{{ $p->id }}" data-type="product" data-cost="{{ $p->price ?? 0 }}">[Product] {{ $p->item_code }} - {{ $p->item_name }} ({{ strtoupper($p->unit_type ?? 'Piece') }})</option>
-        @endforeach
-        </optgroup>
-      </select>
-    </td>
-    <td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="0" min="0"></td>
-    <td><input type="number" step="0.01" min="0" name="rm_cost[]" class="form-control rm-cost" value="0" placeholder="0"></td>
-    <td><span class="rm-total fw-bold">0</span></td>
-    <td><button type="button" class="btn btn-danger btn-sm remove-rm-row"><i class="fas fa-times"></i></button></td>
-  </tr>
-</table>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+/* ══════════ TOP HEADER BAR ══════════ */
+.pc-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid var(--pc-border);
+  border-radius: 8px;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.pc-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.pc-header-title h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--pc-text-dark);
+  margin: 0;
+}
+
+.pc-header-title .pc-icon {
+  font-size: 1.4rem;
+  color: var(--pc-green);
+  line-height: 1;
+}
+
+.pc-badge-pill {
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-block;
+}
+
+.pc-btn-back {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.pc-btn-back:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* ══════════ CARDS ══════════ */
+.pc-card {
+  background: var(--pc-card-bg);
+  border: 1px solid var(--pc-border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.pc-card-header {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--pc-text-dark);
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pc-card-header i {
+  color: var(--pc-green);
+  font-size: 1.15rem;
+  margin-right: 0.4rem;
+}
+
+.pc-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.pc-input, .pc-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.88rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+.pc-input:focus, .pc-select:focus {
+  border-color: var(--pc-green);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14, 131, 73, 0.12);
+}
+
+.pc-input[readonly] {
+  background-color: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+}
+
+/* ══════════ TABLE STYLING ══════════ */
+.pc-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #e2e8f0;
+}
+
+.pc-table th {
+  background-color: #ebf5f0 !important;
+  color: #1e293b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid #cbd5e1;
+  border-right: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.pc-table td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  font-size: 0.88rem;
+  color: #0f172a;
+  vertical-align: middle;
+}
+
+.pc-table td:last-child, .pc-table th:last-child {
+  border-right: none;
+}
+
+/* Select2 overrides for table */
+.pc-container .select2-container--default .select2-selection--single {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  height: 36px !important;
+  padding: 3px 6px !important;
+}
+
+.pc-container .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: #0f172a !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  line-height: 28px !important;
+}
+
+.pc-container .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 34px !important;
+}
+
+/* MOBILE RESPONSIVE */
+.mobile-lbl { display: none; }
+
+@media (max-width: 767.98px) {
+  .pc-container {
+    padding: 0.6rem 0.4rem !important;
+  }
+
+  .pc-header-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .pc-table, .pc-table tbody, .pc-table tr, .pc-table td {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .pc-table thead { display: none !important; }
+
+  .pc-table tbody tr {
+    background: #ffffff !important;
+    border: 1px solid var(--pc-border) !important;
+    border-radius: 8px !important;
+    padding: 0.85rem !important;
+    margin-bottom: 0.85rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+    position: relative !important;
+  }
+
+  .pc-table td {
+    padding: 0.35rem 0 !important;
+    border: none !important;
+    text-align: left !important;
+  }
+
+  .mobile-lbl {
+    display: block !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    margin-bottom: 0.2rem !important;
+    text-transform: uppercase !important;
+  }
+}
+</style>
+
+<div class="pc-container">
+
+  {{-- ══════════ TOP HEADER BAR ══════════ --}}
+  <div class="pc-header-bar">
+    <div class="pc-header-title">
+      <i class="bi bi-gear-wide-connected pc-icon"></i>
+      <h2>Edit Production Entry — {{ $entry->entry_no }}</h2>
+      <span class="pc-badge-pill">Edit Batch Form</span>
     </div>
+
+    <a href="{{ route('production.index') }}" class="pc-btn-back">
+      <i class="bi bi-arrow-left"></i> Back to Batches
+    </a>
+  </div>
+
+  <form id="editProductionForm" action="{{ route('production.update', $entry->id) }}" method="POST">
+    @csrf
+    @method('PUT')
+
+    {{-- FLASH MESSAGES --}}
+    @if(session()->has('success'))
+    <div class="alert alert-success alert-dismissible fade show mb-3" style="border:none;border-radius:10px;">
+      <strong><i class="bi bi-check-circle me-1"></i>Success!</strong> {{ session('success') }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session()->has('error'))
+    <div class="alert alert-danger alert-dismissible fade show mb-3" style="border:none;border-radius:10px;">
+      <strong><i class="bi bi-exclamation-triangle me-1"></i>Error!</strong> {{ session('error') }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show mb-3" style="border:none;border-radius:10px;">
+      <strong><i class="bi bi-exclamation-triangle me-1"></i>Error!</strong>
+      <ul class="mb-0 ps-3">@foreach($errors->all() as $error)<li>{{$error}}</li>@endforeach</ul>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
+    {{-- ══════════ MAIN CARD: BATCH DETAILS ══════════ --}}
+    <div class="pc-card">
+      <div class="pc-card-header">
+        <div><i class="bi bi-clipboard-data"></i> Production Batch Details</div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-calendar-event me-1 text-success"></i> Production Date</label>
+          <input type="date" name="production_date" value="{{ $entry->production_date }}" class="pc-input" required>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-hash me-1 text-success"></i> Batch / Entry #</label>
+          <input type="text" name="entry_no" value="{{ $entry->entry_no }}" class="pc-input" readonly>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-geo-alt me-1 text-success"></i> Source</label>
+          <select name="source" class="pc-select">
+            <option value="branch" {{ in_array($entry->source, ['branch', 'kitchen']) ? 'selected' : '' }}>Branch: {{ active_branch_name() }}</option>
+            <option value="warehouse" {{ $entry->source == 'warehouse' ? 'selected' : '' }}>Warehouse Production</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-building me-1 text-success"></i> Target Warehouse</label>
+          <select name="warehouse_id" class="pc-select">
+            <option value="">Select Warehouse (Optional for Branch)...</option>
+            @foreach(\App\Models\Warehouse::orderBy('warehouse_name')->get() as $w)
+            <option value="{{ $w->id }}" {{ (old('warehouse_id', $entry->warehouse_id) == $w->id) ? 'selected' : '' }}>
+              {{ $w->warehouse_name ?? ($w->name ?? 'Warehouse #'.$w->id) }}
+            </option>
+            @endforeach
+          </select>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="pc-label"><i class="bi bi-card-text me-1 text-success"></i> Notes</label>
+          <input type="text" name="notes" class="pc-input" placeholder="Optional notes for batch..." value="{{ $entry->notes }}">
+        </div>
+      </div>
+    </div>
+
+    {{-- ══════════ FINISHED PRODUCTS PRODUCED ══════════ --}}
+    <div class="pc-card">
+      <div class="pc-card-header">
+        <div><i class="bi bi-box-seam-fill"></i> Finished Products Produced</div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="pc-table">
+          <thead>
+            <tr>
+              <th class="text-start" style="width:30%;">Product</th>
+              <th style="width:12%;">Code</th>
+              <th style="width:10%;">Unit</th>
+              <th style="width:15%;">Entered Qty (KG/Pc)</th>
+              <th style="width:15%;">Cost (Rs)</th>
+              <th style="width:13%;">Note</th>
+              <th style="width:50px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="productionItems">
+            @foreach($items as $itemIndex => $item)
+            <tr data-row-id="prow_existing_{{ $itemIndex }}">
+              <td>
+                <span class="mobile-lbl">Product</span>
+                <select name="product_id[]" class="pc-select select2 product-select" required style="width:100%;">
+                  <option value="">Search Product...</option>
+                  @foreach($products as $p)
+                  <option value="{{ $p->id }}"
+                    data-code="{{ $p->item_code }}"
+                    data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
+                    data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}"
+                    {{ $item->product_id == $p->id ? 'selected' : '' }}>
+                    {{ $p->item_code }} - {{ $p->item_name }}
+                  </option>
+                  @endforeach
+                </select>
+                <div class="variant-container mt-1" style="{{ $item->variant_id ? '' : 'display:none;' }}">
+                  <select name="variant_id[]" class="pc-select variant-select" data-selected-variant="{{ $item->variant_id }}" style="width:100%;">
+                    <option value="">Select Size (Optional)</option>
+                  </select>
+                </div>
+              </td>
+              <td>
+                <span class="mobile-lbl">Code</span>
+                <input type="text" class="pc-input code-display text-center" value="{{ $item->item_code }}" readonly>
+              </td>
+              <td>
+                <span class="mobile-lbl">Unit</span>
+                <input type="text" class="pc-input unit-display text-center fw-bold" value="{{ $item->unit }}" readonly>
+              </td>
+              <td>
+                <span class="mobile-lbl">Entered Qty</span>
+                <input type="number" step="0.001" name="qty[]" class="pc-input qty-input text-center fw-bold" required min="0.001" value="{{ $item->qty_entered }}" placeholder="0.000">
+                <small class="text-muted d-block conversion-display" style="font-size:0.75rem;"></small>
+              </td>
+              <td>
+                <span class="mobile-lbl">Cost (Rs)</span>
+                <input type="number" step="0.01" min="0" name="item_cost[]" class="pc-input item-cost text-center fw-bold" value="0" placeholder="0.00">
+              </td>
+              <td>
+                <span class="mobile-lbl">Note</span>
+                <input type="text" name="item_note[]" class="pc-input" value="{{ $item->notes }}" placeholder="Item note...">
+              </td>
+              <td class="text-center">
+                <button type="button" class="btn btn-danger btn-sm remove-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove row">
+                  <i class="bi bi-trash-fill text-white"></i>
+                </button>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-3">
+        <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 py-2" id="addRow" style="border-radius:6px;">
+          <i class="bi bi-plus-lg me-1"></i> Add More Product Row
+        </button>
+      </div>
+    </div>
+
+    {{-- ══════════ RAW MATERIALS CONSUMED ══════════ --}}
+    <div class="pc-card">
+      <div class="pc-card-header">
+        <div><i class="bi bi-box-seam"></i> Raw Materials Consumed</div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="pc-table">
+          <thead>
+            <tr>
+              <th class="text-start" style="width:35%;">Raw Material</th>
+              <th style="width:20%;">Qty Used</th>
+              <th style="width:20%;">Cost/Unit (Rs)</th>
+              <th style="width:20%;">Total Cost</th>
+              <th style="width:50px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="rmUsageBody">
+            @forelse($rawMaterialUsage as $rmu)
+            <tr class="rm-row manual-rm-row">
+              <td>
+                <span class="mobile-lbl">Raw Material / Product Ingredient</span>
+                <input type="hidden" name="rm_type[]" class="rm-type" value="{{ $rmu->ingredient_product_id ? 'product' : 'rm' }}">
+                <select name="rm_id[]" class="pc-select" style="width:100%;">
+                  <option value="">Select Ingredient / Raw Material...</option>
+                  <optgroup label="Raw Materials">
+                    @foreach($rawMaterials as $rm)
+                    <option value="{{ $rm->id }}" data-type="rm" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}" {{ $rmu->raw_material_id == $rm->id ? 'selected' : '' }}>
+                      [Raw Material] {{ $rm->name }} (Purchase: {{ $rm->unit }}, Recipe: {{ $rm->consumption_unit ?? $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
+                    </option>
+                    @endforeach
+                  </optgroup>
+                  <optgroup label="Semi-Finished / Base Products">
+                    @foreach($products as $pItem)
+                    <option value="{{ $pItem->id }}" data-type="product" data-stock="{{ $pItem->stock->qty ?? 0 }}" data-cost="{{ $pItem->price }}" {{ $rmu->ingredient_product_id == $pItem->id ? 'selected' : '' }}>
+                      [Product] {{ $pItem->item_code }} - {{ $pItem->item_name }}
+                    </option>
+                    @endforeach
+                  </optgroup>
+                </select>
+              </td>
+              <td>
+                <span class="mobile-lbl">Qty Used</span>
+                <input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="{{ $rmu->qty_used }}" min="0">
+              </td>
+              <td>
+                <span class="mobile-lbl">Cost/Unit</span>
+                <input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="{{ $rmu->cost_per_unit }}" placeholder="0">
+              </td>
+              <td class="text-center">
+                <span class="mobile-lbl">Total Cost</span>
+                <span class="rm-total fw-bold text-success" style="font-size:.9rem;">{{ number_format($rmu->total_cost, 2) }}</span>
+              </td>
+              <td class="text-center">
+                <button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove">
+                  <i class="bi bi-trash-fill text-white"></i>
+                </button>
+              </td>
+            </tr>
+            @empty
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 py-2" id="addRmRow" style="border-radius:6px;">
+          <i class="bi bi-plus-lg me-1"></i> Add More Raw Material / Ingredient
+        </button>
+
+        <div class="d-flex align-items-center gap-3 ms-auto">
+          <span class="fw-bold fs-6 text-dark">Total Batch Cost: <strong id="totalProdCost" class="text-success fs-5">Rs {{ number_format($entry->production_cost ?? 0, 0) }}</strong></span>
+          <button type="submit" class="btn text-white fw-bold px-4 py-2" style="background-color:#0e8349; border-radius:6px; box-shadow: 0 4px 10px rgba(14, 131, 73, 0.2);">
+            <i class="bi bi-floppy-fill me-1"></i> Update Production Batch
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </form>
+
 </div>
+
+{{-- TEMPLATES FOR JS CLONING (PLACED OUTSIDE FORM SO DISABLED INPUTS DO NOT INTERFERE WITH FORM SUBMISSION) --}}
+<table style="display:none;">
+  <tbody id="productRowTemplate">
+    <tr>
+      <td>
+        <span class="mobile-lbl">Product</span>
+        <select name="product_id[]" class="pc-select product-select" required disabled style="width:100%;">
+          <option value="">Search Product...</option>
+          @foreach($products as $p)
+          <option value="{{ $p->id }}"
+            data-code="{{ $p->item_code }}"
+            data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
+            data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
+            {{ $p->item_code }} - {{ $p->item_name }}
+          </option>
+          @endforeach
+        </select>
+        <div class="variant-container mt-1" style="display:none;">
+          <select name="variant_id[]" class="pc-select variant-select" disabled style="width:100%;">
+            <option value="">Select Size (Optional)</option>
+          </select>
+        </div>
+      </td>
+      <td>
+        <span class="mobile-lbl">Code</span>
+        <input type="text" class="pc-input code-display text-center" readonly disabled>
+      </td>
+      <td>
+        <span class="mobile-lbl">Unit</span>
+        <input type="text" class="pc-input unit-display text-center fw-bold" readonly disabled>
+      </td>
+      <td>
+        <span class="mobile-lbl">Entered Qty</span>
+        <input type="number" step="0.001" name="qty[]" class="pc-input qty-input text-center fw-bold" required min="0.001" placeholder="0.000" disabled>
+        <small class="text-muted d-block conversion-display" style="font-size:0.75rem;"></small>
+      </td>
+      <td>
+        <span class="mobile-lbl">Cost (Rs)</span>
+        <input type="number" step="0.01" min="0" name="item_cost[]" class="pc-input item-cost text-center fw-bold" value="0" placeholder="0.00" disabled>
+      </td>
+      <td>
+        <span class="mobile-lbl">Note</span>
+        <input type="text" name="item_note[]" class="pc-input" placeholder="Item note..." disabled>
+      </td>
+      <td class="text-center">
+        <button type="button" class="btn btn-danger btn-sm remove-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove row">
+          <i class="bi bi-trash-fill text-white"></i>
+        </button>
+      </td>
+    </tr>
+  </tbody>
+  <tbody id="rmRowTemplate">
+    <tr class="rm-row manual-rm-row">
+      <td>
+        <span class="mobile-lbl">Raw Material / Product Ingredient</span>
+        <input type="hidden" name="rm_type[]" class="rm-type" value="rm" disabled>
+        <select name="rm_id[]" class="pc-select" disabled style="width:100%;">
+          <option value="">Select Ingredient / Raw Material...</option>
+          <optgroup label="Raw Materials">
+            @foreach($rawMaterials as $rm)
+            <option value="{{ $rm->id }}" data-type="rm" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}">
+              [Raw Material] {{ $rm->name }} (Purchase: {{ $rm->unit }}, Recipe: {{ $rm->consumption_unit ?? $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
+            </option>
+            @endforeach
+          </optgroup>
+          <optgroup label="Semi-Finished / Base Products">
+            @foreach($products as $pItem)
+            <option value="{{ $pItem->id }}" data-type="product" data-stock="{{ $pItem->stock->qty ?? 0 }}" data-cost="{{ $pItem->price }}">
+              [Product] {{ $pItem->item_code }} - {{ $pItem->item_name }}
+            </option>
+            @endforeach
+          </optgroup>
+        </select>
+      </td>
+      <td>
+        <span class="mobile-lbl">Qty Used</span>
+        <input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="0" min="0" disabled>
+      </td>
+      <td>
+        <span class="mobile-lbl">Cost/Unit</span>
+        <input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="0" placeholder="0" disabled>
+      </td>
+      <td class="text-center">
+        <span class="mobile-lbl">Total Cost</span>
+        <span class="rm-total fw-bold text-success" style="font-size:.9rem;">0</span>
+      </td>
+      <td class="text-center">
+        <button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove">
+          <i class="bi bi-trash-fill text-white"></i>
+        </button>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 @endsection
 
 @section('scripts')
 <script>
 $(document).ready(function() {
-    $('.select2').select2({ width: '100%', placeholder: 'Select product...' });
+  $('.select2').select2({ width: '100%', placeholder: 'Select product...' });
 
-    // Cost calculation
-    function calcEditCost() {
-        var total = 0;
-        $('.item-cost').each(function() { total += parseFloat($(this).val()) || 0; });
-        $('#rmEditBody .rm-row').each(function() {
-            var qty = parseFloat($(this).find('.rm-qty').val()) || 0;
-            var cost = parseFloat($(this).find('.rm-cost').val()) || 0;
-            $(this).find('.rm-total').text('Rs ' + (qty * cost).toLocaleString());
-            total += qty * cost;
-        });
-        $('#editTotalCost').text('Rs ' + total.toLocaleString());
+  function calcTotalCost() {
+    var total = 0;
+    $('.item-cost:not(:disabled)').each(function() { total += parseFloat($(this).val()) || 0; });
+    $('#rmUsageBody .rm-row').each(function() {
+      var qty = parseFloat($(this).find('.rm-qty').val()) || 0;
+      var cost = parseFloat($(this).find('.rm-cost').val()) || 0;
+      $(this).find('.rm-total').text((qty * cost).toLocaleString());
+      total += qty * cost;
+    });
+    $('#totalProdCost').text('Rs ' + total.toLocaleString());
+  }
+
+  $(document).on('input', '.item-cost', calcTotalCost);
+  $(document).on('input', '.rm-qty, .rm-cost', function() {
+    calcTotalCost();
+  });
+
+  $(document).on('change', '#rmUsageBody select[name="rm_id[]"]', function() {
+    var opt = $(this).find(':selected');
+    var cost = opt.data('cost') || 0;
+    var type = opt.data('type') || 'rm';
+    var row = $(this).closest('tr');
+    row.find('.rm-cost').val(cost);
+    row.find('.rm-type').val(type);
+    calcTotalCost();
+  });
+
+  $('#addRmRow').click(function() {
+    let tmplHtml = $('#rmRowTemplate').html();
+    let newRow = $(tmplHtml);
+    newRow.find('input, select, button').removeAttr('disabled');
+    newRow.find('.rm-type').val('rm');
+    newRow.find('.rm-total').textContent = '0';
+    $('#rmUsageBody').append(newRow);
+  });
+
+  $(document).on('click', '.remove-rm-row', function() {
+    if ($('#rmUsageBody tr').length > 1) {
+      $(this).closest('tr').remove();
+      calcTotalCost();
     }
+  });
 
-    $(document).on('input', '.item-cost', calcEditCost);
-    $(document).on('input', '.rm-qty, .rm-cost', calcEditCost);
+  function initProductRow(row) {
+    let opt = row.find('.product-select option:selected');
+    if (opt.val()) {
+      row.find('.code-display').val(opt.data('code') || '');
+      row.find('.unit-display').val(opt.data('unit') || '');
+      updateConversion(row);
+      loadVariants(row);
+    }
+  }
 
-    // Auto-fill rm_cost & rm_type from selected option
-    $(document).on('change', '#rmEditBody select[name="rm_id[]"]', function() {
-        var opt = $(this).find(':selected');
-        var cost = opt.data('cost') || 0;
-        var type = opt.data('type') || 'rm';
-        $(this).closest('tr').find('.rm-cost').val(cost);
-        $(this).closest('tr').find('.rm-type').val(type);
-        calcEditCost();
-    });
+  function loadVariants(row) {
+    let opt = row.find('.product-select option:selected');
+    let productId = opt.val();
+    let variantSelect = row.find('.variant-select');
+    let variantContainer = row.find('.variant-container');
+    let preSelectedVariant = variantSelect.attr('data-selected-variant') || '';
 
-    // Add raw material row
-    $('#addEditRmRow').click(function() {
-        var tmpl = document.querySelector('#editRmTemplateWrap .rm-row');
-        var newRow = tmpl.cloneNode(true);
-        newRow.className = 'rm-row manual-rm-row';
-        $('#rmEditBody').append(newRow);
-        calcEditCost();
-    });
-
-    $(document).on('click', '.remove-rm-row', function() {
-        if ($('#rmEditBody tr').length > 1) {
-            $(this).closest('tr').remove();
-            calcEditCost();
-        }
-    });
-
-    $(document).on('change', '.product-select', function() {
-        let opt = $(this).find(':selected');
-        let row = $(this).closest('tr');
-        row.find('.code-display').val(opt.data('code'));
-        row.find('.unit-display').val(opt.data('unit'));
-        updateConversion(row);
-        loadEditBom(row);
-        
-        let productId = $(this).val();
-        let variantSelect = row.find('.variant-select');
-        let variantContainer = row.find('.variant-container');
-        let isGram = opt.data('is-gram') == '1';
-        
-        if (productId) {
-            variantContainer.show();
-            variantSelect.html('<option value="">Loading sizes...</option>');
-            $.ajax({
-                url: '/pos/product-variants/' + productId,
-                type: 'GET',
-                success: function(res) {
-                    variantSelect.html('<option value="">Select Size (Optional)</option>');
-                    if (res.variants && res.variants.length > 0) {
-                        res.variants.forEach(function(v) {
-                            variantSelect.append('<option value="' + v.id + '" data-size-value="' + (v.size_value || 1) + '">' + v.size_label + '</option>');
-                        });
-                    } else {
-                        variantContainer.hide();
-                        variantSelect.html('<option value="">No Sizes</option>');
-                    }
-                },
-                error: function() {
-                    variantContainer.hide();
-                    variantSelect.html('<option value="">Select Size (Optional)</option>');
-                }
+    if (productId) {
+      variantContainer.show();
+      variantSelect.html('<option value="">Loading sizes...</option>');
+      $.ajax({
+        url: '/pos/product-variants/' + productId,
+        type: 'GET',
+        success: function(res) {
+          variantSelect.html('<option value="">Select Size (Optional)</option>');
+          if (res.variants && res.variants.length > 0) {
+            res.variants.forEach(function(v) {
+              let selected = (preSelectedVariant && preSelectedVariant == v.id) ? 'selected' : '';
+              variantSelect.append('<option value="' + v.id + '" data-size-value="' + (v.size_value || 1) + '" ' + selected + '>' + v.size_label + '</option>');
             });
-        } else {
+          } else {
             variantContainer.hide();
-            variantSelect.html('<option value="">Select Size (Optional)</option>');
+            variantSelect.html('<option value="">No Sizes</option>');
+          }
+        },
+        error: function() {
+          variantContainer.hide();
+          variantSelect.html('<option value="">Select Size (Optional)</option>');
         }
-    });
+      });
+    } else {
+      variantContainer.hide();
+      variantSelect.html('<option value="">Select Size (Optional)</option>');
+    }
+  }
 
-    $(document).on('change', '.variant-select', function() {
-        let row = $(this).closest('tr');
-        updateConversion(row);
-        loadEditBom(row);
-    });
+  $(document).on('change', '.product-select', function() {
+    let opt = $(this).find(':selected');
+    let row = $(this).closest('tr');
+    row.find('.code-display').val(opt.data('code') || '');
+    row.find('.unit-display').val(opt.data('unit') || '');
+    row.find('.variant-select').removeAttr('data-selected-variant');
+    updateConversion(row);
+    loadVariants(row);
+    loadBomForRow(row);
+  });
 
-    $(document).on('input', '.qty-input', function() {
-        updateConversion($(this).closest('tr'));
-        loadEditBom($(this).closest('tr'));
-    });
+  $(document).on('change', '.variant-select', function() {
+    let row = $(this).closest('tr');
+    updateConversion(row);
+    loadBomForRow(row);
+  });
 
-    function loadEditBom(row) {
-        var productId = row.find('.product-select').val();
-        var variantId = row.find('.variant-select').val() || '';
-        var qty = parseFloat(row.find('.qty-input').val()) || 1;
-        if (!productId) return;
+  var pendingBomAjax = {};
 
-        var selectedVarOpt = row.find('.variant-select option:selected');
-        var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
-        var multiplier = varSizeVal > 0 ? varSizeVal : 1;
+  function loadBomForRow(row) {
+    var productId = row.find('.product-select').val();
+    var variantId = row.find('.variant-select').val() || '';
+    var qty = parseFloat(row.find('.qty-input').val()) || 1;
+    if (!productId) return;
 
-        var rowId = row.attr('data-row-id');
-        if (!rowId) {
-            rowId = 'prow_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-            row.attr('data-row-id', rowId);
-        }
+    var selectedVarOpt = row.find('.variant-select option:selected');
+    var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+    var multiplier = varSizeVal > 0 ? varSizeVal : 1;
 
-        // Remove old BOM rows for THIS specific product row only
-        $('#rmEditBody .bom-row[data-parent-row="' + rowId + '"]').remove();
+    var rowId = row.attr('data-row-id');
+    if (!rowId) {
+      rowId = 'prow_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+      row.attr('data-row-id', rowId);
+    }
 
-        var url = '/products/' + productId + '/bom-raw-materials';
-        if (variantId) {
-            url += '?variant_id=' + variantId;
-        }
+    if (pendingBomAjax[rowId]) {
+      pendingBomAjax[rowId].abort();
+    }
 
-        $.ajax({
-            url: url,
-            type: 'GET',
-            success: function(bom) {
-                if (!bom || bom.length === 0) return;
-                var tbody = document.getElementById('rmEditBody');
+    $('#rmUsageBody .bom-row[data-parent-row="' + rowId + '"]').remove();
 
-                bom.forEach(function(item) {
-                    var tr = document.createElement('tr');
-                    tr.className = 'rm-row bom-row';
-                    tr.setAttribute('data-parent-row', rowId);
-                    var isProduct = !!item.ingredient_product_id;
-                    var itemId = isProduct ? item.ingredient_product_id : item.raw_material_id;
-                    var itemType = isProduct ? 'product' : 'rm';
-                    var itemName = isProduct 
-                        ? (item.ingredient_product ? item.ingredient_product.item_name + ' [Base Product]' : 'Product #' + itemId)
-                        : (item.raw_material ? item.raw_material.name + ' (' + (item.raw_material.unit || '') + ')' : 'RM #' + itemId);
+    var url = '/products/' + productId + '/bom-raw-materials';
+    if (variantId) {
+      url += '?variant_id=' + variantId;
+    }
 
-                    if (item.is_custom_variant_bom) {
-                        itemName += ' [Custom Variant Recipe]';
-                    }
+    pendingBomAjax[rowId] = $.ajax({
+      url: url,
+      type: 'GET',
+      success: function(bom) {
+        if (!bom || bom.length === 0) return;
+        var tbody = document.getElementById('rmUsageBody');
 
-                    var itemCost = parseFloat(item.unit_cost) || 0;
-                    var effectiveQty = item.is_custom_variant_bom ? qty : (qty * multiplier);
-                    var requiredQty = (parseFloat(item.qty_per_unit) * effectiveQty);
-                    var totalItemCost = requiredQty * itemCost;
+        bom.forEach(function(item) {
+          var tr = document.createElement('tr');
+          tr.className = 'rm-row bom-row';
+          tr.setAttribute('data-parent-row', rowId);
+          var isProduct = !!item.ingredient_product_id;
+          var itemId = isProduct ? item.ingredient_product_id : item.raw_material_id;
+          var itemType = isProduct ? 'product' : 'rm';
+          var itemName = isProduct 
+            ? (item.ingredient_product ? item.ingredient_product.item_name + ' [Base Product]' : 'Product #' + itemId)
+            : (item.raw_material ? item.raw_material.name + ' (' + (item.raw_material.consumption_unit || item.raw_material.unit || '') + ')' : 'RM #' + itemId);
 
-                    tr.innerHTML = '<td>' +
-                        '<input type="hidden" name="rm_type[]" class="rm-type" value="' + itemType + '">' +
-                        '<input type="hidden" name="rm_id[]" value="' + itemId + '">' +
-                        '<input type="text" class="form-control fw-bold" value="' + itemName + '" readonly style="background:#f0f0f0;">' +
-                        '</td>' +
-                        '<td><input type="number" step="0.01" name="rm_qty[]" class="form-control rm-qty" value="' + requiredQty.toFixed(2) + '" min="0" readonly></td>' +
-                        '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="form-control rm-cost" value="' + itemCost.toFixed(2) + '" placeholder="0"></td>' +
-                        '<td><span class="rm-total fw-bold">Rs ' + totalItemCost.toLocaleString() + '</span></td>' +
-                        '<td><button type="button" class="btn btn-danger btn-sm remove-rm-row"><i class="fas fa-times"></i></button></td>';
+          if (item.is_custom_variant_bom) {
+            itemName += ' [Custom Variant Recipe]';
+          }
 
-                    tbody.insertBefore(tr, tbody.firstChild);
-                });
-                calcEditCost();
-            }
+          var itemCost = parseFloat(item.unit_cost) || 0;
+          var effectiveQty = item.is_custom_variant_bom ? qty : (qty * multiplier);
+          var requiredQty = (parseFloat(item.qty_per_unit) * effectiveQty);
+
+          tr.innerHTML = '<td>' +
+            '<input type="hidden" name="rm_type[]" class="rm-type" value="' + itemType + '">' +
+            '<input type="hidden" name="rm_id[]" value="' + itemId + '">' +
+            '<input type="text" class="pc-input fw-bold" value="' + itemName + '" readonly style="background:#f1f5f9; color:#0f172a;">' +
+            '</td>' +
+            '<td><input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="' + requiredQty.toFixed(2) + '" min="0" readonly></td>' +
+            '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="' + itemCost.toFixed(2) + '" placeholder="0"></td>' +
+            '<td class="text-center"><span class="rm-total fw-bold text-success" style="font-size:.9rem;">0</span></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove"><i class="bi bi-trash-fill text-white"></i></button></td>';
+
+          tbody.insertBefore(tr, tbody.firstChild);
         });
+        calcTotalCost();
+      },
+      complete: function() {
+        pendingBomAjax[rowId] = null;
+      }
+    });
+  }
+
+  $(document).on('input', '.qty-input', function() {
+    updateConversion($(this).closest('tr'));
+    loadBomForRow($(this).closest('tr'));
+  });
+
+  function updateConversion(row) {
+    let qty = parseFloat(row.find('.qty-input').val()) || 0;
+    let isGram = row.find('.product-select option:selected').data('is-gram') == '1';
+    if (isGram && qty > 0) {
+      let selectedVarOpt = row.find('.variant-select option:selected');
+      var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+      var multiplier = varSizeVal > 0 ? varSizeVal : 1;
+      let grams = qty * multiplier * 1000;
+      row.find('.conversion-display').text('(' + grams.toLocaleString() + ' grams to stock)');
+    } else {
+      row.find('.conversion-display').text('');
     }
+  }
 
-    function updateConversion(row) {
-        let qty = parseFloat(row.find('.qty-input').val()) || 0;
-        let isGram = row.find('.product-select option:selected').data('is-gram') == '1';
-        if (isGram && qty > 0) {
-            let selectedVarOpt = row.find('.variant-select option:selected');
-            var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
-            var multiplier = varSizeVal > 0 ? varSizeVal : 1;
-            let grams = qty * multiplier * 1000;
-            row.find('.conversion-display').text('(' + grams.toLocaleString() + ' grams to stock)');
-        } else {
-            row.find('.conversion-display').text('');
-        }
+  $('#productionItems tr').each(function() {
+    initProductRow($(this));
+  });
+
+  $('#addRow').click(function() {
+    let tmplHtml = $('#productRowTemplate').html();
+    let newRow = $(tmplHtml);
+    let newRowId = 'prow_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    newRow.attr('data-row-id', newRowId);
+    newRow.find('input, select, button').removeAttr('disabled');
+    $('#productionItems').append(newRow);
+    newRow.find('.select2').select2({ width: '100%', placeholder: 'Select product...' });
+    calcTotalCost();
+  });
+
+  $(document).on('click', '.remove-row', function() {
+    if ($('#productionItems tr').length > 1) {
+      let row = $(this).closest('tr');
+      let rowId = row.attr('data-row-id');
+      if (rowId) {
+        $('#rmUsageBody .bom-row[data-parent-row="' + rowId + '"]').remove();
+      }
+      row.remove();
     }
+    calcTotalCost();
+  });
 
-    $('#productionItems tr').each(function() {
-        updateConversion($(this));
-    });
-
-    $('#addRow').click(function() {
-        let newRow = $('#productionItems tr:first').clone();
-        newRow.removeAttr('data-row-id');
-        newRow.find('input').val('');
-        newRow.find('.conversion-display').text('');
-        newRow.find('.variant-container').hide();
-        newRow.find('.variant-select').html('<option value="">Select Size (Optional)</option>');
-        newRow.find('.select2-container').remove();
-        $('#productionItems').append(newRow);
-        newRow.find('.select2').select2({ width: '100%' });
-        calcEditCost();
-    });
-
-    $(document).on('click', '.remove-row', function() {
-        if ($('#productionItems tr').length > 1) {
-            let row = $(this).closest('tr');
-            let rowId = row.attr('data-row-id');
-            if (rowId) {
-                $('#rmEditBody .bom-row[data-parent-row="' + rowId + '"]').remove();
-            }
-            row.remove();
-        }
-        calcEditCost();
-    });
-
-    calcEditCost();
+  calcTotalCost();
 });
 </script>
 @endsection

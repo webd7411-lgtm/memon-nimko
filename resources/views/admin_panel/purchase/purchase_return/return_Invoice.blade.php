@@ -110,9 +110,9 @@
         </tr>
         <tr>
             <th>Warehouse</th>
-            <td>{{ $purchase_return->warehouse->warehouse_name ?? 'N/A' }}</td>
+            <td>{{ $purchase_return->warehouse->warehouse_name ?? ($purchase_return->purchase->branch->name ?? ($purchase_return->branch->name ?? 'N/A')) }}</td>
             <th>Location</th>
-            <td>{{ $purchase_return->warehouse->location ?? 'N/A' }}</td>
+            <td>{{ $purchase_return->warehouse->location ?? 'Shop' }}</td>
         </tr>
     </table>
 

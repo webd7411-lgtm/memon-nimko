@@ -57,14 +57,18 @@ class NarrationController extends Controller
             $vendors = Vendor::select('id', 'name as text')->get();
             return response()->json($vendors);
         } elseif ($type === 'customer') {
-            $customers = Customer::where('customer_type', 'Main Customer')
-                ->select('id', 'customer_name as text')
-                ->get();
+            $query = Customer::where('customer_type', 'Main Customer')->where('status', '!=', 'inactive');
+            if (!is_all_branches()) {
+                $query->where('branch_id', active_branch_id());
+            }
+            $customers = $query->select('id', 'customer_name as text')->get();
             return response()->json($customers);
         } elseif ($type === 'walkin') {
-            $walkins = Customer::where('customer_type', 'Walking Customer')
-                ->select('id', 'customer_name as text')
-                ->get();
+            $query = Customer::where('customer_type', 'Walking Customer')->where('status', '!=', 'inactive');
+            if (!is_all_branches()) {
+                $query->where('branch_id', active_branch_id());
+            }
+            $walkins = $query->select('id', 'customer_name as text')->get();
             return response()->json($walkins);
         }
 

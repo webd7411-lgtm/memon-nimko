@@ -30,4 +30,9 @@ class PurchaseReturn extends Model
     {
         return $this->belongsTo(\App\Models\Purchase::class, 'purchase_id');
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
 }

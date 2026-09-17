@@ -19,9 +19,9 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">نام (اردو)</label>
-                                <input type="text" class="form-control text-end" name="name_ur" dir="rtl"
-                                       value="{{ old('name_ur', $transport->name_ur ?? '') }}" placeholder="نام درج کریں">
+                                <label class="form-label">Name (Urdu)</label>
+                                <input type="text" class="form-control" name="name_ur"
+                                       value="{{ old('name_ur', $transport->name_ur ?? '') }}" placeholder="Enter name in Urdu">
                             </div>
                         </div>
 
@@ -53,8 +53,8 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">پتہ (اردو)</label>
-                                <textarea class="form-control text-end" name="address_ur" rows="3" dir="rtl" placeholder="پتہ درج کریں">{{ old('address_ur', $transport->address_ur ?? '') }}</textarea>
+                                <label class="form-label">Address (Urdu)</label>
+                                <textarea class="form-control" name="address_ur" rows="3" placeholder="Enter address in Urdu">{{ old('address_ur', $transport->address_ur ?? '') }}</textarea>
                             </div>
                         </div>
 

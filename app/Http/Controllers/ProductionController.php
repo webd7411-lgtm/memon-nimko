@@ -152,7 +152,6 @@ class ProductionController extends Controller
                 $dbVariantId = $variantId;
 
                 if ($isGram) {
-                    $dbVariantId = null;
                     if ($variantId) {
                         $vModel = \App\Models\ProductVariant::find($variantId);
                         if ($vModel) {
@@ -182,6 +181,11 @@ class ProductionController extends Controller
                 ]);
 
                 // Update Stock (target selected warehouse, not always shop)
+                $qtyToAdd = $qtyTyped;
+                if (!$dbVariantId && $isGram) {
+                    $qtyToAdd = $qtyStock; // in grams for loose product
+                }
+
                 $stockQuery = Stock::where('product_id', $productId)
                     ->where('branch_id', $currentBranchId)
                     ->where('warehouse_id', $targetWarehouseId);
@@ -195,7 +199,7 @@ class ProductionController extends Controller
                 $stock = $stockQuery->first();
 
                 if ($stock) {
-                    $stock->qty += $qtyStock;
+                    $stock->qty += $qtyToAdd;
                     $stock->save();
                 } else {
                     Stock::create([
@@ -203,7 +207,7 @@ class ProductionController extends Controller
                         'variant_id' => $dbVariantId,
                         'branch_id' => $currentBranchId,
                         'warehouse_id' => $targetWarehouseId,
-                        'qty' => $qtyStock,
+                        'qty' => $qtyToAdd,
                     ]);
                 }
             }
@@ -324,30 +328,42 @@ class ProductionController extends Controller
             $currentBranchId = active_branch_id();
             $targetWarehouseId = !empty($request->warehouse_id) ? (int)$request->warehouse_id : null;
 
-            // 1. Reverse old finished goods stock
+            // Fetch old production entry header BEFORE update to get old warehouse_id & branch_id
+            $oldEntryHeader = DB::table('production_entries')->where('id', $id)->first();
+            $oldWarehouseId = $oldEntryHeader ? $oldEntryHeader->warehouse_id : null;
+            $oldBranchId = $oldEntryHeader ? ($oldEntryHeader->branch_id ?? $currentBranchId) : $currentBranchId;
+
+            // 1. Reverse old finished goods stock from OLD warehouse/branch location
             $oldItems = DB::table('production_entry_items')->where('production_entry_id', $id)->get();
             foreach ($oldItems as $oi) {
                 $oldProduct = Product::find($oi->product_id);
                 $oldIsGram = $oldProduct && ($oldProduct->unit_type === 'kg' || str_contains(strtolower($oldProduct->item_name), 'gram'));
 
                 $stockQuery = Stock::where('product_id', $oi->product_id)
-                    ->where('branch_id', $currentBranchId)
-                    ->where('warehouse_id', $targetWarehouseId);
+                    ->where('branch_id', $oldBranchId);
 
-                if ($oldIsGram || !$oi->variant_id) {
-                    $stockQuery->whereNull('variant_id');
+                if (!empty($oldWarehouseId)) {
+                    $stockQuery->where('warehouse_id', $oldWarehouseId);
                 } else {
+                    $stockQuery->whereNull('warehouse_id');
+                }
+
+                if ($oi->variant_id) {
                     $stockQuery->where('variant_id', $oi->variant_id);
+                    $deductStock = (float)$oi->qty_entered;
+                } else {
+                    $stockQuery->whereNull('variant_id');
+                    $deductStock = (float)$oi->qty_stock;
                 }
 
                 $stock = $stockQuery->first();
                 if ($stock) {
-                    $stock->qty -= $oi->qty_stock;
+                    $stock->qty -= $deductStock;
                     $stock->save();
                 }
             }
 
-            // 2. Reverse old raw material / product ingredient stock
+            // 2. Reverse old raw material / product ingredient stock from OLD warehouse/branch location
             $oldRmUsage = DB::table('production_raw_material_usage')->where('production_entry_id', $id)->get();
             foreach ($oldRmUsage as $rmu) {
                 if ($rmu->ingredient_product_id) {
@@ -355,31 +371,45 @@ class ProductionController extends Controller
                     $isKg = $pModel && ($pModel->unit_type === 'kg');
                     $addStockQty = $isKg ? ($rmu->qty_used * 1000) : $rmu->qty_used;
 
-                    $prodStock = Stock::firstOrCreate(
-                        [
-                            'product_id' => $rmu->ingredient_product_id,
-                            'branch_id' => $currentBranchId,
-                            'warehouse_id' => $targetWarehouseId,
-                            'variant_id' => null,
-                        ],
-                        ['qty' => 0]
-                    );
-                    $prodStock->qty += $addStockQty;
-                    $prodStock->save();
-                } else if ($rmu->raw_material_id) {
-                    $rmStock = RawMaterialStock::where('raw_material_id', $rmu->raw_material_id)
-                        ->where('branch_id', $currentBranchId)
-                        ->when($targetWarehouseId, function($q) use ($targetWarehouseId) {
-                            $q->where('warehouse_id', $targetWarehouseId)->orWhereNull('warehouse_id');
-                        })
-                        ->orderByRaw('warehouse_id IS NOT NULL DESC, warehouse_id DESC')
-                        ->first();
+                    $prodStockQuery = Stock::where('product_id', $rmu->ingredient_product_id)
+                        ->where('branch_id', $oldBranchId)
+                        ->whereNull('variant_id');
 
+                    if (!empty($oldWarehouseId)) {
+                        $prodStockQuery->where('warehouse_id', $oldWarehouseId);
+                    } else {
+                        $prodStockQuery->whereNull('warehouse_id');
+                    }
+
+                    $prodStock = $prodStockQuery->first();
+                    if ($prodStock) {
+                        $prodStock->qty += $addStockQty;
+                        $prodStock->save();
+                    } else {
+                        Stock::create([
+                            'product_id' => $rmu->ingredient_product_id,
+                            'branch_id' => $oldBranchId,
+                            'warehouse_id' => $oldWarehouseId,
+                            'variant_id' => null,
+                            'qty' => $addStockQty,
+                        ]);
+                    }
+                } else if ($rmu->raw_material_id) {
+                    $rmStockQuery = RawMaterialStock::where('raw_material_id', $rmu->raw_material_id)
+                        ->where('branch_id', $oldBranchId);
+
+                    if (!empty($oldWarehouseId)) {
+                        $rmStockQuery->where('warehouse_id', $oldWarehouseId);
+                    } else {
+                        $rmStockQuery->whereNull('warehouse_id');
+                    }
+
+                    $rmStock = $rmStockQuery->first();
                     if (!$rmStock) {
                         $rmStock = RawMaterialStock::create([
                             'raw_material_id' => $rmu->raw_material_id,
-                            'branch_id' => $currentBranchId,
-                            'warehouse_id' => $targetWarehouseId,
+                            'branch_id' => $oldBranchId,
+                            'warehouse_id' => $oldWarehouseId,
                             'qty' => 0,
                         ]);
                     }
@@ -414,6 +444,7 @@ class ProductionController extends Controller
             DB::table('production_entries')->where('id', $id)->update([
                 'production_date' => $request->production_date,
                 'source' => $request->source ?? 'kitchen',
+                'warehouse_id' => $targetWarehouseId,
                 'notes' => $request->notes,
                 'production_cost' => $totalItemCost + $totalRmCost,
                 'updated_at' => now(),
@@ -440,7 +471,6 @@ class ProductionController extends Controller
                 $dbVariantId = $variantId;
 
                 if ($isGram) {
-                    $dbVariantId = null;
                     if ($variantId) {
                         $vModel = \App\Models\ProductVariant::find($variantId);
                         if ($vModel) {
@@ -469,6 +499,11 @@ class ProductionController extends Controller
                     'updated_at' => now(),
                 ]);
 
+                $qtyToAdd = $qtyTyped;
+                if (!$dbVariantId && $isGram) {
+                    $qtyToAdd = $qtyStock; // in grams for loose product
+                }
+
                 $stockQuery = Stock::where('product_id', $productId)
                     ->where('branch_id', $currentBranchId)
                     ->where('warehouse_id', $targetWarehouseId);
@@ -481,7 +516,7 @@ class ProductionController extends Controller
 
                 $stock = $stockQuery->first();
                 if ($stock) {
-                    $stock->qty += $qtyStock;
+                    $stock->qty += $qtyToAdd;
                     $stock->save();
                 } else {
                     Stock::create([
@@ -489,7 +524,7 @@ class ProductionController extends Controller
                         'variant_id' => $dbVariantId,
                         'branch_id' => $currentBranchId,
                         'warehouse_id' => $targetWarehouseId,
-                        'qty' => $qtyStock,
+                        'qty' => $qtyToAdd,
                     ]);
                 }
             }

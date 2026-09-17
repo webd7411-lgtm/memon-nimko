@@ -52,4 +52,10 @@ class Sale extends Model
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
+
+    public function returns()
+    {
+        return $this->hasMany(SalesReturn::class, 'sale_id');
+    }
 }
+

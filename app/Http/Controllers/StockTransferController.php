@@ -423,26 +423,51 @@ class StockTransferController extends Controller
 
         $totalQty = 0;
 
-        if ($warehouseId === 'Shop' || empty($warehouseId)) {
+        if ($warehouseId === 'Shop' || empty($warehouseId) || $warehouseId === '0') {
             $activeBranch = active_branch_id();
             $query = Stock::where('product_id', $productId)
                 ->where('branch_id', $activeBranch)
-                ->whereNull('warehouse_id');
+                ->where(function($q) {
+                    $q->whereNull('warehouse_id')
+                      ->orWhere('warehouse_id', 0)
+                      ->orWhere('warehouse_id', '')
+                      ->orWhere('warehouse_id', 'Shop');
+                });
 
             if (!empty($variantId)) {
-                $totalQty = (clone $query)->where('variant_id', $variantId)->sum('qty');
+                $totalQty = (clone $query)->where(function($q) use ($variantId) {
+                    $q->where('variant_id', $variantId)
+                      ->orWhereNull('variant_id')
+                      ->orWhere('variant_id', 0)
+                      ->orWhere('variant_id', '');
+                })->sum('qty');
             } else {
-                $totalQty = (clone $query)->whereNull('variant_id')->sum('qty');
+                $totalQty = (clone $query)->sum('qty');
             }
         } else {
-            $query = WarehouseStock::where('product_id', $productId)
-                ->where('warehouse_id', $warehouseId);
+            $whStockQty = WarehouseStock::where('product_id', $productId)
+                ->where('warehouse_id', $warehouseId)
+                ->when(!empty($variantId), function($q) use ($variantId) {
+                    $q->where(function($sq) use ($variantId) {
+                        $sq->where('variant_id', $variantId)
+                          ->orWhereNull('variant_id')
+                          ->orWhere('variant_id', 0);
+                    });
+                })
+                ->sum('quantity');
 
-            if (!empty($variantId)) {
-                $totalQty = (clone $query)->where('variant_id', $variantId)->sum('quantity');
-            } else {
-                $totalQty = (clone $query)->whereNull('variant_id')->sum('quantity');
-            }
+            $stockTableWhQty = Stock::where('product_id', $productId)
+                ->where('warehouse_id', $warehouseId)
+                ->when(!empty($variantId), function($q) use ($variantId) {
+                    $q->where(function($sq) use ($variantId) {
+                        $sq->where('variant_id', $variantId)
+                          ->orWhereNull('variant_id')
+                          ->orWhere('variant_id', 0);
+                    });
+                })
+                ->sum('qty');
+
+            $totalQty = $whStockQty + $stockTableWhQty;
         }
 
         if ($isKg) {

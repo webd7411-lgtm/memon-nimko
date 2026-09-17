@@ -190,6 +190,62 @@
     flex-direction: initial !important;
   }
 }
+
+/* ═══════ SELECT2 SEARCHABLE DROPDOWN (PURCHASE TAB) ═══════ */
+#purchaseItemsTable .select2-container,
+.purchase-form .select2-container {
+  width: 100% !important;
+}
+#purchaseItemsTable .select2-container--default .select2-selection--single,
+.purchase-form .select2-container--default .select2-selection--single {
+  height: 42px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  display: flex !important;
+  align-items: center;
+  background: #fff;
+  transition: all .2s;
+}
+#purchaseItemsTable .select2-container--default .select2-selection--single .select2-selection__rendered,
+.purchase-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 40px !important;
+  color: var(--text) !important;
+  font-size: .88rem;
+  font-weight: 500;
+  padding-left: .85rem !important;
+  padding-right: 2rem !important;
+}
+#purchaseItemsTable .select2-container--default .select2-selection--single .select2-selection__arrow,
+.purchase-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 40px !important;
+  right: 8px !important;
+}
+#purchaseItemsTable .select2-container--default.select2-container--focus .select2-selection--single,
+#purchaseItemsTable .select2-container--default.select2-container--open .select2-selection--single,
+.purchase-form .select2-container--default.select2-container--focus .select2-selection--single,
+.purchase-form .select2-container--default.select2-container--open .select2-selection--single {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12) !important;
+}
+.select2-dropdown {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-lg) !important;
+  z-index: 9999 !important;
+}
+.select2-search--dropdown .select2-search__field {
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding: .45rem .65rem !important;
+  font-size: .85rem !important;
+  outline: none !important;
+}
+.select2-search--dropdown .select2-search__field:focus {
+  border-color: var(--accent) !important;
+}
+.select2-results__option--highlighted[aria-selected] {
+  background-color: var(--accent) !important;
+}
 </style>
 
 <div class="rm-page">
@@ -259,7 +315,8 @@
       <button class="rm-tab active" data-tab="tab-materials"><i class="bi bi-list-ul"></i> Materials List</button>
       <button class="rm-tab" data-tab="tab-purchase"><i class="bi bi-cart-plus-fill"></i> New Purchase</button>
       <button class="rm-tab" data-tab="tab-history"><i class="bi bi-clock-history"></i> Purchase History</button>
-      <button class="rm-tab" data-tab="tab-stock"><i class="bi bi-houses-fill"></i> Current Stock</button>
+      <button class="rm-tab" data-tab="tab-stock"><i class="bi bi-shop"></i> Current Branch Stock</button>
+      <button class="rm-tab" data-tab="tab-warehouse-stock"><i class="bi bi-building"></i> Warehouse Stock</button>
       <button class="rm-tab" data-tab="tab-recipes"><i class="bi bi-egg-fried"></i> Product Recipes (BOM)</button>
     </div>
 
@@ -279,7 +336,7 @@
                   <th>Name</th>
                   <th>Units & Ratio</th>
                   <th>Purchase Price / Unit</th>
-                  <th>Total Stock</th>
+                  <th>Branch Stock</th>
                   <th>Alert Qty</th>
                   <th style="width:120px;" class="text-center">Actions</th>
                 </tr>
@@ -300,18 +357,27 @@
                     Rs {{ number_format($lastCost, 2) }}
                     <div style="font-size:.72rem;" class="text-muted">per {{ $m->unit }}</div>
                   </td>
-                  <td data-label="Stock">
+                  <td data-label="Branch Stock">
                     @php 
                       $sqty = $m->currentStock(); 
                       $factor = (float)($m->conversion_factor ?? 1);
                       $purQty = $factor > 0 ? round($sqty / $factor, 2) : $sqty;
                       $cUnit = $m->consumption_unit ?? $m->unit;
+                      $whQty = $m->warehouseStock();
+                      $whPurQty = $factor > 0 ? round($whQty / $factor, 2) : $whQty;
                     @endphp
                     <span class="stock-badge {{ $sqty > $m->alert_qty ? 'stock-ok' : 'stock-low' }}">
                       {{ number_format($purQty, 2) }} {{ $m->unit }}
                     </span>
                     @if($factor > 1)
                       <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ number_format($sqty, 2) }} {{ $cUnit }})</div>
+                    @endif
+                    @if($whQty > 0)
+                      <div class="mt-1">
+                        <span class="badge bg-primary-subtle text-primary border" style="cursor:pointer;font-size:.7rem;" onclick="switchTab('tab-warehouse-stock')" title="Click to view warehouse stock">
+                          <i class="bi bi-building me-1"></i>WH: {{ number_format($whPurQty, 2) }} {{ $m->unit }}
+                        </span>
+                      </div>
                     @endif
                   </td>
                   <td class="malert fw-semibold" data-label="Alert Qty">
@@ -399,10 +465,10 @@
                 <tbody id="purchaseItemsBody">
                    <tr class="pitem-row">
                     <td data-label="Raw Material">
-                      <select name="raw_material_id[]" class="fld" required>
+                      <select name="raw_material_id[]" class="fld select2-rm" required>
                         <option value="">Select Material...</option>
                         @foreach($materials as $m)
-                        <option value="{{ $m->id }}">{{ $m->name }} ({{ $m->unit }})</option>
+                        <option value="{{ $m->id }}" data-price="{{ $m->lastPurchaseCost() > 0 ? $m->lastPurchaseCost() : ($m->initial_price ?? 0) }}">{{ $m->name }} ({{ $m->unit }})</option>
                         @endforeach
                       </select>
                     </td>
@@ -486,31 +552,30 @@
       </div>
     </div>
 
-    {{-- TAB: STOCK --}}
+    {{-- TAB: CURRENT BRANCH STOCK --}}
     <div id="tab-stock" class="tab-content" style="display:none;">
       <div class="rm-card">
         <div class="rm-card-body">
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h5 style="font-weight:700;font-size:1.05rem;margin:0;"><i class="bi bi-houses-fill me-2" style="color:var(--accent);"></i>Current Stock Levels</h5>
-            <button class="rm-btn rm-btn-primary" onclick="printReportSection('stockTable', 'Raw Material Current Stock Report')"><i class="bi bi-printer me-1"></i> Print Stock Report</button>
+            <div>
+              <h5 style="font-weight:700;font-size:1.05rem;margin:0;"><i class="bi bi-shop me-2" style="color:var(--accent);"></i>Current Branch Stock</h5>
+              <div class="text-muted small mt-1" style="font-size:.78rem;">Shop floor inventory for active branch (excludes warehouse storage)</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="rm-btn rm-btn-sm" style="background:#eff6ff;color:var(--accent);border:1px solid #bfdbfe;" onclick="switchTab('tab-warehouse-stock')">
+                <i class="bi bi-building me-1"></i> View Warehouse Stock
+              </button>
+              <button class="rm-btn rm-btn-primary" onclick="printReportSection('stockTable', 'Raw Material Branch Stock Report')"><i class="bi bi-printer me-1"></i> Print Branch Stock</button>
+            </div>
           </div>
 
           {{-- STOCK FILTERS --}}
           <div class="row g-2 mb-3 p-3 bg-light rounded-3 border">
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="lbl"><i class="bi bi-search"></i> Search Material</label>
-              <input type="text" id="stockSearchInput" class="fld" placeholder="Search by name..." />
+              <input type="text" id="stockSearchInput" class="fld" placeholder="Search by material name..." />
             </div>
-            <div class="col-md-4">
-              <label class="lbl"><i class="bi bi-houses"></i> Filter by Warehouse</label>
-              <select id="stockWarehouseFilter" class="fld">
-                <option value="">All Warehouses</option>
-                @foreach($warehouses as $w)
-                <option value="{{ strtolower($w->warehouse_name ?? $w->name) }}">{{ $w->warehouse_name ?? $w->name }}</option>
-                @endforeach
-              </select>
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="lbl"><i class="bi bi-funnel"></i> Filter by Stock Status</label>
               <select id="stockStatusFilter" class="fld">
                 <option value="">All Statuses</option>
@@ -528,10 +593,11 @@
                   <th>#</th>
                   <th>Material Name</th>
                   <th>Unit</th>
-                  <th>Warehouse Breakdown</th>
-                  <th>Total Stock</th>
+                  <th>Branch Stock</th>
+                  <th>Recipe Qty</th>
                   <th>Alert Qty</th>
                   <th>Status</th>
+                  <th>Warehouse Stock</th>
                 </tr>
               </thead>
               <tbody>
@@ -542,27 +608,23 @@
                     $purQty = $factor > 0 ? round($sqty / $factor, 2) : $sqty;
                     $alertInConsumption = (float)($m->alert_qty ?? 0) * ($factor > 0 ? $factor : 1);
                     $statusStr = $sqty > $alertInConsumption ? 'In Stock' : ($sqty > 0 ? 'Low Stock' : 'Out of Stock');
+                    $whQty = $m->warehouseStock();
+                    $whPurQty = $factor > 0 ? round($whQty / $factor, 2) : $whQty;
                   @endphp
                 <tr class="stock-row" data-status="{{ strtolower($statusStr) }}">
                   <td class="fw-bold" data-label="#">{{ $m->id }}</td>
                   <td style="font-weight:700;" class="text-dark material-name-cell" data-label="Material">{{ $m->name }}</td>
-                  <td data-label="Unit"><span class="badge bg-light text-dark border">{{ $m->unit }}</span></td>
-                  <td class="warehouse-cell" data-label="Warehouse Breakdown">
-                    @if($m->stocks && $m->stocks->count() > 0)
-                    @foreach($m->stocks as $st)
-                    @php
-                      $stFactor = (float)($m->conversion_factor ?? 1);
-                      $stQtyInPurchaseUnit = $stFactor > 0 ? round($st->qty / $stFactor, 2) : $st->qty;
-                    @endphp
-                    <div style="font-size:.78rem;" class="wh-item">
-                      <i class="bi bi-dot me-1"></i><strong>{{ $st->warehouse->warehouse_name ?? $st->warehouse->name ?? 'Main Stock' }}:</strong> {{ $stQtyInPurchaseUnit }} {{ $m->unit }}
-                    </div>
-                    @endforeach
-                    @else
-                    <span class="text-muted" style="font-size:.78rem;">Main Stock: {{ $purQty }} {{ $m->unit }}</span>
-                    @endif
+                  <td data-label="Unit"><span class="badge bg-light text-dark border">{{ strtoupper($m->unit) }}</span></td>
+                  <td style="font-weight:800;" class="fs-6" data-label="Branch Stock">
+                    <span class="stock-badge {{ $sqty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
+                      {{ number_format($purQty, 2) }} {{ $m->unit }}
+                    </span>
                   </td>
-                  <td style="font-weight:800;" class="fs-6" data-label="Total Stock">{{ $purQty }} {{ $m->unit }}</td>
+                  <td data-label="Recipe Qty">
+                    <span class="badge bg-light text-secondary border font-monospace">
+                      {{ number_format($sqty, 2) }} {{ $m->consumption_unit ?? $m->unit }}
+                    </span>
+                  </td>
                   <td data-label="Alert Qty">
                     @php
                       $factor = (float)($m->conversion_factor ?? 1);
@@ -571,13 +633,171 @@
                     {{ number_format($alertInPurchaseUnit, 2) }} {{ $m->unit }}
                   </td>
                   <td data-label="Status">
-                    <span class="stock-badge {{ $sqty > $m->alert_qty ? 'stock-ok' : 'stock-low' }}">
+                    <span class="stock-badge {{ $sqty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
                       {{ $statusStr }}
                     </span>
                   </td>
+                  <td data-label="Warehouse Stock">
+                    @if($whQty > 0)
+                      <span class="badge bg-primary-subtle text-primary border" style="cursor:pointer;font-size:.78rem;" onclick="switchTab('tab-warehouse-stock')" title="Click to view warehouse breakdown">
+                        <i class="bi bi-building me-1"></i>{{ number_format($whPurQty, 2) }} {{ $m->unit }}
+                      </span>
+                    @else
+                      <span class="text-muted small" style="font-size:.75rem;">None</span>
+                    @endif
+                  </td>
                 </tr>
                 @empty
-                <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">No materials</td></tr>
+                <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">No materials available</td></tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{-- TAB: WAREHOUSE STOCK --}}
+    <div id="tab-warehouse-stock" class="tab-content" style="display:none;">
+      <div class="rm-card">
+        <div class="rm-card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div>
+              <h5 style="font-weight:700;font-size:1.05rem;margin:0;"><i class="bi bi-building me-2" style="color:var(--accent);"></i>Raw Material Warehouse Stock</h5>
+              <div class="text-muted small mt-1" style="font-size:.78rem;">Detailed stock levels stored across warehouses (independent from branch shop stock)</div>
+            </div>
+            <button class="rm-btn rm-btn-primary" onclick="printReportSection('warehouseStockTable', 'Raw Material Warehouse Stock Report')"><i class="bi bi-printer me-1"></i> Print Warehouse Report</button>
+          </div>
+
+          {{-- WAREHOUSE KPI MINI CARDS --}}
+          @php
+            $whTotalItems = $warehouseStocks->where('qty', '>', 0)->count();
+            $whUniqueWarehouses = $warehouseStocks->pluck('warehouse_id')->unique()->filter()->count();
+            $whTotalEstValue = 0;
+            foreach ($warehouseStocks as $ws) {
+              if ($ws->rawMaterial) {
+                $f = (float)($ws->rawMaterial->conversion_factor ?? 1);
+                $pQty = $f > 0 ? ((float)$ws->qty / $f) : (float)$ws->qty;
+                $whTotalEstValue += $pQty * (float)$ws->rawMaterial->lastPurchaseCost();
+              }
+            }
+          @endphp
+          <div class="row g-2 mb-3">
+            <div class="col-6 col-md-4">
+              <div class="p-2 px-3 rounded-3 border bg-white d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                  <span class="text-muted d-block small" style="font-size:.72rem;text-transform:uppercase;font-weight:700;">Stocked Materials</span>
+                  <strong class="fs-6 text-dark">{{ $whTotalItems }} Items in Stock</strong>
+                </div>
+                <div class="rounded-circle p-2 bg-primary-subtle text-primary"><i class="bi bi-boxes fs-5"></i></div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4">
+              <div class="p-2 px-3 rounded-3 border bg-white d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                  <span class="text-muted d-block small" style="font-size:.72rem;text-transform:uppercase;font-weight:700;">Active Warehouses</span>
+                  <strong class="fs-6 text-dark">{{ $whUniqueWarehouses }} Warehouses</strong>
+                </div>
+                <div class="rounded-circle p-2 bg-info-subtle text-info"><i class="bi bi-building fs-5"></i></div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="p-2 px-3 rounded-3 border bg-white d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                  <span class="text-muted d-block small" style="font-size:.72rem;text-transform:uppercase;font-weight:700;">Est. Warehouse Value</span>
+                  <strong class="fs-6 text-success">Rs {{ number_format($whTotalEstValue, 2) }}</strong>
+                </div>
+                <div class="rounded-circle p-2 bg-success-subtle text-success"><i class="bi bi-cash-stack fs-5"></i></div>
+              </div>
+            </div>
+          </div>
+
+          {{-- WAREHOUSE FILTERS --}}
+          <div class="row g-2 mb-3 p-3 bg-light rounded-3 border">
+            <div class="col-md-4">
+              <label class="lbl"><i class="bi bi-search"></i> Search Material</label>
+              <input type="text" id="whStockSearchInput" class="fld" placeholder="Search by material name..." />
+            </div>
+            <div class="col-md-4">
+              <label class="lbl"><i class="bi bi-building"></i> Filter by Warehouse</label>
+              <select id="whStockWarehouseFilter" class="fld">
+                <option value="">All Warehouses</option>
+                @foreach($warehouses as $w)
+                <option value="{{ strtolower($w->warehouse_name ?? $w->name) }}">{{ $w->warehouse_name ?? $w->name }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="lbl"><i class="bi bi-funnel"></i> Filter by Stock Status</label>
+              <select id="whStockStatusFilter" class="fld">
+                <option value="">All Statuses</option>
+                <option value="in stock">In Stock</option>
+                <option value="low stock">Low Stock</option>
+                <option value="out of stock">Out of Stock</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="overflow-x:auto;" id="warehouseStockPrintArea">
+            <table class="rm-tbl" id="warehouseStockTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Material Name</th>
+                  <th>Warehouse</th>
+                  <th>Warehouse Stock</th>
+                  <th>Recipe Qty</th>
+                  <th>Purchase Price</th>
+                  <th>Est. Total Value</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($warehouseStocks as $ws)
+                  @php
+                    $m = $ws->rawMaterial;
+                    if (!$m) continue;
+                    $factor = (float)($m->conversion_factor ?? 1);
+                    $rawQty = (float)$ws->qty;
+                    $purQty = $factor > 0 ? round($rawQty / $factor, 2) : $rawQty;
+                    $alertInConsumption = (float)($m->alert_qty ?? 0) * ($factor > 0 ? $factor : 1);
+                    $statusStr = $rawQty > $alertInConsumption ? 'In Stock' : ($rawQty > 0 ? 'Low Stock' : 'Out of Stock');
+                    $lastCost = $m->lastPurchaseCost();
+                    $estValue = $purQty * $lastCost;
+                    $whName = $ws->warehouse->warehouse_name ?? $ws->warehouse->name ?? 'Warehouse #' . $ws->warehouse_id;
+                  @endphp
+                  <tr class="wh-stock-row" data-status="{{ strtolower($statusStr) }}" data-warehouse="{{ strtolower($whName) }}">
+                    <td class="fw-bold" data-label="#">{{ $m->id }}</td>
+                    <td style="font-weight:700;" class="text-dark wh-material-name-cell" data-label="Material">{{ $m->name }}</td>
+                    <td class="wh-name-cell" data-label="Warehouse">
+                      <span class="badge bg-primary-subtle text-primary border font-semibold px-2 py-1">
+                        <i class="bi bi-building me-1"></i>{{ $whName }}
+                      </span>
+                    </td>
+                    <td style="font-weight:800;" class="fs-6" data-label="Warehouse Stock">
+                      <span class="stock-badge {{ $rawQty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
+                        {{ number_format($purQty, 2) }} {{ $m->unit }}
+                      </span>
+                    </td>
+                    <td data-label="Recipe Qty">
+                      <span class="badge bg-light text-secondary border font-monospace">
+                        {{ number_format($rawQty, 2) }} {{ $m->consumption_unit ?? $m->unit }}
+                      </span>
+                    </td>
+                    <td data-label="Purchase Price">
+                      <span class="text-muted fw-semibold" style="font-size:.84rem;">Rs {{ number_format($lastCost, 2) }} / {{ $m->unit }}</span>
+                    </td>
+                    <td style="font-weight:700;" class="text-success" data-label="Est. Total Value">
+                      Rs {{ number_format($estValue, 2) }}
+                    </td>
+                    <td data-label="Status">
+                      <span class="stock-badge {{ $rawQty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
+                        {{ $statusStr }}
+                      </span>
+                    </td>
+                  </tr>
+                @empty
+                  <tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted);"><i class="bi bi-building-slash fs-3 d-block mb-2 text-secondary"></i>No warehouse stock recorded yet. When creating purchases, select a warehouse to store materials there.</td></tr>
                 @endforelse
               </tbody>
             </table>
@@ -721,13 +941,43 @@
 
 @section('scripts')
 <script>
+// Initialize Select2 on Material Dropdowns
+function initMaterialSelect2($elements) {
+  if (typeof $.fn.select2 === 'undefined') return;
+  var $targets = $elements ? $($elements) : $('#purchaseItemsBody .select2-rm');
+  $targets.each(function() {
+    var $el = $(this);
+    if ($el.hasClass('select2-hidden-accessible')) {
+      $el.select2('destroy');
+    }
+    $el.select2({
+      width: '100%',
+      placeholder: 'Select Material...',
+      allowClear: true
+    });
+  });
+}
+
 // Tab switching
+window.switchTab = function(tabId) {
+  document.querySelectorAll('.rm-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
+  var targetTab = document.querySelector('.rm-tab[data-tab="' + tabId + '"]');
+  if (targetTab) targetTab.classList.add('active');
+  var targetContent = document.getElementById(tabId);
+  if (targetContent) {
+    targetContent.style.display = 'block';
+    if (tabId === 'tab-purchase') {
+      setTimeout(function() {
+        initMaterialSelect2();
+      }, 50);
+    }
+  }
+};
+
 document.querySelectorAll('.rm-tab').forEach(tab => {
   tab.addEventListener('click', function() {
-    document.querySelectorAll('.rm-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
-    this.classList.add('active');
-    document.getElementById(this.dataset.tab).style.display = 'block';
+    window.switchTab(this.dataset.tab);
   });
 });
 
@@ -794,8 +1044,16 @@ $(document).on('click', '#addPurchaseRow', function() {
   var tbody = document.getElementById('purchaseItemsBody');
   var firstRow = tbody.querySelector('.pitem-row');
   var newRow = firstRow.cloneNode(true);
+  
+  // Clean select2 container and attributes from cloned element
+  $(newRow).find('.select2-container').remove();
+  var $sel = $(newRow).find('.select2-rm');
+  $sel.removeClass('select2-hidden-accessible');
+  $sel.removeAttr('data-select2-id tabindex aria-hidden');
+  $sel.find('option').removeAttr('data-select2-id');
+  $sel.val('');
+
   newRow.querySelectorAll('input').forEach(inp => inp.value = '');
-  newRow.querySelector('select').value = '';
   newRow.querySelector('.ptotal').textContent = '0';
   var addBtn = newRow.querySelector('.add-row-btn');
   if (addBtn) addBtn.style.display = 'none';
@@ -803,12 +1061,30 @@ $(document).on('click', '#addPurchaseRow', function() {
   if (rmBtn) rmBtn.style.display = '';
   newRow.querySelectorAll('.pqty, .pprice').forEach(inp => inp.addEventListener('input', function() { calculateRowTotal(this); calculatePurchaseTotal(); }));
   tbody.appendChild(newRow);
+
+  // Initialize Select2 on the new row
+  initMaterialSelect2($(newRow).find('.select2-rm'));
 });
 
 // Remove row
 $(document).on('click', '.remove-row', function() {
-  $(this).closest('tr').remove();
+  var row = $(this).closest('tr');
+  if (row.find('.select2-rm').hasClass('select2-hidden-accessible')) {
+    row.find('.select2-rm').select2('destroy');
+  }
+  row.remove();
   calculatePurchaseTotal();
+});
+
+// Auto-fill price on material selection
+$(document).on('change', '.select2-rm', function() {
+  var row = $(this).closest('tr');
+  var price = $(this).find(':selected').data('price');
+  var priceInput = row.find('.pprice');
+  if (price !== undefined && price !== null && price > 0 && (priceInput.val() === '' || priceInput.val() == 0)) {
+    priceInput.val(price);
+  }
+  calculateRowTotal(priceInput[0] || this);
 });
 
 // Calculate row total
@@ -848,26 +1124,51 @@ function printReportSection(tableId, title) {
 
   var rowsHtml = '';
   var isStock = tableId === 'stockTable';
+  var isWarehouseStock = tableId === 'warehouseStockTable';
   var isPurchase = tableId === 'purchaseTable';
 
   if (isStock) {
-    var headers = '<tr><th style="width:25%;">Material & Unit</th><th style="width:38%;">Warehouse Breakdown</th><th style="width:20%;">Total / Alert</th><th style="width:17%;">Status</th></tr>';
+    var headers = '<tr><th style="width:30%;">Material & Unit</th><th style="width:25%;">Branch Stock</th><th style="width:25%;">Recipe Qty / Alert</th><th style="width:20%;">Status</th></tr>';
     
     $('#stockTable tbody tr.stock-row').each(function() {
-      if ($(this).css('display') !== 'none') {
+      if ($(this).css('display') !== 'none' && $(this).find('td').length >= 7) {
         var id = $(this).find('td:eq(0)').text().trim();
         var name = $(this).find('.material-name-cell').text().trim();
         var unit = $(this).find('td:eq(2)').text().trim();
-        var whHtml = $(this).find('.warehouse-cell').html().trim();
-        var total = $(this).find('td:eq(4)').text().trim();
+        var stock = $(this).find('td:eq(3)').text().trim();
+        var recipe = $(this).find('td:eq(4)').text().trim();
         var alert = $(this).find('td:eq(5)').text().trim();
         var status = $(this).find('.stock-badge').text().trim();
 
         rowsHtml += '<tr>';
-        rowsHtml += '<td><strong>' + name + '</strong><br><span style="font-size:8.5px;color:#444;">' + id + ' (' + unit + ')</span></td>';
-        rowsHtml += '<td>' + whHtml + '</td>';
-        rowsHtml += '<td><strong>' + total + '</strong><br><span style="font-size:8.5px;color:#444;">Alert: ' + alert + '</span></td>';
+        rowsHtml += '<td><strong>' + name + '</strong><br><span style="font-size:8.5px;color:#444;">ID: ' + id + ' (' + unit + ')</span></td>';
+        rowsHtml += '<td><strong>' + stock + '</strong></td>';
+        rowsHtml += '<td>Usage: ' + recipe + '<br><span style="font-size:8.5px;color:#444;">Alert: ' + alert + '</span></td>';
         rowsHtml += '<td><strong>' + status + '</strong></td>';
+        rowsHtml += '</tr>';
+      }
+    });
+
+    var tableHtml = '<table><thead>' + headers + '</thead><tbody>' + rowsHtml + '</tbody></table>';
+  } else if (isWarehouseStock) {
+    var headers = '<tr><th style="width:25%;">Material Name</th><th style="width:20%;">Warehouse</th><th style="width:20%;">Warehouse Stock</th><th style="width:20%;">Recipe Qty</th><th style="width:15%;">Est. Value</th></tr>';
+
+    $('#warehouseStockTable tbody tr.wh-stock-row').each(function() {
+      if ($(this).css('display') !== 'none' && $(this).find('td').length >= 7) {
+        var id = $(this).find('td:eq(0)').text().trim();
+        var name = $(this).find('.wh-material-name-cell').text().trim();
+        var wh = $(this).find('.wh-name-cell').text().trim();
+        var stock = $(this).find('td:eq(3)').text().trim();
+        var recipe = $(this).find('td:eq(4)').text().trim();
+        var val = $(this).find('td:eq(6)').text().trim();
+        var status = $(this).find('td:eq(7)').text().trim();
+
+        rowsHtml += '<tr>';
+        rowsHtml += '<td><strong>' + name + '</strong><br><span style="font-size:8.5px;color:#444;">ID: ' + id + '</span></td>';
+        rowsHtml += '<td><strong>' + wh + '</strong></td>';
+        rowsHtml += '<td><strong>' + stock + '</strong><br><span style="font-size:8.5px;color:#444;">' + status + '</span></td>';
+        rowsHtml += '<td>' + recipe + '</td>';
+        rowsHtml += '<td><strong>' + val + '</strong></td>';
         rowsHtml += '</tr>';
       }
     });
@@ -937,15 +1238,35 @@ function printReportSection(tableId, title) {
   }, 400);
 }
 
-// Live Current Stock Filtering
-$(document).on('keyup change', '#stockSearchInput, #stockWarehouseFilter, #stockStatusFilter', function() {
+// Live Current Branch Stock Filtering
+$(document).on('keyup change', '#stockSearchInput, #stockStatusFilter', function() {
   var searchVal = $('#stockSearchInput').val().toLowerCase().trim();
-  var whVal = $('#stockWarehouseFilter').val().toLowerCase().trim();
   var statusVal = $('#stockStatusFilter').val().toLowerCase().trim();
 
   $('#stockTable tbody tr.stock-row').each(function() {
     var nameText = $(this).find('.material-name-cell').text().toLowerCase();
-    var whText = $(this).find('.warehouse-cell').text().toLowerCase();
+    var statusAttr = ($(this).data('status') || '').toLowerCase();
+
+    var matchSearch = !searchVal || nameText.indexOf(searchVal) !== -1;
+    var matchStatus = !statusVal || statusAttr === statusVal;
+
+    if (matchSearch && matchStatus) {
+      $(this).show();
+    } else {
+      $(this).hide();
+    }
+  });
+});
+
+// Live Warehouse Stock Filtering
+$(document).on('keyup change', '#whStockSearchInput, #whStockWarehouseFilter, #whStockStatusFilter', function() {
+  var searchVal = $('#whStockSearchInput').val().toLowerCase().trim();
+  var whVal = $('#whStockWarehouseFilter').val().toLowerCase().trim();
+  var statusVal = $('#whStockStatusFilter').val().toLowerCase().trim();
+
+  $('#warehouseStockTable tbody tr.wh-stock-row').each(function() {
+    var nameText = $(this).find('.wh-material-name-cell').text().toLowerCase();
+    var whText = ($(this).data('warehouse') || $(this).find('.wh-name-cell').text()).toLowerCase();
     var statusAttr = ($(this).data('status') || '').toLowerCase();
 
     var matchSearch = !searchVal || nameText.indexOf(searchVal) !== -1;
@@ -977,8 +1298,9 @@ function confirmDelete(url) {
   });
 }
 
-// DataTables
+// DataTables & Initializations
 $(document).ready(function() {
+  initMaterialSelect2();
   if ($.fn.DataTable.isDataTable('#materialTable')) $('#materialTable').DataTable().destroy();
   if ($.fn.DataTable.isDataTable('#purchaseTable')) $('#purchaseTable').DataTable().destroy();
   if ($.fn.DataTable.isDataTable('#recipesTable')) $('#recipesTable').DataTable().destroy();

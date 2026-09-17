@@ -219,7 +219,7 @@
               <td class="pc-inv" data-label="Purchase Inv">{{ $return->purchase->invoice_no ?? 'N/A' }}</td>
               <td class="pc-inv" data-label="Return Inv">{{ $return->return_invoice }}</td>
               <td class="pc-vendor" data-label="Vendor">{{ $return->vendor->name ?? 'N/A' }}</td>
-              <td class="pc-wh" data-label="Warehouse">{{ $return->warehouse->warehouse_name ?? 'N/A' }}</td>
+              <td class="pc-wh" data-label="Warehouse">{{ $return->warehouse->warehouse_name ?? ($return->purchase->branch->name ?? ($return->branch->name ?? 'N/A')) }}</td>
               <td class="pc-date" data-label="Date">{{ \Carbon\Carbon::parse($return->return_date)->format('d-M-Y') }}</td>
               <td data-label="Products">
                 @foreach($return->items as $item)

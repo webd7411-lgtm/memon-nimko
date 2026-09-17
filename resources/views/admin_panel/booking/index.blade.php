@@ -20,7 +20,7 @@
   --bk-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.bk-page * {
+.bk-page *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) {
   font-family: var(--bk-font);
 }
 

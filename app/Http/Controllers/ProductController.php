@@ -60,14 +60,27 @@ class ProductController extends Controller
             'unit',
             'brand',
             'stock',
+            'baseStock',
             'discountProduct',
-            'variants.stock'
+            'defaultVariant',
+            'variants' => function($q) {
+                $q->withSum(['stocks as variant_stock' => function($sq) {
+                    if (!is_all_branches()) {
+                        $sq->where('branch_id', active_branch_id());
+                    }
+                    $sq->where(function($w) {
+                        $w->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                    });
+                }], 'qty');
+            }
         ])
             ->withSum(['stocks as total_stock' => function($q) {
                 if (!is_all_branches()) {
                     $q->where('branch_id', active_branch_id());
                 }
-                $q->whereNull('warehouse_id');
+                $q->where(function($sq) {
+                    $sq->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                });
             }], 'qty')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -315,7 +328,7 @@ class ProductController extends Controller
                     // Single variant stock entry
                     DB::table('stocks')->insert([
                         'branch_id'    => active_branch_id(),
-                        'warehouse_id' => 1,
+                        'warehouse_id' => null,
                         'product_id'   => $product->id,
                         'variant_id'   => $variant->id,
                         'qty'          => $vStock,
@@ -363,19 +376,19 @@ class ProductController extends Controller
             }
 
             // --- Save Custom Variant BOMs ---
-            $variantBomTypes = $request->input('variant_bom_type', []);
-            $variantBomItemIds = $request->input('variant_bom_item_id', []);
-            $variantBomQtys = $request->input('variant_qty_per_unit', []);
+            $customVariantRefs = $request->input('custom_variant_ref', []);
+            $customBomTypes = $request->input('custom_variant_bom_type', []);
+            $customBomItemIds = $request->input('custom_variant_bom_item_id', []);
+            $customBomQtys = $request->input('custom_variant_qty_per_unit', []);
 
-            if (!empty($variantBomItemIds)) {
-                foreach ($variantBomItemIds as $vKey => $itemIds) {
-                    $targetVariantId = $createdVariants[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
-                    if (!$targetVariantId) continue;
-
-                    foreach ($itemIds as $j => $itemId) {
-                        $rawQty = (float)($variantBomQtys[$vKey][$j] ?? 0);
-                        $type = $variantBomTypes[$vKey][$j] ?? 'rm';
-                        if ($itemId && $rawQty > 0) {
+            if (!empty($customBomItemIds)) {
+                foreach ($customBomItemIds as $k => $itemId) {
+                    $vKey = $customVariantRefs[$k] ?? null;
+                    $rawQty = (float)($customBomQtys[$k] ?? 0);
+                    $type = $customBomTypes[$k] ?? 'rm';
+                    if ($vKey !== null && $vKey !== '' && $itemId && $rawQty > 0) {
+                        $targetVariantId = $createdVariants[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
+                        if ($targetVariantId) {
                             ProductRawMaterialBom::create([
                                 'product_id' => $product->id,
                                 'variant_id' => $targetVariantId,
@@ -383,6 +396,31 @@ class ProductController extends Controller
                                 'ingredient_product_id' => ($type === 'product') ? $itemId : null,
                                 'qty_per_unit' => $rawQty,
                             ]);
+                        }
+                    }
+                }
+            } else {
+                $variantBomTypes = $request->input('variant_bom_type', []);
+                $variantBomItemIds = $request->input('variant_bom_item_id', []);
+                $variantBomQtys = $request->input('variant_qty_per_unit', []);
+
+                if (!empty($variantBomItemIds)) {
+                    foreach ($variantBomItemIds as $vKey => $itemIds) {
+                        $targetVariantId = $createdVariants[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
+                        if (!$targetVariantId) continue;
+
+                        foreach ($itemIds as $j => $itemId) {
+                            $rawQty = (float)($variantBomQtys[$vKey][$j] ?? 0);
+                            $type = $variantBomTypes[$vKey][$j] ?? 'rm';
+                            if ($itemId && $rawQty > 0) {
+                                ProductRawMaterialBom::create([
+                                    'product_id' => $product->id,
+                                    'variant_id' => $targetVariantId,
+                                    'raw_material_id' => ($type === 'rm') ? $itemId : null,
+                                    'ingredient_product_id' => ($type === 'product') ? $itemId : null,
+                                    'qty_per_unit' => $rawQty,
+                                ]);
+                            }
                         }
                     }
                 }
@@ -541,7 +579,7 @@ class ProductController extends Controller
                         // Insert initial stock for new variant
                         DB::table('stocks')->insert([
                             'branch_id'    => active_branch_id(),
-                            'warehouse_id' => 1,
+                            'warehouse_id' => null,
                             'product_id'   => $product->id,
                             'variant_id'   => $variant->id,
                             'qty'          => $vStock,
@@ -600,19 +638,19 @@ class ProductController extends Controller
             }
 
             // --- Save Custom Variant BOMs ---
-            $variantBomTypes = $request->input('variant_bom_type', []);
-            $variantBomItemIds = $request->input('variant_bom_item_id', []);
-            $variantBomQtys = $request->input('variant_qty_per_unit', []);
+            $customVariantRefs = $request->input('custom_variant_ref', []);
+            $customBomTypes = $request->input('custom_variant_bom_type', []);
+            $customBomItemIds = $request->input('custom_variant_bom_item_id', []);
+            $customBomQtys = $request->input('custom_variant_qty_per_unit', []);
 
-            if (!empty($variantBomItemIds)) {
-                foreach ($variantBomItemIds as $vKey => $itemIds) {
-                    $targetVariantId = $updatedVariantMap[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
-                    if (!$targetVariantId) continue;
-
-                    foreach ($itemIds as $j => $itemId) {
-                        $rawQty = (float)($variantBomQtys[$vKey][$j] ?? 0);
-                        $type = $variantBomTypes[$vKey][$j] ?? 'rm';
-                        if ($itemId && $rawQty > 0) {
+            if (!empty($customBomItemIds)) {
+                foreach ($customBomItemIds as $k => $itemId) {
+                    $vKey = $customVariantRefs[$k] ?? null;
+                    $rawQty = (float)($customBomQtys[$k] ?? 0);
+                    $type = $customBomTypes[$k] ?? 'rm';
+                    if ($vKey !== null && $vKey !== '' && $itemId && $rawQty > 0) {
+                        $targetVariantId = $updatedVariantMap[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
+                        if ($targetVariantId) {
                             ProductRawMaterialBom::create([
                                 'product_id' => $product->id,
                                 'variant_id' => $targetVariantId,
@@ -620,6 +658,31 @@ class ProductController extends Controller
                                 'ingredient_product_id' => ($type === 'product') ? $itemId : null,
                                 'qty_per_unit' => $rawQty,
                             ]);
+                        }
+                    }
+                }
+            } else {
+                $variantBomTypes = $request->input('variant_bom_type', []);
+                $variantBomItemIds = $request->input('variant_bom_item_id', []);
+                $variantBomQtys = $request->input('variant_qty_per_unit', []);
+
+                if (!empty($variantBomItemIds)) {
+                    foreach ($variantBomItemIds as $vKey => $itemIds) {
+                        $targetVariantId = $updatedVariantMap[$vKey] ?? (is_numeric($vKey) ? $vKey : null);
+                        if (!$targetVariantId) continue;
+
+                        foreach ($itemIds as $j => $itemId) {
+                            $rawQty = (float)($variantBomQtys[$vKey][$j] ?? 0);
+                            $type = $variantBomTypes[$vKey][$j] ?? 'rm';
+                            if ($itemId && $rawQty > 0) {
+                                ProductRawMaterialBom::create([
+                                    'product_id' => $product->id,
+                                    'variant_id' => $targetVariantId,
+                                    'raw_material_id' => ($type === 'rm') ? $itemId : null,
+                                    'ingredient_product_id' => ($type === 'product') ? $itemId : null,
+                                    'qty_per_unit' => $rawQty,
+                                ]);
+                            }
                         }
                     }
                 }

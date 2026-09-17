@@ -897,21 +897,65 @@
 
                                      {{-- Custom Variant-Wise Recipes (Optional Override) --}}
                                      <div class="card mt-4 border-0 shadow-sm" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px;">
-                                         <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid #e2e8f0;">
-                                             <h5 class="mb-0 fw-bold text-dark fs-6"><i class="las la-sliders-h text-primary fs-5"></i> Custom Variant Recipes (Optional Override)</h5>
-                                             <span class="badge bg-primary px-3 py-2 rounded-pill">Priority Recipe</span>
+                                         <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="border-bottom: 1px solid #e2e8f0;">
+                                             <div>
+                                                 <h5 class="mb-0 fw-bold text-dark fs-6"><i class="las la-sliders-h text-primary fs-5"></i> Custom Variant Recipes (Optional Override)</h5>
+                                                 <div class="text-muted small mt-1">
+                                                     <i class="las la-info-circle"></i> Agar kisi specific variant ki alag recipe hai, toh variant select karke uska raw material/ingredient aur qty add karein.
+                                                 </div>
+                                             </div>
+                                             <div class="d-flex align-items-center gap-2">
+                                                 <span class="badge bg-primary px-3 py-2 rounded-pill">Priority Recipe</span>
+                                                 <button type="button" class="btn btn-sm btn-primary px-3 rounded-pill" id="addCustomVariantBomRow">
+                                                     <i class="las la-plus"></i> Add Custom Ingredient
+                                                 </button>
+                                             </div>
                                          </div>
                                          <div class="card-body p-3">
-                                             <div class="text-muted small mb-3">
-                                                 <i class="las la-info-circle"></i> Agar kisi specific variant (maslan 2 Pound Cake) ki alag custom recipe hai, toh yahan us variant ki recipe add karein. System production ke waqt auto-multiplier ke bajaye is custom recipe ko priority dega.
-                                             </div>
-                                             <div id="variantCustomBomContainer">
-                                                 <div class="text-muted fst-italic p-3 border rounded text-center bg-white" id="noVariantBomMsg">
-                                                     No variants added in Step 2. (Default base recipe above will be used for all sizes).
+                                             <div id="noVariantCustomBomMsg" class="text-muted fst-italic p-4 border rounded text-center bg-white">
+                                                 <i class="las la-info-circle text-primary fs-4 d-block mb-1"></i>
+                                                 <span>No custom variant recipes added. All variants will use the Default Base Recipe above.</span>
+                                                 <div class="mt-2">
+                                                     <button type="button" class="btn btn-sm btn-outline-primary px-3 rounded-pill" id="addFirstCustomVariantBomRow">
+                                                         <i class="las la-plus"></i> Add Custom Ingredient
+                                                     </button>
                                                  </div>
+                                             </div>
+                                             <div class="table-responsive" id="customVariantBomTableWrap" style="display:none;">
+                                                 <table class="table table-bordered table-hover align-middle mb-0 bg-white" id="customVariantBomTable">
+                                                     <thead class="table-light">
+                                                         <tr>
+                                                             <th style="width: 25%;">Select Variant <span class="text-danger">*</span></th>
+                                                             <th style="width: 45%;">Raw Material / Ingredient <span class="text-danger">*</span></th>
+                                                             <th style="width: 22%;">Qty per 1 Pack / Unit <span class="text-danger">*</span></th>
+                                                             <th style="width: 8%;" class="text-center">Action</th>
+                                                         </tr>
+                                                     </thead>
+                                                     <tbody id="customVariantBomBody">
+                                                         {{-- Rows dynamically appended --}}
+                                                     </tbody>
+                                                 </table>
                                              </div>
                                          </div>
                                      </div>
+
+                                     <template id="rawMaterialOptionsTemplate">
+                                         <option value="">Select Raw Material / Ingredient...</option>
+                                         <optgroup label="Raw Materials">
+                                             @if(isset($rawMaterials))
+                                             @foreach($rawMaterials as $rm)
+                                             <option value="{{ $rm->id }}" data-type="rm">[RM] {{ $rm->name }} ({{ $rm->consumption_unit ?? $rm->unit }})</option>
+                                             @endforeach
+                                             @endif
+                                         </optgroup>
+                                         <optgroup label="Semi-Finished / Base Products">
+                                             @if(isset($allProducts))
+                                             @foreach($allProducts as $ap)
+                                             <option value="{{ $ap->id }}" data-type="product">[Product] {{ $ap->item_code }} - {{ $ap->item_name }} ({{ strtoupper($ap->unit_type ?? 'Piece') }})</option>
+                                             @endforeach
+                                             @endif
+                                         </optgroup>
+                                     </template>
                                  </div>
 
                                 {{-- ============ STEP 4: REVIEW ============ --}}
@@ -1192,10 +1236,29 @@ $(document).ready(function() {
                     $(this).remove();
                 }
             });
+            $('#customVariantBomBody tr').each(function() {
+                var v = $(this).find('.custom-variant-select').val();
+                var item = $(this).find('.custom-bom-item-select').val();
+                var qty = parseFloat($(this).find('input[name="custom_variant_qty_per_unit[]"]').val()) || 0;
+                if (!v || !item || qty <= 0) {
+                    $(this).remove();
+                }
+            });
             window.isDirectSaveSubmit = true;
             form.submit();
         });
     }
+
+    form.addEventListener('submit', function() {
+        $('#customVariantBomBody tr').each(function() {
+            var v = $(this).find('.custom-variant-select').val();
+            var item = $(this).find('.custom-bom-item-select').val();
+            var qty = parseFloat($(this).find('input[name="custom_variant_qty_per_unit[]"]').val()) || 0;
+            if (!v || !item || qty <= 0) {
+                $(this).remove();
+            }
+        });
+    });
 
     nextBtn.addEventListener('click', function() {
         if (!validateStep(currentStep)) return;
@@ -1640,21 +1703,17 @@ function buildReview() {
     });
 
     // 2. Custom Variant Recipe Items
-    const vbomBlocks = document.querySelectorAll('.vbom-block');
-    vbomBlocks.forEach(function(block) {
-        const titleEl = block.querySelector('.vbom-title');
-        const vName = titleEl ? titleEl.textContent.trim() : 'Variant';
-        const vRows = block.querySelectorAll('tbody.vbom-body tr');
-
-        vRows.forEach(function(vr) {
-            const sel = vr.querySelector('select');
-            const qty = vr.querySelector('input[type="number"]');
-            if (sel && sel.value && qty && (parseFloat(qty.value) || 0) > 0) {
-                matCount++;
-                const label = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : 'Material';
-                bomHtml += '<span class="pz-review-chip me-1 mb-1 d-inline-flex align-items-center gap-1 border-primary" style="background:#eff6ff; border:1px solid #bfdbfe;"><span class="badge bg-primary p-1">' + vName + '</span> ' + label + ' × ' + (parseFloat(qty.value) || 0) + '</span> ';
-            }
-        });
+    const vbomRows = document.querySelectorAll('#customVariantBomBody tr');
+    vbomRows.forEach(function(vr) {
+        const vSel = vr.querySelector('.custom-variant-select');
+        const vName = vSel && vSel.selectedOptions[0] && vSel.value !== '' ? vSel.selectedOptions[0].textContent.trim() : '';
+        const sel = vr.querySelector('.custom-bom-item-select');
+        const qty = vr.querySelector('input[name="custom_variant_qty_per_unit[]"]');
+        if (vName && sel && sel.value && qty && (parseFloat(qty.value) || 0) > 0) {
+            matCount++;
+            const label = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : 'Material';
+            bomHtml += '<span class="pz-review-chip me-1 mb-1 d-inline-flex align-items-center gap-1 border-primary" style="background:#eff6ff; border:1px solid #bfdbfe;"><span class="badge bg-primary p-1">' + vName + '</span> ' + label + ' × ' + (parseFloat(qty.value) || 0) + '</span> ';
+        }
     });
 
     bomBox.innerHTML = bomHtml || '<span class="pz-hint">No raw materials or ingredients added.</span>';
@@ -1666,9 +1725,10 @@ function buildReview() {
     $existingVariantBoms = [];
     foreach($product->variants as $idx => $v) {
         $vBoms = $product->bom->where('variant_id', $v->id);
-        $existingVariantBoms[$idx] = [];
         foreach($vBoms as $vb) {
-            $existingVariantBoms[$idx][] = [
+            $existingVariantBoms[] = [
+                'variant_id' => $v->id,
+                'variant_name' => $v->variant_name,
                 'type' => $vb->ingredient_product_id ? 'product' : 'rm',
                 'item_id' => $vb->ingredient_product_id ?? $vb->raw_material_id,
                 'qty' => (float)$vb->qty_per_unit
@@ -1679,122 +1739,142 @@ function buildReview() {
 
 window.existingVariantBoms = @json($existingVariantBoms);
 
-function updateVariantCustomBomUI() {
-    const container = document.getElementById('variantCustomBomContainer');
-    if (!container) return;
-
+function getVariantOptionsHtml(selectedVal, selectedName) {
     const variantRows = document.querySelectorAll('.pz-variant-row');
-    if (variantRows.length === 0) {
-        container.innerHTML = '<div class="text-muted fst-italic p-3 border rounded text-center bg-white" id="noVariantBomMsg">No variants added in Step 2. (Default base recipe above will be used for all sizes).</div>';
-        return;
-    }
-
-    const noMsg = container.querySelector('#noVariantBomMsg');
-    if (noMsg) noMsg.remove();
-
+    let html = '<option value="">-- Choose Variant --</option>';
     variantRows.forEach(function(row, idx) {
         const nameInput = row.querySelector('.variant-name-input');
+        const vIdInput = row.querySelector('input[name="variant_id[]"]');
+        const val = (vIdInput && vIdInput.value) ? vIdInput.value : idx;
         const vName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : ('Variant #' + (idx + 1));
-
-        let block = container.querySelector('.vbom-block[data-vidx="' + idx + '"]');
-        if (!block) {
-            const html = '<div class="vbom-block card border mb-3 shadow-sm bg-white" data-vidx="' + idx + '">' +
-                '<div class="card-header bg-light py-2 d-flex align-items-center justify-content-between">' +
-                '<span class="fw-bold text-dark"><i class="las la-tag text-primary"></i> <span class="vbom-title">' + vName + '</span></span>' +
-                '<button type="button" class="btn btn-sm btn-outline-primary add-vbom-row-btn" data-vidx="' + idx + '">' +
-                '<i class="las la-plus"></i> Add Custom Ingredient for ' + vName +
-                '</button>' +
-                '</div>' +
-                '<div class="card-body p-2">' +
-                '<table class="table table-sm table-bordered mb-0 vbom-table" data-vidx="' + idx + '">' +
-                '<thead><tr class="table-light"><th>Raw Material / Ingredient</th><th width="40%">Qty per 1 Pack / Unit of this Variant</th><th width="10%" class="text-center">Action</th></tr></thead>' +
-                '<tbody class="vbom-body" data-vidx="' + idx + '"></tbody>' +
-                '</table>' +
-                '<div class="text-muted small mt-1 fst-italic"><i class="las la-info-circle"></i> Leave empty if this variant should use the Default Base Recipe above.</div>' +
-                '</div></div>';
-            container.insertAdjacentHTML('beforeend', html);
-
-            const savedItems = (window.existingVariantBoms && window.existingVariantBoms[idx]) ? window.existingVariantBoms[idx] : [];
-            if (savedItems.length > 0) {
-                const tbody = container.querySelector('tbody.vbom-body[data-vidx="' + idx + '"]');
-                var firstSelect = $('#bomBody tr:first select.bom-item-select');
-                var defaultSelectHtml = '';
-                if (firstSelect.length) {
-                    var cloneSelect = firstSelect.clone();
-                    cloneSelect.find('option').removeAttr('data-select2-id');
-                    defaultSelectHtml = cloneSelect.html();
-                }
-                savedItems.forEach(function(item) {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = '<td>' +
-                        '<input type="hidden" name="variant_bom_type[' + idx + '][]" class="bom-type" value="' + item.type + '">' +
-                        '<select name="variant_bom_item_id[' + idx + '][]" class="form-select form-select-sm bom-item-select">' +
-                        defaultSelectHtml +
-                        '</select>' +
-                        '</td>' +
-                        '<td><input type="number" step="0.001" min="0" name="variant_qty_per_unit[' + idx + '][]" class="form-control form-control-sm" value="' + item.qty + '" placeholder="Exact qty for 1 unit of this variant"></td>' +
-                        '<td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-vbom-row" title="Remove"><i class="las la-trash"></i></button></td>';
-                    
-                    const select = tr.querySelector('select');
-                    if (select) select.value = item.item_id;
-                    tbody.appendChild(tr);
-                });
-            }
-        } else {
-            const titleEl = block.querySelector('.vbom-title');
-            if (titleEl) titleEl.textContent = vName;
-            const btnEl = block.querySelector('.add-vbom-row-btn');
-            if (btnEl) btnEl.innerHTML = '<i class="las la-plus"></i> Add Custom Ingredient for ' + vName;
+        
+        let isSelected = false;
+        if (selectedVal !== undefined && selectedVal !== null && selectedVal !== '' && String(val) === String(selectedVal)) {
+            isSelected = true;
+        } else if (selectedName && vName === selectedName) {
+            isSelected = true;
         }
+        
+        html += '<option value="' + val + '" data-name="' + vName.replace(/"/g, '&quot;') + '" ' + (isSelected ? 'selected' : '') + '>' + vName + '</option>';
     });
+    return html;
+}
 
-    container.querySelectorAll('.vbom-block').forEach(function(block) {
-        const vidx = parseInt(block.getAttribute('data-vidx'));
-        if (vidx >= variantRows.length) {
-            block.remove();
-        }
-    });
-
-    if (typeof initBomSelect2 === 'function') {
-        setTimeout(function() {
-            initBomSelect2();
-        }, 50);
+function checkCustomBomEmptyState() {
+    const tbody = document.getElementById('customVariantBomBody');
+    const tableWrap = document.getElementById('customVariantBomTableWrap');
+    const emptyMsg = document.getElementById('noVariantCustomBomMsg');
+    if (!tbody || tbody.children.length === 0) {
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        if (tableWrap) tableWrap.style.display = 'none';
+    } else {
+        if (emptyMsg) emptyMsg.style.display = 'none';
+        if (tableWrap) tableWrap.style.display = 'block';
     }
 }
 
-$(document).on('click', '.add-vbom-row-btn', function() {
-    const vidx = $(this).data('vidx');
-    const tbody = $('tbody.vbom-body[data-vidx="' + vidx + '"]');
-    
-    var firstSelect = $('#bomBody tr:first select.bom-item-select');
-    var selectHtml = '';
-    if (firstSelect.length) {
-        var cloneSelect = firstSelect.clone();
-        cloneSelect.find('option').removeAttr('data-select2-id');
-        selectHtml = cloneSelect.html();
+function addCustomVariantBomRow(defaultVariantVal, defaultItemId, defaultQty, defaultType) {
+    const variantRows = document.querySelectorAll('.pz-variant-row');
+    if (variantRows.length === 0) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Variants Found',
+                text: 'Pehle Step 2 me variants add karein phir unki custom recipe define karein.',
+                confirmButtonColor: '#6d5cff'
+            });
+        } else {
+            alert('Please add variants in Step 2 first.');
+        }
+        return;
     }
 
-    const tr = $('<tr>' +
-        '<td>' +
-        '<input type="hidden" name="variant_bom_type[' + vidx + '][]" class="bom-type" value="rm">' +
-        '<select name="variant_bom_item_id[' + vidx + '][]" class="form-select form-select-sm bom-item-select">' +
-        selectHtml +
+    const tbody = document.getElementById('customVariantBomBody');
+    const tableWrap = document.getElementById('customVariantBomTableWrap');
+    const emptyMsg = document.getElementById('noVariantCustomBomMsg');
+
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    if (tableWrap) tableWrap.style.display = 'block';
+
+    const variantOptions = getVariantOptionsHtml(defaultVariantVal);
+    const tmpl = document.getElementById('rawMaterialOptionsTemplate');
+    const rmOptions = tmpl ? tmpl.innerHTML : '';
+
+    const tr = document.createElement('tr');
+    tr.className = 'custom-vbom-row';
+    tr.innerHTML = '<td>' +
+        '<select name="custom_variant_ref[]" class="form-select form-select-sm custom-variant-select" required>' +
+        variantOptions +
         '</select>' +
         '</td>' +
-        '<td><input type="number" step="0.001" min="0" name="variant_qty_per_unit[' + vidx + '][]" class="form-control form-control-sm" placeholder="Exact qty for 1 unit of this variant"></td>' +
-        '<td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-vbom-row" title="Remove"><i class="las la-trash"></i></button></td>' +
-        '</tr>');
+        '<td>' +
+        '<input type="hidden" name="custom_variant_bom_type[]" class="custom-bom-type" value="' + (defaultType || 'rm') + '">' +
+        '<select name="custom_variant_bom_item_id[]" class="form-select form-select-sm custom-bom-item-select" required>' +
+        rmOptions +
+        '</select>' +
+        '</td>' +
+        '<td>' +
+        '<input type="number" step="0.001" min="0" name="custom_variant_qty_per_unit[]" class="form-control form-control-sm" value="' + (defaultQty !== undefined ? defaultQty : '') + '" placeholder="Exact qty for 1 unit" required>' +
+        '</td>' +
+        '<td class="text-center">' +
+        '<button type="button" class="btn btn-sm btn-outline-danger remove-custom-vbom-row" title="Remove"><i class="las la-trash"></i></button>' +
+        '</td>';
+    tbody.appendChild(tr);
 
-    tbody.append(tr);
-    if (typeof initBomSelect2 === 'function') {
-        setTimeout(function() {
-            initBomSelect2(tr.find('select.bom-item-select'));
-        }, 50);
+    const $rmSelect = $(tr).find('.custom-bom-item-select');
+    if (defaultItemId) {
+        $rmSelect.val(defaultItemId);
     }
+
+    $rmSelect.select2({
+        placeholder: "Search Raw Material / Ingredient...",
+        allowClear: true,
+        width: '100%'
+    });
+}
+
+function updateVariantCustomBomUI() {
+    // Refresh variant options for all existing rows
+    const rows = document.querySelectorAll('#customVariantBomBody tr');
+    rows.forEach(function(row) {
+        const vSelect = row.querySelector('.custom-variant-select');
+        if (vSelect) {
+            const currentVal = vSelect.value;
+            const currentName = vSelect.getAttribute('data-selected-name') || (vSelect.selectedOptions[0] ? vSelect.selectedOptions[0].text.trim() : '');
+            vSelect.innerHTML = getVariantOptionsHtml(currentVal, currentName);
+        }
+    });
+
+    checkCustomBomEmptyState();
+}
+
+$(document).on('click', '#addCustomVariantBomRow, #addFirstCustomVariantBomRow', function() {
+    addCustomVariantBomRow();
 });
 
-$(document).on('click', '.remove-vbom-row', function() {
+$(document).on('click', '.remove-custom-vbom-row', function() {
     $(this).closest('tr').remove();
+    checkCustomBomEmptyState();
+});
+
+$(document).on('change', '.custom-bom-item-select', function() {
+    var type = $(this).find(':selected').data('type') || 'rm';
+    $(this).closest('tr').find('.custom-bom-type').val(type);
+});
+
+$(document).on('change', '.custom-variant-select', function() {
+    const vName = $(this).find(':selected').data('name') || $(this).find(':selected').text().trim();
+    $(this).attr('data-selected-name', vName);
+});
+
+$(document).ready(function() {
+    if (window.existingVariantBoms && window.existingVariantBoms.length > 0) {
+        window.existingVariantBoms.forEach(function(item) {
+            addCustomVariantBomRow(item.variant_id, item.item_id, item.qty, item.type);
+        });
+    } else {
+        checkCustomBomEmptyState();
+    }
 });
 </script>
 

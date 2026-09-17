@@ -514,14 +514,17 @@
   }
   .pc-page .pc-tbl tfoot td:nth-child(2)::before { content: "Initial"; }
   .pc-page .pc-tbl tfoot td:nth-child(3)::before { content: "Produced"; }
-  .pc-page .pc-tbl tfoot td:nth-child(4)::before { content: "Purchased"; }
-  .pc-page .pc-tbl tfoot td:nth-child(5)::before { content: "P. Return"; }
-  .pc-page .pc-tbl tfoot td:nth-child(6)::before { content: "Adj +"; }
-  .pc-page .pc-tbl tfoot td:nth-child(7)::before { content: "Adj −"; }
-  .pc-page .pc-tbl tfoot td:nth-child(8)::before { content: "Sold"; }
-  .pc-page .pc-tbl tfoot td:nth-child(9)::before { content: "S. Return"; }
-  .pc-page .pc-tbl tfoot td:nth-child(10) { grid-column: 1 / -1; font-size: .85rem !important; }
-  .pc-page .pc-tbl tfoot td:nth-child(10)::before { content: "Stock Qty"; font-size: .56rem; }
+  .pc-page .pc-tbl tfoot td:nth-child(4)::before { content: "Used in Prod"; }
+  .pc-page .pc-tbl tfoot td:nth-child(5)::before { content: "Purchased"; }
+  .pc-page .pc-tbl tfoot td:nth-child(6)::before { content: "P. Return"; }
+  .pc-page .pc-tbl tfoot td:nth-child(7)::before { content: "Transfer Out"; }
+  .pc-page .pc-tbl tfoot td:nth-child(8)::before { content: "Transfer In"; }
+  .pc-page .pc-tbl tfoot td:nth-child(9)::before { content: "Adj +"; }
+  .pc-page .pc-tbl tfoot td:nth-child(10)::before { content: "Adj −"; }
+  .pc-page .pc-tbl tfoot td:nth-child(11)::before { content: "Sold"; }
+  .pc-page .pc-tbl tfoot td:nth-child(12)::before { content: "S. Return"; }
+  .pc-page .pc-tbl tfoot td:nth-child(13) { grid-column: 1 / -1; font-size: .85rem !important; }
+  .pc-page .pc-tbl tfoot td:nth-child(13)::before { content: "Stock Qty"; font-size: .56rem; }
 
   /* Size panel — 2 col boxes */
   .pc-vp { flex-wrap: wrap; gap: 4px 8px; padding: .6rem .7rem; font-size: .72rem; }
@@ -618,6 +621,7 @@
                 <tr>
                   <th>#</th><th>Item Code</th><th>Item Name</th>
                   <th class="num">Initial</th><th class="num">Produced</th>
+                  <th class="num" style="color:#d35400">Used in Prod</th>
                   <th class="num">Purchased</th><th class="num">Purch. Return</th>
                   <th class="num" style="color:#8e44ad">Transfer Out</th>
                   <th class="num" style="color:#2980b9">Transfer In</th>
@@ -628,12 +632,13 @@
                 </tr>
               </thead>
               <tbody id="reportBody">
-                <tr><td colspan="12" class="pc-empty"><i class="bi bi-search"></i><span>Click Search to load data</span></td></tr>
+                <tr><td colspan="15" class="pc-empty"><i class="bi bi-search"></i><span>Click Search to load data</span></td></tr>
               </tbody>
               <tfoot class="pc-tfoot">
                 <tr>
                   <td colspan="3" style="text-align:right;color:var(--pc-text-sec);font-size:.72rem;text-transform:uppercase">Totals:</td>
                   <td class="num" id="ftInitial">–</td><td class="num" id="ftProduced">–</td>
+                  <td class="num" id="ftProdUsage" style="color:#d35400;font-weight:700">–</td>
                   <td class="num" id="ftPurch">–</td><td class="num" id="ftPReturn">–</td>
                   <td class="num" id="ftTransfer" style="color:#8e44ad;font-weight:700">–</td>
                   <td class="num" id="ftTransferIn" style="color:#2980b9;font-weight:700">–</td>
@@ -809,6 +814,7 @@ function renderRows(rows) {
         h += '<td class="pc-name">' + esc(r.item_name) + '</td>';
         h += '<td class="num">' + formatVal(r.initial_stock, r.is_kg, r.unit) + '</td>';
         h += '<td class="num">' + formatVal(r.produced, r.is_kg, r.unit) + '</td>';
+        h += '<td class="num" style="color:#d35400;font-weight:700">' + (parseFloat(r.prod_usage) > 0 ? '-' + formatVal(r.prod_usage, r.is_kg, r.unit) : '–') + '</td>';
         h += '<td class="num">' + formatVal(r.purchased, r.is_kg, r.unit) + '</td>';
         h += '<td class="num" style="color:var(--pc-danger)">' + formatVal(r.purchase_return, r.is_kg, r.unit) + '</td>';
         h += '<td class="num" style="color:#8e44ad;font-weight:700">' + formatVal(r.transfer || 0, r.is_kg, r.unit) + '</td>';
@@ -841,6 +847,7 @@ function updateFooter(rows) {
     function sm(f) { return rows.reduce(function(s, r) { return s + (parseFloat(r[f]) || 0); }, 0); }
     setText('ftInitial', fmt(sm('initial_stock')));
     setText('ftProduced', fmt(sm('produced')));
+    setText('ftProdUsage', fmt(sm('prod_usage')));
     setText('ftPurch', fmt(sm('purchased')));
     setText('ftPReturn', fmt(sm('purchase_return')));
     setText('ftTransfer', fmt(sm('transfer')));
@@ -853,7 +860,7 @@ function updateFooter(rows) {
 }
 
 function clearFooter() {
-    ['ftInitial','ftProduced','ftPurch','ftPReturn','ftAdjInc','ftAdjDec','ftSold','ftSReturn','ftBal'].forEach(function(id) {
+    ['ftInitial','ftProduced','ftProdUsage','ftPurch','ftPReturn','ftTransfer','ftTransferIn','ftAdjInc','ftAdjDec','ftSold','ftSReturn','ftBal'].forEach(function(id) {
         var el = document.getElementById(id); if (el) el.textContent = '–';
     });
 }

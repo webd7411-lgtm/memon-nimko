@@ -24,7 +24,7 @@
   --pc-font: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-.pc-page * { font-family: var(--pc-font); }
+.pc-page *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) { font-family: var(--pc-font); }
 
 .pc-page {
   background: var(--pc-bg);

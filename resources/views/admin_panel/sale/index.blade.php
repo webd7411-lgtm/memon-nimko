@@ -27,7 +27,7 @@
   --sl-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.sl-page * {
+.sl-page *:not(i):not([class*="bi"]):not([class*="fa"]):not([class*="ft"]) {
   font-family: var(--sl-font);
 }
 
@@ -368,6 +368,7 @@
 .slc-actions .btn-info { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(14, 165, 233, .25); }
 .slc-actions .btn-success { background: linear-gradient(135deg, #34d399, #059669); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, .25); }
 .slc-actions .btn-primary { background: linear-gradient(135deg, #60a5fa, #2563eb); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(37, 99, 235, .25); }
+.slc-actions .btn-purple { background: linear-gradient(135deg, #a855f7, #8e44ad); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(142, 68, 173, .25); }
 .slc-actions .btn-warning { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1f2937 !important; border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, .25); }
 
 .slc-empty {

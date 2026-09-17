@@ -140,6 +140,7 @@
                                 <th class="text-center">S.No</th>
                                 <th>Received No</th>
                                 <th>Customer</th>
+                                <th>Branch</th>
                                 <th class="text-end">Amount</th>
                                 <th>Date</th>
                                 <th>Method</th>
@@ -153,6 +154,7 @@
                                 <td class="text-center"><span class="rp-chip bg-emerald">{{ $key + 1 }}</span></td>
                                 <td class="cp-nm">{{ $p->received_no ?? 'N/A' }}</td>
                                 <td class="cp-nm"><i class="bi bi-person me-2 text-muted"></i>{{ $p->customer->customer_name ?? 'N/A' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ $p->customer->branch->name ?? 'Main Branch' }}</span></td>
                                 <td class="cp-amt text-end">{{ number_format($p->amount, 2) }}</td>
                                 <td><i class="bi bi-calendar3 me-1 text-muted"></i>{{ $p->payment_date }}</td>
                                 <td><span class="rp-chip bg-method">{{ $p->payment_method ?? '—' }}</span></td>
@@ -236,7 +238,7 @@
                             <select name="customer_id" class="form-select" required onchange="fetchCustomerBalance(this.value)">
                                 <option value="">Select Customer</option>
                                 @foreach($customers as $c)
-                                <option value="{{ $c->id }}">{{ $c->customer_name }}</option>
+                                <option value="{{ $c->id }}">{{ $c->customer_name }}{{ is_all_branches() && $c->branch ? ' (' . $c->branch->name . ')' : '' }}</option>
                                 @endforeach
                             </select>
                         </div>

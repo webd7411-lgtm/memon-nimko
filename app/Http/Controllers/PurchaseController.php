@@ -790,6 +790,13 @@ class PurchaseController extends Controller
     public function showReturnForm($id)
     {
         $purchase = Purchase::with(['vendor', 'warehouse', 'items.product'])->findOrFail($id);
+
+        if (!is_all_branches()) {
+            $activeBranch = active_branch_id();
+            if ($purchase->branch_id && $purchase->branch_id != $activeBranch) {
+                abort(403, 'Unauthorized access to purchase from another branch.');
+            }
+        }
         $Vendor = \App\Models\Vendor::all();
         $Warehouse = \App\Models\Warehouse::all();
 
@@ -847,6 +854,7 @@ class PurchaseController extends Controller
             $purchase = \App\Models\Purchase::find($validated['purchase_id']);
             $return = \App\Models\PurchaseReturn::create([
                 'purchase_id'    => $validated['purchase_id'],
+                'branch_id'      => $purchase->branch_id ?? active_branch_id(),
                 'vendor_id'      => $validated['vendor_id'],
                 'warehouse_id'   => $validated['warehouse_id'] ?? $purchase->warehouse_id ?? null, // ✅ COPY FROM PURCHASE IF FORM EMPTY
                 'return_invoice' => $invoice,
@@ -960,9 +968,19 @@ class PurchaseController extends Controller
 
     public function purchaseReturnIndex()
     {
-        $returns = \App\Models\PurchaseReturn::with(['vendor', 'warehouse', 'purchase', 'items.product'])
-            ->latest()
-            ->get();
+        $query = \App\Models\PurchaseReturn::with(['vendor', 'warehouse', 'purchase.branch', 'branch', 'items.product']);
+
+        if (!is_all_branches()) {
+            $branchId = active_branch_id();
+            $query->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)
+                  ->orWhereHas('purchase', function ($pq) use ($branchId) {
+                      $pq->where('branch_id', $branchId);
+                  });
+            });
+        }
+
+        $returns = $query->latest()->get();
 
         return view('admin_panel.purchase.purchase_return.index', compact('returns'));
     }
@@ -970,8 +988,17 @@ class PurchaseController extends Controller
 
     public function ReturnInvoice($id)
     {
-        $purchase_return = PurchaseReturn::with(['vendor', 'warehouse', 'items.product'])
+        $purchase_return = PurchaseReturn::with(['vendor', 'warehouse', 'purchase.branch', 'branch', 'items.product'])
             ->findOrFail($id);
+
+        if (!is_all_branches()) {
+            $activeBranch = active_branch_id();
+            $returnBranch = $purchase_return->branch_id ?? ($purchase_return->purchase->branch_id ?? null);
+            if ($returnBranch && $returnBranch != $activeBranch) {
+                abort(403, 'Unauthorized access to purchase return from another branch.');
+            }
+        }
+
         return view('admin_panel.purchase.purchase_return.return_Invoice', compact('purchase_return'));
     }
 }
