@@ -6,6 +6,8 @@ use App\Models\RawMaterial;
 use App\Models\RawMaterialPurchase;
 use App\Models\RawMaterialPurchaseItem;
 use App\Models\RawMaterialStock;
+use App\Models\Vendor;
+use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -180,16 +182,39 @@ class RawMaterialController extends Controller
                 ];
             }
 
+            // Find vendor
+            $vendor = null;
+            if ($request->filled('vendor_id')) {
+                $vendor = Vendor::find($request->vendor_id);
+            } elseif ($request->filled('vendor_name')) {
+                $vendor = Vendor::where('name', $request->vendor_name)->first();
+            }
+
             $purchase = RawMaterialPurchase::create([
                 'date' => $request->date,
                 'invoice_no' => 'RMP-' . date('Ymd-His'),
-                'vendor_name' => $request->vendor_name,
+                'vendor_id' => $vendor ? $vendor->id : null,
+                'vendor_name' => $vendor ? $vendor->name : $request->vendor_name,
                 'warehouse_id' => $request->warehouse_id ?: null,
                 'total_cost' => $totalCost,
                 'notes' => $request->notes,
                 'created_by' => Auth::id(),
                 'branch_id' => $branchId,
             ]);
+
+            // 🔹 Update Vendor Ledger closing balance
+            if ($vendor) {
+                $ledger = VendorLedger::firstOrNew(['vendor_id' => $vendor->id]);
+                if (!$ledger->exists) {
+                    $ledger->admin_or_user_id = Auth::id();
+                    $ledger->opening_balance = $vendor->opening_balance ?? 0;
+                    $ledger->closing_balance = $vendor->opening_balance ?? 0;
+                    $ledger->previous_balance = 0;
+                }
+                $ledger->previous_balance = $ledger->closing_balance;
+                $ledger->closing_balance += $totalCost;
+                $ledger->save();
+            }
 
             foreach ($itemsData as $item) {
                 $rmId = $item['raw_material_id'];
@@ -266,6 +291,21 @@ class RawMaterialController extends Controller
                 if ($stock) {
                     $stock->qty = max(0, $stock->qty - $deductQty);
                     $stock->save();
+                }
+            }
+
+            // Reverse vendor ledger balance
+            $vendorId = $purchase->vendor_id;
+            if (!$vendorId && $purchase->vendor_name) {
+                $v = Vendor::where('name', $purchase->vendor_name)->first();
+                $vendorId = $v ? $v->id : null;
+            }
+            if ($vendorId) {
+                $ledger = VendorLedger::where('vendor_id', $vendorId)->first();
+                if ($ledger) {
+                    $ledger->previous_balance = $ledger->closing_balance;
+                    $ledger->closing_balance -= (float)$purchase->total_cost;
+                    $ledger->save();
                 }
             }
 

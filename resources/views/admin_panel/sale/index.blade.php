@@ -290,13 +290,154 @@
   background-color: #f8fafc;
 }
 
-/* Desktop: fixed layout = table NEVER overflows / no horizontal scroll */
-.sl-table { table-layout: fixed; width: 100% !important; }
-.sl-table thead th { white-space: normal; }
-.sl-table tbody td { white-space: normal; overflow-wrap: break-word; word-break: break-word; }
-.sl-table tbody td .btn-group { display: flex; flex-wrap: wrap; }
-.sl-table tbody td .btn-group .btn { white-space: normal; min-width: max-content; }
-.sl-table-wrapper { overflow-x: hidden; }
+/* Desktop: smooth layout with balanced proportions */
+.sl-table { table-layout: fixed; width: 100% !important; min-width: 1080px; }
+.sl-table thead th {
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sl-text-muted);
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--sl-border);
+  border-top: none;
+  background: #f8fafc;
+}
+.sl-table thead th.text-center { text-align: center !important; }
+.sl-table tbody td {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  padding: 0.65rem 0.5rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--sl-border-lt);
+  font-size: 0.85rem;
+  color: var(--sl-text-sec);
+}
+.sl-table tbody td:last-child {
+  padding: 0.45rem 0.35rem;
+  text-align: center;
+}
+.sl-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 1rem 1rem 1rem;
+}
+
+/* ═══════ MODERN 2-TIER ACTION BUTTONS ═══════ */
+.sl-actions-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3.5px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 190px;
+  margin: 0 auto;
+}
+
+.sl-act {
+  flex: 1 1 calc(33.333% - 4px);
+  min-width: 48px;
+  height: 26px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  padding: 0 4px !important;
+  border-radius: 6px !important;
+  font-size: 0.71rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+  border: none !important;
+  transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+}
+
+.sl-act i {
+  font-size: 0.76rem !important;
+  line-height: 1 !important;
+}
+
+.sl-act:hover {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.12) !important;
+  text-decoration: none !important;
+}
+
+.sl-act:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* 1. Print Bill — Midnight Slate */
+.sl-act-print {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.25) !important;
+}
+.sl-act-print:hover {
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.4) !important;
+  color: #ffffff !important;
+}
+
+/* 2. Invoice — Ocean Blue */
+.sl-act-inv {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25) !important;
+}
+.sl-act-inv:hover {
+  box-shadow: 0 4px 8px rgba(2, 132, 199, 0.4) !important;
+  color: #ffffff !important;
+}
+
+/* 3. Delivery Challan (DC) — Emerald Green */
+.sl-act-dc {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25) !important;
+}
+.sl-act-dc:hover {
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.4) !important;
+  color: #ffffff !important;
+}
+
+/* 4. Edit Sale — Indigo / Royal Blue */
+.sl-act-edit {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25) !important;
+}
+.sl-act-edit:hover {
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.4) !important;
+  color: #ffffff !important;
+}
+
+/* 5. Exchange — Vibrant Purple */
+.sl-act-exchange {
+  background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(147, 51, 234, 0.25) !important;
+}
+.sl-act-exchange:hover {
+  box-shadow: 0 4px 8px rgba(147, 51, 234, 0.4) !important;
+  color: #ffffff !important;
+}
+
+/* 6. Sale Return — Sunset Amber */
+.sl-act-return {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(234, 88, 12, 0.25) !important;
+}
+.sl-act-return:hover {
+  box-shadow: 0 4px 8px rgba(234, 88, 12, 0.4) !important;
+  color: #ffffff !important;
+}
 
 /* ═══════ MOBILE / TABLET PREMIUM CARDS ═══════ */
 .sl-cards { display: none; }
@@ -356,20 +497,28 @@
 .slc-total span { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #1e40af; }
 .slc-total b { font-size: 1.02rem; font-weight: 900; color: #1d4ed8; word-break: break-word; }
 
-.slc-actions { display: flex; gap: .45rem; flex-wrap: wrap; padding: 0 .9rem .9rem; }
-.slc-actions .btn-group { display: flex; flex-wrap: wrap; gap: .45rem; width: 100%; }
-.slc-actions .btn {
-  flex: 1 1 40%; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
-  border-radius: 10px !important; font-size: .78rem !important; font-weight: 700; margin: 0 !important; white-space: normal;
-  text-decoration: none;
+.slc-actions {
+  padding: 0 .9rem .9rem;
 }
-.slc-actions .btn:hover { transform: translateY(-1px); }
-.slc-actions .btn-dark { background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(15, 23, 42, .25); }
-.slc-actions .btn-info { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(14, 165, 233, .25); }
-.slc-actions .btn-success { background: linear-gradient(135deg, #34d399, #059669); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, .25); }
-.slc-actions .btn-primary { background: linear-gradient(135deg, #60a5fa, #2563eb); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(37, 99, 235, .25); }
-.slc-actions .btn-purple { background: linear-gradient(135deg, #a855f7, #8e44ad); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(142, 68, 173, .25); }
-.slc-actions .btn-warning { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1f2937 !important; border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, .25); }
+.slc-actions .sl-actions-wrap {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: .45rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.slc-actions .sl-act {
+  min-height: 38px !important;
+  height: 38px !important;
+  font-size: .78rem !important;
+  border-radius: 9px !important;
+  padding: .35rem .45rem !important;
+  gap: 5px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+.slc-actions .sl-act i {
+  font-size: .88rem !important;
+}
 
 .slc-empty {
   text-align: center; padding: 2.5rem 1rem; color: #64748b;
@@ -519,19 +668,19 @@
         <table id="productTable" class="table sl-table align-middle" style="width:100%">
           <thead>
             <tr>
-              <th width="4%">S.No</th>
-              <th width="10%">User</th>
-              <th width="10%">Invoice No</th>
-              <th width="12%">Customer</th>
-              <th width="16%">Products</th>
-              <th width="6%">Qty</th>
-              <th width="8%">Price</th>
-              <th width="8%">Discount</th>
-              <th width="8%">Total Price</th>
-              <th width="10%">Total Amount</th>
-              <th width="10%">Date | Time</th>
-              <th width="8%">Status</th>
-              <th width="8%" class="text-center">Action</th>
+              <th style="width: 3.5%;">S.No</th>
+              <th style="width: 7.5%;">User</th>
+              <th style="width: 8.5%;">Invoice No</th>
+              <th style="width: 11%;">Customer</th>
+              <th style="width: 14%;">Products</th>
+              <th style="width: 4.5%;">Qty</th>
+              <th style="width: 5.5%;">Price</th>
+              <th style="width: 5.5%;">Discount</th>
+              <th style="width: 6.5%;">Total Price</th>
+              <th style="width: 8.5%;">Total Amount</th>
+              <th style="width: 9.5%;">Date | Time</th>
+              <th style="width: 6.5%;">Status</th>
+              <th style="width: 13.5%;" class="text-center">Action</th>
             </tr>
           </thead>
           <tbody>

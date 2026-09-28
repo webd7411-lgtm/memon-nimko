@@ -23,21 +23,51 @@ class WarehouseStockController extends Controller
     ====================================================== */
         $products = Product::with('unit', 'brand')->get();
 
+        // Helper to convert stocks rows into KG / PC units
+        $calcStockTotal = function($rows, $isKg) {
+            $total = 0;
+            foreach ($rows as $st) {
+                $qty = (float)$st->qty;
+                if ($isKg) {
+                    if (!empty($st->variant_id)) {
+                        $variant = \App\Models\ProductVariant::find($st->variant_id);
+                        if ($variant && floatval($variant->size_value) > 0) {
+                            $factor = ($variant->size_unit === 'kg') ? floatval($variant->size_value) : (floatval($variant->size_value) / 1000);
+                            $total += ($qty * $factor);
+                        } else {
+                            $total += $qty;
+                        }
+                    } else {
+                        // Loose product in stocks table is in grams
+                        $total += ($qty / 1000);
+                    }
+                } else {
+                    $total += $qty;
+                }
+            }
+            return $total;
+        };
+
         /* ======================================================
-       2️⃣ SHOP STOCK — current balance from stocks table (same as Item Stock Report)
-          stocks table has one row per product per variant per branch — SUM gives current total
+       2️⃣ SHOP STOCK — from stocks table (where warehouse_id is null)
     ====================================================== */
-        $shopStocksRaw = DB::table('stocks')
-            ->select('product_id', DB::raw('SUM(qty) as shop_qty'))
+        $shopStocksQuery = DB::table('stocks')
             ->where('branch_id', $branchId)
-            ->whereNull('warehouse_id')   // only branch/shop stock, not warehouse rows
-            ->groupBy('product_id')
-            ->pluck('shop_qty', 'product_id')
-            ->toArray();
+            ->whereNull('warehouse_id');
+
+        $shopStockRowsByProduct = $shopStocksQuery->get()->groupBy('product_id');
+
+        $warehouses = Warehouse::all()->keyBy('id');
+        $currentBranch = \App\Models\Branch::find($branchId);
+        $currentBranchName = $currentBranch ? $currentBranch->name : 'Shop';
 
         /* ======================================================
        3️⃣ WAREHOUSE STOCK
     ====================================================== */
+        $warehouseQtyByProduct = [];
+        $warehouseByProduct    = [];
+
+        // A. From warehouse_stocks table
         $warehouseQuery = WarehouseStock::with('warehouse')
             ->where('branch_id', $branchId);
 
@@ -47,14 +77,31 @@ class WarehouseStockController extends Controller
 
         $warehouseRows = $warehouseQuery->get();
 
-        $warehouseQtyByProduct = [];
-        $warehouseByProduct    = [];
-
         foreach ($warehouseRows as $ws) {
             $pid = $ws->product_id;
-            $warehouseQtyByProduct[$pid] = ($warehouseQtyByProduct[$pid] ?? 0) + (float) $ws->quantity;
-            if (!isset($warehouseByProduct[$pid])) {
+            $qty = (float) $ws->quantity;
+            $warehouseQtyByProduct[$pid] = ($warehouseQtyByProduct[$pid] ?? 0) + $qty;
+            if ($qty > 0 && !isset($warehouseByProduct[$pid])) {
                 $warehouseByProduct[$pid] = $ws->warehouse;
+            }
+        }
+
+        // B. From stocks table (where warehouse_id is not null)
+        $stocksWhQuery = DB::table('stocks')
+            ->where('branch_id', $branchId)
+            ->whereNotNull('warehouse_id');
+
+        if ($warehouseFilter) {
+            $stocksWhQuery->where('warehouse_id', $warehouseFilter);
+        }
+
+        $stocksWhRowsByProduct = $stocksWhQuery->get()->groupBy('product_id');
+
+        foreach ($stocksWhRowsByProduct as $pid => $whRows) {
+            foreach ($whRows as $sw) {
+                if ($sw->qty > 0 && !isset($warehouseByProduct[$pid])) {
+                    $warehouseByProduct[$pid] = $warehouses->get($sw->warehouse_id);
+                }
             }
         }
 
@@ -67,21 +114,24 @@ class WarehouseStockController extends Controller
 
             $pid = $product->id;
 
-            // ✅ Unit: use unit_type directly (most products have null unit_id)
+            // ✅ Unit
             $unitType  = strtolower($product->unit_type ?? 'piece');
             $unitName  = strtolower($product->unit->name ?? '');
             $isKg      = ($unitType === 'kg' || $unitType === 'kilogram' || $unitName === 'kg');
             $unitLabel = $isKg ? 'KG' : ($unitType === 'pound' ? 'LB' : ($product->unit->name ?? 'PC'));
 
-            // ✅ Raw shop qty (in grams for KG products)
-            $shopQtyRaw   = (float)($shopStocksRaw[$pid] ?? 0);
-            $warehouseQty = (float)($warehouseQtyByProduct[$pid] ?? 0);
+            // Shop stock
+            $productShopRows = $shopStockRowsByProduct->get($pid) ?? collect();
+            $shopQty = round($calcStockTotal($productShopRows, $isKg), 3);
 
-            // ✅ Convert grams → KG for KG products
-            $shopQty = $isKg ? round($shopQtyRaw / 1000, 3) : $shopQtyRaw;
-            if ($isKg) {
-                $warehouseQty = round($warehouseQty / 1000, 3);
+            // Warehouse stock
+            $productWhStocksRows = $stocksWhRowsByProduct->get($pid) ?? collect();
+            $whFromStocks = $calcStockTotal($productWhStocksRows, $isKg);
+            $whFromTable  = (float)($warehouseQtyByProduct[$pid] ?? 0);
+            if ($isKg && $whFromTable > 0) {
+                $whFromTable = $whFromTable / 1000;
             }
+            $warehouseQty = round($whFromStocks + $whFromTable, 3);
 
             // 🔴 FILTER LOGIC
             if ($type === 'shop'      && $shopQty == 0) continue;
@@ -98,14 +148,24 @@ class WarehouseStockController extends Controller
             $row->warehouse_stock = $warehouseQty;
             $row->total_stock     = $shopQty + $warehouseQty;
             $row->quantity        = $warehouseQty;
-            $row->remarks         = ($warehouseQty == 0 && $shopQty > 0) ? 'Shop Only' : null;
+
+            if ($warehouseQty > 0 && $shopQty > 0) {
+                $row->remarks = 'Shop & Warehouse';
+            } elseif ($warehouseQty > 0 && $shopQty == 0) {
+                $row->remarks = 'Warehouse Only';
+            } elseif ($shopQty > 0 && $warehouseQty == 0) {
+                $row->remarks = 'Shop Only';
+            } else {
+                $row->remarks = '—';
+            }
+
             $row->created_at      = now();
 
             $stocks->push($row);
         }
 
         return view('admin_panel.warehouses.warehouse_stocks.index',
-            compact('stocks')
+            compact('stocks', 'currentBranchName')
         );
     }
 

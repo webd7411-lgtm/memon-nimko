@@ -987,10 +987,23 @@ class ReportingController extends Controller
             }
         }
 
-        // Group variants by product to check variant counts
+        // Group variants by product to check variant counts and default variant
         $productVariantCounts = [];
+        $defaultVariantMap = [];
+        $firstVariantMap = [];
         foreach ($variants as $v) {
             $productVariantCounts[$v->product_id][] = $v->variant_id;
+            if (!isset($firstVariantMap[$v->product_id])) {
+                $firstVariantMap[$v->product_id] = $v->variant_id;
+            }
+            if ($v->is_default) {
+                $defaultVariantMap[$v->product_id] = $v->variant_id;
+            }
+        }
+        foreach ($firstVariantMap as $pid => $fvid) {
+            if (!isset($defaultVariantMap[$pid])) {
+                $defaultVariantMap[$pid] = $fvid;
+            }
         }
 
         // Group by product
@@ -1011,23 +1024,39 @@ class ReportingController extends Controller
             $label = $v->size_label ?: $v->variant_name ?: ('Size ' . $v->size_value . ' ' . $v->size_unit);
             $vid   = $v->variant_id;
 
-            if (isset($stocksMap[$pid][$vid])) {
-                $rawStock = (float)$stocksMap[$pid][$vid];
-            } elseif (isset($nullStocksMap[$pid])) {
-                $rawStock = 0;
-            } else {
-                $rawStock = (float)$v->stock_qty;
-            }
-
-            // Combine unassigned main product stock (variant_id IS NULL) with single variant products
-            if (count($productVariantCounts[$pid] ?? []) === 1 && isset($nullStocksMap[$pid])) {
-                $rawStock += $nullStocksMap[$pid];
-                unset($nullStocksMap[$pid]); // consume null stock so it's not added twice
-            }
-
-            $isKg = $v->unit_type === 'kg';
+            $isKg = strtolower($v->unit_type ?? '') === 'kg';
             $isSingleVar = count($productVariantCounts[$pid] ?? []) === 1;
-            $stock = ($isKg && $isSingleVar) ? ($rawStock / 1000) : $rawStock;
+            $isDefault = (isset($defaultVariantMap[$pid]) && $defaultVariantMap[$pid] == $vid);
+
+            if ($isKg) {
+                if ($isSingleVar) {
+                    $bulkGrams = (float)($nullStocksMap[$pid] ?? 0) + (float)($stocksMap[$pid][$vid] ?? 0);
+                    $stock = $bulkGrams / 1000;
+                } else {
+                    $vMul = (float)$v->size_value;
+                    if ($vMul <= 0) $vMul = 1;
+                    $vGrams = in_array(strtolower($v->size_unit ?? ''), ['g', 'gm', 'gram', 'grams']) ? $vMul : ($vMul * 1000);
+
+                    $varPacks = (float)($stocksMap[$pid][$vid] ?? 0);
+                    if ($isDefault && isset($nullStocksMap[$pid])) {
+                        $varPacks += ((float)$nullStocksMap[$pid] / $vGrams);
+                    }
+                    $stock = $varPacks;
+                }
+            } else {
+                if (isset($stocksMap[$pid][$vid])) {
+                    $rawStock = (float)$stocksMap[$pid][$vid];
+                } elseif (isset($nullStocksMap[$pid])) {
+                    $rawStock = 0;
+                } else {
+                    $rawStock = (float)$v->stock_qty;
+                }
+
+                if ($isDefault && isset($nullStocksMap[$pid])) {
+                    $rawStock += (float)$nullStocksMap[$pid];
+                }
+                $stock = $rawStock;
+            }
             
             $grouped[$pid]['sizes'][] = [
                 'variant_id'  => $v->variant_id,
@@ -1732,6 +1761,17 @@ class ReportingController extends Controller
             ->where('gatepass_date', '<', $start)
             ->sum('net_amount');
 
+        // 2c. Prior Raw Material Purchases (Debit: We owe more)
+        $prevRawMaterialPurchases = DB::table('raw_material_purchases')
+            ->where(function ($q) use ($vendorId, $vendor) {
+                $q->where('vendor_id', $vendorId);
+                if ($vendor && !empty($vendor->name)) {
+                    $q->orWhere('vendor_name', $vendor->name);
+                }
+            })
+            ->where('date', '<', $start)
+            ->sum('total_cost');
+
         // 3. Prior Returns (Credit: We owe less)
         $prevReturns = DB::table('purchase_returns')
             ->where('vendor_id', $vendorId)
@@ -1750,7 +1790,7 @@ class ReportingController extends Controller
             ->where('delivery_date', '<', $start)
             ->sum('amount');
 
-        $opening = $initial + $prevPurchases + $prevInwards + $prevBilties - $prevReturns - $prevPayments;
+        $opening = $initial + $prevPurchases + $prevInwards + $prevRawMaterialPurchases + $prevBilties - $prevReturns - $prevPayments;
 
         // 🔹 1. Purchases → Debit (we owe vendor)
         $purchases = DB::table('purchases')
@@ -1783,6 +1823,27 @@ class ReportingController extends Controller
                     'debit' => $i->net_amount,
                     'credit' => 0,
                     'sort_date' => $i->gatepass_date
+                ];
+            });
+
+        // 🔹 1c. Raw Material Purchases → Debit (we owe vendor)
+        $rmPurchases = DB::table('raw_material_purchases')
+            ->where(function ($q) use ($vendorId, $vendor) {
+                $q->where('vendor_id', $vendorId);
+                if ($vendor && !empty($vendor->name)) {
+                    $q->orWhere('vendor_name', $vendor->name);
+                }
+            })
+            ->whereBetween('date', [$start, $end])
+            ->get()
+            ->map(function ($rm) {
+                return [
+                    'date' => $rm->date,
+                    'invoice' => $rm->invoice_no,
+                    'description' => 'Raw Material Purchase' . ($rm->notes ? ' - ' . $rm->notes : ''),
+                    'debit' => (float)$rm->total_cost,
+                    'credit' => 0,
+                    'sort_date' => $rm->date
                 ];
             });
 
@@ -1838,6 +1899,7 @@ class ReportingController extends Controller
         // 🔹 Merge all
         $transactions = $purchases
             ->merge($inwards)
+            ->merge($rmPurchases)
             ->merge($returns)
             ->merge($payments)
             ->merge($bilties)
@@ -2374,9 +2436,10 @@ class ReportingController extends Controller
         $products = $pQuery->get();
         $productIds = $products->pluck('id')->toArray();
 
-        // Fetch stocks grouped by product_id, variant_id, branch_id
+        // Fetch stocks grouped by product_id, variant_id, branch_id (excluding warehouse inventory)
         $stocksData = DB::table('stocks')
             ->whereIn('product_id', $productIds)
+            ->whereNull('warehouse_id')
             ->select('product_id', 'variant_id', 'branch_id', DB::raw('SUM(qty) as total_qty'))
             ->groupBy('product_id', 'variant_id', 'branch_id')
             ->get();

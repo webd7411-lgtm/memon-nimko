@@ -261,7 +261,11 @@
 
     {{-- KPI STAT CARDS --}}
     @php
-      $lowStockCount = $materials->filter(fn($m) => $m->currentStock() <= $m->alert_qty)->count();
+      $lowStockCount = $materials->filter(function($m) {
+        $factor = (float)($m->conversion_factor ?? 1);
+        $purQty = $factor > 0 ? ($m->currentStock() / $factor) : $m->currentStock();
+        return $purQty <= (float)($m->alert_qty ?? 0);
+      })->count();
     @endphp
     <div class="row g-3 mb-4">
       <div class="col-6 col-md-3">
@@ -366,7 +370,7 @@
                       $whQty = $m->warehouseStock();
                       $whPurQty = $factor > 0 ? round($whQty / $factor, 2) : $whQty;
                     @endphp
-                    <span class="stock-badge {{ $sqty > $m->alert_qty ? 'stock-ok' : 'stock-low' }}">
+                    <span class="stock-badge {{ $purQty > (float)$m->alert_qty ? 'stock-ok' : 'stock-low' }}">
                       {{ number_format($purQty, 2) }} {{ $m->unit }}
                     </span>
                     @if($factor > 1)
@@ -381,11 +385,7 @@
                     @endif
                   </td>
                   <td class="malert fw-semibold" data-label="Alert Qty">
-                    @php
-                      $factor = (float)($m->conversion_factor ?? 1);
-                      $alertInPurchaseUnit = $factor > 0 ? ($m->alert_qty / $factor) : $m->alert_qty;
-                    @endphp
-                    {{ number_format($alertInPurchaseUnit, 2) }} {{ $m->unit }}
+                    {{ number_format((float)($m->alert_qty ?? 0), 2) }} {{ $m->unit }}
                   </td>
                   <td class="text-center" data-label="Actions">
                     <div class="d-flex align-items-center justify-content-center gap-1">
@@ -429,12 +429,13 @@
               </div>
               <div class="col-md-3">
                 <label class="lbl"><i class="bi bi-person-fill"></i> Vendor</label>
-                <select name="vendor_name" class="fld" required>
+                <select name="vendor_id" class="fld" required onchange="document.getElementById('raw_material_vendor_name').value = this.options[this.selectedIndex].getAttribute('data-name') || '';">
                   <option value="">Select Vendor...</option>
                   @foreach($vendors as $v)
-                  <option value="{{ $v->name }}">{{ $v->name }}</option>
+                  <option value="{{ $v->id }}" data-name="{{ $v->name }}">{{ $v->name }}</option>
                   @endforeach
                 </select>
+                <input type="hidden" name="vendor_name" id="raw_material_vendor_name">
               </div>
               <div class="col-md-3">
                 <label class="lbl"><i class="bi bi-houses-fill"></i> Warehouse</label>
@@ -626,11 +627,7 @@
                     </span>
                   </td>
                   <td data-label="Alert Qty">
-                    @php
-                      $factor = (float)($m->conversion_factor ?? 1);
-                      $alertInPurchaseUnit = $factor > 0 ? ($m->alert_qty / $factor) : $m->alert_qty;
-                    @endphp
-                    {{ number_format($alertInPurchaseUnit, 2) }} {{ $m->unit }}
+                    {{ number_format((float)($m->alert_qty ?? 0), 2) }} {{ $m->unit }}
                   </td>
                   <td data-label="Status">
                     <span class="stock-badge {{ $sqty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
@@ -920,7 +917,7 @@
               <input type="number" step="0.01" min="0" name="initial_price" id="materialPrice" class="fld" value="0" placeholder="e.g. 150.00" />
             </div>
             <div class="col-md-6">
-              <label class="lbl"><i class="bi bi-exclamation-triangle-fill"></i> Alert Qty (Recipe Unit)</label>
+              <label class="lbl"><i class="bi bi-exclamation-triangle-fill"></i> Alert Qty (Purchase Unit)</label>
               <input type="number" step="0.01" min="0" name="alert_qty" id="materialAlert" class="fld" value="0" />
             </div>
             <div class="col-12">

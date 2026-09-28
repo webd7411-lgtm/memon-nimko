@@ -109,7 +109,9 @@ class ProductionController extends Controller
                     if ($rmId && isset($request->rm_qty[$ri]) && (float)$request->rm_qty[$ri] > 0) {
                         $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
                         $qtyUsed = (float)$request->rm_qty[$ri];
-                        $totalRmCost += $costPerUnit * $qtyUsed;
+                        $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
+                        if ($factor <= 0) $factor = 1;
+                        $totalRmCost += ($costPerUnit / $factor) * $qtyUsed;
                     }
                 }
             }
@@ -220,7 +222,9 @@ class ProductionController extends Controller
                     if ($qtyUsed <= 0) continue;
 
                     $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
-                    $totalCost = $qtyUsed * $costPerUnit;
+                    $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
+                    if ($factor <= 0) $factor = 1;
+                    $totalCost = $qtyUsed * ($costPerUnit / $factor);
                     $rmType = $request->rm_type[$ri] ?? 'rm';
 
                     if ($rmType === 'product') {
@@ -264,21 +268,26 @@ class ProductionController extends Controller
                             'updated_at' => now(),
                         ]);
 
-                        $rmStock = RawMaterialStock::where('raw_material_id', $rmId)
-                            ->where('branch_id', $currentBranchId)
-                            ->when($targetWarehouseId, function($q) use ($targetWarehouseId) {
-                                $q->where('warehouse_id', $targetWarehouseId)->orWhereNull('warehouse_id');
-                            })
-                            ->orderByRaw('warehouse_id IS NOT NULL DESC, warehouse_id DESC')
-                            ->first();
-
-                        if (!$rmStock) {
-                            $rmStock = RawMaterialStock::create([
-                                'raw_material_id' => $rmId,
-                                'branch_id' => $currentBranchId,
-                                'warehouse_id' => $targetWarehouseId ?: null,
-                                'qty' => 0,
-                            ]);
+                        if ($targetWarehouseId) {
+                            $rmStock = RawMaterialStock::firstOrCreate(
+                                [
+                                    'raw_material_id' => $rmId,
+                                    'warehouse_id' => $targetWarehouseId,
+                                ],
+                                [
+                                    'branch_id' => $currentBranchId,
+                                    'qty' => 0
+                                ]
+                            );
+                        } else {
+                            $rmStock = RawMaterialStock::firstOrCreate(
+                                [
+                                    'raw_material_id' => $rmId,
+                                    'warehouse_id' => null,
+                                    'branch_id' => $currentBranchId,
+                                ],
+                                ['qty' => 0]
+                            );
                         }
                         $rmStock->qty -= $qtyUsed;
                         $rmStock->save();
@@ -305,8 +314,10 @@ class ProductionController extends Controller
             ->select('pei.*', 'p.item_name', 'p.item_code', 'p.unit_type')
             ->get();
 
-        $rawMaterialUsage = DB::table('production_raw_material_usage')
-            ->where('production_entry_id', $id)
+        $rawMaterialUsage = DB::table('production_raw_material_usage as rmu')
+            ->leftJoin('raw_materials as rm', 'rm.id', '=', 'rmu.raw_material_id')
+            ->where('rmu.production_entry_id', $id)
+            ->select('rmu.*', 'rm.conversion_factor')
             ->get();
 
         $products = Product::with('unit')->orderBy('item_name')->get();
@@ -395,23 +406,26 @@ class ProductionController extends Controller
                         ]);
                     }
                 } else if ($rmu->raw_material_id) {
-                    $rmStockQuery = RawMaterialStock::where('raw_material_id', $rmu->raw_material_id)
-                        ->where('branch_id', $oldBranchId);
-
                     if (!empty($oldWarehouseId)) {
-                        $rmStockQuery->where('warehouse_id', $oldWarehouseId);
+                        $rmStock = RawMaterialStock::firstOrCreate(
+                            [
+                                'raw_material_id' => $rmu->raw_material_id,
+                                'warehouse_id' => $oldWarehouseId,
+                            ],
+                            [
+                                'branch_id' => $oldBranchId,
+                                'qty' => 0
+                            ]
+                        );
                     } else {
-                        $rmStockQuery->whereNull('warehouse_id');
-                    }
-
-                    $rmStock = $rmStockQuery->first();
-                    if (!$rmStock) {
-                        $rmStock = RawMaterialStock::create([
-                            'raw_material_id' => $rmu->raw_material_id,
-                            'branch_id' => $oldBranchId,
-                            'warehouse_id' => $oldWarehouseId,
-                            'qty' => 0,
-                        ]);
+                        $rmStock = RawMaterialStock::firstOrCreate(
+                            [
+                                'raw_material_id' => $rmu->raw_material_id,
+                                'warehouse_id' => null,
+                                'branch_id' => $oldBranchId,
+                            ],
+                            ['qty' => 0]
+                        );
                     }
                     $rmStock->qty += $rmu->qty_used;
                     $rmStock->save();
@@ -435,7 +449,9 @@ class ProductionController extends Controller
                     if ($rmId && isset($request->rm_qty[$ri]) && (float)$request->rm_qty[$ri] > 0) {
                         $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
                         $qtyUsed = (float)$request->rm_qty[$ri];
-                        $totalRmCost += $costPerUnit * $qtyUsed;
+                        $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
+                        if ($factor <= 0) $factor = 1;
+                        $totalRmCost += ($costPerUnit / $factor) * $qtyUsed;
                     }
                 }
             }
@@ -537,7 +553,9 @@ class ProductionController extends Controller
                     if ($qtyUsed <= 0) continue;
 
                     $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
-                    $totalCost = $qtyUsed * $costPerUnit;
+                    $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
+                    if ($factor <= 0) $factor = 1;
+                    $totalCost = $qtyUsed * ($costPerUnit / $factor);
                     $rmType = $request->rm_type[$ri] ?? 'rm';
 
                     if ($rmType === 'product') {
@@ -582,21 +600,26 @@ class ProductionController extends Controller
                             'updated_at' => now(),
                         ]);
 
-                        $rmStock = RawMaterialStock::where('raw_material_id', $rmId)
-                            ->where('branch_id', $currentBranchId)
-                            ->when($targetWarehouseId, function($q) use ($targetWarehouseId) {
-                                $q->where('warehouse_id', $targetWarehouseId)->orWhereNull('warehouse_id');
-                            })
-                            ->orderByRaw('warehouse_id IS NOT NULL DESC, warehouse_id DESC')
-                            ->first();
-
-                        if (!$rmStock) {
-                            $rmStock = RawMaterialStock::create([
-                                'raw_material_id' => $rmId,
-                                'branch_id' => $currentBranchId,
-                                'warehouse_id' => $targetWarehouseId ?: null,
-                                'qty' => 0,
-                            ]);
+                        if ($targetWarehouseId) {
+                            $rmStock = RawMaterialStock::firstOrCreate(
+                                [
+                                    'raw_material_id' => $rmId,
+                                    'warehouse_id' => $targetWarehouseId,
+                                ],
+                                [
+                                    'branch_id' => $currentBranchId,
+                                    'qty' => 0
+                                ]
+                            );
+                        } else {
+                            $rmStock = RawMaterialStock::firstOrCreate(
+                                [
+                                    'raw_material_id' => $rmId,
+                                    'warehouse_id' => null,
+                                    'branch_id' => $currentBranchId,
+                                ],
+                                ['qty' => 0]
+                            );
                         }
                         $rmStock->qty -= $qtyUsed;
                         $rmStock->save();
@@ -663,12 +686,18 @@ class ProductionController extends Controller
         foreach ($bom as $item) {
             $item->is_custom_variant_bom = $isCustomVariantBom;
             if ($item->rawMaterial) {
-                $purchaseCost = $item->rawMaterial->lastPurchaseCost();
+                $purchaseCost = (float)$item->rawMaterial->lastPurchaseCost();
                 $factor = (float)($item->rawMaterial->conversion_factor ?? 1);
-                $item->unit_cost = $factor > 0 ? ($purchaseCost / $factor) : $purchaseCost;
+                $item->conversion_factor = $factor > 0 ? $factor : 1;
+                $item->purchase_cost = $purchaseCost;
+                $item->unit_cost = $purchaseCost;
             } elseif ($item->ingredientProduct) {
+                $item->conversion_factor = 1;
+                $item->purchase_cost = (float)($item->ingredientProduct->price ?? 0);
                 $item->unit_cost = (float)($item->ingredientProduct->price ?? 0);
             } else {
+                $item->conversion_factor = 1;
+                $item->purchase_cost = 0;
                 $item->unit_cost = 0;
             }
         }

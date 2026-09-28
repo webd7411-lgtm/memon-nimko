@@ -82,6 +82,15 @@ class ProductController extends Controller
                     $sq->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
                 });
             }], 'qty')
+            ->withSum(['stocks as base_stock' => function($q) {
+                if (!is_all_branches()) {
+                    $q->where('branch_id', active_branch_id());
+                }
+                $q->whereNull('variant_id');
+                $q->where(function($sq) {
+                    $sq->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                });
+            }], 'qty')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('item_name', 'like', "%{$search}%")
@@ -700,6 +709,27 @@ class ProductController extends Controller
     public function edit($id)
     {
         $product = Product::with(['category_relation', 'sub_category_relation', 'unit', 'brand', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct'])->findOrFail($id);
+
+        // Active branch stock (same as Item Stock Report)
+        $stockQuery = DB::table('stocks')
+            ->where('product_id', $id)
+            ->where(function($q) {
+                $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+            });
+        if (!is_all_branches()) {
+            $stockQuery->where('branch_id', active_branch_id());
+        }
+        $branchStocks = $stockQuery->get();
+        $baseStock = (float)$branchStocks->where('variant_id', null)->sum('qty');
+
+        foreach ($product->variants as $variant) {
+            $vStock = (float)$branchStocks->where('variant_id', $variant->id)->sum('qty');
+            if ($variant->is_default || ($product->variants->first() && $product->variants->first()->id == $variant->id)) {
+                $vStock += $baseStock;
+            }
+            $variant->stock_qty = $vStock;
+        }
+
         $categories = Category::select('id', 'name')->get();
         $units = Unit::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->get();
@@ -867,9 +897,38 @@ class ProductController extends Controller
             return redirect()->route('product')->with('error', 'No products selected');
         }
         $products = Product::with([
-            'category_relation', 'sub_category_relation', 'unit', 'brand',
-            'variants.stock', 'stocks'
+            'category_relation', 'sub_category_relation', 'unit', 'brand', 'variants'
         ])->whereIn('id', $ids)->orderBy('item_code')->get();
+
+        // Active branch stock (same as Item Stock Report)
+        $stockQuery = DB::table('stocks')
+            ->whereIn('product_id', $ids)
+            ->where(function($q) {
+                $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+            });
+        if (!is_all_branches()) {
+            $stockQuery->where('branch_id', active_branch_id());
+        }
+        $branchStocks = $stockQuery->get();
+
+        $stockMap = [];
+        foreach ($branchStocks as $st) {
+            $k = $st->product_id . '_' . ($st->variant_id ?: '0');
+            $stockMap[$k] = ($stockMap[$k] ?? 0) + (float)$st->qty;
+        }
+
+        foreach ($products as $p) {
+            $baseStock = (float)($stockMap[$p->id . '_0'] ?? 0);
+            $p->active_branch_kg_stock = $baseStock / 1000;
+
+            foreach ($p->variants as $v) {
+                $vStock = (float)($stockMap[$p->id . '_' . $v->id] ?? 0);
+                if ($v->is_default || ($p->variants->first() && $p->variants->first()->id == $v->id)) {
+                    $vStock += $baseStock;
+                }
+                $v->stock_qty = $vStock;
+            }
+        }
 
         $categories = Category::orderBy('id', 'desc')->get();
         $brands = Brand::select('id', 'name')->get();
@@ -944,7 +1003,6 @@ class ProductController extends Controller
                         $vPrice = (float)($variantPrices[$pid][$idx] ?? 0);
                         $vCost = (float)($variantCostPrices[$pid][$idx] ?? 0);
                         // For KG products, use single product-level stock instead of per-variant
-                        // Stock is stored in grams (same as production: 10 KG = 10000 grams)
                         if ($product->unit_type == 'kg' && isset($kgStocks[$pid])) {
                             $vStockQty = (float)$kgStocks[$pid] * 1000;
                         } else {
@@ -980,12 +1038,89 @@ class ProductController extends Controller
                                 $variantData['stock_qty'] = $vStockQty;
                             }
                             $variant->update($variantData);
-                            // For non-KG, update per-variant stock record
+
+                            // For non-KG, update active branch stock record in stocks table
                             if ($product->unit_type != 'kg') {
-                                DB::table('stocks')
+                                $stockRec = DB::table('stocks')
                                     ->where('product_id', $product->id)
                                     ->where('variant_id', $variant->id)
-                                    ->update(['qty' => $vStockQty, 'updated_at' => now()]);
+                                    ->where('branch_id', active_branch_id())
+                                    ->where(function($q) {
+                                        $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                                    })
+                                    ->first();
+
+                                $baseStockRec = DB::table('stocks')
+                                    ->where('product_id', $product->id)
+                                    ->whereNull('variant_id')
+                                    ->where('branch_id', active_branch_id())
+                                    ->where(function($q) {
+                                        $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                                    })
+                                    ->first();
+
+                                $prevVarQty = $stockRec ? (float)$stockRec->qty : 0;
+                                $prevBaseQty = $baseStockRec ? (float)$baseStockRec->qty : 0;
+                                $oldStock = $prevVarQty + ($isDefault ? $prevBaseQty : 0);
+
+                                // Step 1: Clear unassigned base stock to eliminate conflict/duplication
+                                if ($isDefault && $baseStockRec && (float)$baseStockRec->qty != 0) {
+                                    DB::table('stocks')
+                                        ->where('id', $baseStockRec->id)
+                                        ->update(['qty' => 0, 'updated_at' => now()]);
+                                }
+
+                                if ($stockRec) {
+                                    DB::table('stocks')
+                                        ->where('id', $stockRec->id)
+                                        ->update(['qty' => $vStockQty, 'updated_at' => now()]);
+                                } else {
+                                    DB::table('stocks')->insert([
+                                        'branch_id'    => active_branch_id(),
+                                        'warehouse_id' => null,
+                                        'product_id'   => $product->id,
+                                        'variant_id'   => $variant->id,
+                                        'qty'          => $vStockQty,
+                                        'created_at'   => now(),
+                                        'updated_at'   => now(),
+                                    ]);
+                                }
+
+                                // Step 3: Auto create Stock Adjustment for the difference
+                                $diff = $vStockQty - $oldStock;
+                                if ($diff != 0) {
+                                    $adjType = $diff > 0 ? 'increase' : 'decrease';
+                                    $adjQty = abs($diff);
+
+                                    $refNo = 'ADJ-' . date('Ymd') . '-' . str_pad(
+                                        (\App\Models\StockAdjustment::whereDate('created_at', today())->count() + 1), 3, '0', STR_PAD_LEFT
+                                    ) . '-' . strtoupper(\Illuminate\Support\Str::random(3));
+
+                                    $adjId = DB::table('stock_adjustments')->insertGetId([
+                                        'ref_no'          => $refNo,
+                                        'adjustment_date' => now()->toDateString(),
+                                        'type'            => $adjType,
+                                        'reason'          => 'Bulk Edit Stock Adjustment',
+                                        'notes'           => 'Updated from Bulk Edit (Old: ' . $oldStock . ', New: ' . $vStockQty . ')',
+                                        'created_by'      => Auth::id(),
+                                        'branch_id'       => active_branch_id(),
+                                        'warehouse_id'    => null,
+                                        'created_at'      => now(),
+                                        'updated_at'      => now(),
+                                    ]);
+
+                                    DB::table('stock_adjustment_items')->insert([
+                                        'adjustment_id' => $adjId,
+                                        'product_id'    => $product->id,
+                                        'variant_id'    => $variant->id,
+                                        'unit'          => $product->unit->name ?? 'Pc',
+                                        'qty'           => $adjQty,
+                                        'qty_stock'     => $adjQty,
+                                        'notes'         => 'Bulk edit adjustment',
+                                        'created_at'    => now(),
+                                        'updated_at'    => now(),
+                                    ]);
+                                }
                             }
                         } else {
                             if ($product->unit_type != 'kg') {
@@ -995,26 +1130,64 @@ class ProductController extends Controller
                             if ($product->unit_type != 'kg') {
                                 DB::table('stocks')->insert([
                                     'branch_id'    => active_branch_id(),
-                                    'warehouse_id' => 1,
+                                    'warehouse_id' => null,
                                     'product_id'   => $product->id,
                                     'variant_id'   => $variant->id,
                                     'qty'          => $vStockQty,
                                     'created_at'   => now(),
                                     'updated_at'   => now(),
                                 ]);
+
+                                if ($vStockQty > 0) {
+                                    $refNo = 'ADJ-' . date('Ymd') . '-' . str_pad(
+                                        (\App\Models\StockAdjustment::whereDate('created_at', today())->count() + 1), 3, '0', STR_PAD_LEFT
+                                    ) . '-' . strtoupper(\Illuminate\Support\Str::random(3));
+
+                                    $adjId = DB::table('stock_adjustments')->insertGetId([
+                                        'ref_no'          => $refNo,
+                                        'adjustment_date' => now()->toDateString(),
+                                        'type'            => 'increase',
+                                        'reason'          => 'Bulk Edit New Variant Stock',
+                                        'notes'           => 'New variant created with stock',
+                                        'created_by'      => Auth::id(),
+                                        'branch_id'       => active_branch_id(),
+                                        'warehouse_id'    => null,
+                                        'created_at'      => now(),
+                                        'updated_at'      => now(),
+                                    ]);
+
+                                    DB::table('stock_adjustment_items')->insert([
+                                        'adjustment_id' => $adjId,
+                                        'product_id'    => $product->id,
+                                        'variant_id'    => $variant->id,
+                                        'unit'          => $product->unit->name ?? 'Pc',
+                                        'qty'           => $vStockQty,
+                                        'qty_stock'     => $vStockQty,
+                                        'notes'         => 'Bulk edit new variant',
+                                        'created_at'    => now(),
+                                        'updated_at'    => now(),
+                                    ]);
+                                }
                             }
                         }
                     }
 
                     // After variant loop: update product-level stock for KG products
                     if ($product->unit_type == 'kg' && isset($kgStocks[$pid])) {
-                        $kgQtyGrams = (float)$kgStocks[$pid] * 1000;
+                        $newKg = (float)$kgStocks[$pid];
+                        $kgQtyGrams = $newKg * 1000;
                         $stockRec = DB::table('stocks')
                             ->where('product_id', $product->id)
                             ->whereNull('variant_id')
                             ->where('branch_id', active_branch_id())
-                            ->where('warehouse_id', 1)
+                            ->where(function($q) {
+                                $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                            })
                             ->first();
+
+                        $oldKg = $stockRec ? ((float)$stockRec->qty / 1000) : 0;
+                        $diffKg = $newKg - $oldKg;
+
                         if ($stockRec) {
                             DB::table('stocks')
                                 ->where('id', $stockRec->id)
@@ -1022,12 +1195,46 @@ class ProductController extends Controller
                         } else {
                             DB::table('stocks')->insert([
                                 'branch_id'    => active_branch_id(),
-                                'warehouse_id' => 1,
+                                'warehouse_id' => null,
                                 'product_id'   => $product->id,
                                 'variant_id'   => null,
                                 'qty'          => $kgQtyGrams,
                                 'created_at'   => now(),
                                 'updated_at'   => now(),
+                            ]);
+                        }
+
+                        if ($diffKg != 0) {
+                            $adjType = $diffKg > 0 ? 'increase' : 'decrease';
+                            $adjQtyKg = abs($diffKg);
+
+                            $refNo = 'ADJ-' . date('Ymd') . '-' . str_pad(
+                                (\App\Models\StockAdjustment::whereDate('created_at', today())->count() + 1), 3, '0', STR_PAD_LEFT
+                            ) . '-' . strtoupper(\Illuminate\Support\Str::random(3));
+
+                            $adjId = DB::table('stock_adjustments')->insertGetId([
+                                'ref_no'          => $refNo,
+                                'adjustment_date' => now()->toDateString(),
+                                'type'            => $adjType,
+                                'reason'          => 'Bulk Edit Stock Adjustment',
+                                'notes'           => 'Updated from Bulk Edit (Old: ' . $oldKg . ' KG, New: ' . $newKg . ' KG)',
+                                'created_by'      => Auth::id(),
+                                'branch_id'       => active_branch_id(),
+                                'warehouse_id'    => null,
+                                'created_at'      => now(),
+                                'updated_at'      => now(),
+                            ]);
+
+                            DB::table('stock_adjustment_items')->insert([
+                                'adjustment_id' => $adjId,
+                                'product_id'    => $product->id,
+                                'variant_id'    => null,
+                                'unit'          => 'KG',
+                                'qty'           => $adjQtyKg,
+                                'qty_stock'     => $adjQtyKg * 1000,
+                                'notes'         => 'Bulk edit adjustment',
+                                'created_at'    => now(),
+                                'updated_at'    => now(),
                             ]);
                         }
                     }

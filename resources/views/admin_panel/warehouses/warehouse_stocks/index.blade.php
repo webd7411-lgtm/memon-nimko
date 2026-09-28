@@ -597,14 +597,20 @@
                 </span>
               </td>
               <td data-label="Location">
-                @if($stock->warehouse)
+                @if(($stock->warehouse_stock ?? 0) > 0 && ($stock->shop_stock ?? 0) > 0)
+                  <span class="badge bg-info-subtle text-info border border-info-subtle" title="Available in both Shop and Warehouse">
+                    <i class="bi bi-geo-alt me-1"></i> {{ $currentBranchName ?? 'Shop' }} &amp; {{ $stock->warehouse?->warehouse_name ?? 'Warehouse' }}
+                  </span>
+                @elseif(($stock->warehouse_stock ?? 0) > 0)
                   <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
-                    <i class="bi bi-building me-1"></i> {{ $stock->warehouse->warehouse_name }}
+                    <i class="bi bi-building me-1"></i> {{ $stock->warehouse?->warehouse_name ?? 'Warehouse' }}
+                  </span>
+                @elseif(($stock->shop_stock ?? 0) > 0)
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">
+                    <i class="bi bi-shop me-1"></i> {{ $currentBranchName ?? 'Shop' }}
                   </span>
                 @else
-                  <span class="badge bg-success-subtle text-success border border-success-subtle">
-                    <i class="bi bi-shop me-1"></i> Shop
-                  </span>
+                  <span class="badge bg-secondary-subtle text-secondary">—</span>
                 @endif
               </td>
               <td class="fw-bold text-dark" data-label="Product">{{ $stock->product?->item_name }}</td>

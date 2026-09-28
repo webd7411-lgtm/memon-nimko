@@ -676,17 +676,31 @@
                   <div class="pc-variant-list">
                     @php
                       $variantCount = $product->variants->count();
+                      $defaultVar = $product->defaultVariant ?? ($product->variants ? ($product->variants->firstWhere('is_default', true) ?? $product->variants->first()) : null);
+                      $defaultVarId = $defaultVar ? $defaultVar->id : null;
+                      $baseStock = (float)($product->base_stock ?? ($product->baseStock->qty ?? 0));
                     @endphp
                     @foreach($product->variants as $variant)
                     @php
+                      $isThisDefault = ($defaultVarId && $variant->id == $defaultVarId);
+                      $isKg = ($product->unit_type ?? '') === 'kg' || ($variant->size_unit ?? '') === 'kg';
                       if ($variantCount === 1) {
                           $vStock = (float)($product->total_stock ?? 0);
-                          $isKg = ($product->unit_type ?? '') === 'kg' || ($variant->size_unit ?? '') === 'kg';
                           if ($isKg) {
                               $vStock = $vStock / 1000;
                           }
                       } else {
                           $vStock = (float)($variant->variant_stock ?? 0);
+                          if ($isThisDefault && $baseStock > 0) {
+                              if ($isKg) {
+                                  $mul = (float)$variant->size_value;
+                                  if ($mul <= 0) $mul = 1;
+                                  $vGrams = in_array(strtolower($variant->size_unit ?? ''), ['g', 'gm', 'gram', 'grams']) ? $mul : ($mul * 1000);
+                                  $vStock += ($baseStock / $vGrams);
+                              } else {
+                                  $vStock += $baseStock;
+                              }
+                          }
                       }
                       $vFormatted = (floor($vStock) == $vStock) ? number_format($vStock) : number_format($vStock, 2);
                       $vStockDisplay = $vFormatted;
@@ -725,6 +739,7 @@
                 <td data-label="Stock">
                   <span class="pc-stock">
                     @php
+                      $baseStockRaw = (float)($product->base_stock ?? ($product->baseStock->qty ?? 0));
                       if ($product->variants && $product->variants->count() > 1) {
                           $totalKg = 0;
                           $totalPieces = 0;
@@ -741,9 +756,11 @@
                               }
                           }
                           if (($product->unit_type ?? '') === 'kg') {
+                              $totalKg += ($baseStockRaw / 1000);
                               $formatted = (floor($totalKg) == $totalKg) ? number_format($totalKg) : number_format($totalKg, 2);
                               echo $formatted . ' KG';
                           } else {
+                              $totalPieces += $baseStockRaw;
                               echo (floor($totalPieces) == $totalPieces) ? number_format($totalPieces) : number_format($totalPieces, 2);
                           }
                       } else {

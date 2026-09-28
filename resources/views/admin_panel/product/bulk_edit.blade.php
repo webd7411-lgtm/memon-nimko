@@ -279,11 +279,7 @@
             @foreach($products as $product)
             @php
                 $pid = $product->id;
-                $kgStockKg = 0;
-                if ($product->unit_type == 'kg') {
-                    $productLevelStock = $product->stocks->firstWhere('variant_id', null);
-                    $kgStockKg = $productLevelStock ? $productLevelStock->qty / 1000 : 0;
-                }
+                $kgStockKg = $product->active_branch_kg_stock ?? 0;
             @endphp
             <tr class="be-product-row" data-pid="{{ $pid }}">
               <td data-label="#"> {{ $loop->iteration }}</td>

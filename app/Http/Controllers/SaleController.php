@@ -207,14 +207,26 @@ class SaleController extends Controller
                     $statusBadge = '<span class="badge bg-success"><i class="bi bi-check2 me-1"></i>Sale</span>';
                 }
 
-                // Action Buttons
-                $actions = '<div class="btn-group btn-group-sm" role="group">
-                    <a href="'.route('sales.recepit', $sale->id).'" class="btn btn-dark" target="_blank"><i class="fas fa-print"></i> Print Bill</a>
-                    <a href="'.route('sales.invoice', $sale->id).'" class="btn btn-info text-white" target="_blank"><i class="fas fa-file-invoice"></i> Invoice</a>
-                    <a href="'.route('sales.dc', $sale->id).'" class="btn btn-success text-white" target="_blank">DC</a>
-                    <a href="'.route('sales.edit', $sale->id).'" class="btn btn-primary"><i class="fas fa-edit"></i> Edit</a>
-                    <a href="'.route('sale.add', ['exchange_invoice' => $sale->invoice_no]).'" class="btn btn-purple text-white" style="background:#8e44ad;"><i class="fas fa-sync-alt"></i> Exchange</a>
-                    <a href="'.route('sales.return.create', $sale->id).'" class="btn btn-warning"><i class="fas fa-undo"></i> Return</a>
+                // Action Buttons (Modern 2-Tier: Row 1 = Docs, Row 2 = Operations)
+                $actions = '<div class="sl-actions-wrap">
+                    <a href="'.route('sales.recepit', $sale->id).'" class="sl-act sl-act-print" target="_blank" title="Thermal Print Bill / Slip">
+                        <i class="bi bi-printer-fill"></i><span>Bill</span>
+                    </a>
+                    <a href="'.route('sales.invoice', $sale->id).'" class="sl-act sl-act-inv" target="_blank" title="Sale Invoice (A4)">
+                        <i class="bi bi-file-earmark-text-fill"></i><span>Invoice</span>
+                    </a>
+                    <a href="'.route('sales.dc', $sale->id).'" class="sl-act sl-act-dc" target="_blank" title="Delivery Challan">
+                        <i class="bi bi-truck"></i><span>DC</span>
+                    </a>
+                    <a href="'.route('sales.edit', $sale->id).'" class="sl-act sl-act-edit" title="Edit Sale">
+                        <i class="bi bi-pencil-square"></i><span>Edit</span>
+                    </a>
+                    <a href="'.route('sale.add', ['exchange_invoice' => $sale->invoice_no]).'" class="sl-act sl-act-exchange" title="Exchange Items">
+                        <i class="bi bi-arrow-repeat"></i><span>Exchange</span>
+                    </a>
+                    <a href="'.route('sales.return.create', $sale->id).'" class="sl-act sl-act-return" title="Sale Return">
+                        <i class="bi bi-arrow-return-left"></i><span>Return</span>
+                    </a>
                 </div>';
                 
                 // Date formatting
@@ -498,13 +510,26 @@ class SaleController extends Controller
     {
         $branchId = active_branch_id();
         $product = Product::with(['variants', 'stock'])->findOrFail($id);
-        $variants = $product->variants->map(function ($v) use ($product, $branchId) {
-            // Get real stock from stocks table for this variant
-            $vStock = Stock::where('product_id', $product->id)
-                ->where('branch_id', $branchId)
-                ->whereNull('warehouse_id')
-                ->where('variant_id', $v->id)
-                ->first();
+        $isKg = strtolower($product->unit_type ?? '') === 'kg';
+
+        $totalStock = Stock::where('product_id', $product->id)
+            ->where('branch_id', $branchId)
+            ->whereNull('warehouse_id')
+            ->sum('qty');
+
+        $variants = $product->variants->map(function ($v) use ($product, $branchId, $isKg, $totalStock) {
+            if ($isKg) {
+                // For KG products, stock is stored as bulk grams on main product (variant_id IS NULL)
+                $stockQty = (float) $totalStock;
+            } else {
+                // Get real stock from stocks table for this variant
+                $vStock = Stock::where('product_id', $product->id)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('warehouse_id')
+                    ->where('variant_id', $v->id)
+                    ->first();
+                $stockQty = $vStock ? (float) $vStock->qty : 0;
+            }
             
             return [
                 'id'              => $v->id,
@@ -514,14 +539,10 @@ class SaleController extends Controller
                 'size_unit'       => $v->size_unit,
                 'price'           => (float) $v->price,
                 'wholesale_price' => (float) ($v->wholesale_price ?: $v->price),
-                'stock'           => $vStock ? (float) $vStock->qty : 0,
+                'stock'           => $stockQty,
                 'is_default'      => $v->is_default,
             ];
         });
-        $totalStock = Stock::where('product_id', $product->id)
-            ->where('branch_id', $branchId)
-            ->whereNull('warehouse_id')
-            ->sum('qty');
 
         return response()->json([
             'product_id'   => $product->id,
@@ -946,21 +967,34 @@ class SaleController extends Controller
 
                 // Use pre-fetched stock 
                 // In Memon Nimko POS, we deduct stock for BOTH final sale and save_token
-                // Default branch/warehouse to 1 for POS for now
                 $currentBranchId = active_branch_id();
+                $prodModel = $productsMap[$product_id] ?? null;
+                $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
+                
+                $dbVariantId = $isGram ? null : ($vId ?: null);
+                $deductQty = $qty;
+
+                if ($isGram) {
+                    if (!empty($vId)) {
+                        $vModel = \App\Models\ProductVariant::find($vId);
+                        if ($vModel) {
+                            $kgSize = floatval($vModel->size_value);
+                            if (strtolower($vModel->size_unit ?? '') === 'kg') {
+                                $deductQty = ($kgSize * $qty * 1000);
+                            } else {
+                                $deductQty = ($kgSize * $qty);
+                            }
+                        } else {
+                            $deductQty = $qty * 1000;
+                        }
+                    } else {
+                        $deductQty = $qty * 1000;
+                    }
+                }
+
                 $stockQuery = Stock::where('product_id', $product_id)
                                    ->where('branch_id', $currentBranchId)
                                    ->whereNull('warehouse_id');
-                
-                $prodModel = $productsMap[$product_id] ?? null;
-                $isGram = $prodModel && $prodModel->unit_type === 'kg';
-                
-                $dbVariantId = $vId;
-                $deductQty = $qty;
-
-                if (!$dbVariantId && $isGram) {
-                    $deductQty = $qty * 1000; // If no variant, assuming qty was inputted in KG
-                }
 
                 if ($dbVariantId) {
                     $stockQuery->where('variant_id', $dbVariantId);
@@ -977,16 +1011,16 @@ class SaleController extends Controller
                     } else {
                         // For shop sales, create with null warehouse (shop stock)
                         $stock = \App\Models\Stock::create([
-                            'branch_id'  => $currentBranchId,
+                            'branch_id'    => $currentBranchId,
                             'warehouse_id' => null,
-                            'product_id' => $product_id,
-                            'variant_id' => $dbVariantId,
-                            'qty'        => 0 - $deductQty,
+                            'product_id'   => $product_id,
+                            'variant_id'   => $dbVariantId,
+                            'qty'          => 0 - $deductQty,
                         ]);
                     }
 
-                    // 🔹 Sync with legacy/display stock column on variants table
-                    if ($vId) {
+                    // 🔹 Sync with legacy/display stock column on variants table (only for non-kg)
+                    if ($vId && !$isGram) {
                         $vModel = \App\Models\ProductVariant::find($vId);
                         if ($vModel) {
                             $vModel->stock_qty -= $qty; // Qty here is the primary unit quantity
@@ -1214,13 +1248,27 @@ class SaleController extends Controller
                 // Stock update IF final sale or save_token
                 if ($action === 'sale' || $action === 'save_token') {
                     $prodModel = \App\Models\Product::find($product_id);
-                    $isGram = $prodModel && $prodModel->unit_type === 'kg';
+                    $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
                     
-                    $dbVariantId = $vId === '' ? null : $vId;
+                    $dbVariantId = $isGram ? null : ($vId === '' ? null : $vId);
                     $deductQtyDiff = $qty_diff;
 
-                    if (!$dbVariantId && $isGram) {
-                        $deductQtyDiff = $qty_diff * 1000;
+                    if ($isGram) {
+                        if (!empty($vId)) {
+                            $vModel = \App\Models\ProductVariant::find($vId);
+                            if ($vModel) {
+                                $kgSize = floatval($vModel->size_value);
+                                if (strtolower($vModel->size_unit ?? '') === 'kg') {
+                                    $deductQtyDiff = ($kgSize * $qty_diff * 1000);
+                                } else {
+                                    $deductQtyDiff = ($kgSize * $qty_diff);
+                                }
+                            } else {
+                                $deductQtyDiff = $qty_diff * 1000;
+                            }
+                        } else {
+                            $deductQtyDiff = $qty_diff * 1000;
+                        }
                     }
 
                     $stockQuery = \App\Models\Stock::where('product_id', $product_id)
@@ -1239,11 +1287,11 @@ class SaleController extends Controller
                         $stock->save();
                     } else {
                         \App\Models\Stock::create([
-                            'branch_id'  => 1,
-                            'warehouse_id' => 1,
-                            'product_id' => $product_id, 
-                            'variant_id' => $dbVariantId, 
-                            'qty' => -$deductQtyDiff
+                            'branch_id'    => $sale->branch_id ?? 1,
+                            'warehouse_id' => $sale->warehouse_id ?? null,
+                            'product_id'   => $product_id, 
+                            'variant_id'   => $dbVariantId, 
+                            'qty'          => -$deductQtyDiff
                         ]);
                     }
                 }
@@ -1257,13 +1305,27 @@ class SaleController extends Controller
                     $vid = $parts[1] === '0' ? null : $parts[1];
 
                     $prodModel = \App\Models\Product::find($pid);
-                    $isGram = $prodModel && $prodModel->unit_type === 'kg';
+                    $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
                     
-                    $dbVariantId = $vid;
+                    $dbVariantId = $isGram ? null : $vid;
                     $addBackQty = $old_qty;
 
-                    if (!$dbVariantId && $isGram) {
-                        $addBackQty = $old_qty * 1000;
+                    if ($isGram) {
+                        if (!empty($vid)) {
+                            $vModel = \App\Models\ProductVariant::find($vid);
+                            if ($vModel) {
+                                $kgSize = floatval($vModel->size_value);
+                                if (strtolower($vModel->size_unit ?? '') === 'kg') {
+                                    $addBackQty = ($kgSize * $old_qty * 1000);
+                                } else {
+                                    $addBackQty = ($kgSize * $old_qty);
+                                }
+                            } else {
+                                $addBackQty = $old_qty * 1000;
+                            }
+                        } else {
+                            $addBackQty = $old_qty * 1000;
+                        }
                     }
 
                     $stockQuery = \App\Models\Stock::where('product_id', $pid)
@@ -1915,10 +1977,24 @@ class SaleController extends Controller
 
                     $isKg = strtolower($foundProduct->unit_type ?? '') === 'kg';
                     $returnQtyInDb = $qty;
-                    $dbVariantId = !empty($vId) ? $vId : null;
+                    $dbVariantId = $isKg ? null : (!empty($vId) ? $vId : null);
 
-                    if (!$dbVariantId && $isKg) {
-                        $returnQtyInDb = $qty * 1000;
+                    if ($isKg) {
+                        if (!empty($vId)) {
+                            $vModel = \App\Models\ProductVariant::find($vId);
+                            if ($vModel) {
+                                $kgSize = floatval($vModel->size_value);
+                                if (strtolower($vModel->size_unit ?? '') === 'kg') {
+                                    $returnQtyInDb = ($kgSize * $qty * 1000);
+                                } else {
+                                    $returnQtyInDb = ($kgSize * $qty);
+                                }
+                            } else {
+                                $returnQtyInDb = $qty * 1000;
+                            }
+                        } else {
+                            $returnQtyInDb = $qty * 1000;
+                        }
                     }
 
                     if ($dbVariantId) {

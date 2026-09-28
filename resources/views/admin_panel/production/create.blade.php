@@ -432,18 +432,19 @@
               <td>
                 <span class="mobile-lbl">Raw Material / Product Ingredient</span>
                 <input type="hidden" name="rm_type[]" class="rm-type" value="rm">
+                <input type="hidden" name="rm_factor[]" class="rm-factor" value="1">
                 <select name="rm_id[]" class="pc-select" style="width:100%;">
                   <option value="">Select Ingredient / Raw Material...</option>
                   <optgroup label="Raw Materials">
                     @foreach($rawMaterials as $rm)
-                    <option value="{{ $rm->id }}" data-type="rm" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}">
+                    <option value="{{ $rm->id }}" data-type="rm" data-stock="{{ $rm->currentStock() }}" data-cost="{{ $rm->lastPurchaseCost() }}" data-factor="{{ $rm->conversion_factor ?? 1 }}">
                       [Raw Material] {{ $rm->name }} (Purchase: {{ $rm->unit }}, Recipe: {{ $rm->consumption_unit ?? $rm->unit }}) [Stock: {{ $rm->currentStock() }}]
                     </option>
                     @endforeach
                   </optgroup>
                   <optgroup label="Semi-Finished / Base Products">
                     @foreach($products as $pItem)
-                    <option value="{{ $pItem->id }}" data-type="product" data-stock="{{ $pItem->stock->qty ?? 0 }}" data-cost="{{ $pItem->price }}">
+                    <option value="{{ $pItem->id }}" data-type="product" data-stock="{{ $pItem->stock->qty ?? 0 }}" data-cost="{{ $pItem->price }}" data-factor="1">
                       [Product] {{ $pItem->item_code }} - {{ $pItem->item_name }}
                     </option>
                     @endforeach
@@ -502,10 +503,13 @@ $(document).ready(function() {
     $('.rm-row').each(function() {
       var qty = parseFloat($(this).find('.rm-qty').val()) || 0;
       var cost = parseFloat($(this).find('.rm-cost').val()) || 0;
-      $(this).find('.rm-total').text((qty * cost).toLocaleString());
-      total += qty * cost;
+      var factor = parseFloat($(this).find('.rm-factor').val()) || 1;
+      if (factor <= 0) factor = 1;
+      var rowTotal = qty * (cost / factor);
+      $(this).find('.rm-total').text(rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+      total += rowTotal;
     });
-    $('#totalProdCost').text('Rs ' + total.toLocaleString());
+    $('#totalProdCost').text('Rs ' + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
   }
 
   $(document).on('input', '.item-cost', calcTotalCost);
@@ -516,9 +520,11 @@ $(document).ready(function() {
   $(document).on('change', '#rmUsageBody select[name="rm_id[]"]', function() {
     var opt = $(this).find(':selected');
     var cost = opt.data('cost') || 0;
+    var factor = opt.data('factor') || 1;
     var type = opt.data('type') || 'rm';
     var row = $(this).closest('tr');
     row.find('.rm-cost').val(cost);
+    row.find('.rm-factor').val(factor);
     row.find('.rm-type').val(type);
     calcTotalCost();
   });
@@ -532,7 +538,8 @@ $(document).ready(function() {
     newRow.querySelectorAll('input').forEach(function(el) { el.value = ''; el.readOnly = false; });
     newRow.querySelector('select').disabled = false;
     newRow.querySelector('.rm-type').value = 'rm';
-    newRow.querySelector('.rm-total').textContent = '0';
+    newRow.querySelector('.rm-factor').value = '1';
+    newRow.querySelector('.rm-total').textContent = '0.00';
     document.getElementById('rmUsageBody').appendChild(newRow);
   });
 
@@ -643,6 +650,8 @@ $(document).ready(function() {
             itemName += ' [Custom Variant Recipe]';
           }
 
+          var factor = parseFloat(item.conversion_factor) || 1;
+          if (factor <= 0) factor = 1;
           var itemCost = parseFloat(item.unit_cost) || 0;
           var effectiveQty = item.is_custom_variant_bom ? qty : (qty * multiplier);
           var requiredQty = (parseFloat(item.qty_per_unit) * effectiveQty);
@@ -650,11 +659,12 @@ $(document).ready(function() {
           tr.innerHTML = '<td>' +
             '<input type="hidden" name="rm_type[]" class="rm-type" value="' + itemType + '">' +
             '<input type="hidden" name="rm_id[]" value="' + itemId + '">' +
+            '<input type="hidden" name="rm_factor[]" class="rm-factor" value="' + factor + '">' +
             '<input type="text" class="pc-input fw-bold" value="' + itemName + '" readonly style="background:#f1f5f9; color:#0f172a;">' +
             '</td>' +
             '<td><input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="' + requiredQty.toFixed(2) + '" min="0" readonly></td>' +
             '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="' + itemCost.toFixed(2) + '" placeholder="0"></td>' +
-            '<td class="text-center"><span class="rm-total fw-bold text-success" style="font-size:.9rem;">0</span></td>' +
+            '<td class="text-center"><span class="rm-total fw-bold text-success" style="font-size:.9rem;">0.00</span></td>' +
             '<td class="text-center"><button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove"><i class="bi bi-trash-fill text-white"></i></button></td>';
 
           tbody.insertBefore(tr, tbody.firstChild);
