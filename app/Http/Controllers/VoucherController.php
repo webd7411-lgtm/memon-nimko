@@ -463,21 +463,33 @@ class VoucherController extends Controller
                 $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->latest()->first();
                 if ($ledger) {
                     $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  = $ledger->closing_balance + $amount;
+                    $ledger->closing_balance  = $ledger->closing_balance - $amount; // payment reduces balance
                     $ledger->save();
                 } else {
                     VendorLedger::create([
                         'vendor_id'        => $request->vendor_id,
                         'admin_or_user_id' => auth()->id(),
-                        'date'             => now(),
-                        'description'      => "Payment Voucher #$pvid",
                         'opening_balance'  => 0,
-                        'debit'            => $amount,
-                        'credit'           => 0,
                         'previous_balance' => 0,
-                        'closing_balance'  => $amount,
+                        'closing_balance'  => -$amount,
                     ]);
                 }
+                // Also insert into vendor_payments so it shows in Vendor Ledger Statement
+                $lastVP = DB::table('vendor_payments')->latest('id')->first();
+                $nextVPNo = 'PAY-' . str_pad(($lastVP ? $lastVP->id + 1 : 1), 3, '0', STR_PAD_LEFT);
+                DB::table('vendor_payments')->insert([
+                    'payment_no'       => $nextVPNo,
+                    'vendor_id'        => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'payment_date'     => $request->receipt_date ?? now()->toDateString(),
+                    'amount'           => $amount,
+                    'payment_method'   => 'Voucher',
+                    'note'             => 'Payment Voucher #' . $pvid,
+                    'branch_id'        => active_branch_id(),
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]);
+
             } elseif ($request->vendor_type === 'customer') {
                 $ledger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
                 if ($ledger) {
@@ -517,6 +529,39 @@ class VoucherController extends Controller
             $query->where('branch_id', active_branch_id());
         }
         $receipts = $query->get();
+
+        foreach ($receipts as $voucher) {
+            $partyName = '-';
+            $typeLabel = '-';
+
+            // Check if type is numeric → account-based
+            if (is_numeric($voucher->type)) {
+                $accountHead = DB::table('account_heads')->where('id', $voucher->type)->first();
+                $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+
+                $typeLabel = $accountHead->name ?? 'Account';
+                $partyName = $account->title ?? '-';
+            } elseif ($voucher->type === 'vendor') {
+                $vendor = DB::table('vendors')->where('id', $voucher->party_id)->first();
+                $typeLabel = 'Vendor';
+                $partyName = $vendor->name ?? '-';
+            } elseif ($voucher->type === 'customer') {
+                $customer = DB::table('customers')->where('id', $voucher->party_id)->first();
+                $typeLabel = 'Customer';
+                $partyName = $customer->customer_name ?? '-';
+            } elseif ($voucher->type === 'walkin') {
+                $walkin = DB::table('customers')
+                    ->where('id', $voucher->party_id)
+                    ->where('customer_type', 'Walking Customer')
+                    ->first();
+                $typeLabel = 'Walk-in';
+                $partyName = $walkin->customer_name ?? '-';
+            }
+
+            $voucher->type_label = $typeLabel;
+            $voucher->party_name = $partyName;
+        }
+
         return view('admin_panel.vochers.payment_vochers.all_payment_vochers', compact('receipts'));
     }
 

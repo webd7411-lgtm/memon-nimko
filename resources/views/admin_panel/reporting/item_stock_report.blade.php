@@ -546,8 +546,11 @@
         <span class="hdr-badge d-none d-sm-inline" id="totalBadge">0 Products</span>
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap hdr-actions">
-        <button class="pc-btn pc-btn-dark" onclick="printClosing()">
-          <i class="bi bi-receipt"></i>Print Closing
+        <button class="pc-btn pc-btn-dark" onclick="printClosing(false)" title="Print all items closing">
+          <i class="bi bi-receipt"></i>Print All Closing
+        </button>
+        <button class="pc-btn pc-btn-primary" onclick="printClosing(true)" title="Print only items that had stock plus or minus movement">
+          <i class="bi bi-printer-fill"></i>Print Active Movement Only
         </button>
       </div>
     </div>
@@ -598,6 +601,14 @@
         <div class="fg">
           <label>End Time</label>
           <input type="time" class="pc-fld" id="end_time" value="23:59">
+        </div>
+        <div class="fg d-flex align-items-center gap-2" style="padding-bottom: 6px;">
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="only_movement" style="cursor:pointer; width:34px; height:18px;">
+            <label class="form-check-label fw-bold ms-1" for="only_movement" style="cursor:pointer; font-size:.78rem; color:var(--pc-text);">
+              <i class="bi bi-funnel-fill text-primary me-1"></i>Active Movement Only (+ / −)
+            </label>
+          </div>
         </div>
         <button class="pc-btn pc-btn-primary" onclick="fetchReport()"><i class="bi bi-search"></i>Search</button>
       </div>
@@ -724,15 +735,17 @@ function switchTab(tab) {
 }
 
 /* ═══════ PRINT CLOSING ═══════ */
-function printClosing() {
+function printClosing(forceMovementOnly) {
     var startDate = $('#start_date').val();
     var endDate   = $('#end_date').val();
     var startTime = $('#start_time').val() || '07:00';
     var endTime   = $('#end_time').val() || '03:00';
     var productIds = getProductIds();
+    var onlyMovement = (forceMovementOnly === true) || $('#only_movement').is(':checked') ? '1' : '0';
 
     var params = 'start_date=' + startDate + '&end_date=' + endDate
-               + '&start_time=' + startTime + '&end_time=' + endTime;
+               + '&start_time=' + startTime + '&end_time=' + endTime
+               + '&only_movement=' + onlyMovement;
     if (productIds !== 'all') {
         productIds.forEach(function(id) { params += '&product_id[]=' + id; });
     }
@@ -769,11 +782,36 @@ function fetchReport() {
     });
 }
 
+function hasRowMovement(r) {
+    return (parseFloat(r.produced) || 0) !== 0
+        || (parseFloat(r.prod_usage) || 0) !== 0
+        || (parseFloat(r.purchased) || 0) !== 0
+        || (parseFloat(r.purchase_return) || 0) !== 0
+        || (parseFloat(r.transfer) || 0) !== 0
+        || (parseFloat(r.transfer_in) || 0) !== 0
+        || (parseFloat(r.adj_increase) || 0) !== 0
+        || (parseFloat(r.adj_decrease) || 0) !== 0
+        || (parseFloat(r.sold) || 0) !== 0
+        || (parseFloat(r.sale_return) || 0) !== 0;
+}
+
 function applyFilter() {
     const q = (document.getElementById('liveSearch').value || '').toLowerCase().trim();
-    const vis = q ? allRows.filter(r => (r.item_name||'').toLowerCase().includes(q) || (r.item_code||'').toLowerCase().includes(q)) : allRows;
+    const onlyMove = $('#only_movement').is(':checked');
+
+    let vis = allRows;
+    if (onlyMove) {
+        vis = vis.filter(hasRowMovement);
+    }
+    if (q) {
+        vis = vis.filter(r => (r.item_name||'').toLowerCase().includes(q) || (r.item_code||'').toLowerCase().includes(q));
+    }
     renderRows(vis);
 }
+
+$(document).on('change', '#only_movement', function() {
+    applyFilter();
+});
 
 function formatVal(val, isKg, unit) {
     val = parseFloat(val) || 0;
@@ -833,18 +871,48 @@ function renderRows(rows) {
 function updateCards(res) {
     const rows = res.data || [];
     setText('cTotal', rows.length);
-    setText('cInStock', rows.filter(r => parseFloat(r.balance) > 5).length);
-    setText('cLow', rows.filter(r => parseFloat(r.balance) > 0 && parseFloat(r.balance) <= 5).length);
-    setText('cOut', rows.filter(r => parseFloat(r.balance) <= 0).length);
-    setText('cSold', rows.length > 0 ? rows.reduce((s, r) => s + (parseFloat(r.sold) || 0), 0).toFixed(0) : '0');
-    setText('cPurch', rows.length > 0 ? rows.reduce((s, r) => s + (parseFloat(r.purchased) || 0), 0).toFixed(0) : '0');
+    setText('cInStock', rows.filter(r => {
+        const bal = parseFloat(r.balance) || 0;
+        const effBal = r.is_kg ? (bal / 1000) : bal;
+        return effBal > 5;
+    }).length);
+    setText('cLow', rows.filter(r => {
+        const bal = parseFloat(r.balance) || 0;
+        const effBal = r.is_kg ? (bal / 1000) : bal;
+        return effBal > 0 && effBal <= 5;
+    }).length);
+    setText('cOut', rows.filter(r => (parseFloat(r.balance) || 0) <= 0).length);
+
+    let totalSold = 0;
+    let totalPurch = 0;
+    rows.forEach(r => {
+        let sold = parseFloat(r.sold) || 0;
+        let purch = parseFloat(r.purchased) || 0;
+        if (r.is_kg) {
+            sold = sold / 1000;
+            purch = purch / 1000;
+        }
+        totalSold += sold;
+        totalPurch += purch;
+    });
+
+    setText('cSold', totalSold > 0 ? (totalSold % 1 === 0 ? totalSold.toFixed(0) : totalSold.toFixed(2)) : '0');
+    setText('cPurch', totalPurch > 0 ? (totalPurch % 1 === 0 ? totalPurch.toFixed(0) : totalPurch.toFixed(2)) : '0');
     if (res.grand_total !== undefined) {
         setText('cValue', 'Rs ' + Math.round(res.grand_total).toLocaleString());
     }
 }
 
 function updateFooter(rows) {
-    function sm(f) { return rows.reduce(function(s, r) { return s + (parseFloat(r[f]) || 0); }, 0); }
+    function sm(f) {
+        return rows.reduce(function(s, r) {
+            let val = parseFloat(r[f]) || 0;
+            if (r.is_kg) {
+                val = val / 1000;
+            }
+            return s + val;
+        }, 0);
+    }
     setText('ftInitial', fmt(sm('initial_stock')));
     setText('ftProduced', fmt(sm('produced')));
     setText('ftProdUsage', fmt(sm('prod_usage')));

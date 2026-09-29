@@ -774,7 +774,8 @@ class ReportingController extends Controller
                         'balance'         => $closingStock,
                         'unit'            => $p->unit->name ?? ($is_kg ? 'KG' : 'PC'),
                     ];
-                    $grandTotalValue += $closingStock * (float)($v->wholesale_price ?: $p->wholesale_price);
+                    $valPrice = (float)($v->wholesale_price ?: $v->price ?: $p->wholesale_price ?: $p->price ?: 0);
+                    $grandTotalValue += $closingStock * $valPrice;
                 }
             } else {
                 // Base product only or combined KG product
@@ -911,8 +912,27 @@ class ReportingController extends Controller
                     'unit'            => $p->unit->name ?? ($is_kg ? 'KG' : 'PC'),
                 ];
                 
+                $valPrice = 0;
+                if ($is_kg) {
+                    $defaultVar = $p->variants->where('is_default', 1)->first() ?? $p->variants->first();
+                    if ($defaultVar && (float)$defaultVar->price > 0) {
+                        $sVal = (float)$defaultVar->size_value;
+                        $sUnit = strtolower(trim($defaultVar->size_unit ?? 'kg'));
+                        if (in_array($sUnit, ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
+                            $sVal = $sVal / 1000;
+                        }
+                        $valPrice = ($sVal > 0) ? ((float)$defaultVar->price / $sVal) : (float)$defaultVar->price;
+                    } else {
+                        $valPrice = (float)($p->price ?: $p->wholesale_price ?: 0);
+                    }
+                } else {
+                    $valPrice = (float)($p->price ?: $p->wholesale_price ?: 0);
+                }
+
                 $valuationQty = $is_kg ? ($closingStock / 1000) : $closingStock;
-                $grandTotalValue += $valuationQty * (float)$p->wholesale_price;
+                if ($valuationQty > 0) {
+                    $grandTotalValue += $valuationQty * $valPrice;
+                }
             }
         }
 
@@ -1093,23 +1113,28 @@ class ReportingController extends Controller
 
     public function purchase_report()
     {
-        return view('admin_panel.reporting.purchase_report');
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('admin_panel.reporting.purchase_report', compact('branches'));
     }
 
     public function fetchPurchaseReport(Request $request)
     {
         $startDate = $request->start_date;
         $endDate   = $request->end_date;
+        $branchId  = $request->branch_id;
 
         /* ================= NORMAL PURCHASE ================= */
         $purchaseQuery = DB::table('purchases')
             ->leftJoin('purchase_items', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->leftJoin('products', 'purchase_items.product_id', '=', 'products.id')
             ->leftJoin('vendors', 'purchases.vendor_id', '=', 'vendors.id')
+            ->leftJoin('branches', 'purchases.branch_id', '=', 'branches.id')
             ->select(
                 DB::raw("'purchase' as source_type"),
                 'purchases.purchase_date as purchase_date',
                 'purchases.invoice_no',
+                'purchases.branch_id',
+                'branches.name as branch_name',
                 'vendors.name as vendor_name',
                 'products.item_code',
                 'products.item_name',
@@ -1129,18 +1154,26 @@ class ReportingController extends Controller
         if ($startDate && $endDate) {
             $purchaseQuery->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
         }
+        if ($branchId && $branchId !== 'all') {
+            $purchaseQuery->where('purchases.branch_id', $branchId);
+        } elseif (empty($branchId) && !is_all_branches()) {
+            $purchaseQuery->where('purchases.branch_id', active_branch_id());
+        }
 
         /* ================= INWARD AS PURCHASE ================= */
         $inwardQuery = DB::table('inward_gatepasses')
             ->leftJoin('inward_gatepass_items', 'inward_gatepasses.id', '=', 'inward_gatepass_items.inward_gatepass_id')
             ->leftJoin('products', 'inward_gatepass_items.product_id', '=', 'products.id')
             ->leftJoin('vendors', 'inward_gatepasses.vendor_id', '=', 'vendors.id')
+            ->leftJoin('branches', 'inward_gatepasses.branch_id', '=', 'branches.id')
             ->where('inward_gatepasses.status', 'linked')
             ->where('inward_gatepasses.bill_status', 'billed')
             ->select(
                 DB::raw("'inward' as source_type"),
                 'inward_gatepasses.gatepass_date as purchase_date',
                 'inward_gatepasses.invoice_no',
+                'inward_gatepasses.branch_id',
+                'branches.name as branch_name',
                 'vendors.name as vendor_name',
                 'products.item_code',
                 'products.item_name',
@@ -1162,6 +1195,11 @@ class ReportingController extends Controller
 
         if ($startDate && $endDate) {
             $inwardQuery->whereBetween('gatepass_date', [$startDate, $endDate]);
+        }
+        if ($branchId && $branchId !== 'all') {
+            $inwardQuery->where('inward_gatepasses.branch_id', $branchId);
+        } elseif (empty($branchId) && !is_all_branches()) {
+            $inwardQuery->where('inward_gatepasses.branch_id', active_branch_id());
         }
 
         /* ================= UNION ================= */
@@ -1208,7 +1246,8 @@ class ReportingController extends Controller
 
     public function sale_report()
     {
-        return view('admin_panel.reporting.sale_report');
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('admin_panel.reporting.sale_report', compact('branches'));
     }
 
     public function fetchsaleReport(Request $request)
@@ -1216,11 +1255,15 @@ class ReportingController extends Controller
         if ($request->ajax()) {
             $start = $request->start_date;
             $end = $request->end_date;
+            $branchId = $request->branch_id;
 
             $query = DB::table('sales')
                 ->leftJoin('customers', 'sales.customer', '=', 'customers.id')
+                ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
                 ->select(
                     'sales.id',
+                    'sales.branch_id',
+                    'branches.name as branch_name',
                     'sales.invoice_no', // ✅ Select invoice_no specifically
                     'sales.reference',
                     'sales.product',
@@ -1251,6 +1294,12 @@ class ReportingController extends Controller
                 if (strlen($end) == 16) $end .= ':59';
 
                 $query->whereBetween('sales.created_at', [$start, $end]);
+            }
+
+            if ($branchId && $branchId !== 'all') {
+                $query->where('sales.branch_id', $branchId);
+            } elseif (empty($branchId) && !is_all_branches()) {
+                $query->where('sales.branch_id', active_branch_id());
             }
 
             // Filter by Customer Type/Category
@@ -1400,7 +1449,8 @@ class ReportingController extends Controller
     public function sale_report_category()
     {
         $categories = Category::select('id', 'name')->get();
-        return view('admin_panel.reporting.sale_report_category', compact('categories'));
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('admin_panel.reporting.sale_report_category', compact('categories', 'branches'));
     }
 
     public function fetchsalecategoryReport(Request $request)
@@ -1411,12 +1461,16 @@ class ReportingController extends Controller
             $end        = $request->end_date;
             $categoryId = $request->category_id;
             $subCategoryId = $request->subcategory_id; // Get subcategory ID
+            $branchId   = $request->branch_id;
 
             // ================== BASE SALES QUERY ==================
             $query = DB::table('sales')
                 ->leftJoin('customers', 'sales.customer', '=', 'customers.id')
+                ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
                 ->select(
                     'sales.id',
+                    'sales.branch_id',
+                    'branches.name as branch_name',
                     'sales.invoice_no',
                     'sales.reference',
                     'sales.product',
@@ -1444,6 +1498,12 @@ class ReportingController extends Controller
 
                     $q->whereBetween('sales.created_at', [$start, $end]);
                 });
+
+            if ($branchId && $branchId !== 'all') {
+                $query->where('sales.branch_id', $branchId);
+            } elseif (empty($branchId) && !is_all_branches()) {
+                $query->where('sales.branch_id', active_branch_id());
+            }
 
             // ================== CUSTOMER FILTERING ==================
             if ($request->has('customer_type')) {
@@ -1965,28 +2025,59 @@ class ReportingController extends Controller
         $startDT = $selectedDate . ' ' . $startTime . ':00';
         $endDT   = $selectedDate . ' ' . $endTime   . ':59';
 
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        $branchId = $request->get('branch_id');
+        if (!$branchId) {
+            $branchId = is_all_branches() ? 'all' : (string)active_branch_id();
+        }
+        $selectedBranchId = $branchId;
+
         /* ================= OPENING BALANCE ================= */
-        $previousSales = Sale::where('created_at', '>=', $startDate . ' 00:00:00')
-            ->where('created_at', '<', $startDT)->sum('total_net');
-        $previousCustomerRecoveries = CustomerPayment::where('payment_date', '>=', $startDate . ' 00:00:00')
-            ->where('payment_date', '<', $startDT)->sum('amount');
-        $previousVendorPayments = VendorPayment::where('payment_date', '>=', $startDate . ' 00:00:00')
-            ->where('payment_date', '<', $startDT)->sum('amount');
-        $previousExpenses = ExpenseVoucher::where('date', '>=', $startDate . ' 00:00:00')
-            ->where('date', '<', $startDT)->sum('total_amount');
+        $prevSalesQ = Sale::where('created_at', '>=', $startDate . ' 00:00:00')
+            ->where('created_at', '<', $startDT);
+        $prevCustQ = CustomerPayment::where('payment_date', '>=', $startDate . ' 00:00:00')
+            ->where('payment_date', '<', $startDT);
+        $prevVendQ = VendorPayment::where('payment_date', '>=', $startDate . ' 00:00:00')
+            ->where('payment_date', '<', $startDT);
+        $prevExpQ = ExpenseVoucher::where('date', '>=', $startDate . ' 00:00:00')
+            ->where('date', '<', $startDT);
+
+        if ($selectedBranchId !== 'all') {
+            $prevSalesQ->where('branch_id', $selectedBranchId);
+            $prevCustQ->where('branch_id', $selectedBranchId);
+            $prevVendQ->where('branch_id', $selectedBranchId);
+            $prevExpQ->where('branch_id', $selectedBranchId);
+        }
+
+        $previousSales = $prevSalesQ->sum('total_net');
+        $previousCustomerRecoveries = $prevCustQ->sum('amount');
+        $previousVendorPayments = $prevVendQ->sum('amount');
+        $previousExpenses = $prevExpQ->sum('total_amount');
         $openingBalance = ($previousSales + $previousCustomerRecoveries) - ($previousVendorPayments + $previousExpenses);
 
         /* ================= TODAY'S DATA (with time filter) ================= */
-        $allSales = Sale::where('created_at', '>=', $startDT)
-            ->where('created_at', '<=', $endDT)->get();
-        $customerRecoveries = CustomerPayment::with('customer')
+        $salesQ = Sale::where('created_at', '>=', $startDT)
+            ->where('created_at', '<=', $endDT);
+        $custQ = CustomerPayment::with('customer')
             ->where('payment_date', '>=', $startDT)
-            ->where('payment_date', '<=', $endDT)->get();
-        $vendorPayments = VendorPayment::with('vendor')
+            ->where('payment_date', '<=', $endDT);
+        $vendQ = VendorPayment::with('vendor')
             ->where('payment_date', '>=', $startDT)
-            ->where('payment_date', '<=', $endDT)->get();
-        $expenseVouchers = ExpenseVoucher::where('date', '>=', $startDT)
-            ->where('date', '<=', $endDT)->get();
+            ->where('payment_date', '<=', $endDT);
+        $expQ = ExpenseVoucher::where('date', '>=', $startDT)
+            ->where('date', '<=', $endDT);
+
+        if ($selectedBranchId !== 'all') {
+            $salesQ->where('branch_id', $selectedBranchId);
+            $custQ->where('branch_id', $selectedBranchId);
+            $vendQ->where('branch_id', $selectedBranchId);
+            $expQ->where('branch_id', $selectedBranchId);
+        }
+
+        $allSales = $salesQ->get();
+        $customerRecoveries = $custQ->get();
+        $vendorPayments = $vendQ->get();
+        $expenseVouchers = $expQ->get();
 
         /* ================= RECEIPTS BREAKDOWN ================= */
         $totalSaleCash = $allSales->sum('cash');
@@ -2044,7 +2135,8 @@ class ReportingController extends Controller
             'totalSaleCash', 'totalSaleCard', 'totalChange', 'totalSaleNet', 'saleCount',
             'recoveryByMethod', 'totalRecoveries',
             'vendorPayByMethod', 'totalVendorPayments',
-            'totalExpenses', 'allSales', 'customerRecoveries', 'vendorPayments', 'expenseVouchers'
+            'totalExpenses', 'allSales', 'customerRecoveries', 'vendorPayments', 'expenseVouchers',
+            'branches', 'selectedBranchId'
         ));
     }
 
@@ -2151,7 +2243,8 @@ class ReportingController extends Controller
     public function sale_closing_report()
     {
         $users = \App\Models\User::all();
-        return view('admin_panel.reporting.sale_closing_report', compact('users'));
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('admin_panel.reporting.sale_closing_report', compact('users', 'branches'));
     }
 
     public function fetchSaleClosingReport(Request $request)
@@ -2168,6 +2261,7 @@ class ReportingController extends Controller
         if (strlen($end) == 16) $end .= ':59';
 
         $userId = $request->user_id;
+        $branchId = $request->branch_id;
 
         // 1. Fetch Sales
         $salesQuery = DB::table('sales')
@@ -2177,6 +2271,12 @@ class ReportingController extends Controller
             $salesQuery->where('user_id', auth()->id());
         } elseif ($userId && $userId !== 'all') {
             $salesQuery->where('user_id', $userId);
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $salesQuery->where('sales.branch_id', $branchId);
+        } elseif (empty($branchId) && !is_all_branches()) {
+            $salesQuery->where('sales.branch_id', active_branch_id());
         }
 
         $sales = $salesQuery->select('id', 'invoice_no', 'total_net', 'created_at', 'cash', 'card', 'change', 'per_price', 'qty', 'per_total', 'total_bill_amount', 'total_extradiscount')
@@ -2228,6 +2328,12 @@ class ReportingController extends Controller
             $expenseQuery->where('user_id', $userId);
         }
 
+        if ($branchId && $branchId !== 'all') {
+            $expenseQuery->where('expense_vouchers.branch_id', $branchId);
+        } elseif (empty($branchId) && !is_all_branches()) {
+            $expenseQuery->where('expense_vouchers.branch_id', active_branch_id());
+        }
+
         $expenses = $expenseQuery->select('id', 'evid', 'amount', 'date', 'type', 'party_id')
             ->orderBy('date', 'asc')
             ->get();
@@ -2271,6 +2377,7 @@ class ReportingController extends Controller
         if (strlen($end) == 16) $end .= ':59';
 
         $userId = $request->user_id;
+        $branchId = $request->branch_id;
 
         $salesQuery = DB::table('sales')
             ->whereBetween('created_at', [$start, $end]);
@@ -2279,6 +2386,12 @@ class ReportingController extends Controller
             $salesQuery->where('user_id', auth()->id());
         } elseif ($userId && $userId !== 'all') {
             $salesQuery->where('user_id', $userId);
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $salesQuery->where('sales.branch_id', $branchId);
+        } elseif (empty($branchId) && !is_all_branches()) {
+            $salesQuery->where('sales.branch_id', active_branch_id());
         }
 
         $sales = $salesQuery->select('id', 'invoice_no', 'total_net', 'created_at', 'cash', 'card', 'change', 'per_price', 'qty', 'per_total', 'total_bill_amount', 'total_extradiscount')
@@ -2323,6 +2436,12 @@ class ReportingController extends Controller
             $expenseQuery->where('user_id', auth()->id());
         } elseif ($userId && $userId !== 'all') {
             $expenseQuery->where('user_id', $userId);
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $expenseQuery->where('expense_vouchers.branch_id', $branchId);
+        } elseif (empty($branchId) && !is_all_branches()) {
+            $expenseQuery->where('expense_vouchers.branch_id', active_branch_id());
         }
 
         $expenses = $expenseQuery->get();
@@ -2391,12 +2510,37 @@ class ReportingController extends Controller
         $json = $response->getData();
 
         $rows = $json->data ?? [];
-        $total = $json->total ?? 0;
+        $grandTotal = $json->grand_total ?? 0;
+
+        $onlyMovement = $request->boolean('only_movement') || $request->get('only_movement') == '1';
+        if ($onlyMovement) {
+            $rows = array_values(array_filter($rows, function($r) {
+                $r = (object)$r;
+                $hasMovement = (float)($r->produced ?? 0) != 0
+                    || (float)($r->prod_usage ?? 0) != 0
+                    || (float)($r->purchased ?? 0) != 0
+                    || (float)($r->purchase_return ?? 0) != 0
+                    || (float)($r->transfer ?? 0) != 0
+                    || (float)($r->transfer_in ?? 0) != 0
+                    || (float)($r->adj_increase ?? 0) != 0
+                    || (float)($r->adj_decrease ?? 0) != 0
+                    || (float)($r->sold ?? 0) != 0
+                    || (float)($r->sale_return ?? 0) != 0;
+                return $hasMovement;
+            }));
+        }
+
+        $total = count($rows);
+
+        $branchId = active_branch_id();
+        $branch = \App\Models\Branch::find($branchId);
+        $branchName = $branch ? $branch->name : 'Main Branch';
+        $printedBy = auth()->user() ? auth()->user()->name : 'Admin';
 
         $dateLabel = \Carbon\Carbon::parse($startDate)->format('d-M-Y');
         $timeLabel = $startTime . ' to ' . $endTime;
 
-        return view('admin_panel.reporting.closing_print', compact('rows', 'total', 'startDate', 'endDate', 'dateLabel', 'timeLabel'));
+        return view('admin_panel.reporting.closing_print', compact('rows', 'total', 'startDate', 'endDate', 'dateLabel', 'timeLabel', 'onlyMovement', 'branchName', 'printedBy', 'grandTotal'));
     }
 
     /**
@@ -2517,6 +2661,395 @@ class ReportingController extends Controller
             'branches' => $branches->map(fn($b) => ['id' => $b->id, 'name' => $b->name]),
             'data'     => $rows,
             'total'    => count($rows),
+        ]);
+    }
+
+    // ==================== PROFIT & LOSS INTELLIGENCE REPORT ====================
+    public function profit_loss_report()
+    {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        $categories = \App\Models\Category::orderBy('name')->get();
+        $vendors = \App\Models\Vendor::orderBy('name')->get();
+        $customers = \App\Models\Customer::orderBy('customer_name')->get();
+        return view('admin_panel.reporting.profit_loss_report', compact('branches', 'categories', 'vendors', 'customers'));
+    }
+
+    public function fetchProfitLossReport(Request $request)
+    {
+        $reportType = $request->input('report_type', 'product'); // product, category, customer, vendor, date, time
+        $startDate = $request->input('start_date', date('Y-m-01'));
+        $endDate = $request->input('end_date', date('Y-m-d'));
+        $startTime = $request->input('start_time', '00:00:00');
+        $endTime = $request->input('end_time', '23:59:59');
+        $branchId = $request->input('branch_id', 'all');
+
+        // Normalize timestamps
+        if (strpos($startDate, 'T') !== false) {
+            $parts = explode('T', $startDate);
+            $startDate = $parts[0];
+            if (empty($request->start_time) && isset($parts[1])) $startTime = $parts[1] . ':00';
+        }
+        if (strpos($endDate, 'T') !== false) {
+            $parts = explode('T', $endDate);
+            $endDate = $parts[0];
+            if (empty($request->end_time) && isset($parts[1])) $endTime = $parts[1] . ':59';
+        }
+
+        if (strlen($startTime) == 5) $startTime .= ':00';
+        if (strlen($endTime) == 5) $endTime .= ':59';
+
+        $startDT = $startDate . ' ' . $startTime;
+        $endDT = $endDate . ' ' . $endTime;
+
+        // Base Sales Query
+        $salesQuery = DB::table('sales')
+            ->whereBetween('created_at', [$startDT, $endDT]);
+
+        if ($branchId && $branchId !== 'all') {
+            $salesQuery->where('branch_id', $branchId);
+        } elseif (!is_all_branches()) {
+            $salesQuery->where('branch_id', active_branch_id());
+        }
+
+        $sales = $salesQuery->select(
+            'id', 'invoice_no', 'customer', 'product', 'variant_id', 'qty',
+            'per_price', 'per_discount', 'per_total', 'total_bill_amount',
+            'total_extradiscount', 'total_net', 'created_at', 'branch_id'
+        )->orderBy('created_at', 'asc')->get();
+
+        // Pre-fetch reference dictionaries
+        $products = \App\Models\Product::with(['category_relation', 'variants'])->get()->keyBy('id');
+        $variantsDict = \App\Models\ProductVariant::all()->keyBy('id');
+        $categoriesDict = \App\Models\Category::all()->keyBy('id');
+        $customersDict = \App\Models\Customer::all()->keyBy('id');
+        $vendorsDict = \App\Models\Vendor::all()->keyBy('id');
+
+        // Pre-fetch latest purchase price & vendor map
+        $purchaseItems = DB::table('purchase_items')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->select('purchase_items.product_id', 'purchase_items.variant_id', 'purchase_items.price', 'purchases.vendor_id')
+            ->orderBy('purchase_items.id', 'desc')
+            ->get();
+
+        $purchasePriceMap = [];
+        $productVendorMap = [];
+        foreach ($purchaseItems as $pi) {
+            $vKey = $pi->product_id . '_' . ($pi->variant_id ?? 0);
+            if (!isset($purchasePriceMap[$vKey]) && (float)$pi->price > 0) {
+                $purchasePriceMap[$vKey] = (float)$pi->price;
+            }
+            if (!isset($purchasePriceMap[$pi->product_id . '_0']) && (float)$pi->price > 0) {
+                $purchasePriceMap[$pi->product_id . '_0'] = (float)$pi->price;
+            }
+            if ($pi->vendor_id && !isset($productVendorMap[$pi->product_id])) {
+                $productVendorMap[$pi->product_id] = $pi->vendor_id;
+            }
+        }
+
+        // Expenses in range for Date-wise calculation and Net Profit
+        $expenseQuery = DB::table('expense_vouchers')
+            ->whereBetween('created_at', [$startDT, $endDT]);
+        if ($branchId && $branchId !== 'all') {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
+                $expenseQuery->where('branch_id', $branchId);
+            }
+        } elseif (!is_all_branches()) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
+                $expenseQuery->where('branch_id', active_branch_id());
+            }
+        }
+        $expenseRecords = $expenseQuery->select('id', 'total_amount', 'created_at', 'date')->get();
+        $totalExpenses = (float)$expenseRecords->sum('total_amount');
+
+        $dailyExpenses = [];
+        foreach ($expenseRecords as $exp) {
+            $d = !empty($exp->date) ? substr($exp->date, 0, 10) : substr($exp->created_at, 0, 10);
+            $dailyExpenses[$d] = ($dailyExpenses[$d] ?? 0) + (float)$exp->total_amount;
+        }
+
+        // Summary structures
+        $summary = [
+            'total_sales'    => 0,
+            'total_cost'     => 0,
+            'gross_profit'   => 0,
+            'margin_percent' => 0,
+            'total_expenses' => $totalExpenses,
+            'net_profit'     => 0,
+            'invoices_count' => $sales->count(),
+            'items_sold_qty' => 0,
+        ];
+
+        $agg = [];
+
+        foreach ($sales as $sale) {
+            $pids   = explode(',', $sale->product ?? '');
+            $qtys   = explode(',', $sale->qty ?? '');
+            $prices = explode(',', $sale->per_price ?? '');
+            $vids   = explode(',', $sale->variant_id ?? '');
+            $totals = explode(',', $sale->per_total ?? '');
+
+            $saleDate = substr($sale->created_at, 0, 10);
+            $saleHour = (int)date('H', strtotime($sale->created_at));
+            $custRaw  = trim($sale->customer ?? '');
+
+            // Identify customer details
+            $custId = is_numeric($custRaw) ? (int)$custRaw : null;
+            $custObj = $custId ? $customersDict->get($custId) : null;
+            $custName = $custObj ? $custObj->customer_name : ($custRaw ?: 'Walk-in Customer');
+            $custPhone = $custObj ? ($custObj->customer_phone ?? '-') : 'Walk-in';
+
+            foreach ($pids as $idx => $pid) {
+                $pid = trim($pid);
+                if ($pid === '' || !is_numeric($pid)) continue;
+
+                $qty       = (float)($qtys[$idx] ?? 0);
+                $unitPrice = (float)($prices[$idx] ?? 0);
+                $lineTotal = (float)($totals[$idx] ?? ($qty * $unitPrice));
+                $vid       = trim($vids[$idx] ?? '0');
+
+                // Retrieve product
+                $p = $products->get((int)$pid);
+                $pName = $p ? $p->item_name : "Product #{$pid}";
+                $pCode = $p ? $p->item_code : "-";
+                $catId = $p ? ($p->category_id ?? 0) : 0;
+                $catObj = $categoriesDict->get($catId);
+                $catName = $catObj ? $catObj->name : ($p && $p->category_relation ? $p->category_relation->name : 'Uncategorized');
+
+                // Variant label
+                $vObj = ($vid && $variantsDict->has($vid)) ? $variantsDict->get($vid) : null;
+                if ($vObj) {
+                    $vLabel = $vObj->size_label ?: $vObj->variant_name;
+                    if ($vLabel) $pName .= " ({$vLabel})";
+                }
+
+                // Cost Determination
+                $unitCost = 0;
+                if (isset($purchasePriceMap[$pid . '_' . $vid]) && $purchasePriceMap[$pid . '_' . $vid] > 0) {
+                    $unitCost = $purchasePriceMap[$pid . '_' . $vid];
+                } elseif (isset($purchasePriceMap[$pid . '_0']) && $purchasePriceMap[$pid . '_0'] > 0) {
+                    $unitCost = $purchasePriceMap[$pid . '_0'];
+                } elseif ($vObj && $vObj->cost_price > 0) {
+                    $unitCost = (float)$vObj->cost_price;
+                } elseif ($p && ($firstV = $p->variants->first()) && $firstV->cost_price > 0) {
+                    $unitCost = (float)$firstV->cost_price;
+                }
+
+                $lineCost = $qty * $unitCost;
+                $lineProfit = $lineTotal - $lineCost;
+
+                // Accumulate overall summary
+                $summary['total_sales']    += $lineTotal;
+                $summary['total_cost']     += $lineCost;
+                $summary['items_sold_qty'] += $qty;
+
+                // Map vendor
+                $vendorId = $productVendorMap[(int)$pid] ?? null;
+                $vendorObj = $vendorId ? $vendorsDict->get($vendorId) : null;
+                $vendorName = $vendorObj ? $vendorObj->name : 'In-house / Direct';
+
+                // Aggregation per dimension:
+                if ($reportType === 'product') {
+                    $key = $pid . '_' . $vid;
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'item_code'      => $pCode,
+                            'item_name'      => $pName,
+                            'category'       => $catName,
+                            'qty_sold'       => 0,
+                            'avg_sale_price' => $unitPrice,
+                            'cost_price'     => $unitCost,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['qty_sold']    += $qty;
+                    $agg[$key]['total_sales'] += $lineTotal;
+                    $agg[$key]['total_cost']  += $lineCost;
+                    $agg[$key]['profit']      += $lineProfit;
+                } elseif ($reportType === 'category') {
+                    $key = $catId ?: 0;
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'category_id'    => $key,
+                            'category_name'  => $catName,
+                            'items_count'    => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['items_count'][$pid] = true;
+                    $agg[$key]['qty_sold']    += $qty;
+                    $agg[$key]['total_sales'] += $lineTotal;
+                    $agg[$key]['total_cost']  += $lineCost;
+                    $agg[$key]['profit']      += $lineProfit;
+                } elseif ($reportType === 'customer') {
+                    $key = $custId ? 'cust_' . $custId : 'walk_in';
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'customer_name'  => $custName,
+                            'phone'          => $custPhone,
+                            'invoices'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['invoices'][$sale->id] = true;
+                    $agg[$key]['qty_sold']    += $qty;
+                    $agg[$key]['total_sales'] += $lineTotal;
+                    $agg[$key]['total_cost']  += $lineCost;
+                    $agg[$key]['profit']      += $lineProfit;
+                } elseif ($reportType === 'vendor') {
+                    $key = $vendorId ? 'vend_' . $vendorId : 'direct';
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'vendor_name'    => $vendorName,
+                            'products'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['products'][$pid] = true;
+                    $agg[$key]['qty_sold']    += $qty;
+                    $agg[$key]['total_sales'] += $lineTotal;
+                    $agg[$key]['total_cost']  += $lineCost;
+                    $agg[$key]['profit']      += $lineProfit;
+                } elseif ($reportType === 'date') {
+                    $key = $saleDate;
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'date'           => $saleDate,
+                            'day'            => date('l', strtotime($saleDate)),
+                            'invoices'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'expenses'       => (float)($dailyExpenses[$saleDate] ?? 0),
+                            'gross_profit'   => 0,
+                            'net_profit'     => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['invoices'][$sale->id] = true;
+                    $agg[$key]['qty_sold']    += $qty;
+                    $agg[$key]['total_sales'] += $lineTotal;
+                    $agg[$key]['total_cost']  += $lineCost;
+                } elseif ($reportType === 'time') {
+                    $key = $saleHour;
+                    if (!isset($agg[$key])) {
+                        $startH = str_pad($saleHour, 2, '0', STR_PAD_LEFT) . ':00';
+                        $endH = str_pad(($saleHour + 1) % 24, 2, '0', STR_PAD_LEFT) . ':00';
+                        $agg[$key] = [
+                            'hour'           => $saleHour,
+                            'time_slot'      => date('h:i A', strtotime($startH)) . ' - ' . date('h:i A', strtotime($endH)),
+                            'invoices'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['invoices'][$sale->id] = true;
+                    $agg[$key]['qty_sold']    += $qty;
+                    $agg[$key]['total_sales'] += $lineTotal;
+                    $agg[$key]['total_cost']  += $lineCost;
+                    $agg[$key]['profit']      += $lineProfit;
+                }
+            }
+        }
+
+        // Finalize rows calculation
+        $rows = [];
+        $summary['gross_profit'] = $summary['total_sales'] - $summary['total_cost'];
+        $summary['net_profit']   = $summary['gross_profit'] - $summary['total_expenses'];
+        $summary['margin_percent'] = $summary['total_sales'] > 0
+            ? round(($summary['gross_profit'] / $summary['total_sales']) * 100, 2)
+            : 0;
+
+        if ($reportType === 'product') {
+            foreach ($agg as $r) {
+                $r['avg_sale_price'] = $r['qty_sold'] > 0 ? round($r['total_sales'] / $r['qty_sold'], 2) : 0;
+                $r['margin_percent'] = $r['total_sales'] > 0 ? round(($r['profit'] / $r['total_sales']) * 100, 2) : 0;
+                $rows[] = $r;
+            }
+            usort($rows, fn($a, $b) => $b['total_sales'] <=> $a['total_sales']);
+        } elseif ($reportType === 'category') {
+            foreach ($agg as $r) {
+                $r['products_count'] = count($r['items_count']);
+                unset($r['items_count']);
+                $r['margin_percent'] = $r['total_sales'] > 0 ? round(($r['profit'] / $r['total_sales']) * 100, 2) : 0;
+                $r['contribution_percent'] = $summary['total_sales'] > 0 ? round(($r['total_sales'] / $summary['total_sales']) * 100, 2) : 0;
+                $rows[] = $r;
+            }
+            usort($rows, fn($a, $b) => $b['total_sales'] <=> $a['total_sales']);
+        } elseif ($reportType === 'customer') {
+            foreach ($agg as $r) {
+                $r['invoices_count'] = count($r['invoices']);
+                unset($r['invoices']);
+                $r['margin_percent'] = $r['total_sales'] > 0 ? round(($r['profit'] / $r['total_sales']) * 100, 2) : 0;
+                $rows[] = $r;
+            }
+            usort($rows, fn($a, $b) => $b['total_sales'] <=> $a['total_sales']);
+        } elseif ($reportType === 'vendor') {
+            foreach ($agg as $r) {
+                $r['products_count'] = count($r['products']);
+                unset($r['products']);
+                $r['margin_percent'] = $r['total_sales'] > 0 ? round(($r['profit'] / $r['total_sales']) * 100, 2) : 0;
+                $rows[] = $r;
+            }
+            usort($rows, fn($a, $b) => $b['total_sales'] <=> $a['total_sales']);
+        } elseif ($reportType === 'date') {
+            foreach ($agg as $r) {
+                $r['invoices_count'] = count($r['invoices']);
+                unset($r['invoices']);
+                $r['gross_profit'] = $r['total_sales'] - $r['total_cost'];
+                $r['net_profit']   = $r['gross_profit'] - $r['expenses'];
+                $r['margin_percent'] = $r['total_sales'] > 0 ? round(($r['net_profit'] / $r['total_sales']) * 100, 2) : 0;
+                $rows[] = $r;
+            }
+            usort($rows, fn($a, $b) => strcmp($b['date'], $a['date']));
+        } elseif ($reportType === 'time') {
+            ksort($agg);
+            $maxSalesInHour = 0;
+            foreach ($agg as $h => $r) {
+                if ($r['total_sales'] > $maxSalesInHour) $maxSalesInHour = $r['total_sales'];
+            }
+            foreach ($agg as $r) {
+                $r['invoices_count'] = count($r['invoices']);
+                unset($r['invoices']);
+                $r['margin_percent'] = $r['total_sales'] > 0 ? round(($r['profit'] / $r['total_sales']) * 100, 2) : 0;
+                $ratio = $maxSalesInHour > 0 ? ($r['total_sales'] / $maxSalesInHour) : 0;
+                if ($ratio >= 0.75) {
+                    $r['intensity'] = 'Peak Hour 🔥';
+                    $r['badge_class'] = 'bg-danger';
+                } elseif ($ratio >= 0.40) {
+                    $r['intensity'] = 'Moderate ⚡';
+                    $r['badge_class'] = 'bg-warning text-dark';
+                } else {
+                    $r['intensity'] = 'Normal ⏱';
+                    $r['badge_class'] = 'bg-secondary';
+                }
+                $rows[] = $r;
+            }
+        }
+
+        return response()->json([
+            'success'     => true,
+            'report_type' => $reportType,
+            'summary'     => $summary,
+            'rows'        => $rows,
+            'total_rows'  => count($rows),
         ]);
     }
 }

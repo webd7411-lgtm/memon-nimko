@@ -459,11 +459,18 @@
             <input type="date" name="end_date" id="end_date" class="rp-input" value="{{ date('Y-m-d') }}">
           </div>
           <div class="col-12 col-md-3">
-            <button type="button" id="btnSearch" class="rp-btn rp-btn-primary w-100">
-              <i class="bi bi-search me-1"></i> Generate Report
-            </button>
+            <label class="rp-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
+            <select name="branch_id" id="branch_id" class="rp-input">
+              <option value="all" {{ is_all_branches() ? 'selected' : '' }}>All Branches</option>
+              @foreach($branches as $b)
+                <option value="{{ $b->id }}" {{ (!is_all_branches() && (string)$b->id === (string)active_branch_id()) ? 'selected' : '' }}>{{ $b->name }}</option>
+              @endforeach
+            </select>
           </div>
-          <div class="col-12 col-md-3 text-end">
+          <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="button" id="btnSearch" class="rp-btn rp-btn-primary w-100">
+              <i class="bi bi-search me-1"></i> Search
+            </button>
             <button type="button" id="btnExportCsv" class="rp-btn rp-btn-danger w-100">
               <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
             </button>
@@ -484,24 +491,25 @@
           <table id="purchaseTable" class="table rp-table align-middle nowrap" style="width:100%;">
             <thead>
               <tr>
-                <th width="4%">#</th>
-                <th width="8%">Source</th>
-                <th width="10%">Purchase Date</th>
-                <th width="10%">Invoice No</th>
-                <th width="15%">Vendor</th>
-                <th width="8%">Item Code</th>
-                <th width="15%">Item Name</th>
+                <th width="3%">#</th>
+                <th width="6%">Source</th>
+                <th width="8%">Branch</th>
+                <th width="9%">Purchase Date</th>
+                <th width="9%">Invoice No</th>
+                <th width="13%">Vendor</th>
+                <th width="7%">Item Code</th>
+                <th width="13%">Item Name</th>
                 <th width="5%">Qty</th>
                 <th width="5%">Unit</th>
-                <th width="8%">Price</th>
-                <th width="8%">Item Disc.</th>
-                <th width="10%">Line Total</th>
-                <th width="10%">Subtotal</th>
-                <th width="8%">Discount</th>
-                <th width="8%">Extra Cost</th>
-                <th width="10%">Net Amount</th>
-                <th width="10%">Paid Amount</th>
-                <th width="10%">Due Amount</th>
+                <th width="7%">Price</th>
+                <th width="6%">Item Disc.</th>
+                <th width="8%">Line Total</th>
+                <th width="8%">Subtotal</th>
+                <th width="6%">Discount</th>
+                <th width="6%">Extra Cost</th>
+                <th width="8%">Net Amount</th>
+                <th width="8%">Paid Amount</th>
+                <th width="8%">Due Amount</th>
               </tr>
             </thead>
             <tbody id="reportBody"></tbody>
@@ -525,6 +533,7 @@ $(document).ready(function() {
         columns: [
             { data: 'index' },
             { data: 'source_type' },
+            { data: 'branch_name' },
             { data: 'purchase_date' },
             { data: 'invoice_no' },
             { data: 'vendor_name' },
@@ -577,6 +586,7 @@ $(document).ready(function() {
                         ${r.source_type}
                     </span>
                 </td>
+                <td data-label="Branch"><span class="badge bg-primary-subtle text-primary border">${r.branch_name || 'All'}</span></td>
                 <td data-label="Date" class="text-muted">${formatDate(r.purchase_date)}</td>
                 <td data-label="Invoice"><span class="badge bg-light text-dark border font-monospace">${r.invoice_no}</span></td>
                 <td data-label="Vendor" class="fw-bold text-dark">${r.vendor_name}</td>
@@ -605,7 +615,7 @@ $(document).ready(function() {
         });
 
         tableContent += `<tr class="rp-total-row">
-            <td colspan="12" class="text-end">Grand Total:</td>
+            <td colspan="13" class="text-end">Grand Total:</td>
             <td data-label="Subtotal">${grandSubtotal.toFixed(2)}</td>
             <td data-label="Discount">${grandDiscount.toFixed(2)}</td>
             <td data-label="Extra Cost">${grandExtraCost.toFixed(2)}</td>
@@ -624,6 +634,7 @@ $(document).ready(function() {
     function fetchReport() {
         var start_date = $('#start_date').val();
         var end_date = $('#end_date').val();
+        var branch_id = $('#branch_id').val();
         $('#loader').show();
 
         $.ajax({
@@ -632,7 +643,8 @@ $(document).ready(function() {
             data: {
                 _token: "{{ csrf_token() }}",
                 start_date: start_date,
-                end_date: end_date
+                end_date: end_date,
+                branch_id: branch_id
             },
             success: function(response) {
                 $('#loader').hide();
@@ -648,6 +660,7 @@ $(document).ready(function() {
     $('#btnExportCsv').on('click', function() {
         var start_date = $('#start_date').val();
         var end_date = $('#end_date').val();
+        var branch_id = $('#branch_id').val();
         $('#loader').show();
 
         $.ajax({
@@ -656,7 +669,8 @@ $(document).ready(function() {
             data: {
                 _token: "{{ csrf_token() }}",
                 start_date: start_date,
-                end_date: end_date
+                end_date: end_date,
+                branch_id: branch_id
             },
             success: function(response) {
                 $('#loader').hide();
@@ -665,10 +679,10 @@ $(document).ready(function() {
                     return;
                 }
 
-                var csv = 'Source,Purchase Date,Invoice No,Vendor,Item Code,Item Name,Qty,Unit,Price,Item Discount,Line Total,Subtotal,Discount,Extra Cost,Net Amount,Paid Amount,Due Amount\n';
+                var csv = 'Source,Branch,Purchase Date,Invoice No,Vendor,Item Code,Item Name,Qty,Unit,Price,Item Discount,Line Total,Subtotal,Discount,Extra Cost,Net Amount,Paid Amount,Due Amount\n';
 
                 response.data.forEach(function(r) {
-                    csv += `"${r.source_type}","${r.purchase_date}","${r.invoice_no}","${r.vendor_name}","${r.item_code}","${r.item_name}",${r.qty},${r.unit},${r.price},${r.item_discount},${r.line_total},${r.subtotal},${r.discount},${r.extra_cost},${r.net_amount},${r.paid_amount},${r.due_amount}\n`;
+                    csv += `"${r.source_type}","${r.branch_name || ''}","${r.purchase_date}","${r.invoice_no}","${r.vendor_name}","${r.item_code}","${r.item_name}",${r.qty},${r.unit},${r.price},${r.item_discount},${r.line_total},${r.subtotal},${r.discount},${r.extra_cost},${r.net_amount},${r.paid_amount},${r.due_amount}\n`;
                 });
 
                 var blob = new Blob([csv], {

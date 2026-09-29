@@ -298,7 +298,9 @@
             <input type="text" id="posSearch" placeholder="Search products…" autocomplete="off">
         </div>
         <button type="button" class="btn-cls" style="background:#8e44ad; color:#fff; border:none; margin-right: 8px;" onclick="openExchangeModal()"><i class="la la-refresh"></i> <span>🔄 Exchange</span></button>
+        @if(config('app.enable_restaurant_tables', false))
         <button type="button" class="btn-cls" style="background:#f39c12; color:#fff; border:none; margin-right: 10px;" onclick="showModal('tableModal')"><i class="la la-server"></i> <span>Running Orders</span></button>
+        @endif
         <a href="{{ route('sale.index') }}" class="btn-cls"><i class="la la-times"></i> <span>Close</span></a>
     </div>
 
@@ -326,7 +328,9 @@
             <select name="order_type" id="orderTypeSel" style="flex:1" onchange="handleOrderTypeChange()">
                 <option value="Walk-in">🚶 Walk-in</option>
                 <option value="Takeaway">🥡 Takeaway</option>
+                @if(config('app.enable_restaurant_tables', false))
                 <option value="Dine-in">🍽️ Dine-in</option>
+                @endif
             </select>
         </div>
 
@@ -455,6 +459,7 @@
     </div>
 </div>
 
+@if(config('app.enable_restaurant_tables', false))
 {{-- ======= TABLE MODAL ======= --}}
 <div class="modal fade" id="tableModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -478,6 +483,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- ======= EXCHANGE MODAL ======= --}}
 <div class="modal fade" id="exchangeModal" tabindex="-1">
@@ -580,12 +586,12 @@ function hideModal(id) {
 document.getElementById('szClose').onclick = () => hideModal('szModal');
 document.getElementById('bkClose').onclick = () => hideModal('bkModal');
 document.getElementById('bkCancel').onclick = () => hideModal('bkModal');
-document.getElementById('tableClose').onclick = () => hideModal('tableModal');
+if(document.getElementById('tableClose')) document.getElementById('tableClose').onclick = () => hideModal('tableModal');
 document.getElementById('exchangeClose').onclick = () => hideModal('exchangeModal');
 
 document.getElementById('szModal').addEventListener('click', function(e){ if(e.target===this) hideModal('szModal'); });
 document.getElementById('bkModal').addEventListener('click', function(e){ if(e.target===this) hideModal('bkModal'); });
-document.getElementById('tableModal').addEventListener('click', function(e){ if(e.target===this) hideModal('tableModal'); });
+if(document.getElementById('tableModal')) document.getElementById('tableModal').addEventListener('click', function(e){ if(e.target===this) hideModal('tableModal'); });
 document.getElementById('exchangeModal').addEventListener('click', function(e){ if(e.target===this) hideModal('exchangeModal'); });
 
 function openExchangeModal() {

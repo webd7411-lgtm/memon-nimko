@@ -200,7 +200,7 @@
 
                     @canany(['Products','Category','Sub Category','Brands','Purchase','Purchase Return','Vendor','List Warehouse','Warehouse Stock','Stock Transfer','Sales','Sale Return','Bookings','Customer','Production','Raw Materials','Stock Adjustment'])
                     @php
-                        $isMgmtActive = request()->is('product*') || request()->is('category*') || request()->is('subcategory*') || request()->is('Brand*') || request()->is('Purchase*') || request()->is('production*') || request()->is('raw-materials*') || request()->is('stock-adjustment*') || request()->is('vendors*') || request()->is('warehouse*') || request()->is('stock_transfers*') || request()->is('sale') || request()->is('sale-returns*') || request()->is('bookings*') || request()->is('customers*') || request()->is('table*');
+                        $isMgmtActive = request()->is('product*') || request()->is('category*') || request()->is('subcategory*') || request()->is('Brand*') || request()->is('Purchase*') || request()->is('add/Purchase*') || request()->is('production*') || request()->is('raw-materials*') || request()->is('stock-adjustment*') || request()->is('vendors*') || request()->is('warehouse*') || request()->is('stock_transfers*') || request()->is('sale') || request()->is('sale-returns*') || request()->is('bookings*') || request()->is('customers*') || request()->is('table*');
                     @endphp
                     <li class="nav-item mega-menu {{ $isMgmtActive ? 'active' : '' }}">
                         <a href="#" class="nav-link">
@@ -237,6 +237,7 @@
                                     <p class="category-heading"><i class="fas fa-shopping-bag me-1"></i> Purchase & Factory</p>
                                     <ul class="submenu-item">
                                         @can('Purchase')
+                                        <li><a href="{{ route('add_purchase') }}"><i class="fas fa-cart-plus"></i> Create Purchase</a></li>
                                         <li><a href="{{ route('Purchase.home') }}"><i class="fas fa-shopping-cart"></i> Purchase Invoices</a></li>
                                         @endcan
                                         @canany(['Production','Purchase'])
@@ -293,7 +294,9 @@
                                         @can('Customer')
                                         <li><a href="{{ url('customers') }}"><i class="fas fa-users"></i> Customer Directory</a></li>
                                         @endcan
+                                        @if(config('app.enable_restaurant_tables', false))
                                         <li><a href="{{ route('table.index') }}"><i class="fas fa-utensils"></i> Restaurant Tables</a></li>
+                                        @endif
                                     </ul>
                                 </div>
                                 @endcanany
@@ -383,6 +386,7 @@
                                 <li><a href="{{ route('report.sale') }}"><i class="fas fa-chart-bar"></i> Sale Report</a></li>
                                 <li><a href="{{ route('report.sale.category') }}"><i class="fas fa-chart-pie"></i> Category-wise Sales</a></li>
                                 <li><a href="{{ route('report.sale_closing') }}"><i class="fas fa-file-invoice-dollar"></i> Daily Sale Closing</a></li>
+                                <li><a href="{{ route('report.profit_loss') }}"><i class="fas fa-balance-scale"></i> Profit & Loss Report</a></li>
                                 @endcan
 
                                 @can('Customer Ledger')

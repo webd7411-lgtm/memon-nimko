@@ -204,6 +204,7 @@
     }
     .cb-input:focus { border-color: rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .22); }
     .cb-input::-webkit-calendar-picker-indicator { cursor: pointer; }
+    select.cb-input option { background: #1e293b; color: #ffffff; }
 
     /* Desktop: fixed layout = table NEVER overflows / no horizontal scroll */
     .cashbook-card .table-responsive { overflow-x: hidden; }
@@ -294,6 +295,17 @@
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                         <h4 class="m-0 fw-bold"><i class="fa fa-book me-2"></i>DAILY CASH BOOK</h4>
                         <form method="GET" action="{{ route('cashbook') }}" id="dateFilterForm" class="cb-filters">
+                            <div class="cb-fgroup">
+                                <label><i class="fa fa-building me-1"></i>Branch</label>
+                                <select name="branch_id" class="cb-input" onchange="document.getElementById('dateFilterForm').submit()">
+                                    <option value="all" {{ ($selectedBranchId ?? 'all') === 'all' ? 'selected' : '' }}>All Branches</option>
+                                    @if(isset($branches))
+                                        @foreach($branches as $b)
+                                            <option value="{{ $b->id }}" {{ (string)($selectedBranchId ?? '') === (string)$b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
                             <div class="cb-fgroup">
                                 <label>From</label>
                                 <input type="date" name="start_date" class="cb-input"

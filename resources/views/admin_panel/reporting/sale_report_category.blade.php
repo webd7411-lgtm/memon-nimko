@@ -429,6 +429,16 @@
             </div>
           </div>
 
+          <div class="col-12 col-md-2">
+            <label class="rp-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
+            <select name="branch_id" id="branch_id" class="rp-select">
+              <option value="all" {{ is_all_branches() ? 'selected' : '' }}>All Branches</option>
+              @foreach ($branches as $b)
+              <option value="{{ $b->id }}" {{ (!is_all_branches() && (string)$b->id === (string)active_branch_id()) ? 'selected' : '' }}>{{ $b->name }}</option>
+              @endforeach
+            </select>
+          </div>
+
           <div class="col-12 col-md-2 d-flex gap-2">
             <button type="button" id="btnSearch" class="rp-btn rp-btn-primary w-100">
               <i class="bi bi-search me-1"></i> Search
@@ -527,6 +537,7 @@ $(document).on('click', '#btnSearch', function() {
             end_date: end,
             category_id: category,
             subcategory_id: subcategory,
+            branch_id: $('#branch_id').val(),
             customer_type: $('input[name="customer_type[]"]:checked').map(function(){return $(this).val();}).get(),
             _t: new Date().getTime()
         },

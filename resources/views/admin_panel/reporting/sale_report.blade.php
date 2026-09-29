@@ -467,13 +467,22 @@
     <div class="rp-card">
       <div class="rp-card-body">
         <form id="SaleFilterForm" class="row g-3 align-items-end">
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
             <label class="rp-label"><i class="bi bi-calendar-event me-1 text-primary"></i> Start Date & Time</label>
             <input type="datetime-local" name="start_date" id="start_date" class="rp-input" value="{{ date('Y-m-d\T00:00') }}">
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
             <label class="rp-label"><i class="bi bi-calendar-event-fill me-1 text-primary"></i> End Date & Time</label>
             <input type="datetime-local" name="end_date" id="end_date" class="rp-input" value="{{ date('Y-m-d\T23:59') }}">
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="rp-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
+            <select name="branch_id" id="branch_id" class="rp-input">
+              <option value="all" {{ is_all_branches() ? 'selected' : '' }}>All Branches</option>
+              @foreach($branches as $b)
+                <option value="{{ $b->id }}" {{ (!is_all_branches() && (string)$b->id === (string)active_branch_id()) ? 'selected' : '' }}>{{ $b->name }}</option>
+              @endforeach
+            </select>
           </div>
           <div class="col-12 col-md-3">
             <label class="rp-label"><i class="bi bi-people me-1 text-primary"></i> Customer Type</label>
@@ -522,18 +531,19 @@
           <table class="table rp-table align-middle nowrap" id="saleReport" style="width:100%;">
             <thead>
               <tr>
-                <th width="4%">#</th>
-                <th width="12%">Date | Time</th>
-                <th width="10%">Invoice No</th>
-                <th width="15%">Customer</th>
-                <th width="10%">Reference</th>
-                <th width="15%">Products</th>
-                <th width="8%">Unit</th>
-                <th width="8%">Qty</th>
-                <th width="8%">Price</th>
-                <th width="10%">Total</th>
-                <th width="10%">Net</th>
-                <th width="12%">Returns</th>
+                <th width="3%">#</th>
+                <th width="10%">Date | Time</th>
+                <th width="8%">Branch</th>
+                <th width="9%">Invoice No</th>
+                <th width="13%">Customer</th>
+                <th width="9%">Reference</th>
+                <th width="14%">Products</th>
+                <th width="7%">Unit</th>
+                <th width="7%">Qty</th>
+                <th width="7%">Price</th>
+                <th width="9%">Total</th>
+                <th width="9%">Net</th>
+                <th width="11%">Returns</th>
               </tr>
             </thead>
             <tbody id="saleBody"></tbody>
@@ -559,6 +569,7 @@ $(document).on('click', '#btnSearch', function() {
         data: {
             start_date: start,
             end_date: end,
+            branch_id: $('#branch_id').val(),
             customer_type: $('input[name="customer_type[]"]:checked').map(function(){return $(this).val();}).get(),
             _t: new Date().getTime()
         },
@@ -713,6 +724,7 @@ $(document).on('click', '#btnSearch', function() {
                 html += `<tr>
                     <td data-label="ID" class="fw-bold">#${i+1}</td>
                     <td data-label="Date" class="text-muted small">${formatDate(createdAt)}</td>
+                    <td data-label="Branch"><span class="badge bg-primary-subtle text-primary border">${s.branch_name || 'All'}</span></td>
                     <td data-label="Invoice"><span class="badge bg-light text-dark border font-monospace">${s.invoice_no ?? '-'}</span></td>
                     <td data-label="Customer" class="fw-bold text-dark">${s.customer_name ?? '-'}</td>
                     <td data-label="Ref"><span class="badge bg-secondary-subtle text-secondary">${s.reference ?? '-'}</span></td>
@@ -727,7 +739,7 @@ $(document).on('click', '#btnSearch', function() {
             });
 
             html += `<tr class="rp-total-row" id="grandTotalRow">
-                <td colspan="6" class="text-end">Grand Total:</td>
+                <td colspan="7" class="text-end">Grand Total:</td>
                 <td data-label="Units" class="small">
                     Pieces: ${grandPiece.toFixed(2)}<br>
                     KG: ${grandKG.toFixed(2)}<br>

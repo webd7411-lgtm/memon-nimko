@@ -10,7 +10,7 @@
 @media print {
   body { margin: 0; padding: 0; }
   .no-print { display: none !important; }
-  @page { size: 58mm auto; margin: 0; }
+  @page { size: 80mm auto; margin: 2mm; }
 }
 
 body {
@@ -24,34 +24,46 @@ body {
 
 .receipt {
   width: 100%;
-  max-width: 210px;
+  max-width: 285px;
   margin: 0 auto;
   padding: 6px 4px;
 }
 
 .center { text-align: center; }
-.bold { font-weight: 700 !important; }
-.line { border-top: 1px dashed #000; margin: 3px 0; }
-.dbl-line { border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; height: 2px; margin: 3px 0; }
+.bold { font-weight: 800 !important; }
+.line { border-top: 1px dashed #000; margin: 4px 0; }
+.dbl-line { border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; height: 3px; margin: 4px 0; }
 
-.brand { font-size: 14px; font-weight: 700; margin-bottom: 1px; text-transform: uppercase; letter-spacing: 0.3px; }
+.brand { font-size: 15px; font-weight: 900; margin-bottom: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
 .address { font-size: 9px; font-weight: 700; line-height: 1.2; }
-.title { font-size: 11px; font-weight: 700; margin: 4px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+.title { font-size: 12px; font-weight: 900; margin: 4px 0; text-transform: uppercase; letter-spacing: 0.5px; }
 
-table { width: 100%; border-collapse: collapse; margin: 3px 0; }
+table { width: 100%; border-collapse: collapse; margin: 4px 0; }
 th {
-  text-align: left; font-size: 9px; font-weight: 700;
-  border-bottom: 1.5px solid #000; padding: 2px 1px;
+  text-align: left; font-size: 9px; font-weight: 800;
+  border-bottom: 1.5px solid #000; padding: 3px 1px;
 }
 td {
   font-size: 9px; font-weight: 700;
-  padding: 2px 1px; vertical-align: top;
-  border-bottom: 1px dotted #000;
+  padding: 3px 1px; vertical-align: top;
+  border-bottom: 1px dotted #bbb;
 }
 table tbody tr:last-child td { border-bottom: none; }
 .r { text-align: right; }
+.c { text-align: center; }
 
 .info-row { display: flex; justify-content: space-between; font-size: 9px; margin: 2px 0; font-weight: 700; }
+.badge-tag {
+  display: inline-block;
+  background: #000;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin: 3px 0;
+  text-transform: uppercase;
+}
 
 .print-btn {
   display: block; margin: 10px auto; padding: 8px 20px;
@@ -59,30 +71,50 @@ table tbody tr:last-child td { border-bottom: none; }
   font-size: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase;
 }
 
-.item-name { font-size: 9px; font-weight: 700; line-height: 1.1; word-break: break-word; }
+.item-name { font-size: 9px; font-weight: 800; line-height: 1.15; word-break: break-word; }
 .item-code { font-size: 8px; font-weight: 700; color: #333; }
+
+.sig-area {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 28px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 0 4px;
+}
+.sig-box {
+  text-align: center;
+  width: 42%;
+  border-top: 1px dashed #000;
+  padding-top: 4px;
+}
 </style>
 </head>
 <body>
 
-<button class="print-btn no-print" onclick="window.print()">Print Closing</button>
+<button class="print-btn no-print" onclick="window.print()">🖨️ Print Closing</button>
 
 <div class="receipt">
   <div class="center">
-    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px;">
     <div class="brand">Memon Nimko</div>
-    <div class="address" style="font-size:11px;margin-bottom:1px;">Sweets & Bakers</div>
+    <div class="address" style="font-size:11px; font-weight:900;">Sweets & Bakers</div>
     <div class="address">Latifabad no 6 Near Shadman Hall Hyderabad</div>
     <div class="address">Ph: 022 2786661</div>
   </div>
 
-  <div class="dbl-line" style="margin-top:5px;"></div>
-  <div class="center title">Daily Closing Report</div>
-  <div class="dbl-line" style="margin-bottom:5px;"></div>
+  <div class="dbl-line" style="margin-top:6px;"></div>
+  <div class="center title">Daily Stock Closing</div>
+  @if(!empty($onlyMovement))
+  <div class="center"><span class="badge-tag">⚡ Active Movement Only (+ / −)</span></div>
+  @endif
+  <div class="dbl-line" style="margin-bottom:6px;"></div>
 
+  <div class="info-row"><span>Branch:</span><span class="bold">{{ $branchName ?? 'Main Branch' }}</span></div>
   <div class="info-row"><span>Date:</span><span>{{ $dateLabel }}</span></div>
   <div class="info-row"><span>Shift:</span><span>{{ $timeLabel }}</span></div>
-  <div class="info-row"><span>Printed:</span><span>{{ \Carbon\Carbon::now()->format('d-M-Y h:i A') }}</span></div>
+  <div class="info-row"><span>Cashier / User:</span><span>{{ $printedBy ?? 'Admin' }}</span></div>
+  <div class="info-row"><span>Printed At:</span><span>{{ \Carbon\Carbon::now()->format('d-M-Y h:i A') }}</span></div>
 
   <div class="line"></div>
 
@@ -90,49 +122,95 @@ table tbody tr:last-child td { border-bottom: none; }
     <thead>
       <tr>
         <th style="width:34%;">Item</th>
-        <th style="width:22%;" class="r">Purch+Prod</th>
-        <th style="width:22%;" class="r">Sold</th>
-        <th style="width:22%;" class="r">Balance</th>
+        <th style="width:16%;" class="r">Open</th>
+        <th style="width:17%;" class="r">In(+)</th>
+        <th style="width:16%;" class="r">Sold</th>
+        <th style="width:17%;" class="r">Close</th>
       </tr>
     </thead>
     <tbody>
-      @php $tp=0; $ts=0; $ta=0; @endphp
+      @php
+        $totOpen = 0; $totIn = 0; $totSold = 0; $totBal = 0;
+      @endphp
       @forelse($rows as $r)
       @php
-        $purchProd = ((float)($r->purchased ?? 0)) + ((float)($r->produced ?? 0));
-        $sold      = (float)($r->sold ?? 0);
-        $avail     = (float)($r->balance ?? 0);
-        $isKg      = !empty($r->is_kg);
-        $itemName  = $r->item_name ?? '';
-        $itemCode  = $r->item_code ?? '';
-        $tp += $purchProd; $ts += $sold; $ta += $avail;
+        $r = (object)$r;
+        $isKg = !empty($r->is_kg);
+        
+        $initial = (float)($r->initial_stock ?? 0);
+        $prod    = (float)($r->produced ?? 0);
+        $purch   = (float)($r->purchased ?? 0);
+        $trIn    = (float)($r->transfer_in ?? 0);
+        $sRet    = (float)($r->sale_return ?? 0);
+        $adjInc  = (float)($r->adj_increase ?? 0);
+        $inward  = $prod + $purch + $trIn + $sRet + $adjInc;
+
+        $sold    = (float)($r->sold ?? 0);
+        $bal     = (float)($r->balance ?? 0);
+
+        $effOpen = $isKg ? ($initial / 1000) : $initial;
+        $effIn   = $isKg ? ($inward / 1000) : $inward;
+        $effSold = $isKg ? ($sold / 1000) : $sold;
+        $effBal  = $isKg ? ($bal / 1000) : $bal;
+
+        $totOpen += $effOpen;
+        $totIn   += $effIn;
+        $totSold += $effSold;
+        $totBal  += $effBal;
+
+        $fmt = function($val) use ($isKg) {
+            if ($isKg) {
+                $g = abs($val);
+                if ($g >= 1000) {
+                    $k = floor($g / 1000);
+                    $m = round($g % 1000);
+                    return ($val < 0 ? '-' : '') . ($m > 0 ? number_format($g / 1000, 2) : $k) . 'k';
+                } elseif ($g > 0) {
+                    return ($val < 0 ? '-' : '') . round($g) . 'g';
+                }
+                return '0';
+            }
+            return (float)$val == floor($val) ? number_format($val, 0) : number_format($val, 2);
+        };
       @endphp
       <tr>
         <td>
-          <div class="item-name">{{ $itemName }} <span class="item-code">[{{ $itemCode }}]</span></div>
+          <div class="item-name">{{ $r->item_name }}</div>
+          <span class="item-code">[{{ $r->item_code }}]</span>
         </td>
-        <td class="r">{{ $isKg ? number_format($purchProd/1000, 2) : number_format($purchProd) }}{{ $isKg ? 'kg' : '' }}</td>
-        <td class="r">{{ $isKg ? number_format($sold/1000, 2) : number_format($sold) }}{{ $isKg ? 'kg' : '' }}</td>
-        <td class="r">{{ $isKg ? number_format($avail/1000, 2) : number_format($avail) }}{{ $isKg ? 'kg' : '' }}</td>
+        <td class="r">{{ $fmt($initial) }}</td>
+        <td class="r" style="color:#0f766e;">{{ $fmt($inward) }}</td>
+        <td class="r" style="color:#8e44ad;">{{ $fmt($sold) }}</td>
+        <td class="r bold" style="{{ $bal <= 0 ? 'color:#ef4444;' : '' }}">{{ $fmt($bal) }}</td>
       </tr>
       @empty
-      <tr><td colspan="4" class="center" style="padding:8px 0;">No data for this period</td></tr>
+      <tr><td colspan="5" class="center" style="padding:10px 0;">No stock records found for this period</td></tr>
       @endforelse
     </tbody>
   </table>
 
   <div class="line"></div>
-  <div style="display:flex;justify-content:space-between;font-weight:700;font-size:9px;padding:2px 1px;">
-    <span>TOTALS</span>
-    <span>{{ number_format($tp) }}</span>
-    <span>{{ number_format($ts) }}</span>
-    <span>{{ number_format($ta) }}</span>
+  <div style="display:flex; justify-content:space-between; font-weight:900; font-size:9px; padding:3px 1px;">
+    <span style="width:34%;">TOTAL</span>
+    <span style="width:16%; text-align:right;">{{ (float)$totOpen == floor($totOpen) ? number_format($totOpen, 0) : number_format($totOpen, 2) }}</span>
+    <span style="width:17%; text-align:right; color:#0f766e;">{{ (float)$totIn == floor($totIn) ? number_format($totIn, 0) : number_format($totIn, 2) }}</span>
+    <span style="width:16%; text-align:right; color:#8e44ad;">{{ (float)$totSold == floor($totSold) ? number_format($totSold, 0) : number_format($totSold, 2) }}</span>
+    <span style="width:17%; text-align:right;">{{ (float)$totBal == floor($totBal) ? number_format($totBal, 0) : number_format($totBal, 2) }}</span>
   </div>
-  <div class="line" style="margin-bottom:5px;"></div>
+  <div class="line" style="margin-bottom:6px;"></div>
 
-  <div class="center bold" style="font-size:9px;margin-top:4px;">
-    <div>Total Items: {{ $total }}</div>
-    <div style="margin-top:3px;">— End of Report —</div>
+  <div class="info-row"><span>Total Items:</span><span class="bold">{{ $total }}</span></div>
+  @if(!empty($grandTotal))
+  <div class="info-row"><span>Stock Value (Rs):</span><span class="bold">Rs {{ number_format($grandTotal, 0) }}</span></div>
+  @endif
+
+  <div class="sig-area">
+    <div class="sig-box">CASHIER / PREPARED</div>
+    <div class="sig-box">MANAGER / VERIFIED</div>
+  </div>
+
+  <div class="center bold" style="font-size:8px; margin-top:12px; color:#555;">
+    — End of Closing Report —
   </div>
 </div>
 

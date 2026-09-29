@@ -342,6 +342,10 @@ Route::middleware('auth')->group(function () {
     Route::get('report/expense/vocher', [ReportingController::class, 'expense_vocher'])->name('expense.vocher');
     Route::get('/expense-voucher/ajax', [ReportingController::class, 'expenseVoucherAjax'])->name('expense.voucher.ajax');
 
+    // Profit & Loss Report Routes
+    Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->name('report.profit_loss');
+    Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch');
+
     // Chart of Accounts
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all')->middleware('permission:Char Of Accounts');
     Route::delete('/coa/account/{id}', [AccountsHeadController::class, 'destroy'])->name('coa.account.delete');

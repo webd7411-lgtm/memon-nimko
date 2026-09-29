@@ -377,6 +377,15 @@
           <label class="form-label">End Date & Time</label>
           <input type="datetime-local" name="end_date" id="end_date" class="form-control" value="{{ date('Y-m-d\T23:59') }}">
         </div>
+        <div class="col-md-2">
+          <label class="form-label">Branch</label>
+          <select name="branch_id" id="branch_id" class="form-select">
+            <option value="all" {{ is_all_branches() ? 'selected' : '' }}>All Branches</option>
+            @foreach($branches as $b)
+              <option value="{{ $b->id }}" {{ (!is_all_branches() && (string)$b->id === (string)active_branch_id()) ? 'selected' : '' }}>{{ $b->name }}</option>
+            @endforeach
+          </select>
+        </div>
         @if(auth()->user()->hasRole('Admin'))
         <div class="col-md-2">
           <label class="form-label">Cashier</label>
@@ -505,7 +514,7 @@ $(document).ready(function() {
 
   // ─── Search ───
   $('#btnSearch').on('click', fetchData);
-  $('#start_date, #end_date, #user_id').on('change', fetchData);
+  $('#start_date, #end_date, #user_id, #branch_id').on('change', fetchData);
 
   // ─── Keyboard shortcut: Enter ───
   $('#ClosingFilterForm').on('keydown', function(e) {
@@ -517,7 +526,8 @@ $(document).ready(function() {
     let start = $('#start_date').val();
     let end = $('#end_date').val();
     let user = $('#user_id').val();
-    window.open("{{ route('report.sale_closing.print') }}?start_date=" + start + "&end_date=" + end + "&user_id=" + user, '_blank');
+    let branch = $('#branch_id').val();
+    window.open("{{ route('report.sale_closing.print') }}?start_date=" + start + "&end_date=" + end + "&user_id=" + user + "&branch_id=" + branch, '_blank');
   });
 
   // ─── Fetch ───
@@ -525,13 +535,14 @@ $(document).ready(function() {
     let start = $('#start_date').val();
     let end = $('#end_date').val();
     let user = $('#user_id').val();
+    let branch = $('#branch_id').val();
 
     $('#scLoader').addClass('show');
 
     $.ajax({
       url: "{{ route('report.sale_closing.fetch') }}",
       type: "GET",
-      data: { start_date: start, end_date: end, user_id: user },
+      data: { start_date: start, end_date: end, user_id: user, branch_id: branch },
       success: function(res) {
         $('#scLoader').removeClass('show');
 

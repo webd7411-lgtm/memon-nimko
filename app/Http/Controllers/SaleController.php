@@ -531,6 +531,19 @@ class SaleController extends Controller
                 $stockQty = $vStock ? (float) $vStock->qty : 0;
             }
             
+            // Check cost price / purchase price
+            $costPrice = (float)($v->cost_price ?? 0);
+            if ($costPrice <= 0) {
+                $lastPi = DB::table('purchase_items')
+                    ->where('product_id', $product->id)
+                    ->where('variant_id', $v->id)
+                    ->orderBy('id', 'desc')
+                    ->value('price');
+                if ($lastPi && (float)$lastPi > 0) {
+                    $costPrice = (float)$lastPi;
+                }
+            }
+
             return [
                 'id'              => $v->id,
                 'name'            => $v->variant_name,
@@ -539,18 +552,34 @@ class SaleController extends Controller
                 'size_unit'       => $v->size_unit,
                 'price'           => (float) $v->price,
                 'wholesale_price' => (float) ($v->wholesale_price ?: $v->price),
+                'cost_price'      => $costPrice,
+                'purchase_price'  => $costPrice,
                 'stock'           => $stockQty,
                 'is_default'      => $v->is_default,
             ];
         });
 
+        $prodCostPrice = (float)($product->cost_price ?? 0);
+        if ($prodCostPrice <= 0) {
+            $lastProdPi = DB::table('purchase_items')
+                ->where('product_id', $product->id)
+                ->orderBy('id', 'desc')
+                ->value('price');
+            if ($lastProdPi && (float)$lastProdPi > 0) {
+                $prodCostPrice = (float)$lastProdPi;
+            }
+        }
+
         return response()->json([
-            'product_id'   => $product->id,
-            'item_name'    => $product->item_name,
-            'item_code'    => $product->item_code,
-            'unit_type'    => $product->unit_type ?? 'piece',
-            'total_stock'  => (float) $totalStock,
-            'variants'     => $variants,
+            'product_id'     => $product->id,
+            'item_name'      => $product->item_name,
+            'item_code'      => $product->item_code,
+            'unit_type'      => $product->unit_type ?? 'piece',
+            'price'          => (float) ($product->price ?? 0),
+            'cost_price'     => $prodCostPrice,
+            'purchase_price' => $prodCostPrice,
+            'total_stock'    => (float) $totalStock,
+            'variants'       => $variants,
         ]);
     }
 
@@ -597,6 +626,8 @@ class SaleController extends Controller
                         'note'             => $p->note,
                         'wholesale_price'  => $v->wholesale_price ?: $p->wholesale_price,
                         'price'            => $v->price ?: $p->price,
+                        'cost_price'       => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
+                        'purchase_price'   => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
                         'original_price'   => $v->price ?: $p->price,
                         'discount_percent' => 0,
                         'discount_amount'  => 0,
@@ -619,6 +650,8 @@ class SaleController extends Controller
                     'note'             => $p->note,
                     'wholesale_price'  => $p->wholesale_price,
                     'price'            => $price,
+                    'cost_price'       => (float)($p->cost_price ?? 0),
+                    'purchase_price'   => (float)($p->cost_price ?? 0),
                     'original_price'   => $p->price,
                     'discount_percent' => $p->activeDiscount?->discount_percentage ?? 0,
                     'discount_amount'  => $p->activeDiscount?->total_discount ?? 0,
@@ -643,6 +676,8 @@ class SaleController extends Controller
                 'note'             => $p->note,
                 'wholesale_price'  => $v->wholesale_price ?: $p->wholesale_price,
                 'price'            => $v->price ?: $p->price,
+                'cost_price'       => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
+                'purchase_price'   => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
                 'original_price'   => $v->price ?: $p->price,
                 'discount_percent' => 0,
                 'discount_amount'  => 0,
@@ -655,6 +690,10 @@ class SaleController extends Controller
 
     public function getActiveSaleForTable($table_id)
     {
+        if (!config('app.enable_restaurant_tables', false)) {
+            return response()->json(['success' => false, 'message' => 'Table facility is currently disabled.'], 403);
+        }
+
         $table = \App\Models\Table::find($table_id);
         if (!$table || $table->status !== 'occupied') {
             return response()->json(['success' => false, 'message' => 'Table not occupied']);
@@ -734,6 +773,10 @@ class SaleController extends Controller
 
     public function printTableBill($table_id)
     {
+        if (!config('app.enable_restaurant_tables', false)) {
+            return response('<h3>Restaurant tables facility is currently disabled.</h3>', 403);
+        }
+
         $table = \App\Models\Table::find($table_id);
         if (!$table || $table->status !== 'occupied') {
             return response('<h3>Table not occupied</h3>');

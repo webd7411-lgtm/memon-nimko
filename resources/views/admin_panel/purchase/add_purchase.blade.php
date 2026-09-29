@@ -735,6 +735,32 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
                 <input type="hidden" name="net_amount" id="netHid" value="0.00">
               </div>
             </div>
+
+            <div class="row g-3 align-items-end mt-2 pt-3 border-top">
+              <div class="col-md-3">
+                <div class="sm-lbl text-primary"><i class="bi bi-cash-stack me-1"></i> Paid to Vendor (Rs)</div>
+                <input type="number" step="0.01" name="paid_amount" id="paidFld" class="sm-inp" value="0" min="0" placeholder="0.00" style="border-color:#3b82f6; font-weight:700; color:#1d4ed8;">
+              </div>
+              <div class="col-md-3">
+                <div class="sm-lbl"><i class="bi bi-credit-card me-1"></i> Payment Method</div>
+                <select name="payment_method" id="payMethodFld" class="sm-inp">
+                  <option value="Cash">💵 Cash</option>
+                  <option value="Online / Bank">🏦 Online / Bank</option>
+                  <option value="Cheque">📄 Cheque</option>
+                  <option value="Other">✨ Other</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <div class="sm-lbl text-danger"><i class="bi bi-clock-history me-1"></i> Due Balance (Rs)</div>
+                <div class="sm-val text-danger" id="dueDsp">0.00</div>
+                <input type="hidden" name="due_amount" id="dueHid" value="0.00">
+              </div>
+              <div class="col-md-3">
+                <div class="sm-lbl">Payment Note (Optional)</div>
+                <input type="text" name="payment_note" id="payNoteFld" class="sm-inp" placeholder="e.g. Paid in full / advance">
+              </div>
+            </div>
+
             <div class="mt-4 text-end">
               <button type="button" id="svBtn" class="pp-btn px-5">
                 <i class="bi bi-check-circle"></i>
@@ -848,11 +874,12 @@ $(document).ready(function() {
       if (seen[p.id]) return; seen[p.id] = true;
       let gram = p.unit_type === 'kg' || (p.item_name && p.item_name.toLowerCase().includes('gram')) || (p.unit && p.unit.name && p.unit.name.toLowerCase().includes('gram'));
       let sz = (p.variant_id && !gram) ? '<span class="ri-sz"><i class="bi bi-grid-3x3-gap"></i> Sizes</span>' : '';
+      let dispPr = p.cost_price || p.purchase_price || 0;
       h += `<div class="pp-res-item" data-idx="${i}" data-pid="${p.id}" data-gram="${gram ? 1 : 0}" id="psr-${i}">
         <strong class="ri-nm">${esc(p.item_name.split(' (')[0])}</strong>
         <div class="ri-meta">
           <span class="ri-cd"><i class="bi bi-upc-scan"></i> ${esc(p.item_code || '-')}</span>
-          <span class="ri-pr">Rs ${p.wholesale_price || p.price || 0}</span>
+          <span class="ri-pr">Cost: Rs ${dispPr}</span>
           ${sz}
         </div>
       </div>`;
@@ -883,12 +910,19 @@ $(document).ready(function() {
     let b = '';
     if (p.variants && p.variants.length > 0) {
       p.variants.forEach(function(v) {
-        let wp = v.wholesale_price || v.price || 0;
-        b += `<button class="vbtn" data-vid="${v.id}" data-sl="${v.size_label || v.name}" data-wp="${wp}" data-pr="${v.price || 0}">${v.size_label || v.name}</button>`;
+        let cp = (v.cost_price !== undefined && v.cost_price !== null && parseFloat(v.cost_price) > 0)
+                  ? parseFloat(v.cost_price)
+                  : (parseFloat(v.purchase_price) || 0);
+        b += `<button class="vbtn" data-vid="${v.id}" data-sl="${v.size_label || v.name}" data-cp="${cp}" data-pr="${v.price || 0}">${v.size_label || v.name}</button>`;
       });
     } else {
+      let cp = (p.cost_price !== undefined && p.cost_price !== null && parseFloat(p.cost_price) > 0)
+                ? parseFloat(p.cost_price)
+                : (parseFloat(p.purchase_price) || 0);
       b = `<button class="nvbtn sel" data-vid="" data-sl=""><i class="bi bi-dash-circle me-1"></i>Default</button>`;
-      curVar = { id: null, label: '', price: 0 };
+      curVar = { id: null, label: '', price: cp };
+      $('#mPrice').val(cp > 0 ? cp : '');
+      calcM();
     }
 
     $('#vBtns').html(b);
@@ -897,28 +931,39 @@ $(document).ready(function() {
   }
 
   $('#vModal').on('shown.bs.modal', function() {
-    $('#mQty').focus().select();
+    $('#mPrice').focus().select();
   });
 
   $(document).on('click', '.vbtn', function() {
     $('.vbtn').removeClass('sel'); $(this).addClass('sel');
-    let pr = parseFloat($(this).data('wp')) || parseFloat($(this).data('pr')) || 0;
-    curVar = { id: $(this).data('vid'), label: $(this).data('sl'), price: pr };
-    $('#mPrice').val(pr > 0 ? pr : ''); calcM(); $('#mQty').focus().select();
+    let cp = parseFloat($(this).data('cp')) || 0;
+    curVar = { id: $(this).data('vid'), label: $(this).data('sl'), price: cp };
+    $('#mPrice').val(cp > 0 ? cp : ''); calcM();
+    $('#mPrice').focus().select();
   });
 
   $(document).on('click', '.nvbtn', function() {
     curVar = { id: null, label: '', price: parseFloat($('#mPrice').val()) || 0 }; calcM();
+    $('#mPrice').focus().select();
   });
 
   $('#mPrice, #mQty').on('input', calcM);
   function calcM() { let p = parseFloat($('#mPrice').val()) || 0, q = parseFloat($('#mQty').val()) || 0; $('#mTot').text((p * q).toFixed(2)); }
 
-  // ─── ENTER KEY IN MODAL TO ADD ITEM ───
-  $('#vModal').on('keydown', 'input, button', function(e) {
+  // ─── ENTER KEY IN MODAL TO NAVIGATE AND ADD ITEM ───
+  $('#vModal').on('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      $('#addBtn').click();
+      if (e.target.id === 'mPrice') {
+        $('#mQty').focus().select();
+      } else if (e.target.id === 'mQty') {
+        $('#addBtn').click();
+      } else if ($(e.target).hasClass('vbtn')) {
+        $(e.target).click();
+        $('#mPrice').focus().select();
+      } else {
+        $('#addBtn').click();
+      }
     }
   });
 
@@ -1038,12 +1083,18 @@ $(document).ready(function() {
     if (af) cancelAnimationFrame(af);
     af = requestAnimationFrame(function() {
       let sub = items.reduce(function(s, it) { return s + it.lt; }, 0);
-      let d = parseFloat($('#discFld').val()) || 0, e = parseFloat($('#extFld').val()) || 0, n = sub - d + e;
-      $('#subDsp').text(sub.toFixed(2)); $('#netDsp').text(n.toFixed(2)); $('#netHid').val(n.toFixed(2));
+      let d = parseFloat($('#discFld').val()) || 0, e = parseFloat($('#extFld').val()) || 0, n = Math.max(0, sub - d + e);
+      let p = parseFloat($('#paidFld').val()) || 0;
+      let due = Math.max(0, n - p);
+      $('#subDsp').text(sub.toFixed(2));
+      $('#netDsp').text(n.toFixed(2));
+      $('#netHid').val(n.toFixed(2));
+      $('#dueDsp').text(due.toFixed(2));
+      $('#dueHid').val(due.toFixed(2));
     });
   }
 
-  $('#discFld, #extFld').on('input', updS);
+  $('#discFld, #extFld, #paidFld').on('input', updS);
 
   // ─── SAVE ───
   $('#svBtn').on('click', function() {

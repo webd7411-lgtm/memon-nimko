@@ -11,6 +11,7 @@ use App\Models\PurchaseItem;
 use App\Models\Stock;
 use Illuminate\Support\Facades\DB;
 use App\Models\VendorLedger;
+use App\Models\VendorPayment;
 use App\Models\InwardGatepass;
 use App\Models\PurchaseReturn;
 use App\Models\WarehouseStock;
@@ -272,42 +273,72 @@ class PurchaseController extends Controller
 
             /* ================= TOTALS ================= */
 
-            $discount  = $request->discount ?? 0;
-            $extraCost = $request->extra_cost ?? 0;
-            $netAmount = ($subtotal - $discount) + $extraCost;
+            $discount   = floatval($request->discount ?? 0);
+            $extraCost  = floatval($request->extra_cost ?? 0);
+            $netAmount  = max(0, ($subtotal - $discount) + $extraCost);
+            $paidAmount = floatval($request->paid_amount ?? 0);
+            $dueAmount  = max(0, $netAmount - $paidAmount);
+            $status     = ($paidAmount >= $netAmount && $netAmount > 0) ? 'paid' : (($paidAmount > 0) ? 'partial' : 'unpaid');
 
             $purchase->update([
-                'subtotal'   => $subtotal,
-                'discount'   => $discount,
-                'extra_cost' => $extraCost,
-                'net_amount' => $netAmount,
-                'due_amount' => $netAmount,
+                'subtotal'        => $subtotal,
+                'discount'        => $discount,
+                'extra_cost'      => $extraCost,
+                'net_amount'      => $netAmount,
+                'paid_amount'     => $paidAmount,
+                'due_amount'      => $dueAmount,
+                'status_purchase' => $status,
             ]);
 
-            /* ================= VENDOR LEDGER ================= */
-
-            /* ================= VENDOR LEDGER ================= */
+            /* ================= VENDOR LEDGER & PAYMENT ================= */
 
             $vendorId = $validated['vendor_id'] ?? null;
             
             if ($vendorId) {
-            $ledger = VendorLedger::firstOrNew(['vendor_id' => $vendorId]);
-            
-            // If new ledger (shouldn't happen if vendor created properly, but safety fallback)
-            if (!$ledger->exists) {
-                // Initialize with Vendor's opening balance if available
-                $v = Vendor::find($vendorId);
-                $initialParams = $v ? $v->opening_balance : 0;
-                $ledger->opening_balance = $initialParams;
-                $ledger->closing_balance = $initialParams;
-                $ledger->previous_balance = 0;
-            }
+                $ledger = VendorLedger::firstOrNew(['vendor_id' => $vendorId]);
+                
+                // If new ledger (shouldn't happen if vendor created properly, but safety fallback)
+                if (!$ledger->exists) {
+                    $v = Vendor::find($vendorId);
+                    $initialParams = $v ? $v->opening_balance : 0;
+                    $ledger->opening_balance = $initialParams;
+                    $ledger->closing_balance = $initialParams;
+                    $ledger->previous_balance = 0;
+                }
 
-            // Update stats
-            $ledger->admin_or_user_id = auth()->id();
-            $ledger->previous_balance = $ledger->closing_balance; // Set previous to what it was before this purchase
-            $ledger->closing_balance  += $netAmount; // Add purchase amount
-            $ledger->save();
+                // Update stats
+                $ledger->admin_or_user_id = auth()->id();
+                $ledger->previous_balance = $ledger->closing_balance;
+                $ledger->closing_balance  += $netAmount; // Add purchase bill amount
+
+                // If paid amount was entered directly at purchase creation
+                if ($paidAmount > 0) {
+                    $lastPayment = VendorPayment::latest('id')->first();
+                    $nextNumber = 1;
+                    if ($lastPayment && $lastPayment->payment_no) {
+                        $lastNumber = (int) str_replace('PAY-', '', $lastPayment->payment_no);
+                        $nextNumber = $lastNumber + 1;
+                    }
+                    $paymentNo = 'PAY-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+
+                    $paymentNote = $request->payment_note ?: ('Paid on Purchase (' . $purchase->invoice_no . ')');
+
+                    VendorPayment::create([
+                        'payment_no'       => $paymentNo,
+                        'vendor_id'        => $vendorId,
+                        'admin_or_user_id' => auth()->id(),
+                        'branch_id'        => active_branch_id(),
+                        'payment_date'     => $purchase->purchase_date,
+                        'amount'           => $paidAmount,
+                        'payment_method'   => $request->payment_method ?? 'Cash',
+                        'note'             => $paymentNote,
+                    ]);
+
+                    // Deduct paid amount from vendor balance
+                    $ledger->closing_balance -= $paidAmount;
+                }
+
+                $ledger->save();
             }
         });
 

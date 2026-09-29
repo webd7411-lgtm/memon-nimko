@@ -45,6 +45,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Restaurant Tables & Dining Facility
+    |--------------------------------------------------------------------------
+    | Set to false to disable restaurant tables, dining options, and running orders.
+    | Set to true to re-enable anytime.
+    */
+    'enable_restaurant_tables' => (bool) env('ENABLE_RESTAURANT_TABLES', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |
