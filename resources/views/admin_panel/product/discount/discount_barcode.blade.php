@@ -86,7 +86,7 @@
 <body>
     <div class="label">
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 42px; margin-bottom: 3px;">
-        <div class="brand-name">Memon Nimko</div>
+        <div class="brand-name">{{ shop_name() }}</div>
 
         <div class="barcode-block">
             {!! DNS1D::getBarcodeSVG($discount->discount_code, 'C128', 1.4, 20, 'black', false) !!}

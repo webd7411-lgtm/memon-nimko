@@ -15,4 +15,9 @@ class CustomerPayment extends Model
     {
         return $this->belongsTo(Customer::class);
     }
+
+    public function cardAccount()
+    {
+        return $this->belongsTo(Account::class, 'card_account_id');
+    }
 }

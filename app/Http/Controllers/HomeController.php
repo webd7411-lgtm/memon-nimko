@@ -37,8 +37,19 @@ class HomeController extends Controller
 
         $categoryCount = DB::table('categories')->count();
         $subcategoryCount = DB::table('subcategories')->count();
-        $productCount = DB::table('products')->count();
-        $customerscount = DB::table('customers')->count();
+
+        $productCountQuery = DB::table('products');
+        $customersQuery = DB::table('customers');
+        if (!is_all_branches()) {
+            $productCountQuery->whereIn('id', function($q) {
+                $q->select('product_id')->from('stocks')
+                  ->where('branch_id', active_branch_id())
+                  ->whereNull('warehouse_id');
+            });
+            $customersQuery->where('branch_id', active_branch_id());
+        }
+        $productCount = $productCountQuery->count();
+        $customerscount = $customersQuery->count();
 
         $totalPurchases = 0;
         $totalPurchaseReturns = 0;
@@ -104,6 +115,13 @@ class HomeController extends Controller
             $totalPurchaseReturns = $purchaseReturnsQuery->sum('net_amount');
             $totalSales = $salesQuery->sum('sales.total_net');
             $totalSalesReturns = $salesReturnsQuery->sum('sales_returns.total_net');
+
+            $rawMaterialPurchasesQuery = DB::table('raw_material_purchases')
+                ->whereBetween('date', [$startObj->format('Y-m-d'), $endObj->format('Y-m-d')]);
+            if (!is_all_branches()) {
+                $rawMaterialPurchasesQuery->where('branch_id', active_branch_id());
+            }
+            $totalRawMaterialPurchases = (float) $rawMaterialPurchasesQuery->sum('total_cost');
 
             $chartStart = $startObj;
             $chartEnd   = $endObj;
@@ -313,16 +331,35 @@ class HomeController extends Controller
         $grossProfit = $netSales - $netPurchases - $totalExpenses;
 
         // Additional Metrics for New Dashboard Design
-        $suppliersCount = DB::table('vendors')->count();
-        $employeesCount = DB::table('users')->count();
+        $suppliersQuery = DB::table('vendors');
+        $employeesQuery = DB::table('users');
+        if (!is_all_branches()) {
+            $suppliersQuery->whereIn('id', function($q) {
+                $q->select('vendor_id')->from('purchases')->where('branch_id', active_branch_id())
+                  ->union(DB::table('raw_material_purchases')->select('vendor_id')->where('branch_id', active_branch_id()));
+            });
+            $employeesQuery->where('branch_id', active_branch_id());
+        }
+        $suppliersCount = $suppliersQuery->count();
+        $employeesCount = $employeesQuery->count();
 
         // Growth rates calculation vs previous month
         $prevStart = Carbon::now()->subMonth()->startOfMonth()->format('Y-m-d 00:00:00');
         $prevEnd = Carbon::now()->subMonth()->endOfMonth()->format('Y-m-d 23:59:59');
 
-        $prevSales = DB::table('sales')->whereBetween('created_at', [$prevStart, $prevEnd])->sum('total_net');
-        $prevPurchases = DB::table('purchases')->whereBetween('created_at', [$prevStart, $prevEnd])->sum('net_amount');
-        $prevExpenses = DB::table('expense_vouchers')->whereBetween('created_at', [$prevStart, $prevEnd])->sum('total_amount');
+        $prevSalesQ = DB::table('sales')->whereBetween('created_at', [$prevStart, $prevEnd]);
+        $prevPurchasesQ = DB::table('purchases')->whereBetween('created_at', [$prevStart, $prevEnd]);
+        $prevExpensesQ = DB::table('expense_vouchers')->whereBetween('created_at', [$prevStart, $prevEnd]);
+
+        if (!is_all_branches()) {
+            $prevSalesQ->where('branch_id', active_branch_id());
+            $prevPurchasesQ->where('branch_id', active_branch_id());
+            $prevExpensesQ->where('branch_id', active_branch_id());
+        }
+
+        $prevSales = $prevSalesQ->sum('total_net');
+        $prevPurchases = $prevPurchasesQ->sum('net_amount');
+        $prevExpenses = $prevExpensesQ->sum('total_amount');
         $prevGrossProfit = ($prevSales) - ($prevPurchases) - ($prevExpenses);
 
         $calcGrowth = function($current, $previous) {
@@ -339,16 +376,46 @@ class HomeController extends Controller
         $netProfit = $grossProfit;
         $netProfitGrowth = $grossProfitGrowth;
 
-        $prevCustomers = DB::table('customers')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $prevRawPurchasesQ = DB::table('raw_material_purchases')
+            ->whereBetween('date', [
+                Carbon::now()->subMonth()->startOfMonth()->format('Y-m-d'),
+                Carbon::now()->subMonth()->endOfMonth()->format('Y-m-d')
+            ]);
+        if (!is_all_branches()) {
+            $prevRawPurchasesQ->where('branch_id', active_branch_id());
+        }
+        $prevRawPurchases = (float) $prevRawPurchasesQ->sum('total_cost');
+        $rawMaterialGrowth = $calcGrowth($totalRawMaterialPurchases, $prevRawPurchases);
+
+        $prevCustomersQ = DB::table('customers')->where('created_at', '<', Carbon::now()->startOfMonth());
+        $prevSuppliersQ = DB::table('vendors')->where('created_at', '<', Carbon::now()->startOfMonth());
+        $prevProductsQ = DB::table('products')->where('created_at', '<', Carbon::now()->startOfMonth());
+        $prevEmployeesQ = DB::table('users')->where('created_at', '<', Carbon::now()->startOfMonth());
+
+        if (!is_all_branches()) {
+            $prevCustomersQ->where('branch_id', active_branch_id());
+            $prevSuppliersQ->whereIn('id', function($q) {
+                $q->select('vendor_id')->from('purchases')->where('branch_id', active_branch_id())
+                  ->union(DB::table('raw_material_purchases')->select('vendor_id')->where('branch_id', active_branch_id()));
+            });
+            $prevProductsQ->whereIn('id', function($q) {
+                $q->select('product_id')->from('stocks')
+                  ->where('branch_id', active_branch_id())
+                  ->whereNull('warehouse_id');
+            });
+            $prevEmployeesQ->where('branch_id', active_branch_id());
+        }
+
+        $prevCustomers = $prevCustomersQ->count();
         $customersGrowth = $calcGrowth($customerscount, $prevCustomers);
 
-        $prevSuppliers = DB::table('vendors')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $prevSuppliers = $prevSuppliersQ->count();
         $suppliersGrowth = $calcGrowth($suppliersCount, $prevSuppliers);
 
-        $prevProducts = DB::table('products')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $prevProducts = $prevProductsQ->count();
         $productsGrowth = $calcGrowth($productCount, $prevProducts);
 
-        $prevEmployees = DB::table('users')->where('created_at', '<', Carbon::now()->startOfMonth())->count();
+        $prevEmployees = $prevEmployeesQ->count();
         $employeesGrowth = $calcGrowth($employeesCount, $prevEmployees);
 
         // Top Products List
@@ -411,7 +478,18 @@ class HomeController extends Controller
 
         // If no sales in current range, populate top active products from database catalog
         if (empty($topProducts)) {
-            $catalogProds = DB::table('products')->limit(6)->get();
+            $catalogProdsQ = DB::table('products');
+            if (!is_all_branches()) {
+                $catalogProdsQ->whereIn('id', function($q) {
+                    $q->select('product_id')->from('stocks')
+                      ->where('branch_id', active_branch_id())
+                      ->whereNull('warehouse_id');
+                });
+            }
+            $catalogProds = $catalogProdsQ->limit(6)->get();
+            if ($catalogProds->isEmpty()) {
+                $catalogProds = DB::table('products')->limit(6)->get();
+            }
             foreach ($catalogProds as $idx => $sp) {
                 $topProducts[] = [
                     'rank' => $idx + 1,
@@ -442,12 +520,30 @@ class HomeController extends Controller
             }
         } else {
             // Group products by category if no sales
-            $categoriesInDb = DB::table('categories')
+            $catQuery = DB::table('categories')
                 ->leftJoin('products', 'categories.id', '=', 'products.category_id')
-                ->select('categories.name', DB::raw('COUNT(products.id) as p_count'))
-                ->groupBy('categories.id', 'categories.name')
+                ->select('categories.name', DB::raw('COUNT(products.id) as p_count'));
+
+            if (!is_all_branches()) {
+                $catQuery->join('stocks', function($join) {
+                    $join->on('products.id', '=', 'stocks.product_id')
+                         ->where('stocks.branch_id', '=', active_branch_id())
+                         ->whereNull('stocks.warehouse_id');
+                });
+            }
+
+            $categoriesInDb = $catQuery->groupBy('categories.id', 'categories.name')
                 ->orderByDesc('p_count')
                 ->get();
+
+            if ($categoriesInDb->isEmpty()) {
+                $categoriesInDb = DB::table('categories')
+                    ->leftJoin('products', 'categories.id', '=', 'products.category_id')
+                    ->select('categories.name', DB::raw('COUNT(products.id) as p_count'))
+                    ->groupBy('categories.id', 'categories.name')
+                    ->orderByDesc('p_count')
+                    ->get();
+            }
             
             $totalPCount = $categoriesInDb->sum('p_count');
             foreach ($categoriesInDb as $cRow) {
@@ -466,60 +562,110 @@ class HomeController extends Controller
         $catDonutList = array_slice($catDonutList, 0, 10);
 
         // Cash Flow Overview Data
-        $todayIn = DB::table('sales')->whereDate('created_at', date('Y-m-d'))->sum('total_net');
-        $todayOut = DB::table('expense_vouchers')->whereDate('created_at', date('Y-m-d'))->sum('total_amount');
+        $todayInQ = DB::table('sales')->whereDate('created_at', date('Y-m-d'));
+        $todayOutQ = DB::table('expense_vouchers')->whereDate('created_at', date('Y-m-d'));
+        if (!is_all_branches()) {
+            $todayInQ->where('branch_id', active_branch_id());
+            $todayOutQ->where('branch_id', active_branch_id());
+        }
+        $todayIn = $todayInQ->sum('total_net');
+        $todayOut = $todayOutQ->sum('total_amount');
         $totalIn = $totalSales;
         $totalOut = $totalPurchases + $totalExpenses;
 
         // Financial Position Metrics
-        $customerReceivables = DB::table('customer_ledgers')
-            ->whereIn('id', function($q) {
+        $custRecQ = DB::table('customer_ledgers')
+            ->join('customers', 'customer_ledgers.customer_id', '=', 'customers.id')
+            ->whereIn('customer_ledgers.id', function($q) {
                 $q->select(DB::raw('MAX(id)'))->from('customer_ledgers')->groupBy('customer_id');
-            })
-            ->sum('closing_balance');
+            });
+        if (!is_all_branches()) {
+            $custRecQ->where('customers.branch_id', active_branch_id());
+        }
+        $customerReceivables = $custRecQ->sum('customer_ledgers.closing_balance');
 
-        $vendorPayables = DB::table('vendor_ledgers')
-            ->whereIn('id', function($q) {
-                $q->select(DB::raw('MAX(id)'))->from('vendor_ledgers')->groupBy('vendor_id');
-            })
-            ->sum('closing_balance');
+        if (!is_all_branches()) {
+            $vendorPayables = (float) DB::table('purchases')
+                ->where('branch_id', active_branch_id())
+                ->sum('due_amount');
+        } else {
+            $vendorPayables = (float) DB::table('vendor_ledgers')
+                ->whereIn('id', function($q) {
+                    $q->select(DB::raw('MAX(id)'))->from('vendor_ledgers')->groupBy('vendor_id');
+                })
+                ->sum('closing_balance');
+        }
 
-        $stockInventoryValue = DB::table('stocks')
+        $stockValQ = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->sum(DB::raw('stocks.qty * COALESCE(NULLIF(products.price, 0), products.wholesale_price, 0)'));
+            ->whereNull('stocks.warehouse_id');
+        if (!is_all_branches()) {
+            $stockValQ->where('stocks.branch_id', active_branch_id());
+        }
+        $stockInventoryValue = $stockValQ->sum(DB::raw('stocks.qty * COALESCE(NULLIF(products.price, 0), products.wholesale_price, 0)'));
 
-        $cashInHand = DB::table('accounts')
-            ->where('title', 'like', '%Cash%')
-            ->sum('opening_balance');
+        if (!is_all_branches()) {
+            $bId = active_branch_id();
+            // Branch Cash In: Sales (cash part) + Customer Payments (cash)
+            $bSalesCash = (float) DB::table('sales')->where('branch_id', $bId)->sum('cash');
+            $bCustCash  = (float) DB::table('customer_payments')->where('branch_id', $bId)->where('payment_method', 'like', '%Cash%')->sum('amount');
+            
+            // Branch Cash Out: Vendor Payments (cash) + Expense Vouchers
+            $bVendCash  = (float) DB::table('vendor_payments')->where('branch_id', $bId)->where('payment_method', 'like', '%Cash%')->sum('amount');
+            $bExpCash   = (float) DB::table('expense_vouchers')->where('branch_id', $bId)->sum('total_amount');
 
-        $easyPaisaBalance = DB::table('accounts')
-            ->where(function($q) {
-                $q->where('title', 'like', '%Easy%')
-                  ->orWhere('title', 'like', '%Jazz%');
-            })
-            ->sum('opening_balance');
+            // Liquid cash in drawer for active branch
+            $cashInHand = max(0, ($bSalesCash + $bCustCash) - ($bVendCash + $bExpCash));
+            
+            // Bank / Digital transactions for active branch
+            $bSalesCard = (float) DB::table('sales')->where('branch_id', $bId)->sum('card');
+            $bCustBank  = (float) DB::table('customer_payments')->where('branch_id', $bId)->where('payment_method', 'not like', '%Cash%')->sum('amount');
+            $bVendBank  = (float) DB::table('vendor_payments')->where('branch_id', $bId)->where('payment_method', 'not like', '%Cash%')->sum('amount');
+            $branchBankBal = max(0, ($bSalesCard + $bCustBank) - $bVendBank);
 
-        $meezanBalance = DB::table('accounts')
-            ->where(function($q) {
-                $q->where('title', 'like', '%Bank%')
-                  ->orWhere('title', 'like', '%Meezan%');
-            })
-            ->sum('opening_balance');
+            $cashBalance      = $cashInHand + $branchBankBal;
+            $meezanBalance    = $branchBankBal;
+            $easyPaisaBalance = 0;
+        } else {
+            $cashInHand = DB::table('accounts')
+                ->where('title', 'like', '%Cash%')
+                ->sum('opening_balance');
 
-        $cashBalance = DB::table('accounts')->sum('opening_balance');
+            $easyPaisaBalance = DB::table('accounts')
+                ->where(function($q) {
+                    $q->where('title', 'like', '%Easy%')
+                      ->orWhere('title', 'like', '%Jazz%');
+                })
+                ->sum('opening_balance');
+
+            $meezanBalance = DB::table('accounts')
+                ->where(function($q) {
+                    $q->where('title', 'like', '%Bank%')
+                      ->orWhere('title', 'like', '%Meezan%');
+                })
+                ->sum('opening_balance');
+
+            $cashBalance = DB::table('accounts')->sum('opening_balance');
+        }
 
         // Recent Activities List
-        $recentSales = DB::table('sales')
+        $recentSalesQ = DB::table('sales')
             ->select('invoice_no as title', 'total_net as amount', 'created_at', DB::raw("'sale' as type"))
             ->orderBy('id', 'desc')
-            ->limit(4)
-            ->get();
+            ->limit(4);
 
-        $recentPurchases = DB::table('purchases')
+        $recentPurchasesQ = DB::table('purchases')
             ->select('invoice_no as title', 'net_amount as amount', 'created_at', DB::raw("'purchase' as type"))
             ->orderBy('id', 'desc')
-            ->limit(4)
-            ->get();
+            ->limit(4);
+
+        if (!is_all_branches()) {
+            $recentSalesQ->where('branch_id', active_branch_id());
+            $recentPurchasesQ->where('branch_id', active_branch_id());
+        }
+
+        $recentSales = $recentSalesQ->get();
+        $recentPurchases = $recentPurchasesQ->get();
 
         $recentActivities = [];
         foreach ($recentSales->concat($recentPurchases)->sortByDesc('created_at')->take(4) as $actItem) {
@@ -592,6 +738,7 @@ class HomeController extends Controller
             'categoryCount', 'subcategoryCount', 'productCount', 'customerscount',
             'suppliersCount', 'employeesCount',
             'totalPurchases', 'totalPurchaseReturns', 'totalSales', 'totalSalesReturns',
+            'totalRawMaterialPurchases', 'rawMaterialGrowth',
             'totalExpenses', 'netSales', 'netPurchases', 'grossProfit', 'netProfit', 'cashBalance',
             'salesGrowth', 'purchaseGrowth', 'grossProfitGrowth', 'expenseGrowth', 'netProfitGrowth',
             'customersGrowth', 'suppliersGrowth', 'productsGrowth', 'employeesGrowth',

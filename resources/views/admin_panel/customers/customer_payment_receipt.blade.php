@@ -30,11 +30,33 @@
 <body>
 
 <div id="receipt">
+    @php
+        $currentBranch = $payment->branch 
+            ?? ($payment->branch_id ? \App\Models\Branch::find($payment->branch_id) : null)
+            ?? ($payment->customer?->branch ?? null)
+            ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+            ?? \App\Models\Branch::find(active_branch_id())
+            ?? \App\Models\Branch::first();
+
+        $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+        $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+        $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+    @endphp
 
     <div class="center"><img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px;"></div>
-    <div class="center bold">Memon Nimko </div>
-    <div class="center">Customer Payment Receipt</div>
-    <div class="center">{{ now()->format('d-m-Y h:i A') }}</div>
+    <div class="center bold">{{ shop_name() }}</div>
+    <div class="center" style="font-size:11px;">{{ shop_tagline() }}</div>
+    @if(!empty($currentBranch?->name))
+    <div class="center bold" style="font-size:11px; text-transform:uppercase; margin-top:2px;">BRANCH: {{ $currentBranch->name }}</div>
+    @endif
+    @if(!empty($bAddress))
+    <div class="center" style="font-size:10px;">{{ $bAddress }}</div>
+    @endif
+    @if(!empty($bPhone))
+    <div class="center" style="font-size:10px;">Phone: {{ $bPhone }}</div>
+    @endif
+    <div class="center bold" style="margin-top:4px; font-size:11px;">Customer Payment Receipt</div>
+    <div class="center" style="font-size:10px;">{{ now()->format('d-m-Y h:i A') }}</div>
 
     <div class="line"></div>
 
@@ -53,15 +75,33 @@
         </tr>
         <tr>
             <td>Method:</td>
-            <td>{{ ucfirst($payment->payment_method) }}</td>
+            <td class="bold">
+                {{ ucfirst($payment->payment_method ?: 'Cash') }}
+                @if(!empty($payment->cardAccount))
+                    <br><span style="font-size:10px; font-weight:normal;">Bank/Card: {{ $payment->cardAccount->title }}</span>
+                @endif
+                @if($payment->cash > 0 && $payment->card > 0)
+                    <br><span style="font-size:10px; font-weight:normal;">(Cash: Rs {{ number_format($payment->cash, 0) }} | Card: Rs {{ number_format($payment->card, 0) }})</span>
+                @endif
+            </td>
         </tr>
     </table>
 
     <div class="line"></div>
 
     <table>
+        @if($payment->cash > 0 && $payment->card > 0)
         <tr>
-            <td class="bold">Amount:</td>
+            <td>Cash Paid:</td>
+            <td align="right">Rs {{ number_format($payment->cash, 2) }}</td>
+        </tr>
+        <tr>
+            <td>Card Paid:</td>
+            <td align="right">Rs {{ number_format($payment->card, 2) }}</td>
+        </tr>
+        @endif
+        <tr>
+            <td class="bold">Total Amount:</td>
             <td class="bold" align="right">Rs {{ number_format($payment->amount, 2) }}</td>
         </tr>
     </table>
@@ -83,9 +123,10 @@
     <div class="line"></div>
 
     <div class="center">
-        Paid To <strong>Memon Nimko </strong>
+        Paid To <strong>{{ shop_name() }} </strong>
     </div>
-    <div class="center">Thank You</div>
+    <div class="center" style="font-size: 10px; color: #555; margin-top:2px;">Develop By: <strong>{{ developer_name() }}</strong></div>
+    <div class="center">{{ sys_setting('invoice_footer_note', 'Thank You') }}</div>
 
 </div>
 

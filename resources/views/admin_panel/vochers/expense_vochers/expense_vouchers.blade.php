@@ -202,6 +202,86 @@
   padding: 0.65rem 1rem;
   border-bottom: 1px solid var(--evf-border-lt);
 }
+
+@media (max-width: 767.98px) {
+  .evf-hero {
+    padding: 1.2rem 1.1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+  .evf-hero-title h2 { font-size: 1.25rem; }
+  .evf-card { padding: 1rem; border-radius: 14px; }
+  .evf-table thead { display: none; }
+  .evf-table, .evf-table tbody { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
+  .evf-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.85rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  }
+  .evf-table tbody td {
+    padding: 0 !important;
+    border: none !important;
+    width: 100% !important;
+  }
+  .evf-table tbody td:first-child::before {
+    content: "REMARKS / DETAILS";
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--evf-text-muted);
+    margin-bottom: 0.2rem;
+  }
+  .evf-table tbody td:nth-child(2)::before {
+    content: "AMOUNT (PKR)";
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--evf-text-muted);
+    margin-bottom: 0.2rem;
+  }
+  .evf-table tbody td:last-child {
+    margin-top: 0.25rem;
+    padding-top: 0.35rem !important;
+    border-top: 1px dashed #e2e8f0 !important;
+  }
+  .evf-table tbody td:last-child .removeRow {
+    width: 100%;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+  .evf-table tbody td:last-child .removeRow::after {
+    content: " Delete Row";
+  }
+  .evf-table tfoot {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .evf-table tfoot tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+  }
+  .evf-table tfoot th {
+    padding: 0 !important;
+    border: none !important;
+    width: 100% !important;
+  }
+  .evf-table tfoot th:last-child { display: none; }
+}
 </style>
 
 <div class="evf-page">
@@ -289,7 +369,7 @@
         </div>
 
         {{-- Voucher Table --}}
-        <div class="table-responsive rounded-3 border overflow-hidden mb-4">
+        <div class="table-responsive rounded-3 border mb-4">
           <table class="table evf-table align-middle m-0" id="voucherTable">
             <thead>
               <tr>

@@ -11,7 +11,7 @@ class TableController extends Controller
     public function __construct()
     {
         // When tables are disabled, prevent direct access
-        if (!config('app.enable_restaurant_tables', false)) {
+        if (!app()->runningInConsole() && !config('app.enable_restaurant_tables', false)) {
             abort(404, 'Restaurant dining and tables facility is currently disabled.');
         }
     }

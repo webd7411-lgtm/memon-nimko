@@ -117,11 +117,29 @@
         </div>
 
         <div class="header">
+            @php
+                $currentBranch = $gatepass->branch 
+                    ?? ($gatepass->branch_id ? \App\Models\Branch::find($gatepass->branch_id) : null)
+                    ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+                    ?? \App\Models\Branch::find(active_branch_id())
+                    ?? \App\Models\Branch::first();
+
+                $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+                $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+                $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+            @endphp
             <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
-            <h1>Memon Nimko</h1>
-            <p>Sweet & Bakers</p>
-            <p>Chandni Market, Salahuddin Road, Cantt Hyderabad</p>
-            <p>Phone: +92 327 9226901</p>
+            <h1>{{ shop_name() }}</h1>
+            <p>{{ shop_tagline() }}</p>
+            @if(!empty($currentBranch?->name))
+            <p style="font-weight:bold;text-transform:uppercase;margin:3px 0;">BRANCH: {{ $currentBranch->name }}</p>
+            @endif
+            @if(!empty($bAddress))
+            <p>{{ $bAddress }}</p>
+            @endif
+            @if(!empty($bPhone))
+            <p>Phone: {{ $bPhone }}</p>
+            @endif
         </div>
 
         <h2 style="text-align:center; margin-bottom:20px;">Inward Gatepass Receipt</h2>
@@ -220,7 +238,8 @@
 
         <div class="footer">
             This is a system-generated receipt — No signature required. <br>
-            Thank you —Memon Nimko
+            Thank you —{{ shop_name() }} <br>
+            <span style="font-size:10px; color:#666;">Develop By: <strong>{{ developer_name() }}</strong></span>
         </div>
     </div>
 

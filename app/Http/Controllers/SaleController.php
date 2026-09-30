@@ -294,7 +294,8 @@ class SaleController extends Controller
         $Customer = $customerQuery->get();
         $categories = \App\Models\Category::orderBy('name')->get();
         $tables = \App\Models\Table::orderBy('table_name')->get();
-        return view('admin_panel.sale.add_sale', compact('Customer', 'categories', 'tables'));
+        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        return view('admin_panel.sale.add_sale', compact('Customer', 'categories', 'tables', 'bankAccounts'));
     }
 
     public function getPosProducts(Request $request)
@@ -1109,6 +1110,7 @@ class SaleController extends Controller
                     // (Or we can store total in cash/card and keep advance separate)
                     $model->cash = $request->cash ?? 0;
                     $model->card = $request->card ?? 0;
+                    $model->card_account_id = !empty($request->card_account_id) ? $request->card_account_id : null;
                     $model->change = $request->change ?? 0;
                 } else {
                     // This is a new booking or edit of unconfirmed booking
@@ -1119,6 +1121,7 @@ class SaleController extends Controller
                 // New direct sale
                 $model->cash   = $request->cash ?? 0;
                 $model->card   = $request->card ?? 0;
+                $model->card_account_id = !empty($request->card_account_id) ? $request->card_account_id : null;
                 $model->change = $request->change ?? 0;
             }
 
@@ -1161,8 +1164,11 @@ class SaleController extends Controller
             if ($action === 'sale') {
                 $customer_id = $request->customer;
                 if ($customer_id !== 'Walk-in Customer') {
-                    $ledger = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
                     $net = floatval($request->total_net ?? 0);
+                    $paidAmount = floatval($request->cash ?? 0) + floatval($request->card ?? 0);
+
+                    // Update customer ledger with full sale amount (debit/receivable)
+                    $ledger = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
                     if ($ledger) {
                         $ledger->previous_balance = $ledger->closing_balance;
                         $ledger->closing_balance += $net;
@@ -1175,6 +1181,54 @@ class SaleController extends Controller
                             'closing_balance'  => $net,
                             'opening_balance'  => $net,
                         ]);
+                    }
+
+                    // If partial payment (udhar), also record what was paid in customer_payments
+                    // so that the closing balance reduces by amount paid
+                    if ($paidAmount > 0 && $paidAmount < $net) {
+                        $lastCp = DB::table('customer_payments')->latest('id')->first();
+                        $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
+                        DB::table('customer_payments')->insert([
+                            'received_no'      => $nextNo,
+                            'customer_id'      => $customer_id,
+                            'admin_or_user_id' => auth()->id(),
+                            'payment_date'     => now()->toDateString(),
+                            'amount'           => $paidAmount,
+                            'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
+                            'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
+                            'branch_id'        => active_branch_id(),
+                            'created_at'       => now(),
+                            'updated_at'       => now(),
+                        ]);
+                        // Reduce ledger by what was paid
+                        $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
+                        if ($ledger2) {
+                            $ledger2->previous_balance = $ledger2->closing_balance;
+                            $ledger2->closing_balance -= $paidAmount;
+                            $ledger2->save();
+                        }
+                    } elseif ($paidAmount >= $net && $net > 0) {
+                        // Full payment — record in customer_payments too (reduces balance back to 0)
+                        $lastCp = DB::table('customer_payments')->latest('id')->first();
+                        $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
+                        DB::table('customer_payments')->insert([
+                            'received_no'      => $nextNo,
+                            'customer_id'      => $customer_id,
+                            'admin_or_user_id' => auth()->id(),
+                            'payment_date'     => now()->toDateString(),
+                            'amount'           => $net,
+                            'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
+                            'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
+                            'branch_id'        => active_branch_id(),
+                            'created_at'       => now(),
+                            'updated_at'       => now(),
+                        ]);
+                        $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
+                        if ($ledger2) {
+                            $ledger2->previous_balance = $ledger2->closing_balance;
+                            $ledger2->closing_balance -= $net;
+                            $ledger2->save();
+                        }
                     }
                 }
             }
@@ -1409,6 +1463,7 @@ class SaleController extends Controller
             $sale->total_net       = $request->input('total_net', $sale->total_net ?? array_sum($combined_totals));
             $sale->cash            = $request->input('cash', 0);
             $sale->card            = $request->input('card', 0);
+            $sale->card_account_id = $request->input('card_account_id', null);
             $sale->change          = $request->input('change', 0);
             
             if ($action === 'sale') {

@@ -80,11 +80,29 @@
 
     {{-- HEADER --}}
     <div class="header">
+        @php
+            $currentBranch = $purchase_return->branch 
+                ?? ($purchase_return->branch_id ? \App\Models\Branch::find($purchase_return->branch_id) : null)
+                ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+                ?? \App\Models\Branch::find(active_branch_id())
+                ?? \App\Models\Branch::first();
+
+            $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+            $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+            $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+        @endphp
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
-        <h1>Memon Nimko</h1>
-        <p>Sweets & Bakers</p>
-        <p>Chandni Market, Salahuddin Road, Cantt Hyderabad</p>
-        <p>Phone: +92 327 9226901</p>
+        <h1>{{ shop_name() }}</h1>
+        <p>{{ shop_tagline() }}</p>
+        @if(!empty($currentBranch?->name))
+        <p style="font-weight:bold;text-transform:uppercase;margin:3px 0;">BRANCH: {{ $currentBranch->name }}</p>
+        @endif
+        @if(!empty($bAddress))
+        <p>{{ $bAddress }}</p>
+        @endif
+        @if(!empty($bPhone))
+        <p>Phone: {{ $bPhone }}</p>
+        @endif
     </div>
 
     <h2 class="text-center">Purchase Return Invoice</h2>
@@ -176,7 +194,8 @@
     </p>
 
     <div style="margin-top:40px; text-align:center; font-size:12px; border-top:1px solid #ccc; padding-top:10px;">
-        Thank you for your business — <strong>Memon Nimko</strong>
+        Thank you for your business — <strong>{{ shop_name() }}</strong> <br>
+        <span style="font-size:10px; color:#666;">Develop By: <strong>{{ developer_name() }}</strong></span>
     </div>
 
 </div>

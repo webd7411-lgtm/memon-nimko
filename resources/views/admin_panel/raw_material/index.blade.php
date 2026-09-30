@@ -1224,7 +1224,7 @@ function printReportSection(tableId, title) {
   printWin.document.write('}');
   printWin.document.write('</style>');
   printWin.document.write('</head><body>');
-  printWin.document.write('<div class="header"><h2>Memon Nimko</h2><h4>' + title + '</h4><p>Date: ' + new Date().toLocaleString() + '</p></div>');
+  printWin.document.write('<div class="header"><h2>{{ shop_name() }}</h2><h4>' + title + '</h4><p>Date: ' + new Date().toLocaleString() + ' | Developed by {{ developer_name() }}</p></div>');
   printWin.document.write(tableHtml);
   printWin.document.write('</body></html>');
   printWin.document.close();

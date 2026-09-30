@@ -123,6 +123,37 @@
                                     @endif
                                 </div>
 
+                                {{-- Credit Allowed Toggle --}}
+                                <div class="mb-5">
+                                    <div class="d-flex align-items-center gap-3 border rounded p-3 bg-light">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                   name="credit_allowed" id="creditAllowedToggle" value="1"
+                                                   {{ old('credit_allowed', $customer->credit_allowed) ? 'checked' : '' }}
+                                                   style="width:2.5em;height:1.3em;">
+                                        </div>
+                                        <div>
+                                            <label for="creditAllowedToggle" class="fw-bold text-dark mb-0" style="cursor:pointer;">
+                                                <i class="fas fa-credit-card text-success me-1"></i> Credit (Udhar) Allowed
+                                            </label>
+                                            <div class="text-muted" style="font-size:12px;">Agar on ho to is customer ko POS me partial payment par sale karna allowed hoga</div>
+                                        </div>
+                                        <span id="creditBadge" class="badge ms-auto {{ old('credit_allowed', $customer->credit_allowed) ? 'bg-success' : 'bg-secondary' }}" style="font-size:13px;">
+                                            {{ old('credit_allowed', $customer->credit_allowed) ? '✅ ON' : '❌ OFF' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <script>
+                                document.getElementById('creditAllowedToggle').addEventListener('change', function() {
+                                    const badge = document.getElementById('creditBadge');
+                                    if (this.checked) {
+                                        badge.textContent = '✅ ON'; badge.className = 'badge ms-auto bg-success';
+                                    } else {
+                                        badge.textContent = '❌ OFF'; badge.className = 'badge ms-auto bg-secondary';
+                                    }
+                                });
+                                </script>
+
                                 <!-- Action Buttons -->
                                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                     <a href="{{ route('customers.index') }}" class="btn btn-light btn-lg px-4 fw-bold text-secondary">Cancel</a>

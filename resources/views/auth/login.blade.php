@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login | Memon Nimko</title>
+    <title>Login | {{ sys_setting('software_name', 'Memon Nimko') }}</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -260,9 +260,9 @@
     <div class="login-wrapper">
         <div class="login-card">
             <div class="brand-header">
-                <img src="{{ asset('assets/images/logo.png') }}" alt="Memon Nimko Logo" style="max-height: 90px; margin-bottom: 12px;">
-                <h2>Memon Nimko<span>.</span></h2>
-                <p>Bakery Management System</p>
+                <img src="{{ asset('assets/images/logo.png') }}" alt="{{ shop_name() }}" style="max-height: 90px; margin-bottom: 12px;">
+                <h2>{{ shop_name() }}<span>.</span></h2>
+                <p>{{ shop_tagline() }}</p>
             </div>
 
             <form method="POST" action="{{ route('login') }}">
@@ -294,6 +294,10 @@
             <a href="/" class="back-to-site">
                 <i class="fas fa-arrow-left mr-2"></i> Back to Homepage
             </a>
+
+            <div class="text-center mt-3 pt-2" style="font-size: 0.76rem; color: #888; border-top: 1px dashed rgba(0,0,0,0.08);">
+                Developed by <strong style="color: #444;">{{ developer_name() }}</strong>
+            </div>
         </div>
     </div>
 

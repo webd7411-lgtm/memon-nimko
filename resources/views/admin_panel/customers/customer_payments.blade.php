@@ -157,7 +157,21 @@
                                 <td><span class="badge bg-light text-dark border">{{ $p->customer->branch->name ?? 'Main Branch' }}</span></td>
                                 <td class="cp-amt text-end">{{ number_format($p->amount, 2) }}</td>
                                 <td><i class="bi bi-calendar3 me-1 text-muted"></i>{{ $p->payment_date }}</td>
-                                <td><span class="rp-chip bg-method">{{ $p->payment_method ?? '—' }}</span></td>
+                                <td>
+                                    @if($p->cash > 0 && $p->card > 0)
+                                        <span class="rp-chip bg-method" style="background:#fef3c7 !important; color:#92400e !important; border:1px solid #fde68a;" title="Cash: {{ number_format($p->cash, 2) }} | Card: {{ number_format($p->card, 2) }}">
+                                            <i class="bi bi-pie-chart-fill me-1"></i> ⚡ Split: 💵 {{ number_format($p->cash, 0) }} + 💳 {{ number_format($p->card, 0) }}{{ $p->cardAccount ? ' ('.$p->cardAccount->title.')' : '' }}
+                                        </span>
+                                    @elseif($p->card > 0 || $p->payment_method === 'Card')
+                                        <span class="rp-chip bg-method" style="background:#eff6ff !important; color:#1d4ed8 !important; border:1px solid #bfdbfe;">
+                                            <i class="bi bi-credit-card me-1"></i> 💳 Card{{ $p->cardAccount ? ' ('.$p->cardAccount->title.')' : '' }}
+                                        </span>
+                                    @else
+                                        <span class="rp-chip bg-method" style="background:#ecfdf5 !important; color:#047857 !important; border:1px solid #a7f3d0;">
+                                            <i class="bi bi-cash me-1"></i> 💵 {{ $p->payment_method ?: 'Cash' }}
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="text-muted" style="font-size:.76rem;">{{ $p->note ?? '—' }}</td>
                                 <td class="text-center" style="white-space:nowrap;">
                                     <a href="{{ route('customer.payments.edit', $p->id) }}" class="btn btn-info me-1" title="Edit">
@@ -198,7 +212,16 @@
                     <b>{{ number_format($p->amount, 2) }}</b>
                 </div>
                 <div class="rp-uc-info">
-                    <span>Method: {{ $p->payment_method ?? '—' }}</span>
+                    <span>
+                        Method: 
+                        @if($p->cash > 0 && $p->card > 0)
+                            ⚡ Split (💵 {{ number_format($p->cash, 0) }} + 💳 {{ number_format($p->card, 0) }})
+                        @elseif($p->card > 0 || $p->payment_method === 'Card')
+                            💳 Card {{ $p->cardAccount ? '('.$p->cardAccount->title.')' : '' }}
+                        @else
+                            {{ $p->payment_method ?: '💵 Cash' }}
+                        @endif
+                    </span>
                     <span>Note: {{ $p->note ?? '—' }}</span>
                 </div>
                 <div class="rp-uc-acts">
@@ -223,10 +246,16 @@
         </div>
     </div>
 
+    @php
+        if (!isset($bankAccounts)) {
+            $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        }
+    @endphp
+
     <!-- Payment Modal -->
     <div class="modal fade" id="paymentModal">
-        <div class="modal-dialog">
-            <form action="{{ route('customer.payments.store') }}" method="POST">@csrf
+        <div class="modal-dialog modal-dialog-centered">
+            <form action="{{ route('customer.payments.store') }}" method="POST" id="customerPaymentForm">@csrf
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title"><i class="bi bi-cash-coin me-1"></i> Add Customer Payment</h5>
@@ -248,38 +277,88 @@
                             <input type="text" id="customer_balance" class="form-control" readonly placeholder="Select a customer">
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Adjustment Type</label>
-                            <select name="adjustment_type" class="form-select" required>
-                                <option value="minus">- Minus (Payment Received)</option>
-                                <option value="plus">+ Plus (Outstanding Increased)</option>
-                            </select>
-                        </div>
-
-                        <div class="row g-3 mb-1">
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    <label class="form-label">Payment Date</label>
-                                    <input type="date" name="payment_date" class="form-control" required>
-                                </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Adjustment Type</label>
+                                <select name="adjustment_type" class="form-select" required>
+                                    <option value="minus">- Minus (Payment Received)</option>
+                                    <option value="plus">+ Plus (Outstanding Increased)</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Payment Date</label>
+                                <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                             </div>
                         </div>
 
+                        {{-- Payment Mode Selection (Pills) --}}
                         <div class="mb-3">
-                            <label class="form-label">Amount</label>
-                            <input type="number" step="0.01" name="amount" id="amount" class="form-control" required>
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Payment Mode</span>
+                                <span class="badge bg-light text-dark border" style="font-size:10px;">Select Mode</span>
+                            </label>
+                            <div class="btn-group w-100" role="group" id="cpayModeGroup">
+                                <input type="radio" class="btn-check" name="payment_mode" id="cpay_mode_cash" value="cash" checked onchange="toggleCpayMode('cash')">
+                                <label class="btn btn-outline-success fw-bold" for="cpay_mode_cash" style="font-size:12px; padding:7px 0;"><i class="bi bi-cash-stack"></i> 💵 Cash</label>
+
+                                <input type="radio" class="btn-check" name="payment_mode" id="cpay_mode_card" value="card" onchange="toggleCpayMode('card')">
+                                <label class="btn btn-outline-primary fw-bold" for="cpay_mode_card" style="font-size:12px; padding:7px 0;"><i class="bi bi-credit-card"></i> 💳 Card / Bank</label>
+
+                                <input type="radio" class="btn-check" name="payment_mode" id="cpay_mode_split" value="split" onchange="toggleCpayMode('split')">
+                                <label class="btn btn-outline-warning fw-bold text-dark" for="cpay_mode_split" style="font-size:12px; padding:7px 0;"><i class="bi bi-pie-chart"></i> ⚡ Split</label>
+                            </div>
                         </div>
+
+                        {{-- Split Payment Inputs (Only shown when mode is split) --}}
+                        <div id="cpaySplitWrap" style="display:none; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:10px; margin-bottom:12px;">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label mb-1" style="font-size:11px; font-weight:700;">💵 Cash Amount</label>
+                                    <input type="number" step="any" name="cash" id="cpay_cash" class="form-control form-control-sm" placeholder="0" oninput="calcCpaySplit()">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label mb-1" style="font-size:11px; font-weight:700;">💳 Card Amount</label>
+                                    <input type="number" step="any" name="card" id="cpay_card" class="form-control form-control-sm" placeholder="0" oninput="calcCpaySplit()">
+                                </div>
+                            </div>
+                            <div class="d-flex gap-1 justify-content-end">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fw-bold" style="font-size:11px; background:#fff;" onclick="cpayQuickSplit('50')">⚡ 50/50 Split</button>
+                            </div>
+                        </div>
+
+                        {{-- Card / Bank Account Dropdown (Shown in card & split modes) --}}
+                        <div class="mb-3" id="cpayAccountWrap" style="display:none; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:10px; padding:9px 12px;">
+                            <label class="form-label d-flex justify-content-between align-items-center mb-1 text-primary" style="font-size:11.5px; font-weight:700;">
+                                <span><i class="bi bi-bank me-1"></i> Select Card / Bank Account:</span>
+                                <span class="badge bg-primary" style="font-size:9.5px;">Chart of Accounts</span>
+                            </label>
+                            <select name="card_account_id" id="cpay_card_account_id" class="form-select form-select-sm" style="font-weight:600;">
+                                <option value="">-- Choose Account / POS Machine --</option>
+                                @if(isset($bankAccounts) && count($bankAccounts) > 0)
+                                    @foreach($bankAccounts as $acc)
+                                        <option value="{{ $acc->id }}">{{ $acc->title }} {{ $acc->head ? '('.$acc->head->name.')' : '' }}</option>
+                                    @endforeach
+                                @else
+                                    <option value="" disabled>No accounts found in Chart of Accounts</option>
+                                @endif
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" id="cpayAmountLabel">Total Amount (Rs)</label>
+                            <input type="number" step="0.01" name="amount" id="amount" class="form-control" required placeholder="0.00" oninput="handleCpayAmountInput()">
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">Amount in Words</label>
                             <input type="text" id="amount_in_words" class="form-control fw-words" readonly>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Payment Method</label>
-                            <input type="text" name="payment_method" class="form-control" placeholder="e.g. Cash, Bank">
-                        </div>
+
+                        <input type="hidden" name="payment_method" id="cpay_payment_method" value="Cash">
+
                         <div class="mb-1">
                             <label class="form-label">Note</label>
-                            <textarea name="note" class="form-control" rows="2"></textarea>
+                            <textarea name="note" class="form-control" rows="2" placeholder="Optional payment note..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -295,18 +374,99 @@
 
 @section('scripts')
 <script>
+    let currentCpayMode = 'cash';
+
+    function toggleCpayMode(mode) {
+        currentCpayMode = mode;
+        const splitWrap = document.getElementById('cpaySplitWrap');
+        const accWrap = document.getElementById('cpayAccountWrap');
+        const accSelect = document.getElementById('cpay_card_account_id');
+        const amountInput = document.getElementById('amount');
+        const methodInput = document.getElementById('cpay_payment_method');
+        const cashInput = document.getElementById('cpay_cash');
+        const cardInput = document.getElementById('cpay_card');
+
+        if (mode === 'cash') {
+            if (splitWrap) splitWrap.style.display = 'none';
+            if (accWrap) accWrap.style.display = 'none';
+            if (amountInput) amountInput.readOnly = false;
+            if (methodInput) methodInput.value = 'Cash';
+            if (accSelect) accSelect.value = '';
+            if (cashInput) cashInput.value = '';
+            if (cardInput) cardInput.value = '';
+        } else if (mode === 'card') {
+            if (splitWrap) splitWrap.style.display = 'none';
+            if (accWrap) accWrap.style.display = 'block';
+            if (amountInput) amountInput.readOnly = false;
+            if (methodInput) methodInput.value = 'Card';
+            if (accSelect && !accSelect.value && accSelect.options.length > 1) {
+                accSelect.selectedIndex = 1;
+            }
+            if (cashInput) cashInput.value = '';
+            if (cardInput) cardInput.value = '';
+        } else if (mode === 'split') {
+            if (splitWrap) splitWrap.style.display = 'block';
+            if (accWrap) accWrap.style.display = 'block';
+            if (amountInput) amountInput.readOnly = true;
+            if (methodInput) methodInput.value = 'Split (Cash + Card)';
+            if (accSelect && !accSelect.value && accSelect.options.length > 1) {
+                accSelect.selectedIndex = 1;
+            }
+            calcCpaySplit();
+        }
+    }
+
+    function calcCpaySplit() {
+        const cs = parseFloat(document.getElementById('cpay_cash')?.value) || 0;
+        const cd = parseFloat(document.getElementById('cpay_card')?.value) || 0;
+        const tot = cs + cd;
+        const amountInput = document.getElementById('amount');
+        if (amountInput) amountInput.value = tot > 0 ? tot.toFixed(2) : '';
+        $('#amount_in_words').val(tot > 0 ? numberToWords(Math.round(tot)) : '');
+    }
+
+    function cpayQuickSplit(type) {
+        let base = parseFloat(document.getElementById('amount')?.value) || 0;
+        if (base <= 0) {
+            base = parseFloat(document.getElementById('customer_balance')?.value) || 0;
+        }
+        if (base <= 0) return;
+
+        if (type === '50') {
+            const half = Math.round(base / 2);
+            const cEl = document.getElementById('cpay_cash');
+            const dEl = document.getElementById('cpay_card');
+            if (cEl) cEl.value = half;
+            if (dEl) dEl.value = (base - half);
+            calcCpaySplit();
+        }
+    }
+
+    function handleCpayAmountInput() {
+        const val = parseFloat($('#amount').val()) || 0;
+        $('#amount_in_words').val(val > 0 ? numberToWords(Math.round(val)) : '');
+    }
+
     function clearPaymentForm() {
         $('#paymentModal select[name="customer_id"]').val('');
-        $('#paymentModal input[name="payment_date"]').val('');
+        $('#paymentModal input[name="payment_date"]').val('{{ date('Y-m-d') }}');
         $('#paymentModal input[name="amount"]').val('');
-        $('#paymentModal input[name="payment_method"]').val('');
+        $('#paymentModal input[name="cash"]').val('');
+        $('#paymentModal input[name="card"]').val('');
+        $('#paymentModal select[name="card_account_id"]').val('');
         $('#paymentModal textarea[name="note"]').val('');
         $('#customer_balance').val('');
         $('#amount_in_words').val('');
         $('#paymentModal select[name="adjustment_type"]').val('minus');
+        $('#cpay_mode_cash').prop('checked', true);
+        toggleCpayMode('cash');
     }
 
     function fetchCustomerBalance(customerId) {
+        if (!customerId) {
+            $('#customer_balance').val('');
+            return;
+        }
         $.ajax({
             url: '/customer/ledger/' + customerId,
             method: 'GET',
@@ -372,6 +532,48 @@
             }
         });
 
+        // Form Submit Validation
+        $('#customerPaymentForm').on('submit', function(e) {
+            const mode = $('input[name="payment_mode"]:checked').val();
+            const amount = parseFloat($('#amount').val()) || 0;
+            const cardAcc = $('#cpay_card_account_id').val();
+
+            if (amount <= 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Amount Required',
+                    text: 'Barah-e-karam payment amount enter karein!'
+                });
+                return false;
+            }
+
+            if ((mode === 'card' || mode === 'split') && !cardAcc && $('#cpay_card_account_id option').length > 1) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Card Account Required',
+                    text: 'Barah-e-karam Card / Bank Account select karein!'
+                });
+                $('#cpay_card_account_id').focus();
+                return false;
+            }
+
+            if (mode === 'split') {
+                const cs = parseFloat($('#cpay_cash').val()) || 0;
+                const cd = parseFloat($('#cpay_card').val()) || 0;
+                if ((cs + cd) <= 0) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Split Details Required',
+                        text: 'Cash aur Card dono ka amount enter karein!'
+                    });
+                    return false;
+                }
+            }
+        });
+
         // Delete with SweetAlert confirm
         $(document).on('submit', 'form.del-cpay-form', function(e) {
             e.preventDefault();
@@ -392,14 +594,10 @@
             });
         });
 
-        $(document).on('input', 'input[name="amount"]', function() {
-            let val = $(this).val();
-            $('#amount_in_words').val(val ? numberToWords(val) : '');
-        });
-
         $('#paymentModal').on('shown.bs.modal', function() {
-            $('#amount').val('');
-            $('#amount_in_words').val('');
+            if (!$('#amount').val()) {
+                $('#amount_in_words').val('');
+            }
         });
     });
 </script>

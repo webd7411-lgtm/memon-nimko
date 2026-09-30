@@ -273,7 +273,7 @@
       <div class="receipt-container @if(!$loop->last || $mode == 'token_and_invoice') page-break @endif">
           <div class="center">
               <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 60px; margin-bottom: 5px;">
-              <div class="store-name">Memon Nimko</div>
+              <div class="store-name">{{ shop_name() }}</div>
               <div style="font-weight:bold; border:1px dashed #000; padding:4px; margin:5px 0;">TOKEN ({{ strtoupper($categoryName) }})</div>
               <p style="margin:5px 0; font-size:14px; font-weight:bold;">Order: {{ $sale->order_type ?? 'Walk-in' }} @if($sale->table_id) | Table: {{ \App\Models\Table::find($sale->table_id)->table_name ?? '' }} @endif</p>
           </div>
@@ -331,8 +331,8 @@
     <!-- Header -->
     <div class="center">
       <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
-      <div class="store-name">Memon Nimko</div>
-      <div class="store-info">Sweets & Bakers</div>
+      <div class="store-name">{{ shop_name() }}</div>
+      <div class="store-info">{{ shop_tagline() }}</div>
       @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))
       <div class="store-info" style="font-weight: 700; text-transform: uppercase;">{{ $receiptBranch->name }}</div>
       @endif
@@ -562,6 +562,9 @@
     @if($bill->card > 0)
     <div style="border: 3px solid #000; padding: 5px; margin: 10px 0; text-align: center;">
       <div style="font-size: 20px; font-weight: 900; text-transform: uppercase;">*** CARD PAID ***</div>
+      @if(!empty($bill->cardAccount))
+      <div style="font-size: 14px; font-weight: 800; margin: 2px 0;">Account: {{ $bill->cardAccount->title }}</div>
+      @endif
       <div style="font-size: 18px; font-weight: 900;">Amount: {{ number_format($bill->card, 0) }}</div>
     </div>
     @endif

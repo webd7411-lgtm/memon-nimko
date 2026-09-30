@@ -101,8 +101,8 @@
     <!-- Header -->
     <div class="center">
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-        <h2 style="margin:0;font-size:15px;" class="bold">Memon Nimko</h2>
-        <p style="margin:0;font-size:11px;">Sweets & Bakers</p>
+        <h2 style="margin:0;font-size:15px;" class="bold">{{ shop_name() }}</h2>
+        <p style="margin:0;font-size:11px;">{{ shop_tagline() }}</p>
         @php
             $currentBranch = $sale->branch ?? \App\Models\Branch::find(active_branch_id());
             
@@ -323,8 +323,8 @@
     <div class="footer">
         <p>Please check bakery items at the time of purchase</p>
         <p>Bakery & sweets items are non-returnable</p>
-        <p>*** Thank you for the visit
- ***</p>
+        <p style="margin: 2px 0; font-size: 10px; color: #555;">Develop By: <strong>{{ developer_name() }}</strong></p>
+        <p>*** {{ sys_setting('invoice_footer_note', 'Thank you for the visit') }} ***</p>
     </div>
 </div>
 

@@ -231,7 +231,7 @@
 {{-- ======= LEFT ======= --}}
 <div class="pos-left">
     <div class="pos-topbar">
-        <div class="pos-brand">🎂 Memon Nimkos</div>
+        <div class="pos-brand">🎂 {{ shop_name() }}</div>
         <div class="srchwrap">
             <i class="la la-search"></i>
             <input type="text" id="posSearch" placeholder="Search products…" autocomplete="off">

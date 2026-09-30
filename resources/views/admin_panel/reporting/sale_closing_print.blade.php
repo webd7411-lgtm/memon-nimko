@@ -37,9 +37,25 @@
     </div>
 
     <div class="header">
+        @php
+            $currentBranch = \App\Models\Branch::find(active_branch_id()) ?? \App\Models\Branch::first();
+            $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+            $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+            $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+        @endphp
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-        <h2>Memon Nimkos</h2>
-        <p>Sale Closing Report</p>
+        <h2>{{ shop_name() }}</h2>
+        <p style="font-size:11px;">{{ shop_tagline() }}</p>
+        @if(!empty($currentBranch?->name))
+        <p style="font-weight:bold;text-transform:uppercase;margin:2px 0;">BRANCH: {{ $currentBranch->name }}</p>
+        @endif
+        @if(!empty($bAddress))
+        <p style="font-size:10px;">{{ $bAddress }}</p>
+        @endif
+        @if(!empty($bPhone))
+        <p style="font-size:10px;">Phone: {{ $bPhone }}</p>
+        @endif
+        <p style="margin-top:4px;">Sale Closing Report</p>
         <p>Period: {{ $startDate }} to {{ $endDate }}</p>
         <p>User: {{ $userName }}</p>
     </div>
@@ -94,8 +110,8 @@
     <p style="text-align: center; font-size: 10px; margin: 0;">Generated on: {{ date('d-M-Y H:i A') }}</p>
 
     <div class="footer">
-        <p>*** Memon Nimkos ***</p>
-        <p style="font-size: 11px; font-weight: normal; margin: 2px 0;">Develop By: ProWave Software Solutions</p>
+        <p>*** {{ shop_name() }} ***</p>
+        <p style="font-size: 11px; font-weight: normal; margin: 2px 0;">Develop By: {{ developer_name() }}</p>
     </div>
 
     <script>

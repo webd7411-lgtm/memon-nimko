@@ -67,11 +67,16 @@
             <div class="container-fluid px-3 px-md-4 d-flex flex-row h-100 align-items-center">
                 <div class="text-center rt_nav_wrapper d-flex align-items-center">
                     <a class="nav_logo rt_logo rt_logo_badge text-decoration-none me-3" href="{{ url('/home') }}">
-                        <img src="{{ asset('assets/images/logo.png') }}" alt="Memon Nimko ERP" />
+                        <img src="{{ asset('assets/images/logo.png') }}" alt="{{ shop_name() }}" />
                     </a>
                     <div class="d-none d-md-block text-start">
-                        <h6 class="mb-0 text-white fw-bold" style="font-size: 0.95rem; letter-spacing: -0.2px;">Memon Nimko ERP</h6>
-                        <small class="text-white-50" style="font-size: 0.72rem;">Sweets & Bakers System</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <h6 class="mb-0 text-white fw-bold" style="font-size: 0.95rem; letter-spacing: -0.2px;">{{ shop_name() }} ERP</h6>
+                            <span class="badge rounded-pill d-none d-lg-inline-flex align-items-center gap-1" style="background: rgba(59, 130, 246, 0.18); border: 1px solid rgba(147, 197, 253, 0.38); color: #93c5fd; font-size: 0.68rem; font-weight: 600; padding: 2px 8px; letter-spacing: 0.2px;">
+                                <i class="fas fa-code text-info" style="font-size: 0.65rem;"></i> By {{ developer_name() }}
+                            </span>
+                        </div>
+                        <small class="text-white-50" style="font-size: 0.72rem;">{{ shop_tagline() }}</small>
                     </div>
                 </div>
                     <ul class="navbar-nav navbar-nav-right mr-0 ml-auto align-items-center flex-row gap-2">
@@ -115,9 +120,9 @@
                                             class="form-select form-select-sm border-0 fw-bold" 
                                             style="background: transparent; color: #ffffff; cursor: pointer; padding-left: 8px; padding-right: 28px; height: 32px; font-size: 0.8rem;">
                                         @php
-                                            $isSuperAdminUser = auth()->check() && (auth()->user()->email === 'admin@admin.com' || auth()->user()->hasRole('Super Admin'));
+                                            $canSwitchBranch = auth()->check() && (auth()->user()->can('Switch Branch') || auth()->user()->hasRole('super-admin') || auth()->user()->hasRole('Super Admin') || auth()->user()->email === 'admin@admin.com');
                                         @endphp
-                                        @if($isSuperAdminUser)
+                                        @if($canSwitchBranch)
                                             <option value="all" {{ is_all_branches() ? 'selected' : '' }} style="color: #0f172a; background: #ffffff;">🏢 All Branches</option>
                                             @foreach(\App\Models\Branch::all() as $branch)
                                                 <option value="{{ $branch->id }}" {{ (!is_all_branches() && active_branch_id() == $branch->id) ? 'selected' : '' }} style="color: #0f172a; background: #ffffff;">
@@ -360,9 +365,9 @@
                     </li>
                     @endcanany
 
-                    @canany(['Item Stock Report','Purchase Report','Sale Report','Customer Ledger','Vendor Ledger','System Reports'])
+                    @canany(['Item Stock Report','Branch Stock Report','Purchase Report','Sale Report','Category Sale Report','Daily Sale Closing Report','Profit Loss Report','Customer Ledger','Vendor Ledger','Expense Report','Expense Audit Report','Stock Adjustment Audit Report','System Reports'])
                     @php
-                        $isReportsActive = request()->is('report*') || request()->is('System/Reports*') || request()->is('expense-vocher*');
+                        $isReportsActive = request()->is('report*') || request()->is('System/Reports*') || request()->is('expense-vocher*') || request()->is('stock-adjustment-report*');
                     @endphp
                     <li class="nav-item {{ $isReportsActive ? 'active' : '' }}">
                         <a href="#" class="nav-link">
@@ -373,10 +378,12 @@
 
                         <div class="submenu">
                             <ul class="submenu-item">
-                                @can('Item Stock Report')
+                                @canany(['Item Stock Report'])
                                 <li><a href="{{ route('report.item_stock') }}"><i class="fas fa-boxes"></i> Item Stock Report</a></li>
+                                @endcanany
+                                @canany(['Branch Stock Report', 'Item Stock Report'])
                                 <li><a href="{{ route('report.branch_stock') }}"><i class="fas fa-store"></i> Branch Stock Matrix</a></li>
-                                @endcan
+                                @endcanany
 
                                 @can('Purchase Report')
                                 <li><a href="{{ route('report.purchase') }}"><i class="fas fa-shopping-basket"></i> Purchase Report</a></li>
@@ -384,10 +391,16 @@
 
                                 @can('Sale Report')
                                 <li><a href="{{ route('report.sale') }}"><i class="fas fa-chart-bar"></i> Sale Report</a></li>
-                                <li><a href="{{ route('report.sale.category') }}"><i class="fas fa-chart-pie"></i> Category-wise Sales</a></li>
-                                <li><a href="{{ route('report.sale_closing') }}"><i class="fas fa-file-invoice-dollar"></i> Daily Sale Closing</a></li>
-                                <li><a href="{{ route('report.profit_loss') }}"><i class="fas fa-balance-scale"></i> Profit & Loss Report</a></li>
                                 @endcan
+                                @canany(['Category Sale Report', 'Sale Report'])
+                                <li><a href="{{ route('report.sale.category') }}"><i class="fas fa-chart-pie"></i> Category-wise Sales</a></li>
+                                @endcanany
+                                @canany(['Daily Sale Closing Report', 'Sale Report'])
+                                <li><a href="{{ route('report.sale_closing') }}"><i class="fas fa-file-invoice-dollar"></i> Daily Sale Closing</a></li>
+                                @endcanany
+                                @canany(['Profit Loss Report', 'Sale Report'])
+                                <li><a href="{{ route('report.profit_loss') }}"><i class="fas fa-balance-scale"></i> Profit & Loss Report</a></li>
+                                @endcanany
 
                                 @can('Customer Ledger')
                                 <li><a href="{{ route('report.customer.ledger') }}"><i class="fas fa-user-check"></i> Customer Ledgers</a></li>
@@ -401,18 +414,20 @@
                                 <li><a href="{{ route('System.Reports') }}"><i class="fas fa-file-alt"></i> System Reports</a></li>
                                 @endcan
 
+                                @canany(['Stock Adjustment Audit Report', 'Stock Adjustment'])
                                 <li><a href="{{ route('stock-adjustment.report') }}"><i class="fas fa-sliders-h"></i> Stock Adjustment Audit</a></li>
+                                @endcanany
 
-                                @if (auth()->user()->email === 'admin@admin.com')
+                                @canany(['Expense Audit Report', 'Expense Report', 'Expense Voucher'])
                                 <li><a href="{{ route('expense.vocher') }}"><i class="fas fa-wallet"></i> Expense Audit Report</a></li>
-                                @endif
+                                @endcanany
                             </ul>
                         </div>
                     </li>
                     @endcanany
 
                     <!-- User Management Menu -->
-                    @if (auth()->user()->email === 'admin@admin.com' || auth()->user()->hasRole('super-admin'))
+                    @canany(['Users','Roles','Permissions','Branch'])
                     @php
                         $isUserMgmtActive = request()->is('users*') || request()->is('roles*') || request()->is('permissions*') || request()->is('branch*');
                     @endphp
@@ -424,32 +439,40 @@
                         </a>
                         <div class="submenu">
                             <ul class="submenu-item">
+                                @can('Users')
                                 <li><a href="{{ route('users.index') }}"><i class="fas fa-user-shield"></i> System Users</a></li>
+                                @endcan
+                                @can('Roles')
                                 <li><a href="{{ route('roles.index') }}"><i class="fas fa-user-tag"></i> Roles & Access</a></li>
+                                @endcan
+                                @can('Permissions')
                                 <li><a href="{{ route('permissions.index') }}"><i class="fas fa-key"></i> Permissions Matrix</a></li>
+                                @endcan
+                                @can('Branch')
                                 <li><a href="{{ route('branch.index') }}"><i class="fas fa-store-alt"></i> Branches Setup</a></li>
+                                @endcan
                             </ul>
                         </div>
                     </li>
-                    @endif
+                    @endcanany
 
-                    @if (auth()->user()->email === 'admin@admin.com' || auth()->user()->hasRole('super-admin'))
+                    @can('Cashbook')
                     <li class="nav-item {{ request()->is('cashbook*') ? 'active' : '' }}">
                         <a href="{{ route('cashbook') }}" class="nav-link">
                             <i class="menu_icon fas fa-book-open"></i>
                             <span class="menu-title">CashBook</span>
                         </a>
                     </li>
-                    @endif
+                    @endcan
 
-                    @if (auth()->user()->email === 'admin@admin.com' || auth()->user()->hasRole('super-admin'))
+                    @can('Settings')
                     <li class="nav-item {{ request()->is('settings*') ? 'active' : '' }}">
                         <a href="{{ route('settings.index') }}" class="nav-link">
                             <i class="menu_icon fas fa-sliders-h"></i>
                             <span class="menu-title">Settings</span>
                         </a>
                     </li>
-                    @endif
+                    @endcan
 
                 </ul>
             </div>

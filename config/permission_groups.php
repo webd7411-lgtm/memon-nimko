@@ -81,13 +81,18 @@ return [
             'Edit Vendor',
             'Delete Vendor',
             'Vendor Payments',
+            'Create Vendor Payment',
+            'Edit Vendor Payment',
+            'Delete Vendor Payment',
             'Vendor Bilties',
+            'Create Vendor Bilty',
             'Print Vendor Receipt',
         ],
 
         'List Warehouse' => [
             'List Warehouse',
             'Create Warehouse',
+            'Edit Warehouse',
             'Delete Warehouse',
         ],
 
@@ -95,6 +100,7 @@ return [
             'Branch',
             'Create Branch',
             'Delete Branch',
+            'Switch Branch',
         ],
 
         'Zone' => [
@@ -125,12 +131,14 @@ return [
             'Own Production',
             'Create Production',
             'Edit Production',
+            'Delete Production',
             'Print Production Gatepass',
         ],
 
         'Raw Materials' => [
             'Raw Materials',
             'Create Raw Material',
+            'Edit Raw Material',
             'Delete Raw Material',
             'Create Raw Material Purchase',
             'Delete Raw Material Purchase',
@@ -149,6 +157,7 @@ return [
         'Purchase Return' => [
             'Purchase Return',
             'Create Purchase Return',
+            'Delete Purchase Return',
             'Print Purchase Return',
         ],
 
@@ -156,21 +165,27 @@ return [
             'Sales',
             'Create Sale',
             'Edit Sale',
+            'Delete Sale',
+            'Sale Exchange',
             'Print Sale Invoice',
             'Print Sale DC',
             'Print Sale Receipt',
+            'Print POS Bill',
         ],
 
         'Sale Return' => [
             'Sale Return',
             'Create Sale Return',
+            'Delete Sale Return',
             'Print Sale Return',
         ],
 
         'Bookings' => [
             'Bookings',
             'Create Booking',
+            'Edit Booking',
             'Delete Booking',
+            'Convert Booking To Sale',
             'Print Booking Receipt',
         ],
 
@@ -188,16 +203,22 @@ return [
             'Edit Stock Transfer',
             'Delete Stock Transfer',
             'Print Stock Transfer',
+            'Accept Stock Transfer',
+            'Reject Stock Transfer',
         ],
 
         'Stock Adjustment' => [
             'Stock Adjustment',
             'Create Stock Adjustment',
+            'View Stock Adjustment',
+            'Delete Stock Adjustment',
             'Print Stock Adjustment Report',
+            'Stock Adjustment Audit Report',
         ],
 
         'Item Stock Report' => [
             'Item Stock Report',
+            'Branch Stock Report',
         ],
 
         'Purchase Report' => [
@@ -206,6 +227,10 @@ return [
 
         'Sale Report' => [
             'Sale Report',
+            'Category Sale Report',
+            'Daily Sale Closing Report',
+            'Print Sale Closing',
+            'Profit Loss Report',
         ],
 
         'Customer Ledger' => [
@@ -218,6 +243,7 @@ return [
 
         'Expense Report' => [
             'Expense Report',
+            'Expense Audit Report',
         ],
 
         'System Reports' => [
@@ -244,18 +270,21 @@ return [
         'Receipts Voucher' => [
             'Receipts Voucher',
             'Create Receipt Voucher',
+            'Delete Receipt Voucher',
             'Print Receipt Voucher',
         ],
 
         'Payment Voucher' => [
             'Payment Voucher',
             'Create Payment Voucher',
+            'Delete Payment Voucher',
             'Print Payment Voucher',
         ],
 
         'Expense Voucher' => [
             'Expense Voucher',
             'Create Expense Voucher',
+            'Delete Expense Voucher',
             'Print Expense Voucher',
         ],
 
@@ -291,6 +320,7 @@ return [
         'Tables' => [
             'Tables',
             'Create Table',
+            'Edit Table',
             'Delete Table',
         ],
     ],

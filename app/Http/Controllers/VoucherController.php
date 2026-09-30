@@ -90,7 +90,7 @@ class VoucherController extends Controller
                 $manualText = $request->narration_text[$index] ?? null;
                 $manualType = $request->narration_type_text[$index] ?? 'Manual';
 
-                if (empty($narrId) && !empty($manualText)) {
+                if ((empty($narrId) || $narrId === 'new') && !empty($manualText)) {
                     // Auto expense_head set based on voucher type
                     $expenseHead = 'Receipts Voucher';
                     if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
@@ -145,15 +145,26 @@ class VoucherController extends Controller
                     VendorLedger::create([
                         'vendor_id'        => $request->vendor_id,
                         'admin_or_user_id' => auth()->id(),
-                        'date'             => now(),
-                        'description'      => "Receipt Voucher #$rvid",
-                        'opening_balance'  => 0,
-                        'debit'            => 0,
-                        'credit'           => $amount,
                         'previous_balance' => 0,
+                        'opening_balance'  => 0,
                         'closing_balance'  => -$amount,
                     ]);
                 }
+
+                $lastVP = DB::table('vendor_payments')->latest('id')->first();
+                $nextVPNo = 'PAY-' . str_pad(($lastVP ? $lastVP->id + 1 : 1), 4, '0', STR_PAD_LEFT);
+                DB::table('vendor_payments')->insert([
+                    'payment_no'       => $nextVPNo,
+                    'vendor_id'        => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'payment_date'     => $request->receipt_date ?? now()->toDateString(),
+                    'amount'           => -$amount,
+                    'payment_method'   => 'Voucher',
+                    'note'             => 'Receipt Voucher #' . $rvid,
+                    'branch_id'        => active_branch_id(),
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]);
             } elseif ($request->vendor_type === 'customer') {
                 $ledger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
                 if ($ledger) {
@@ -169,6 +180,21 @@ class VoucherController extends Controller
                         'closing_balance'  => -$amount,
                     ]);
                 }
+
+                $lastCP = DB::table('customer_payments')->latest('id')->first();
+                $nextCPNo = 'REC-' . str_pad(($lastCP ? $lastCP->id + 1 : 1), 4, '0', STR_PAD_LEFT);
+                DB::table('customer_payments')->insert([
+                    'received_no'      => $nextCPNo,
+                    'customer_id'      => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'payment_date'     => $request->receipt_date ?? now()->toDateString(),
+                    'amount'           => $amount,
+                    'payment_method'   => 'Voucher',
+                    'note'             => 'Receipt Voucher #' . $rvid,
+                    'branch_id'        => active_branch_id(),
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]);
             } else {
                 // Bank/Head case → pehle vendor/account side minus
                 $account = Account::find($request->vendor_id);
@@ -194,7 +220,7 @@ class VoucherController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Receipt Voucher saved successfully!');
+            return redirect()->route('all-recepit-vochers')->with('success', 'Receipt Voucher saved successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());
@@ -399,7 +425,7 @@ class VoucherController extends Controller
                 $manualText = $request->narration_text[$index] ?? null;
                 $manualType = $request->narration_type_text[$index] ?? 'Manual';
 
-                if (empty($narrId) && !empty($manualText)) {
+                if ((empty($narrId) || $narrId === 'new') && !empty($manualText)) {
                     // Auto expense_head set based on voucher type
                     $expenseHead = 'Payment voucher';
                     if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
@@ -515,7 +541,7 @@ class VoucherController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Payment Voucher saved successfully!');
+            return redirect()->route('all-Payment-vochers')->with('success', 'Payment Voucher saved successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());
@@ -707,7 +733,7 @@ class VoucherController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Expense Voucher saved successfully');
+            return redirect()->route('all-expense-vochers')->with('success', 'Expense Voucher saved successfully');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());

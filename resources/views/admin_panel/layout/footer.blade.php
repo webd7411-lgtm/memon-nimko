@@ -2,7 +2,16 @@
 
     <footer>
         <div class="footer-area">
-            <p>&copy; Copyright 2025. All right reserved. {{ \App\Models\Setting::where('key','software_name')->value('value') ?? 'Memon Nimko' }}.</p>
+            @php
+                $footerText = sys_setting('footer_text');
+                $shopName = shop_name();
+                $developerName = developer_name();
+            @endphp
+            <p class="mb-0">
+                {{ !empty($footerText) ? $footerText : ("© Copyright " . date('Y') . " " . $shopName . ". All rights reserved.") }}
+                <span class="mx-2 text-muted">•</span>
+                <span class="text-muted">Developed by <strong class="text-dark">{{ $developerName }}</strong></span>
+            </p>
         </div>
     </footer>
     </div>

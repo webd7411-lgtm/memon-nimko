@@ -405,9 +405,9 @@
 
     {{-- ═══ PRINT HEADER (VISIBLE ONLY ON PRINT) ═══ --}}
     <div class="print-only-header">
-      <h2>Memon Nimkos</h2>
+      <h2>{{ shop_name() }}</h2>
       <h4>Branch-wise Stock Matrix Report</h4>
-      <p>Printed Date: {{ date('d-M-Y h:i A') }} | Category: <span id="printCatText">All Categories</span></p>
+      <p>Printed Date: {{ date('d-M-Y h:i A') }} | Developed by: {{ developer_name() }} | Category: <span id="printCatText">All Categories</span></p>
     </div>
 
     {{-- ═══ HEADER ═══ --}}

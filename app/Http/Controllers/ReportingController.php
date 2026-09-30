@@ -1642,7 +1642,15 @@ class ReportingController extends Controller
 
     public function customer_ledger_report()
     {
-        $customers = DB::table('customers')->select('id', 'customer_name')->get();
+        $query = DB::table('customers')
+            ->select('id', 'customer_name')
+            ->where('status', '!=', 'inactive');
+
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+
+        $customers = $query->orderBy('customer_name')->get();
 
         return view('admin_panel.reporting.customer_ledger_report', compact('customers'));
     }
@@ -2035,12 +2043,18 @@ class ReportingController extends Controller
         /* ================= OPENING BALANCE ================= */
         $prevSalesQ = Sale::where('created_at', '>=', $startDate . ' 00:00:00')
             ->where('created_at', '<', $startDT);
-        $prevCustQ = CustomerPayment::where('payment_date', '>=', $startDate . ' 00:00:00')
-            ->where('payment_date', '<', $startDT);
-        $prevVendQ = VendorPayment::where('payment_date', '>=', $startDate . ' 00:00:00')
-            ->where('payment_date', '<', $startDT);
-        $prevExpQ = ExpenseVoucher::where('date', '>=', $startDate . ' 00:00:00')
-            ->where('date', '<', $startDT);
+        $prevCustQ = CustomerPayment::where('payment_date', '>=', $startDate)
+            ->where('payment_date', '<', $selectedDate)
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
+            });
+        $prevVendQ = VendorPayment::where('payment_date', '>=', $startDate)
+            ->where('payment_date', '<', $selectedDate)
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
+            });
+        $prevExpQ = ExpenseVoucher::where('date', '>=', $startDate)
+            ->where('date', '<', $selectedDate);
 
         if ($selectedBranchId !== 'all') {
             $prevSalesQ->where('branch_id', $selectedBranchId);
@@ -2049,7 +2063,16 @@ class ReportingController extends Controller
             $prevExpQ->where('branch_id', $selectedBranchId);
         }
 
-        $previousSales = $prevSalesQ->sum('total_net');
+        // For sales opening: actual cash/card received on sales
+        $previousSales = $prevSalesQ->get()->sum(function($s) {
+            $paid = floatval($s->cash) + floatval($s->card);
+            $net = floatval($s->total_net);
+            // If walkin customer or paid >= net, full net is received
+            if ($s->customer === 'Walk-in Customer' || $paid >= $net) {
+                return $net;
+            }
+            return min($net, $paid);
+        });
         $previousCustomerRecoveries = $prevCustQ->sum('amount');
         $previousVendorPayments = $prevVendQ->sum('amount');
         $previousExpenses = $prevExpQ->sum('total_amount');
@@ -2059,13 +2082,16 @@ class ReportingController extends Controller
         $salesQ = Sale::where('created_at', '>=', $startDT)
             ->where('created_at', '<=', $endDT);
         $custQ = CustomerPayment::with('customer')
-            ->where('payment_date', '>=', $startDT)
-            ->where('payment_date', '<=', $endDT);
+            ->whereDate('payment_date', $selectedDate)
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
+            });
         $vendQ = VendorPayment::with('vendor')
-            ->where('payment_date', '>=', $startDT)
-            ->where('payment_date', '<=', $endDT);
-        $expQ = ExpenseVoucher::where('date', '>=', $startDT)
-            ->where('date', '<=', $endDT);
+            ->whereDate('payment_date', $selectedDate)
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
+            });
+        $expQ = ExpenseVoucher::whereDate('date', $selectedDate);
 
         if ($selectedBranchId !== 'all') {
             $salesQ->where('branch_id', $selectedBranchId);
@@ -2093,7 +2119,18 @@ class ReportingController extends Controller
             $recoveryByMethod[$m] += $cr->amount;
         }
         $totalRecoveries = $customerRecoveries->sum('amount');
-        $totalReceipts = $totalSaleNet + $totalRecoveries;
+
+        // Actual cash/card received from sales today
+        $todaySaleReceived = $allSales->sum(function($s) {
+            $paid = floatval($s->cash) + floatval($s->card);
+            $net = floatval($s->total_net);
+            if ($s->customer === 'Walk-in Customer' || $paid >= $net) {
+                return $net;
+            }
+            return min($net, $paid);
+        });
+
+        $totalReceipts = $todaySaleReceived + $totalRecoveries;
 
         /* ================= PAYMENTS BREAKDOWN ================= */
         $vendorPayByMethod = [];
@@ -2110,7 +2147,12 @@ class ReportingController extends Controller
         /* ================= DETAILED ENTRIES ================= */
         $receipts = [];
         foreach ($allSales as $sale) {
-            $receipts[] = ['title' => 'Sale', 'ref' => '#' . $sale->invoice_no, 'amount' => $sale->total_net];
+            $paid = floatval($sale->cash) + floatval($sale->card);
+            $net = floatval($sale->total_net);
+            $received = ($sale->customer === 'Walk-in Customer' || $paid >= $net) ? $net : min($net, $paid);
+            if ($received > 0) {
+                $receipts[] = ['title' => 'Sale', 'ref' => '#' . $sale->invoice_no, 'amount' => $received];
+            }
         }
         foreach ($customerRecoveries as $cr) {
             $receipts[] = ['title' => 'Recovery', 'ref' => ($cr->customer->customer_name ?? '-') . ' (' . ($cr->payment_method ?? 'N/A') . ')', 'amount' => $cr->amount];
@@ -2194,8 +2236,13 @@ class ReportingController extends Controller
     {
         $query = \App\Models\ExpenseVoucher::query();
 
+        // Multi-Branch Scoping
+        if (!is_all_branches()) {
+            $query->where('branch_id', active_branch_id());
+        }
+
         // 🛡️ Restrict non-admin users to their own expenses
-        if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
+        if (auth()->id() !== 1 && auth()->user()->email !== 'admin@admin.com' && !auth()->user()->hasRole('Admin') && !auth()->user()->hasRole('super-admin')) {
             $query->where('user_id', auth()->id());
         }
 
@@ -2215,28 +2262,50 @@ class ReportingController extends Controller
                 $request->start_date,
                 $request->end_date
             ]);
+        } elseif ($request->filled('start_date')) {
+            $query->whereDate('date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->whereDate('date', '<=', $request->end_date);
         }
 
-        $vouchers = $query->latest()->get();
+        $vouchers = $query->orderBy('date', 'desc')->orderBy('id', 'desc')->get();
 
-        $data = $vouchers->map(function ($v) {
+        $accountHeadIds = $vouchers->pluck('type')->filter()->unique();
+        $accountIds = $vouchers->pluck('party_id')->filter()->unique();
 
-            // remarks decode (JSON safe)
-            $remarks = json_decode($v->remarks, true);
+        $accountHeadsMap = \App\Models\AccountHead::whereIn('id', $accountHeadIds)->pluck('name', 'id');
+        $accountsMap = \App\Models\Account::whereIn('id', $accountIds)->pluck('title', 'id');
+
+        $data = $vouchers->map(function ($v) use ($accountHeadsMap, $accountsMap) {
+            $remarks = $v->remarks;
+            if (is_string($remarks)) {
+                $decoded = json_decode($remarks, true);
+                if (is_array($decoded)) {
+                    $remarks = $decoded;
+                }
+            }
+
+            if (is_array($remarks)) {
+                $remText = implode(', ', array_filter($remarks));
+            } elseif (is_string($remarks)) {
+                $remText = $remarks;
+            } else {
+                $remText = '-';
+            }
 
             return [
                 'evid'    => $v->evid,
-                'date'    => \Carbon\Carbon::parse($v->date)->format('d-m-Y'),
-                'head'    => optional(\App\Models\AccountHead::find($v->type))->name,
-                'account' => optional(\App\Models\Account::find($v->party_id))->title,
-                'remarks' => is_array($remarks) ? implode(', ', $remarks) : ($v->remarks ?? '-'),
-                'amount'  => number_format($v->total_amount, 2),
+                'date'    => $v->date ? \Carbon\Carbon::parse($v->date)->format('d-m-Y') : '-',
+                'head'    => $accountHeadsMap[$v->type] ?? '-',
+                'account' => $accountsMap[$v->party_id] ?? '-',
+                'remarks' => $remText ?: '-',
+                'amount'  => number_format((float)$v->total_amount, 2),
             ];
         });
 
         return response()->json([
             'rows' => $data,
-            'total' => number_format($vouchers->sum('total_amount'), 2)
+            'total' => number_format((float)$vouchers->sum('total_amount'), 2)
         ]);
     }
 

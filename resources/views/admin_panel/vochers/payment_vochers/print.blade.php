@@ -179,11 +179,29 @@
 
   <div class="receipt" id="receipt">
     <div class="center">
+      @php
+        $currentBranch = $voucher->branch 
+            ?? ($voucher->branch_id ? \App\Models\Branch::find($voucher->branch_id) : null)
+            ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+            ?? \App\Models\Branch::find(active_branch_id())
+            ?? \App\Models\Branch::first();
+
+        $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+        $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+        $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+      @endphp
       <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-      <h1 class="title">Memon Nimko</h1>
-      <div class="subtitle">Sweet & Bakers</div>
-      <div class="muted">Latifabad no 6 Near Shadman Hall  Hyderabad</div>
-      <div class="muted">Phone: 022786661</div>
+      <h1 class="title">{{ shop_name() }}</h1>
+      <div class="subtitle">{{ shop_tagline() }}</div>
+      @if(!empty($currentBranch?->name))
+      <div class="muted" style="font-weight:bold;text-transform:uppercase;margin-top:2px;">BRANCH: {{ $currentBranch->name }}</div>
+      @endif
+      @if(!empty($bAddress))
+      <div class="muted">{{ $bAddress }}</div>
+      @endif
+      @if(!empty($bPhone))
+      <div class="muted">Phone: {{ $bPhone }}</div>
+      @endif
     </div>
 
     <div class="line"></div>
@@ -290,15 +308,13 @@
     <p style="margin:4px 0 2px 0; font-weight:700;">Amount In Words:</p>
     <p id="amountInWords" style="margin:0; font-weight:700;">Loading...</p>
 
-    <!-- <div class="footer">
+    <div class="footer" style="text-align:center; font-size:10px; margin-top:8px; border-top:1px dashed #ccc; padding-top:4px;">
       <div>Printed: {{ now()->format('H:i:s, d M Y') }}</div>
-
-      <div style="margin-top:6px; font-size: 11px; font-weight: normal;">
-        <div>Develop By: ProWave Software Solutions</div>
-        <div>+92 317 3836 223 | +92 317 3859 647</div>
-        <div style="margin-top:6px; font-weight:800;">*** Thank you for the visit ***</div>
+      <div style="margin-top:2px; font-weight: normal; color:#555;">
+        Develop By: <strong>{{ developer_name() }}</strong>
       </div>
-    </div> -->
+      <div style="margin-top:4px; font-weight:800;">*** {{ sys_setting('invoice_footer_note', 'Thank you for the visit') }} ***</div>
+    </div>
   </div>
 
   <script>

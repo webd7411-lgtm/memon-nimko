@@ -43,7 +43,7 @@
 
     <div class="header">
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 4px;">
-        <h2>Memon Nimko</h2>
+        <h2>{{ shop_name() }}</h2>
         @php
             $currentBranch = \App\Models\Branch::find(active_branch_id());
         @endphp
@@ -98,8 +98,9 @@
     <div class="divider"></div>
 
     <div class="footer">
-        <p>*** Memon Nimkos ***</p>
+        <p>*** {{ shop_name() }} ***</p>
         <p style="font-size:10px;margin:2px 0;">Bill Date: {{ $sale->created_at->format('d-M-Y h:i A') }}</p>
+        <p style="font-size:10px;margin:2px 0; color:#555;">Develop By: <strong>{{ developer_name() }}</strong></p>
         <p style="font-size:10px;margin:2px 0;">Order stays running — Pay later to complete</p>
     </div>
 

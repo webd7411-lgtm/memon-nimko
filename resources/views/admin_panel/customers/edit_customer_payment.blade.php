@@ -65,6 +65,63 @@
                                 </select>
                             </div>
 
+                            @php
+                                $payMode = old('payment_mode', ($payment->cash > 0 && $payment->card > 0) ? 'split' : (($payment->card > 0 || $payment->payment_method === 'Card') ? 'card' : 'cash'));
+                            @endphp
+
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">Payment Mode</span>
+                                    <span class="badge bg-light text-dark border">Select Mode</span>
+                                </label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="payment_mode" id="cpay_mode_cash" value="cash" {{ $payMode === 'cash' ? 'checked' : '' }} onchange="toggleEditMode('cash')">
+                                    <label class="btn btn-outline-success fw-bold" for="cpay_mode_cash">💵 Cash</label>
+
+                                    <input type="radio" class="btn-check" name="payment_mode" id="cpay_mode_card" value="card" {{ $payMode === 'card' ? 'checked' : '' }} onchange="toggleEditMode('card')">
+                                    <label class="btn btn-outline-primary fw-bold" for="cpay_mode_card">💳 Card / Bank</label>
+
+                                    <input type="radio" class="btn-check" name="payment_mode" id="cpay_mode_split" value="split" {{ $payMode === 'split' ? 'checked' : '' }} onchange="toggleEditMode('split')">
+                                    <label class="btn btn-outline-warning fw-bold text-dark" for="cpay_mode_split">⚡ Split (Cash + Card)</label>
+                                </div>
+                            </div>
+
+                            {{-- Split Wrap --}}
+                            <div class="col-md-12 mb-3" id="editSplitWrap" style="{{ $payMode === 'split' ? '' : 'display:none;' }}">
+                                <div class="p-3 bg-light border rounded">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2">
+                                            <label class="fw-bold">💵 Cash Amount</label>
+                                            <input type="number" step="any" name="cash" id="cpay_cash" class="form-control" value="{{ old('cash', $payment->cash ?: '') }}" placeholder="0" oninput="calcEditSplit()">
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <label class="fw-bold">💳 Card Amount</label>
+                                            <input type="number" step="any" name="card" id="cpay_card" class="form-control" value="{{ old('card', $payment->card ?: '') }}" placeholder="0" oninput="calcEditSplit()">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editQuickSplit50()">⚡ 50/50 Split</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Card / Bank Account --}}
+                            <div class="col-md-12 mb-3" id="editCardAccountWrap" style="{{ ($payMode === 'card' || $payMode === 'split') ? '' : 'display:none;' }}">
+                                <div class="p-3 bg-light border rounded" style="border-color:#bfdbfe !important;">
+                                    <label class="fw-bold text-primary mb-1">🏦 Select Card / Bank Account</label>
+                                    <select name="card_account_id" id="card_account_id" class="form-control">
+                                        <option value="">-- Choose Account / POS Machine --</option>
+                                        @if(isset($bankAccounts))
+                                            @foreach($bankAccounts as $acc)
+                                                <option value="{{ $acc->id }}" {{ old('card_account_id', $payment->card_account_id) == $acc->id ? 'selected' : '' }}>
+                                                    {{ $acc->title }} {{ $acc->head ? '('.$acc->head->name.')' : '' }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
+                            </div>
+
                             <div class="col-md-6 mb-3">
                                 <label>Amount <span class="text-danger">*</span></label>
                                 <input type="number"
@@ -73,7 +130,13 @@
                                     id="amount"
                                     class="form-control"
                                     value="{{ old('amount', $payment->amount) }}"
+                                    {{ $payMode === 'split' ? 'readonly' : '' }}
                                     required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label>Payment Method Label</label>
+                                <input type="text" name="payment_method" id="payment_method" class="form-control" placeholder="e.g. Cash, Card" value="{{ old('payment_method', $payment->payment_method) }}">
                             </div>
 
                             <div class="col-md-12 mb-3">
@@ -84,12 +147,7 @@
                                     style="background:#f8f9fa; font-weight:600;">
                             </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label>Payment Method</label>
-                                <input type="text" name="payment_method" class="form-control" placeholder="e.g. Cash, Bank" value="{{ old('payment_method', $payment->payment_method) }}">
-                            </div>
-
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label>Note</label>
                                 <textarea name="note" class="form-control" placeholder="Optional note">{{ old('note', $payment->note) }}</textarea>
                             </div>
@@ -160,5 +218,60 @@
             $('#amount_in_words').val(numberToWords(val));
         });
     });
+
+    function toggleEditMode(mode) {
+        const splitWrap = document.getElementById('editSplitWrap');
+        const accWrap = document.getElementById('editCardAccountWrap');
+        const accSelect = document.getElementById('card_account_id');
+        const amountInput = document.getElementById('amount');
+        const methodInput = document.getElementById('payment_method');
+        const cashInput = document.getElementById('cpay_cash');
+        const cardInput = document.getElementById('cpay_card');
+
+        if (mode === 'cash') {
+            if (splitWrap) splitWrap.style.display = 'none';
+            if (accWrap) accWrap.style.display = 'none';
+            if (amountInput) amountInput.readOnly = false;
+            if (methodInput) methodInput.value = 'Cash';
+            if (accSelect) accSelect.value = '';
+        } else if (mode === 'card') {
+            if (splitWrap) splitWrap.style.display = 'none';
+            if (accWrap) accWrap.style.display = 'block';
+            if (amountInput) amountInput.readOnly = false;
+            if (methodInput) methodInput.value = 'Card';
+            if (accSelect && !accSelect.value && accSelect.options.length > 1) {
+                accSelect.selectedIndex = 1;
+            }
+        } else if (mode === 'split') {
+            if (splitWrap) splitWrap.style.display = 'block';
+            if (accWrap) accWrap.style.display = 'block';
+            if (amountInput) amountInput.readOnly = true;
+            if (methodInput) methodInput.value = 'Split (Cash + Card)';
+            if (accSelect && !accSelect.value && accSelect.options.length > 1) {
+                accSelect.selectedIndex = 1;
+            }
+            calcEditSplit();
+        }
+    }
+
+    function calcEditSplit() {
+        const cs = parseFloat(document.getElementById('cpay_cash')?.value) || 0;
+        const cd = parseFloat(document.getElementById('cpay_card')?.value) || 0;
+        const tot = cs + cd;
+        const amountInput = document.getElementById('amount');
+        if (amountInput) {
+            amountInput.value = tot > 0 ? tot.toFixed(2) : '';
+            $(amountInput).trigger('input');
+        }
+    }
+
+    function editQuickSplit50() {
+        const base = parseFloat(document.getElementById('amount')?.value) || parseFloat(document.getElementById('customer_balance')?.value) || 0;
+        if (base <= 0) return;
+        const half = Math.round(base / 2);
+        document.getElementById('cpay_cash').value = half;
+        document.getElementById('cpay_card').value = (base - half);
+        calcEditSplit();
+    }
 </script>
 @endsection

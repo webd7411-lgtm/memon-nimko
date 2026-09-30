@@ -262,8 +262,8 @@
         $branchPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
       @endphp
       <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-      <div class="store-name">Memon Nimko</div>
-      <div class="store-info">Sweet & Bakers</div>
+      <div class="store-name">{{ shop_name() }}</div>
+      <div class="store-info">{{ shop_tagline() }}</div>
       @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))
       <div class="store-info" style="font-weight: 700; text-transform: uppercase;">{{ $receiptBranch->name }}</div>
       @endif
@@ -396,7 +396,7 @@
     <div class="footer center" style="font-weight: normal;">
       <p style="margin: 5px 0;">Please check bakery items at the time of purchase</p>
       <p style="margin: 5px 0;">Bakery & sweets items are non-returnable</p>
-      <p style="margin: 2px 0; font-size: 11px; font-weight: normal;">Develop By: ProWave Software Solutions</p>
+      <p style="margin: 2px 0; font-size: 11px; font-weight: normal;">Develop By: {{ developer_name() }}</p>
       <p style="margin: 2px 0; font-size: 11px; font-weight: normal;">+92 317 3836 223 | +92 317 3859 647</p>
       <p style="margin: 10px 0;">*** Thank you for the visit ***</p>
     </div>

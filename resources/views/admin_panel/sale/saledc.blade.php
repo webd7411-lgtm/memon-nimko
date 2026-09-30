@@ -61,11 +61,29 @@
 
     <!-- Header -->
     <div class="center">
+        @php
+            $currentBranch = $sale->branch 
+                ?? ($sale->branch_id ? \App\Models\Branch::find($sale->branch_id) : null)
+                ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+                ?? \App\Models\Branch::find(active_branch_id())
+                ?? \App\Models\Branch::first();
+
+            $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+            $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+            $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+        @endphp
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-        <h2 style="margin:0;font-size:14px;" class="bold">Memon Nimko</h2>
-        <p style="margin:0;">Sweet & Bakers</p>
-        <p style="margin:0;">Latifabad no 6 Near Shadman Hall  Hyderabad</p>
-        <p style="margin:0;">Phone: 022786661</p>
+        <h2 style="margin:0;font-size:14px;" class="bold">{{ shop_name() }}</h2>
+        <p style="margin:0;font-size:11px;">{{ shop_tagline() }}</p>
+        @if(!empty($currentBranch?->name))
+        <p style="margin:2px 0 0 0;font-weight:bold;font-size:11px;text-transform:uppercase;">BRANCH: {{ $currentBranch->name }}</p>
+        @endif
+        @if(!empty($bAddress))
+        <p style="margin:0;font-size:11px;">{{ $bAddress }}</p>
+        @endif
+        @if(!empty($bPhone))
+        <p style="margin:0;font-size:11px;">Phone: {{ $bPhone }}</p>
+        @endif
     </div>
 
     <div class="line"></div>

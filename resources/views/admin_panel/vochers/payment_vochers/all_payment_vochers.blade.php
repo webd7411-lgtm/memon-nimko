@@ -575,6 +575,20 @@ table#voucherTable tbody tr:hover td {
             </div>
         </div>
 
+        @if(session('success'))
+        <div class="alert alert-success d-flex align-items-center gap-2 rounded-3 border-0 shadow-sm mb-3">
+            <i class="bi bi-check-circle-fill fs-5"></i>
+            <div>{{ session('success') }}</div>
+        </div>
+        @endif
+
+        @if(session('error'))
+        <div class="alert alert-danger d-flex align-items-center gap-2 rounded-3 border-0 shadow-sm mb-3">
+            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <div>{{ session('error') }}</div>
+        </div>
+        @endif
+
         {{-- ══════════ KPI METRIC CARDS ══════════ --}}
         @php
             $totalCount = $receipts->count();

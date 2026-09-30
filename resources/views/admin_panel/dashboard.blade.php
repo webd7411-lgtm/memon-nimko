@@ -439,6 +439,9 @@
       <a href="{{ route('report.purchase') }}" class="quick-report-pill">
         <i class="fa fa-shopping-cart fas fa-shopping-cart" style="color:#334155;"></i> Purchase Report
       </a>
+      <a href="{{ route('raw-materials.index') }}" class="quick-report-pill">
+        <i class="fa fa-cubes fas fa-layer-group" style="color:#d97706;"></i> Raw Materials
+      </a>
       <a href="{{ route('System.Reports') }}" class="quick-report-pill">
         <i class="fa fa-line-chart fas fa-chart-line" style="color:#0f766e;"></i> Profit & Loss
       </a>
@@ -469,7 +472,7 @@
 
     <div class="row g-2 g-md-3 mb-4">
       {{-- Total Sales --}}
-      <div class="col-12 col-sm-6 col-lg-2">
+      <div class="col-12 col-sm-6 col-md-4 col-xl">
         <div class="t-card kpi-card green" style="border-top: 3px solid #0f766e;">
           <div class="kpi-hdr">
             <span class="kpi-label">TOTAL SALES (THIS MONTH)</span>
@@ -485,7 +488,7 @@
       </div>
 
       {{-- Total Purchases --}}
-      <div class="col-12 col-sm-6 col-lg-2">
+      <div class="col-12 col-sm-6 col-md-4 col-xl">
         <div class="t-card kpi-card blue" style="border-top: 3px solid #334155;">
           <div class="kpi-hdr">
             <span class="kpi-label">TOTAL PURCHASES (THIS MONTH)</span>
@@ -500,8 +503,24 @@
         </div>
       </div>
 
+      {{-- Raw Material Purchases --}}
+      <div class="col-12 col-sm-6 col-md-4 col-xl">
+        <div class="t-card kpi-card amber" style="border-top: 3px solid #d97706;">
+          <div class="kpi-hdr">
+            <span class="kpi-label">RAW MATERIAL PURCHASES</span>
+            <div class="kpi-icon-box" style="background:#fffbeb;color:#d97706;">
+              <i class="fa fa-cubes fas fa-layer-group"></i>
+            </div>
+          </div>
+          <div class="kpi-value">Rs {{ number_format($totalRawMaterialPurchases, 0) }}</div>
+          <div class="kpi-trend {{ $rawMaterialGrowth >= 0 ? 'up' : 'down' }}">
+            <i class="fa {{ $rawMaterialGrowth >= 0 ? 'fa-arrow-up fas fa-arrow-up' : 'fa-arrow-down fas fa-arrow-down' }}"></i> {{ $rawMaterialGrowth }}% <span class="kpi-trend-sub">vs last month</span>
+          </div>
+        </div>
+      </div>
+
       {{-- Gross Profit --}}
-      <div class="col-12 col-sm-6 col-lg-2">
+      <div class="col-12 col-sm-6 col-md-4 col-xl">
         <div class="t-card kpi-card green" style="border-top: 3px solid #0f766e;">
           <div class="kpi-hdr">
             <span class="kpi-label">GROSS PROFIT (THIS MONTH)</span>
@@ -517,7 +536,7 @@
       </div>
 
       {{-- Total Expenses --}}
-      <div class="col-12 col-sm-6 col-lg-2">
+      <div class="col-12 col-sm-6 col-md-4 col-xl">
         <div class="t-card kpi-card blue" style="border-top: 3px solid #334155;">
           <div class="kpi-hdr">
             <span class="kpi-label">TOTAL EXPENSES (THIS MONTH)</span>
@@ -533,7 +552,7 @@
       </div>
 
       {{-- Net Profit --}}
-      <div class="col-12 col-sm-6 col-lg-2">
+      <div class="col-12 col-sm-6 col-md-4 col-xl">
         <div class="t-card kpi-card green" style="border-top: 3px solid #0f766e;">
           <div class="kpi-hdr">
             <span class="kpi-label">NET PROFIT (THIS MONTH)</span>
@@ -549,7 +568,7 @@
       </div>
 
       {{-- Cash Balance --}}
-      <div class="col-12 col-sm-6 col-lg-2">
+      <div class="col-12 col-sm-6 col-md-4 col-xl">
         <div class="t-card kpi-card blue" style="border-top: 3px solid #334155;">
           <div class="kpi-hdr">
             <span class="kpi-label">CASH BALANCE</span>
@@ -590,8 +609,9 @@
               </a>
             </div>
           </div>
-          <div class="t-card-body p-3">
-            <div class="table-responsive">
+          <div class="t-card-body p-2 p-md-3">
+            {{-- DESKTOP VIEW: Table (Hidden on mobile/tablet) --}}
+            <div class="table-responsive d-none d-md-block">
               <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
                 <thead class="bg-light text-secondary text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
                   <tr>
@@ -648,6 +668,84 @@
                   @endforelse
                 </tbody>
               </table>
+            </div>
+
+            {{-- MOBILE VIEW: Premium Responsive Cards (Zero Horizontal Scroll) --}}
+            <div class="branch-mobile-cards d-md-none d-flex flex-column gap-2.5">
+              @forelse($branchSalesPerformance as $bItem)
+              <div class="branch-card-mobile p-3 rounded-4 border bg-white shadow-sm position-relative" style="{{ $bItem['is_active'] ? 'border-left: 4.5px solid #0f766e !important;' : 'border-left: 4.5px solid #334155 !important;' }}">
+                {{-- Card Header: Branch Info + Active Badge + Link --}}
+                <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom">
+                  <div class="d-flex align-items-center gap-2 min-w-0">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px; font-size: 0.95rem; background: #f0fdf4; color: #0f766e; flex-shrink: 0;">
+                      <i class="fas fa-store"></i>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="fw-bold text-dark d-flex align-items-center gap-1.5 flex-wrap" style="font-size: 0.92rem;">
+                        <span>{{ $bItem['name'] }}</span>
+                        @if($bItem['is_active'])
+                          <span class="badge rounded-pill px-2 py-0.5" style="font-size: 0.62rem; background: #0f766e; color: #fff;">Active View</span>
+                        @endif
+                      </div>
+                      <div class="text-muted text-truncate" style="font-size: 0.72rem;">{{ $bItem['address'] }}</div>
+                    </div>
+                  </div>
+                  <a href="{{ route('report.sale') }}" class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" title="View Branch Sales History" style="width: 32px; height: 32px; border: 1.5px solid #0f766e; color: #0f766e; background: #f0fdf4; flex-shrink: 0;">
+                    <i class="fas fa-arrow-right" style="font-size: 0.75rem;"></i>
+                  </a>
+                </div>
+
+                {{-- 2x2 Grid of Metrics --}}
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <div class="p-2 rounded-3 bg-light border">
+                      <div class="text-muted text-uppercase fw-bold" style="font-size: 0.62rem; letter-spacing: 0.4px;">Total Invoices</div>
+                      <div class="fw-bold text-dark mt-0.5" style="font-size: 0.88rem;">
+                        <i class="fas fa-receipt me-1 text-secondary" style="font-size: 0.72rem;"></i>{{ number_format($bItem['invoice_count']) }} Orders
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="p-2 rounded-3 bg-light border">
+                      <div class="text-muted text-uppercase fw-bold" style="font-size: 0.62rem; letter-spacing: 0.4px;">Gross Sales</div>
+                      <div class="fw-bold text-dark mt-0.5" style="font-size: 0.88rem;">
+                        Rs {{ number_format($bItem['total_sales'], 0) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="p-2 rounded-3 bg-light border">
+                      <div class="text-muted text-uppercase fw-bold" style="font-size: 0.62rem; letter-spacing: 0.4px;">Returns</div>
+                      <div class="fw-bold mt-0.5" style="font-size: 0.88rem; color: #334155;">
+                        Rs {{ number_format($bItem['total_returns'], 0) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="p-2 rounded-3 border" style="background: #f0fdf4; border-color: #ccfbf1 !important;">
+                      <div class="text-uppercase fw-bold" style="font-size: 0.62rem; letter-spacing: 0.4px; color: #0f766e;">Net Sales</div>
+                      <div class="fw-bold mt-0.5" style="font-size: 0.95rem; font-weight: 800; color: #0f766e;">
+                        Rs {{ number_format($bItem['net_sales'], 0) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {{-- Performance Share Progress Bar --}}
+                <div class="d-flex align-items-center justify-content-between text-muted mt-2" style="font-size: 0.7rem;">
+                  <span>Performance Share</span>
+                  <span class="fw-bold text-dark">{{ number_format($bItem['share_pct'], 1) }}%</span>
+                </div>
+                <div class="progress mt-1" style="height: 5px; background: #e2e8f0; border-radius: 6px;">
+                  <div class="progress-bar" role="progressbar" style="width: {{ max($bItem['share_pct'], 4) }}%; background: linear-gradient(135deg, #0f766e, #0d9488);"></div>
+                </div>
+              </div>
+              @empty
+              <div class="p-4 text-center text-muted bg-white rounded-4 border">
+                <i class="fas fa-store-slash mb-2 d-block text-secondary" style="font-size: 1.6rem;"></i>
+                No branch sales data recorded for this period.
+              </div>
+              @endforelse
             </div>
           </div>
         </div>

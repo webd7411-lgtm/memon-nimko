@@ -140,6 +140,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/customer/ledger/{id}', [CustomerController::class, 'getCustomerLedger']);
     Route::delete('/customer-payments/{id}', [CustomerController::class, 'destroy_payment'])->name('customer.payments.destroy');
     Route::get('customer-payments/receipt/{id}', [CustomerController::class, 'customer_payment_receipt'])->name('customer.payments.receipt');
+    Route::get('/customer/credit-info/{id}', [CustomerController::class, 'getCreditInfo'])->name('customer.credit.info');
+    Route::get('/customers/getByType', [CustomerController::class, 'getByType'])->name('customers.byType');
 
     // Vendor Routes
     Route::get('/vendors', [VendorController::class, 'index'])->name('vendors')->middleware('permission:Vendor');
@@ -161,24 +163,24 @@ Route::middleware('auth')->group(function () {
     Route::delete('/warehouse/delete/{id}', [WarehouseController::class, 'delete'])->middleware('permission:List Warehouse');
 
     // Branches
-    Route::resource('branch', BranchController::class)->names('branch')->only(['index', 'store']);
-    Route::delete('/branch/delete/{id}', [BranchController::class, 'delete'])->name('branch.delete');
+    Route::resource('branch', BranchController::class)->names('branch')->only(['index', 'store'])->middleware('permission:Branch');
+    Route::delete('/branch/delete/{id}', [BranchController::class, 'delete'])->name('branch.delete')->middleware('permission:Branch');
     Route::post('/switch-branch', [BranchController::class, 'switchBranch'])->name('branch.switch');
 
     // Roles
-    Route::resource('roles', RoleController::class)->names('roles')->only(['index', 'store']);
-    Route::delete('/roles/delete/{id}', [RoleController::class, 'delete'])->name('roles.delete');
-    Route::post('/admin/roles/update-permission', [RoleController::class, 'updatePermissions'])->name('roles.update.permission');
+    Route::resource('roles', RoleController::class)->names('roles')->only(['index', 'store'])->middleware('permission:Roles');
+    Route::delete('/roles/delete/{id}', [RoleController::class, 'delete'])->name('roles.delete')->middleware('permission:Roles');
+    Route::post('/admin/roles/update-permission', [RoleController::class, 'updatePermissions'])->name('roles.update.permission')->middleware('permission:Roles');
 
     // Permissions
-    Route::resource('permissions', PermissionController::class)->names('permissions')->only(['index', 'store']);
-    Route::delete('/permissions/delete/{id}', [PermissionController::class, 'delete'])->name('permission.delete');
+    Route::resource('permissions', PermissionController::class)->names('permissions')->only(['index', 'store'])->middleware('permission:Permissions');
+    Route::delete('/permissions/delete/{id}', [PermissionController::class, 'delete'])->name('permission.delete')->middleware('permission:Permissions');
 
     // Users
-    Route::resource('users', UserController::class)->names('users')->only(['index', 'store']);
-    Route::delete('/users/delete/{id}', [UserController::class, 'delete'])->name('users.delete');
-    Route::post('/admin/users/update-roles', [UserController::class, 'updateRoles'])->name('users.update.roles');
-    Route::post('/users/opening-balance', [UserController::class, 'storeOpeningBalance'])->name('users.store_opening_balance');
+    Route::resource('users', UserController::class)->names('users')->only(['index', 'store'])->middleware('permission:Users');
+    Route::delete('/users/delete/{id}', [UserController::class, 'delete'])->name('users.delete')->middleware('permission:Users');
+    Route::post('/admin/users/update-roles', [UserController::class, 'updateRoles'])->name('users.update.roles')->middleware('permission:Users');
+    Route::post('/users/opening-balance', [UserController::class, 'storeOpeningBalance'])->name('users.store_opening_balance')->middleware('permission:Users');
 
     // Zone
     Route::get('zone', [ZoneController::class, 'index'])->name('zone.index')->middleware('permission:Zone');
@@ -316,39 +318,39 @@ Route::middleware('auth')->group(function () {
     Route::get('/report/item-stock/closing-print', [ReportingController::class, 'printClosing'])->name('report.item_stock.closing_print');
     Route::post('/report/variant-stock-fetch', [ReportingController::class, 'fetchVariantStock'])->name('report.variant_stock.fetch');
 
-    Route::get('/report/branch-stock', [ReportingController::class, 'branch_stock_report'])->name('report.branch_stock')->middleware('permission:Item Stock Report');
-    Route::get('/report/branch-stock-fetch', [ReportingController::class, 'fetchBranchStockReport'])->name('report.branch_stock.fetch');
+    Route::get('/report/branch-stock', [ReportingController::class, 'branch_stock_report'])->name('report.branch_stock')->middleware('permission:Item Stock Report|Branch Stock Report');
+    Route::get('/report/branch-stock-fetch', [ReportingController::class, 'fetchBranchStockReport'])->name('report.branch_stock.fetch')->middleware('permission:Item Stock Report|Branch Stock Report');
 
     Route::get('report/purchase', [ReportingController::class, 'purchase_report'])->name('report.purchase')->middleware('permission:Purchase Report');
-    Route::post('report/purchase/fetch', [ReportingController::class, 'fetchPurchaseReport'])->name('report.purchase.fetch');
+    Route::post('report/purchase/fetch', [ReportingController::class, 'fetchPurchaseReport'])->name('report.purchase.fetch')->middleware('permission:Purchase Report');
 
     Route::get('report/sale', [ReportingController::class, 'sale_report'])->name('report.sale')->middleware('permission:Sale Report');
-    Route::get('report/sale/fetch', [ReportingController::class, 'fetchsaleReport'])->name('report.sale.fetch');
+    Route::get('report/sale/fetch', [ReportingController::class, 'fetchsaleReport'])->name('report.sale.fetch')->middleware('permission:Sale Report');
 
-    Route::get('report/sale-closing', [ReportingController::class, 'sale_closing_report'])->name('report.sale_closing')->middleware('permission:Sale Report');
-    Route::get('report/sale-closing/fetch', [ReportingController::class, 'fetchSaleClosingReport'])->name('report.sale_closing.fetch');
-    Route::get('report/sale-closing/print', [ReportingController::class, 'printSaleClosingReport'])->name('report.sale_closing.print');
+    Route::get('report/sale-closing', [ReportingController::class, 'sale_closing_report'])->name('report.sale_closing')->middleware('permission:Sale Report|Daily Sale Closing Report');
+    Route::get('report/sale-closing/fetch', [ReportingController::class, 'fetchSaleClosingReport'])->name('report.sale_closing.fetch')->middleware('permission:Sale Report|Daily Sale Closing Report');
+    Route::get('report/sale-closing/print', [ReportingController::class, 'printSaleClosingReport'])->name('report.sale_closing.print')->middleware('permission:Sale Report|Daily Sale Closing Report|Print Sale Closing');
 
-    Route::get('report/sale/category', [ReportingController::class, 'sale_report_category'])->name('report.sale.category')->middleware('permission:Sale Report');
-    Route::get('report/sale/category/fetch', [ReportingController::class, 'fetchsalecategoryReport'])->name('report.sale.category.fetch');
+    Route::get('report/sale/category', [ReportingController::class, 'sale_report_category'])->name('report.sale.category')->middleware('permission:Sale Report|Category Sale Report');
+    Route::get('report/sale/category/fetch', [ReportingController::class, 'fetchsalecategoryReport'])->name('report.sale.category.fetch')->middleware('permission:Sale Report|Category Sale Report');
 
     Route::get('report/customer/ledger', [ReportingController::class, 'customer_ledger_report'])->name('report.customer.ledger')->middleware('permission:Customer Ledger');
-    Route::get('report/customer-ledger/fetch', [ReportingController::class, 'fetch_customer_ledger'])->name('report.customer.ledger.fetch');
+    Route::get('report/customer-ledger/fetch', [ReportingController::class, 'fetch_customer_ledger'])->name('report.customer.ledger.fetch')->middleware('permission:Customer Ledger');
 
     Route::get('report/vendor/ledger', [ReportingController::class, 'vendor_ledger_report'])->name('report.vendor.ledger')->middleware('permission:Vendor Ledger');
-    Route::get('report/vendor-ledger/fetch', [ReportingController::class, 'fetch_vendor_ledger'])->name('report.vendor.ledger.fetch');
+    Route::get('report/vendor-ledger/fetch', [ReportingController::class, 'fetch_vendor_ledger'])->name('report.vendor.ledger.fetch')->middleware('permission:Vendor Ledger');
     Route::get('report/vendor-ledger/pdf', [ReportingController::class, 'vendor_ledger_pdf'])->name('report.vendor.ledger.pdf')->middleware('permission:Vendor Ledger');
 
-    Route::get('report/expense/vocher', [ReportingController::class, 'expense_vocher'])->name('expense.vocher');
-    Route::get('/expense-voucher/ajax', [ReportingController::class, 'expenseVoucherAjax'])->name('expense.voucher.ajax');
+    Route::get('report/expense/vocher', [ReportingController::class, 'expense_vocher'])->name('expense.vocher')->middleware('permission:Expense Report|Expense Audit Report|Expense Voucher');
+    Route::get('/expense-voucher/ajax', [ReportingController::class, 'expenseVoucherAjax'])->name('expense.voucher.ajax')->middleware('permission:Expense Report|Expense Audit Report|Expense Voucher');
 
     // Profit & Loss Report Routes
-    Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->name('report.profit_loss');
-    Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch');
+    Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->name('report.profit_loss')->middleware('permission:Sale Report|Profit Loss Report');
+    Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch')->middleware('permission:Sale Report|Profit Loss Report');
 
     // Chart of Accounts
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all')->middleware('permission:Char Of Accounts');
-    Route::delete('/coa/account/{id}', [AccountsHeadController::class, 'destroy'])->name('coa.account.delete');
+    Route::delete('/coa/account/{id}', [AccountsHeadController::class, 'destroy'])->name('coa.account.delete')->middleware('permission:Char Of Accounts|Delete Account');
 
     Route::get('/getPartyList', [NarrationController::class, 'getPartyList'])->name('party.list');
     Route::get('/get-customer/{id}', [NarrationController::class, 'getCustomerData'])->name('customers.show');
@@ -356,23 +358,23 @@ Route::middleware('auth')->group(function () {
 
     // Receipt Vouchers
     Route::get('/all-recepit-vochers', [VoucherController::class, 'all_recepit_vochers'])->name('all-recepit-vochers')->middleware('permission:Receipts Voucher');
-    Route::get('/recepit-vochers', [VoucherController::class, 'recepit_vochers'])->name('recepit-vochers');
-    Route::post('/recepit/vochers/store', [VoucherController::class, 'store_rec_vochers'])->name('recepit.vochers.store');
-    Route::get('/receipt-voucher/print/{id}', [VoucherController::class, 'print'])->name('receiptVoucher.print');
+    Route::get('/recepit-vochers', [VoucherController::class, 'recepit_vochers'])->name('recepit-vochers')->middleware('permission:Receipts Voucher|Create Receipt Voucher');
+    Route::post('/recepit/vochers/store', [VoucherController::class, 'store_rec_vochers'])->name('recepit.vochers.store')->middleware('permission:Receipts Voucher|Create Receipt Voucher');
+    Route::get('/receipt-voucher/print/{id}', [VoucherController::class, 'print'])->name('receiptVoucher.print')->middleware('permission:Receipts Voucher|Print Receipt Voucher');
 
     // Payment Vouchers
-    Route::get('/Payment-vochers', [VoucherController::class, 'Payment_vochers'])->name('Payment-vochers');
-    Route::post('/Payment/vochers/store', [VoucherController::class, 'store_Pay_vochers'])->name('Payment.vochers.store');
+    Route::get('/Payment-vochers', [VoucherController::class, 'Payment_vochers'])->name('Payment-vochers')->middleware('permission:Payment Voucher|Create Payment Voucher');
+    Route::post('/Payment/vochers/store', [VoucherController::class, 'store_Pay_vochers'])->name('Payment.vochers.store')->middleware('permission:Payment Voucher|Create Payment Voucher');
     Route::get('/all-Payment-vochers', [VoucherController::class, 'all_Payment_vochers'])->name('all-Payment-vochers')->middleware('permission:Payment Voucher');
-    Route::get('/Payment-voucher/print/{id}', [VoucherController::class, 'Paymentprint'])->name('PaymentVoucher.print');
+    Route::get('/Payment-voucher/print/{id}', [VoucherController::class, 'Paymentprint'])->name('PaymentVoucher.print')->middleware('permission:Payment Voucher|Print Payment Voucher');
 
     // Expense Vouchers
-    Route::get('/expense-vochers', [VoucherController::class, 'expense_vochers'])->name('expense-vochers');
-    Route::post('/expense/vochers/store', [VoucherController::class, 'store_expense_vochers'])->name('expense.vochers.store');
+    Route::get('/expense-vochers', [VoucherController::class, 'expense_vochers'])->name('expense-vochers')->middleware('permission:Expense Voucher|Create Expense Voucher');
+    Route::post('/expense/vochers/store', [VoucherController::class, 'store_expense_vochers'])->name('expense.vochers.store')->middleware('permission:Expense Voucher|Create Expense Voucher');
     Route::get('/all-expense-vochers', [VoucherController::class, 'all_expense_vochers'])->name('all-expense-vochers')->middleware('permission:Expense Voucher');
-    Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expenseprint'])->name('expenseVoucher.print');
+    Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expenseprint'])->name('expenseVoucher.print')->middleware('permission:Expense Voucher|Print Expense Voucher');
 
-    Route::get('cashbook', [ReportingController::class, 'cashbook'])->name('cashbook');
+    Route::get('cashbook', [ReportingController::class, 'cashbook'])->name('cashbook')->middleware('permission:Cashbook');
 
     // COA Prefix Routes
     Route::prefix('coa')->group(function () {

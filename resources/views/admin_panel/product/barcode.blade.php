@@ -229,7 +229,7 @@ body {
     <div class="label-card-wrap" id="variant-wrap-{{ $variant->id }}">
       <div class="label" id="label-{{ $variant->id }}">
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 40px; margin-bottom: 2px;" onerror="this.style.display='none'">
-        <div class="brand-name">{{ $product->brand->name ?? 'Memon Nimko' }}</div>
+        <div class="brand-name">{{ $product->brand->name ?? shop_name() }}</div>
         <div class="product-title">{{ $product->item_name }}</div>
         <div class="variant-title">{{ $variant->variant_name }}</div>
         
@@ -254,7 +254,7 @@ body {
     <div class="label-card-wrap" id="variant-wrap-main">
       <div class="label" id="label-main">
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 40px; margin-bottom: 2px;" onerror="this.style.display='none'">
-        <div class="brand-name">{{ $product->brand->name ?? 'Memon Nimko' }}</div>
+        <div class="brand-name">{{ $product->brand->name ?? shop_name() }}</div>
         <div class="product-title">{{ $product->item_name }}</div>
         
         @if($product->barcode_path)

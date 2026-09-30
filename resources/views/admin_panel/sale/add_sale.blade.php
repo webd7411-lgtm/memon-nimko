@@ -292,7 +292,7 @@
 {{-- ======= LEFT ======= --}}
 <div class="pos-left">
     <div class="pos-topbar">
-        <div class="pos-brand">🎂 Memon Nimkos</div>
+        <div class="pos-brand">🎂 {{ shop_name() }}</div>
         <div class="srchwrap">
             <i class="la la-search"></i>
             <input type="text" id="posSearch" placeholder="Search products…" autocomplete="off">
@@ -335,13 +335,17 @@
         </div>
 
         <div class="ord-cust">
-            <select name="customer" id="custSel" style="flex:2">
-                <option value="Walk-in Customer">👤 Walk-in Customer</option>
+            <select name="customer" id="custSel" style="flex:2" onchange="onCustChange()">
+                <option value="Walk-in Customer" data-credit="0">👤 Walk-in Customer</option>
                 @foreach($Customer as $c)
-                <option value="{{ $c->id }}">{{ $c->customer_name }}</option>
+                <option value="{{ $c->id }}" data-credit="{{ $c->credit_allowed ? '1' : '0' }}">{{ $c->customer_name }}</option>
                 @endforeach
             </select>
             <input type="text" name="reference" id="refInput" placeholder="Ref #" style="flex:1;max-width:85px">
+        </div>
+        {{-- Credit badge -- shows when credit customer selected --}}
+        <div id="creditBadgeBar" style="display:none; padding:4px 12px 6px; background:#f0fdf4; border-radius:8px; margin-top:4px; font-size:12px; color:#0f766e; font-weight:700; display:none;">
+            ✅ Credit (Udhar) Customer — Partial payment allowed
         </div>
         <input type="hidden" name="table_id" id="hTableId" value="">
     </div>
@@ -367,9 +371,46 @@
         {{-- Exchange Payment Direction Banner --}}
         <div id="exchangeStatusBanner" class="exchange-status-banner" style="display:none;"></div>
 
+        @php
+            if (!isset($bankAccounts)) {
+                $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+            }
+        @endphp
+
+        {{-- Quick Split Payment Helper Buttons --}}
+        <div class="d-flex gap-1 mb-2 mt-2" id="splitBtnRow">
+            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-1 fw-bold flex-fill" style="font-size:11px; border-radius:6px; background:#fff;" onclick="setPaySplit('full_cash')" title="Pura bill Cash me pay karein">💵 Full Cash</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-1 fw-bold flex-fill" style="font-size:11px; border-radius:6px; background:#fff;" onclick="setPaySplit('full_card')" title="Pura bill Card me pay karein">💳 Full Card</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-1 fw-bold flex-fill" style="font-size:11px; border-radius:6px; background:#fff;" onclick="setPaySplit('half_half')" title="50% Cash + 50% Card">⚡ 50/50 Split</button>
+        </div>
+
         <div class="cash-row" id="cashRow">
-            <div class="cg"><label id="cashLabel">💵 Cash</label><input type="number" id="cashI" name="cash" placeholder="0" min="0"></div>
-            <div class="cg"><label id="cardLabel">💳 Card</label><input type="number" id="cardI" name="card" placeholder="0" min="0"></div>
+            <div class="cg"><label id="cashLabel">💵 Cash</label><input type="number" id="cashI" name="cash" placeholder="0" min="0" step="any"></div>
+            <div class="cg">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label id="cardLabel" class="mb-0">💳 Card</label>
+                    <button type="button" id="btnRemToCard" class="btn btn-link p-0 text-decoration-none" style="font-size:10px; font-weight:700; color:#0f766e;" onclick="fillRemainingToCard()" title="Baqaya raqam Card me daalein">👉 Rem. to Card</button>
+                </div>
+                <input type="number" id="cardI" name="card" placeholder="0" min="0" step="any">
+            </div>
+        </div>
+
+        {{-- Card / Bank Account Selection from Chart of Accounts --}}
+        <div class="mb-2" id="cardAccountWrap" style="display:none; background:#f0fdfa; border:1.5px solid #0f766e; border-radius:8px; padding:6px 8px;">
+            <label style="font-size:11px; font-weight:700; color:#0f766e; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span><i class="la la-credit-card"></i> Card / Bank Account:</span>
+                <span class="badge" style="font-size:9.5px; background-color:#0f766e; color:#fff;">COA</span>
+            </label>
+            <select name="card_account_id" id="cardAccountSelect" class="form-select form-select-sm" style="font-size:12px; font-weight:600; border-radius:6px; border:1.5px solid #0f766e;">
+                <option value="">-- Select Card Account / Machine --</option>
+                @if(isset($bankAccounts) && count($bankAccounts) > 0)
+                    @foreach($bankAccounts as $acc)
+                        <option value="{{ $acc->id }}">{{ $acc->title }} {{ $acc->head ? '('.$acc->head->name.')' : '' }}</option>
+                    @endforeach
+                @else
+                    <option value="" disabled>No active accounts found in Chart of Accounts</option>
+                @endif
+            </select>
         </div>
         <div class="chng-bar" id="chngBar"><span id="chngLabel">Change / Balance</span><span id="chngAmt">0.00</span></div>
         <input type="hidden" name="total_subtotal" id="hSub">
@@ -1417,9 +1458,73 @@ function setP(i,v){ cart[i].price=parseFloat(v)||0; renderCart(); recalc(); }
 function delI(i){ cart.splice(i,1); renderCart(); recalc(); }
 function clearOrder(prompt = true){
     if (!cart.length) return;
-    if (!prompt) { cart=[]; renderCart(); recalc(); return; }
+    if (!prompt) {
+        cart=[];
+        const c1=document.getElementById('cashI'), c2=document.getElementById('cardI');
+        if(c1) c1.value=''; if(c2) c2.value='';
+        updateCardAccountVisibility(0);
+        renderCart(); recalc(); return;
+    }
     Swal.fire({title:'Clear order?',icon:'question',showCancelButton:true,confirmButtonText:'Clear',cancelButtonText:'No',confirmButtonColor:'#e53935'})
-    .then(r=>{ if(r.isConfirmed){ cart=[]; document.getElementById('hRunningSaleId').value = ''; renderCart(); recalc(); } });
+    .then(r=>{
+        if(r.isConfirmed){
+            cart=[];
+            document.getElementById('hRunningSaleId').value = '';
+            const c1=document.getElementById('cashI'), c2=document.getElementById('cardI');
+            if(c1) c1.value=''; if(c2) c2.value='';
+            updateCardAccountVisibility(0);
+            renderCart(); recalc();
+        }
+    });
+}
+
+/* ---- SPLIT PAYMENT & CARD SELECTION HELPERS ---- */
+function updateCardAccountVisibility(cardVal) {
+    const cd = typeof cardVal !== 'undefined' ? cardVal : (parseFloat(document.getElementById('cardI')?.value) || 0);
+    const wrap = document.getElementById('cardAccountWrap');
+    const sel = document.getElementById('cardAccountSelect');
+    if (!wrap) return;
+
+    if (cd > 0) {
+        wrap.style.display = 'block';
+        if (sel && (!sel.value || sel.value === '') && sel.options.length > 1) {
+            sel.selectedIndex = 1;
+        }
+    } else {
+        wrap.style.display = 'none';
+        if (sel) sel.value = '';
+    }
+}
+
+function setPaySplit(mode) {
+    const net = Math.max(0, parseFloat(document.getElementById('hNet').value) || 0);
+    const cashEl = document.getElementById('cashI');
+    const cardEl = document.getElementById('cardI');
+
+    if (mode === 'full_cash') {
+        cashEl.value = net > 0 ? net : '';
+        cardEl.value = '';
+    } else if (mode === 'full_card') {
+        cashEl.value = '';
+        cardEl.value = net > 0 ? net : '';
+    } else if (mode === 'half_half') {
+        const half = Math.round(net / 2);
+        cashEl.value = half > 0 ? half : '';
+        cardEl.value = (net - half) > 0 ? (net - half) : '';
+    }
+    updateCardAccountVisibility();
+    recalc();
+}
+
+function fillRemainingToCard() {
+    const net = Math.max(0, parseFloat(document.getElementById('hNet').value) || 0);
+    const cash = parseFloat(document.getElementById('cashI').value) || 0;
+    const cardEl = document.getElementById('cardI');
+    const rem = Math.max(0, net - cash);
+
+    cardEl.value = rem > 0 ? rem : '';
+    updateCardAccountVisibility();
+    recalc();
 }
 
 /* ---- RECALC ---- */
@@ -1450,6 +1555,7 @@ function recalc(){
     const cs = parseFloat(document.getElementById('cashI').value) || 0;
     const cd = parseFloat(document.getElementById('cardI').value) || 0;
     const net = sub - ex;
+    updateCardAccountVisibility(cd);
     
     document.getElementById('sSubtotal').textContent = 'Rs ' + (sub < 0 ? '-' : '') + fmt(Math.abs(sub));
     document.getElementById('sItemDisc').textContent = 'Rs ' + fmt(iDisc);
@@ -1746,6 +1852,18 @@ function savePosState() {
     } catch(e) {}
 }
 
+/* ---- CUSTOMER CREDIT CHECK ---- */
+let _custCreditAllowed = false;
+function onCustChange() {
+    const sel = document.getElementById('custSel');
+    const opt = sel.options[sel.selectedIndex];
+    _custCreditAllowed = (opt && opt.dataset.credit === '1');
+    const bar = document.getElementById('creditBadgeBar');
+    if (bar) bar.style.display = _custCreditAllowed ? 'block' : 'none';
+}
+// Run once on load to reflect pre-selected
+document.addEventListener('DOMContentLoaded', function() { onCustChange(); });
+
 function doSale(){
     if (submitting) return;
     if (!cart.length){ toast('No products added to cart'); return; }
@@ -1771,7 +1889,41 @@ function doSale(){
     const card = parseFloat(document.getElementById('cardI').value) || 0;
     const totalPaid = cash + card;
 
+    if (card > 0) {
+        const cardSel = document.getElementById('cardAccountSelect');
+        if (cardSel && cardSel.options.length > 1 && !cardSel.value) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Card Account Required',
+                text: 'Barah-e-karam Card / Bank Account select karein!',
+                confirmButtonColor: '#0f766e'
+            });
+            cardSel.focus();
+            return;
+        }
+    }
+
+    // Credit customers: partial payment allowed — show due amount confirmation
     if (totalPaid < net && net > 0) {
+        if (_custCreditAllowed) {
+            const due = (net - totalPaid).toFixed(2);
+            Swal.fire({
+                icon: 'warning',
+                title: 'Udhar Sale?',
+                html: `Rs <b>${due}</b> ka udhar hoga is customer par.<br><small>Customer ki ledger me record ho jayega.</small>`,
+                showCancelButton: true,
+                confirmButtonColor: '#0f766e',
+                cancelButtonColor: '#e53935',
+                confirmButtonText: '✅ Confirm Udhar Sale',
+                cancelButtonText: '❌ Cancel'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    buildFields(); document.getElementById('hAction').value='sale'; submitting=true;
+                    document.getElementById('salesForm').submit();
+                }
+            });
+            return;
+        }
         Swal.fire({
             icon: 'error',
             title: 'Incomplete Payment',
@@ -1869,6 +2021,12 @@ document.getElementById('cardI').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         if (!cart.length) { toast('No products added to cart'); return; }
+        const cardVal = parseFloat(this.value) || 0;
+        const cardSel = document.getElementById('cardAccountSelect');
+        if (cardVal > 0 && cardSel && !cardSel.value && cardSel.options.length > 1) {
+            cardSel.focus();
+            return;
+        }
         // Highlight Sale button
         const btnSale = document.getElementById('btnSale');
         btnSale.style.transform = 'scale(1.06)';
@@ -1877,6 +2035,23 @@ document.getElementById('cardI').addEventListener('keydown', function(e) {
         kbState = 'sale-ready';
     }
 });
+
+// Card Account Select → Enter → Sale button highlight
+const cardSelEl = document.getElementById('cardAccountSelect');
+if (cardSelEl) {
+    cardSelEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const btnSale = document.getElementById('btnSale');
+            if (btnSale) {
+                btnSale.style.transform = 'scale(1.06)';
+                btnSale.style.boxShadow = '0 0 0 4px rgba(39,174,96,.55)';
+                btnSale.focus();
+                kbState = 'sale-ready';
+            }
+        }
+    });
+}
 
 // Sale button Enter → doSale
 document.getElementById('btnSale').addEventListener('keydown', function(e) {

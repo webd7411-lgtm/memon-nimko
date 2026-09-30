@@ -124,27 +124,63 @@ class VendorController extends Controller
     // Show all vendor payments
     public function vendor_payments()
     {
-        $query = VendorPayment::with('vendor')->orderByDesc('payment_date');
+        $query = VendorPayment::with(['vendor', 'cardAccount'])->orderByDesc('payment_date');
         if (!is_all_branches()) {
             $query->where('branch_id', active_branch_id());
         }
         $payments = $query->get();
 
         $vendors = Vendor::all();
-        return view('admin_panel.vendors.vendor_payments', compact('payments', 'vendors'));
+        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+
+        return view('admin_panel.vendors.vendor_payments', compact('payments', 'vendors', 'bankAccounts'));
     }
 
     // Store vendor payment and update ledger
     public function store_vendor_payment(Request $request)
     {
         $request->validate([
-            'vendor_id' => 'required|exists:vendors,id',
-            'payment_date' => 'required|date',
-            'amount' => 'required|numeric|min:0',
-            'payment_method' => 'nullable|string',
-            'note' => 'nullable|string',
+            'vendor_id'       => 'required|exists:vendors,id',
+            'payment_date'    => 'required|date',
+            'amount'          => 'required|numeric|min:0.01',
+            'payment_mode'    => 'nullable|in:cash,card,split',
+            'payment_method'  => 'nullable|string',
+            'cash'            => 'nullable|numeric|min:0',
+            'card'            => 'nullable|numeric|min:0',
+            'card_account_id' => 'nullable|exists:accounts,id',
+            'note'            => 'nullable|string',
             'adjustment_type' => 'required|in:plus,minus',
         ]);
+
+        $mode = $request->payment_mode ?? 'cash';
+        $totalAmount = (float) $request->amount;
+        $cashAmount = 0;
+        $cardAmount = 0;
+        $cardAccountId = null;
+        $paymentMethod = $request->payment_method;
+
+        if ($mode === 'cash') {
+            $cashAmount = $totalAmount;
+            $cardAmount = 0;
+            $cardAccountId = null;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        } elseif ($mode === 'card') {
+            $cashAmount = 0;
+            $cardAmount = $totalAmount;
+            $cardAccountId = $request->card_account_id ?: null;
+            $paymentMethod = $paymentMethod ?: 'Card';
+        } elseif ($mode === 'split') {
+            $cashAmount = (float) ($request->cash ?? 0);
+            $cardAmount = (float) ($request->card ?? 0);
+            $cardAccountId = $request->card_account_id ?: null;
+            if (($cashAmount + $cardAmount) > 0) {
+                $totalAmount = $cashAmount + $cardAmount;
+            }
+            $paymentMethod = $paymentMethod ?: 'Split (Cash + Card)';
+        } else {
+            $cashAmount = $totalAmount;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        }
 
         // 🔹 Last payment number
         $lastPayment = VendorPayment::latest('id')->first();
@@ -158,21 +194,24 @@ class VendorController extends Controller
         $paymentNo = 'PAY-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
         // 🔹 Save payment
         $payment = VendorPayment::create([
-            'payment_no' => $paymentNo, // ✅ AUTO
-            'vendor_id' => $request->vendor_id,
-            'admin_or_user_id' => Auth::id(),
+            'payment_no'      => $paymentNo,
+            'vendor_id'       => $request->vendor_id,
+            'admin_or_user_id'=> Auth::id(),
             'branch_id'       => active_branch_id(),
-            'payment_date' => $request->payment_date,
-            'amount' => $request->amount,
-            'payment_method' => $request->payment_method,
-            'note' => $request->note,
+            'payment_date'    => $request->payment_date,
+            'amount'          => $totalAmount,
+            'cash'            => $cashAmount,
+            'card'            => $cardAmount,
+            'card_account_id' => $cardAccountId,
+            'payment_method'  => $paymentMethod,
+            'note'            => $request->note,
         ]);
 
         // 🔹 Update vendor ledger
         $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->first();
         if ($ledger) {
             $ledger->closing_balance +=
-                ($request->adjustment_type === 'minus' ? -1 : 1) * $request->amount;
+                ($request->adjustment_type === 'minus' ? -1 : 1) * $totalAmount;
             $ledger->save();
         }
 
@@ -182,41 +221,71 @@ class VendorController extends Controller
     // Edit vendor payment
     public function edit_vendor_payment($id)
     {
-        $payment = VendorPayment::with('vendor')->findOrFail($id);
+        $payment = VendorPayment::with(['vendor', 'cardAccount'])->findOrFail($id);
         $vendors = Vendor::all();
+        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
         
         // Get current ledger balance
         $ledger = VendorLedger::where('vendor_id', $payment->vendor_id)->first();
         $current_balance = $ledger ? $ledger->closing_balance : 0;
         
         // Calculate original balance (before this payment was made)
-        // If minus: original = current + amount (we deducted, so add back)
-        // If plus: original = current - amount (we added, so subtract)
         $original_balance = $current_balance + $payment->amount; // Assuming payment was minus
         
-        // Determine adjustment type based on stored data or default to minus
-        $adjustment_type = 'minus'; // Default assumption for payments
+        $adjustment_type = 'minus';
         
-        return view('admin_panel.vendors.edit_vendor_payment', compact('payment', 'vendors', 'original_balance', 'adjustment_type'));
+        return view('admin_panel.vendors.edit_vendor_payment', compact('payment', 'vendors', 'original_balance', 'adjustment_type', 'bankAccounts'));
     }
 
     // Update vendor payment
     public function update_vendor_payment(Request $request, $id)
     {
         $validated = $request->validate([
-            'vendor_id' => 'required|exists:vendors,id',
-            'payment_date' => 'required|date',
-            'amount' => 'required|numeric|min:0',
-            'payment_method' => 'nullable|string',
-            'note' => 'nullable|string',
+            'vendor_id'       => 'required|exists:vendors,id',
+            'payment_date'    => 'required|date',
+            'amount'          => 'required|numeric|min:0.01',
+            'payment_mode'    => 'nullable|in:cash,card,split',
+            'payment_method'  => 'nullable|string',
+            'cash'            => 'nullable|numeric|min:0',
+            'card'            => 'nullable|numeric|min:0',
+            'card_account_id' => 'nullable|exists:accounts,id',
+            'note'            => 'nullable|string',
             'adjustment_type' => 'required|in:plus,minus',
         ]);
 
         $payment = VendorPayment::findOrFail($id);
+
+        $mode = $request->payment_mode ?? ($payment->card > 0 && $payment->cash > 0 ? 'split' : ($payment->card > 0 ? 'card' : 'cash'));
+        $totalAmount = (float) $validated['amount'];
+        $cashAmount = 0;
+        $cardAmount = 0;
+        $cardAccountId = null;
+        $paymentMethod = $validated['payment_method'] ?? null;
+
+        if ($mode === 'cash') {
+            $cashAmount = $totalAmount;
+            $cardAmount = 0;
+            $cardAccountId = null;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        } elseif ($mode === 'card') {
+            $cashAmount = 0;
+            $cardAmount = $totalAmount;
+            $cardAccountId = $request->card_account_id ?: null;
+            $paymentMethod = $paymentMethod ?: 'Card';
+        } elseif ($mode === 'split') {
+            $cashAmount = (float) ($request->cash ?? 0);
+            $cardAmount = (float) ($request->card ?? 0);
+            $cardAccountId = $request->card_account_id ?: null;
+            if (($cashAmount + $cardAmount) > 0) {
+                $totalAmount = $cashAmount + $cardAmount;
+            }
+            $paymentMethod = $paymentMethod ?: 'Split (Cash + Card)';
+        } else {
+            $cashAmount = $totalAmount;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        }
         
         // 1. Revert Old Payment Logic (Add back amount to Old Vendor)
-        // Currently assuming all existing payments were 'minus' (standard payments)
-        // If we store type later, we should check $payment->type here.
         $oldLedger = VendorLedger::where('vendor_id', $payment->vendor_id)->first();
         if ($oldLedger) {
             $oldLedger->closing_balance += $payment->amount; // Add back the deducted amount
@@ -224,35 +293,33 @@ class VendorController extends Controller
         }
 
         // 2. Apply New Payment Logic to New Vendor
-        // Fetch fresh ledger for the new vendor (could be same vendor, but need updated state)
         $newLedger = VendorLedger::where('vendor_id', $validated['vendor_id'])->first();
         
-        // If no ledger exists for new vendor, create one? 
-        // Ideally should exist if vendor created properly. 
-        // But for safety, check if exists.
         if ($newLedger) {
-            $adjustment = ($validated['adjustment_type'] === 'minus' ? -1 : 1) * $validated['amount'];
+            $adjustment = ($validated['adjustment_type'] === 'minus' ? -1 : 1) * $totalAmount;
             $newLedger->closing_balance += $adjustment;
             $newLedger->save();
         } else {
              // Create ledger if missing (Edge case)
              VendorLedger::create([
-                'vendor_id' => $validated['vendor_id'],
-                'admin_or_user_id' => Auth::id(),
+                'vendor_id'       => $validated['vendor_id'],
+                'admin_or_user_id'=> Auth::id(),
                 'opening_balance' => 0,
-                // Initial balance is just this transaction
-                'closing_balance' => ($validated['adjustment_type'] === 'minus' ? -1 : 1) * $validated['amount'], 
-                'previous_balance' => 0,
+                'closing_balance' => ($validated['adjustment_type'] === 'minus' ? -1 : 1) * $totalAmount, 
+                'previous_balance'=> 0,
             ]);
         }
         
         // 3. Update Payment Record
         $payment->update([
-            'vendor_id' => $validated['vendor_id'], // ✅ Update vendor
-            'payment_date' => $validated['payment_date'],
-            'amount' => $validated['amount'],
-            'payment_method' => $validated['payment_method'],
-            'note' => $validated['note'],
+            'vendor_id'       => $validated['vendor_id'],
+            'payment_date'    => $validated['payment_date'],
+            'amount'          => $totalAmount,
+            'cash'            => $cashAmount,
+            'card'            => $cardAmount,
+            'card_account_id' => $cardAccountId,
+            'payment_method'  => $paymentMethod,
+            'note'            => $validated['note'],
             // payment_no stays same
         ]);
 
@@ -262,7 +329,7 @@ class VendorController extends Controller
 
     public function printReceipt($id)
     {
-        $payment = VendorPayment::with('vendor')->findOrFail($id);
+        $payment = VendorPayment::with(['vendor', 'cardAccount'])->findOrFail($id);
         return view('admin_panel.vendors.payment_receipt', compact('payment'));
     }
     // Show all vendor bilties

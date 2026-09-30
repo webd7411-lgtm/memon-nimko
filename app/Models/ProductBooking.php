@@ -10,7 +10,7 @@ class ProductBooking extends Model
         'customer', 'reference', 'product', 'product_code', 'brand', 'unit',
         'per_price', 'per_discount', 'qty', 'per_total', 'color',
         'total_amount_Words', 'total_bill_amount', 'total_extradiscount',
-        'total_net', 'cash', 'card', 'change', 'total_items',
+        'total_net', 'cash', 'card', 'card_account_id', 'change', 'total_items',
         'variant_id', 'total_pieces', 'total_meter', 'advance_payment', 'booking_date'
     ];
 
@@ -21,6 +21,11 @@ class ProductBooking extends Model
      public function productt()
     {
         return $this->belongsTo(Product::class, 'product', 'id');
+    }
+
+    public function cardAccount()
+    {
+        return $this->belongsTo(Account::class, 'card_account_id');
     }
 }
 

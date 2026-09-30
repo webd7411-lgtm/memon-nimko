@@ -66,7 +66,7 @@ td { padding: 14px; font-size: .9rem; border-bottom: 1px solid #f1f5f9; color: #
 <div class="invoice-card">
   <div class="header">
     <div class="logo-title">
-      <h2>Memon Nimko</h2>
+      <h2>{{ shop_name() }}</h2>
       <p>Raw Material Purchase Voucher</p>
     </div>
     <div class="inv-meta">
@@ -130,6 +130,8 @@ td { padding: 14px; font-size: .9rem; border-bottom: 1px solid #f1f5f9; color: #
       <span style="color: #2563eb;">Rs {{ number_format($purchase->total_cost, 2) }}</span>
     </div>
   </div>
+
+  <div style="text-align:center; font-size:10px; color:#888; margin-top:14px;">Develop By: <strong>{{ developer_name() }}</strong></div>
 </div>
 
 </body>

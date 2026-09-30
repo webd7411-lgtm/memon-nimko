@@ -92,7 +92,7 @@
     </table>
 
     <div class="footer">
-        Memon Nimko — Vendor Ledger Report
+        {{ shop_name() }} — Vendor Ledger Report &bull; Developed by {{ developer_name() }}
     </div>
 </body>
 </html>

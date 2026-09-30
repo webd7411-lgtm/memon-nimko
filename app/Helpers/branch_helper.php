@@ -61,3 +61,54 @@ if (!function_exists('active_branch_name')) {
         return $branch ? $branch->name : 'Main Branch';
     }
 }
+
+if (!function_exists('sys_setting')) {
+    /**
+     * Get a setting value by key with optional default fallback.
+     */
+    function sys_setting(string $key, $default = null)
+    {
+        static $settingsCache = null;
+        if ($settingsCache === null) {
+            try {
+                $settingsCache = \App\Models\Setting::pluck('value', 'key')->toArray();
+            } catch (\Throwable $e) {
+                $settingsCache = [];
+            }
+        }
+        return (isset($settingsCache[$key]) && $settingsCache[$key] !== '' && $settingsCache[$key] !== null)
+            ? $settingsCache[$key] 
+            : $default;
+    }
+}
+
+if (!function_exists('shop_name')) {
+    /**
+     * Get the customer-facing Store / Shop name for receipts, invoices, and vouchers.
+     */
+    function shop_name(): string
+    {
+        return sys_setting('shop_name') ?: 'Memon Nimko';
+    }
+}
+
+if (!function_exists('shop_tagline')) {
+    /**
+     * Get the customer-facing Store / Shop tagline for receipts, invoices, and vouchers.
+     */
+    function shop_tagline(): string
+    {
+        return sys_setting('shop_tagline') ?: 'Sweets & Bakers';
+    }
+}
+
+if (!function_exists('developer_name')) {
+    /**
+     * Get the software developer / vendor brand name.
+     */
+    function developer_name(): string
+    {
+        return sys_setting('developer_name') ?: 'ProWave Software Solutions';
+    }
+}
+

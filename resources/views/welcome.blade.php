@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Memon Nimko | Premium Artisan Bakery</title>
+    <title>{{ sys_setting('software_name', 'Memon Nimko') }} | {{ sys_setting('tagline', 'Premium Artisan Bakery') }}</title>
 
     <!-- Google Fonts: Playfair Display for Serif, Outfit for Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -300,7 +300,7 @@
 <body class="antialiased">
 
     <nav>
-        <a href="/" class="logo">Memon Nimko<span>.</span></a>
+        <a href="/" class="logo">{{ shop_name() }}<span>.</span></a>
         <div class="nav-links">
             @if (Route::has('login'))
                 <a href="{{ route('login') }}" style="color: var(--gold); font-weight: 700;">Login</a>
@@ -311,8 +311,8 @@
     <section class="hero">
         <div class="hero-bg"></div>
         <div class="hero-content">
-            <span class="brand-top">Since 1995</span>
-            <h1>Memon Nimko</h1>
+            <span class="brand-top">{{ shop_tagline() }}</span>
+            <h1>{{ shop_name() }}</h1>
             <p class="hero-desc">
                 Experience the fine art of baking with our handcrafted sweets, gourmet pastries, and traditional delicacies made with the finest ingredients and timeless passion.
             </p>
@@ -353,6 +353,10 @@
                     <p>Over 25 years of excellence.</p>
                 </div>
             </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; font-size: 0.8rem; color: rgba(255,255,255,0.4);">
+            Software Developed by <strong style="color: rgba(255,255,255,0.75);">{{ developer_name() }}</strong>
         </div>
     </section>
 

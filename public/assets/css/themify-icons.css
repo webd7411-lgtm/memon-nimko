@@ -1,10 +1,11 @@
 @font-face {
     font-family: 'themify';
-    src: url('https://cdn.jsdelivr.net/npm/themify-icons@1.0.0/fonts/themify.eot');
-    src: url('https://cdn.jsdelivr.net/npm/themify-icons@1.0.0/fonts/themify.eot?#iefix') format('embedded-opentype'),
-         url('https://cdn.jsdelivr.net/npm/themify-icons@1.0.0/fonts/themify.woff') format('woff'),
-         url('https://cdn.jsdelivr.net/npm/themify-icons@1.0.0/fonts/themify.ttf') format('truetype'),
-         url('https://cdn.jsdelivr.net/npm/themify-icons@1.0.0/fonts/themify.svg#themify') format('svg');
+    src: url('../fonts/themify/themify.eot');
+    src: url('../fonts/themify/themify.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/themify/themify.woff') format('woff'),
+         url('../fonts/themify/themify.ttf') format('truetype'),
+         url('../fonts/themify/themify.svg#themify') format('svg'),
+         url('https://cdn.jsdelivr.net/npm/themify-icons@1.0.0/themify-icons/fonts/themify.woff') format('woff');
     font-weight: normal;
     font-style: normal;
     font-display: swap;

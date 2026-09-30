@@ -2,6 +2,8 @@
 
 @section('content')
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
     :root {
         --primary: #4f46e5;
         --primary-light: #818cf8;
@@ -9,91 +11,111 @@
         --accent-1: #0ea5e9;
         --accent-2: #8b5cf6;
         --accent-3: #ec4899;
-        --bg-page: #f0f2f5;
+        --bg-page: #f8fafc;
         --card-bg: #ffffff;
-        --card-border: rgba(0,0,0,0.04);
-        --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
-        --text-primary: #1e293b;
-        --text-secondary: #64748b;
+        --card-border: #e2e8f0;
+        --card-shadow: 0 1px 4px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
         --text-muted: #94a3b8;
+    }
+
+    body, html {
+        overflow-x: hidden !important;
+        max-width: 100vw;
+    }
+
+    .reports-page * {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     .reports-page {
         background: var(--bg-page);
         min-height: 100vh;
-        padding: 28px 24px;
+        padding: 16px 20px;
         position: relative;
-    }
-    .reports-page::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 280px;
-        background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 50%, #8b5cf6 100%);
-        opacity: 0.08;
-        pointer-events: none;
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100%;
     }
 
     .glass-card {
         background: var(--card-bg);
         border: 1px solid var(--card-border);
-        border-radius: 20px;
+        border-radius: 14px;
         box-shadow: var(--card-shadow);
         position: relative;
         overflow: hidden;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
     }
     .glass-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 20px 40px rgba(0,0,0,0.08);
-        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+        transform: translateY(-1.5px);
+    }
+
+    /* ═══════ SMALL BEAUTIFUL ATTRACTIVE STAT CARDS ═══════ */
+    .report-section-hdr {
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: #475569;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
     .stat-card {
-        padding: 22px 24px;
+        padding: 10px 14px !important;
         display: flex;
         align-items: center;
         justify-content: space-between;
         position: relative;
         overflow: hidden;
+        border-radius: 12px !important;
+        height: 100%;
     }
     .stat-card::after {
         content: '';
         position: absolute;
         top: 0; left: 0;
-        width: 4px;
+        width: 3.5px;
         height: 100%;
         border-radius: 0 4px 4px 0;
     }
     .stat-card .stat-icon {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 10px !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
+        font-size: 15px !important;
         flex-shrink: 0;
     }
     .stat-card .stat-label {
-        font-size: 12px;
+        font-size: 10px !important;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.6px;
+        letter-spacing: 0.5px;
         color: var(--text-muted);
-        margin-bottom: 2px;
+        margin-bottom: 1px;
+        line-height: 1.2;
     }
     .stat-card .stat-value {
-        font-size: 28px;
-        font-weight: 900;
+        font-size: 17px !important;
+        font-weight: 800;
         color: var(--text-primary);
-        font-family: 'Inter', 'Segoe UI', sans-serif;
-        line-height: 1.15;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
     }
     .stat-card .stat-sub {
-        font-size: 13px;
+        font-size: 10.5px !important;
         color: var(--text-muted);
         margin-top: 1px;
         font-weight: 500;
+        line-height: 1.1;
     }
 
     .stat-card.border-accent-1::after { background: linear-gradient(180deg, #4f46e5, #818cf8); }
@@ -105,96 +127,158 @@
     .stat-card.border-accent-7::after { background: linear-gradient(180deg, #8b5cf6, #a78bfa); }
     .stat-card.border-accent-8::after { background: linear-gradient(180deg, #ec4899, #f472b6); }
 
+    /* ═══════ COMPACT FILTER HEADER CARD ═══════ */
     .filter-card {
-        padding: 24px 28px;
-        margin-bottom: 28px;
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        border: 1px solid rgba(0,0,0,0.04);
+        padding: 12px 18px;
+        margin-bottom: 14px;
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
     }
     .filter-card label {
         color: var(--text-secondary);
-        font-size: 12px;
+        font-size: 10.5px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 6px;
+        margin-bottom: 3px;
     }
     .filter-card .form-control, .filter-card .form-select {
-        background: #f1f5f9;
-        border: 2px solid transparent;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
         color: var(--text-primary);
-        border-radius: 12px;
-        padding: 10px 16px;
-        font-size: 14px;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
         font-weight: 600;
-        transition: all 0.25s;
+        height: 36px;
+        transition: all 0.2s;
     }
     .filter-card .form-control:focus, .filter-card .form-select:focus {
         background: #fff;
         border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(79,70,229,0.1);
+        box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+        outline: none;
     }
     .filter-card .btn-filter {
         background: linear-gradient(135deg, var(--primary), var(--accent-2));
         border: none;
-        border-radius: 12px;
-        padding: 10px 28px;
+        border-radius: 8px;
+        padding: 6px 16px;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 12.5px;
         color: #fff;
-        transition: all 0.3s;
-        box-shadow: 0 4px 14px rgba(79,70,229,0.3);
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(79,70,229,0.25);
     }
     .filter-card .btn-filter:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 28px rgba(79,70,229,0.35);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+        color: #fff;
+    }
+    .filter-card .btn-export-pdf {
+        background: #dc2626;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-weight: 700;
+        font-size: 12px;
+        color: #fff !important;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .filter-card .btn-export-pdf:hover {
+        background: #b91c1c;
+        transform: translateY(-1px);
+    }
+    .filter-card .btn-export-bw {
+        background: #334155;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-weight: 700;
+        font-size: 12px;
+        color: #fff !important;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .filter-card .btn-export-bw:hover {
+        background: #1e293b;
+        transform: translateY(-1px);
     }
     .filter-card .btn-reset {
         background: #f1f5f9;
-        border: none;
-        border-radius: 12px;
-        padding: 10px 20px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 12px;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 12px;
         color: var(--text-secondary);
-        transition: all 0.25s;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        text-decoration: none;
+        transition: all 0.2s;
     }
     .filter-card .btn-reset:hover {
         background: #e2e8f0;
         color: var(--text-primary);
     }
 
+    /* ═══════ SMALL BEAUTIFUL CHARTS ═══════ */
     .chart-container {
-        padding: 20px 24px;
+        padding: 14px 16px !important;
+        border-radius: 14px !important;
+        margin-bottom: 12px;
     }
     .chart-container .chart-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 10px;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
     }
     .chart-container .chart-title {
-        font-size: 16px;
+        font-size: 13.5px !important;
         font-weight: 800;
         color: var(--text-primary);
         margin: 0;
+        display: flex;
+        align-items: center;
     }
     .chart-container .chart-sub {
-        font-size: 12px;
+        font-size: 10.5px !important;
         color: var(--text-muted);
         font-weight: 500;
     }
     .chart-container .chart-filter-select {
-        background: #f1f5f9;
-        border: 2px solid transparent;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
         color: var(--text-primary);
-        border-radius: 10px;
-        padding: 6px 14px;
-        font-size: 13px;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 11.5px;
         font-weight: 700;
         cursor: pointer;
+        height: 30px;
         transition: all 0.2s;
     }
     .chart-container .chart-filter-select:focus {
@@ -202,12 +286,13 @@
         outline: none;
     }
     .chart-wrapper {
-        border-radius: 12px;
+        border-radius: 10px;
         overflow: hidden;
         background: #fafbfc;
         border: 1px solid rgba(0,0,0,0.03);
     }
 
+    /* ═══════ MODAL ═══════ */
     .modal-custom {
         background: rgba(15,23,42,0.6);
         backdrop-filter: blur(8px);
@@ -215,142 +300,89 @@
     .modal-custom .modal-content {
         background: #fff;
         border: none;
-        border-radius: 20px;
-        box-shadow: 0 24px 48px rgba(0,0,0,0.15);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
         color: var(--text-primary);
     }
     .modal-custom .modal-header {
         border-bottom: 1px solid #f1f5f9;
-        padding: 20px 24px;
+        padding: 14px 18px;
     }
-    .modal-custom .modal-body { padding: 24px; }
-    .modal-custom .modal-title { font-weight: 800; color: var(--text-primary); }
-    .modal-custom .btn-close { opacity: 0.5; }
-    .modal-custom .table {
-        color: var(--text-primary);
-        border-color: #f1f5f9;
-    }
-    .modal-custom .table thead th {
-        background: #f8fafc;
-        border-color: #f1f5f9;
-        color: var(--text-secondary);
-        font-weight: 700;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .modal-custom .table td { border-color: #f1f5f9; }
-    .modal-custom .table-striped tbody tr:nth-of-type(odd) { background: #fafbfc; }
-    .modal-custom .pagination .page-link {
-        background: #f1f5f9;
-        border: none;
-        color: var(--text-secondary);
-        border-radius: 8px !important;
-        margin: 0 2px;
-        font-weight: 600;
-    }
-    .modal-custom .pagination .page-item.active .page-link {
-        background: var(--primary);
-        color: #fff;
-        box-shadow: 0 4px 12px rgba(79,70,229,0.3);
-    }
-    .modal-custom .form-control {
-        background: #f1f5f9;
-        border: 2px solid transparent;
-        color: var(--text-primary);
-        border-radius: 10px;
-    }
-    .modal-custom .form-control:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(79,70,229,0.1);
-    }
+    .modal-custom .modal-body { padding: 16px; }
+    .modal-custom .modal-title { font-weight: 800; font-size: 15px; color: var(--text-primary); }
 
+    /* ═══════ RESPONSIVE MOBILE POLISH & NO HORIZONTAL SCROLL ═══════ */
     @media (max-width: 767.98px) {
-        body, html { overflow-x: hidden !important; }
-        .reports-page { padding: 12px; overflow-x: hidden !important; }
-
-        /* Filter card — stacked premium controls */
-        .filter-card { padding: 16px 14px; border-radius: 16px; }
-        .filter-card label { font-size: 11px; margin-bottom: 5px; }
-        .filter-card .form-control, .filter-card .form-select { min-height: 44px; font-size: 15px; padding: 10px 12px; }
-        .filter-card .btn-filter { width: 100%; min-height: 44px; margin-bottom: 8px; }
-        .filter-card .btn-reset,
-        .filter-card .btn { width: 48%; justify-content: center; min-height: 42px; font-size: 13px; padding: 10px 12px; }
-        .filter-card .col-md-4 .d-flex { flex-wrap: wrap; gap: 8px; }
-
-        /* Stat cards — premium mobile sizing */
-        .stat-card { padding: 16px 14px; border-radius: 16px; gap: 10px; }
-        .stat-card .stat-value { font-size: 22px !important; }
-        .stat-card .stat-value[style*="font-size:22px"] { font-size: 19px !important; }
-        .stat-card .stat-value[style*="font-size:20px"] { font-size: 17px !important; }
-        .stat-card .stat-icon { width: 40px; height: 40px; font-size: 16px; border-radius: 12px; }
-        .stat-card .stat-label { font-size: 9px; letter-spacing: .4px; }
-        .stat-card .stat-sub { font-size: 11px; }
-
-        /* Chart cards — tightened premium layout */
-        .chart-container { padding: 14px 12px; border-radius: 16px; }
-        .chart-container .chart-title { font-size: 14px; }
-        .chart-container .chart-sub { font-size: 11px; }
-        .chart-container .chart-header { gap: 8px; }
-        .chart-filter-select { flex: 1; min-width: 0; font-size: 12px; padding: 6px 10px; }
-        .chart-wrapper { border-radius: 10px; }
-        .apexcharts-toolbar { display: none; }
-        .apexcharts-legend { font-size: 11px; flex-wrap: wrap !important; white-space: normal !important; }
-        .apexcharts-xaxis-label, .apexcharts-yaxis-label { font-size: 10px !important; }
-
-        /* Modal polish on touch */
-        .modal-custom .modal-title { font-size: 15px; }
-        .modal-custom .modal-header { padding: 13px 14px; }
-        .modal-custom .modal-body { padding: 12px; }
-        .modal-custom .form-control { width: 100%; min-height: 44px; }
-        .modal-custom .pagination .page-link { padding: 6px 10px; font-size: 13px; min-width: 34px; text-align: center; }
-        .modal-custom .table { font-size: 12px; }
-        .modal-custom .table td, .modal-custom .table th { padding: 8px 10px; }
-        .modal-custom .table thead th { font-size: 10px; }
-
-        @media (max-width: 575.98px) {
-            .reports-page { padding: 8px; }
-            .stat-card { padding: 13px 11px; }
-            .stat-card .stat-icon { width: 36px; height: 36px; font-size: 14px; }
-            .stat-card .stat-label { font-size: 8.5px; }
-            .stat-card .stat-sub { font-size: 10px; }
-            .chart-container { padding: 11px 9px; }
-            .modal-custom .table tbody td:nth-child(3) { text-align: right; }
+        .reports-page { padding: 10px; }
+        .filter-card { padding: 12px 14px; }
+        .filter-card .form-control, .filter-card .form-select { height: 38px; font-size: 13.5px; }
+        .filter-card .btn-filter,
+        .filter-card .btn-export-pdf,
+        .filter-card .btn-export-bw,
+        .filter-card .btn-reset {
+            flex: 1 1 calc(50% - 4px);
+            min-height: 36px;
+            font-size: 11.5px;
         }
+
+        .stat-card { padding: 9px 11px !important; }
+        .stat-card .stat-icon { width: 32px !important; height: 32px !important; font-size: 13px !important; }
+        .stat-card .stat-label { font-size: 9px !important; }
+        .stat-card .stat-value { font-size: 15px !important; }
+        .stat-card .stat-sub { font-size: 9.5px !important; }
+
+        .chart-container { padding: 12px 10px !important; }
+        .chart-container .chart-title { font-size: 12.5px !important; }
+        .chart-container .chart-sub { font-size: 10px !important; }
+        .apexcharts-toolbar { display: none !important; }
+        .apexcharts-legend { font-size: 10px !important; flex-wrap: wrap !important; }
+    }
+
+    @media (max-width: 575.98px) {
+        .reports-page { padding: 8px; }
+        .stat-card { padding: 8px 10px !important; }
+        .stat-card .stat-icon { width: 28px !important; height: 28px !important; font-size: 12px !important; border-radius: 8px !important; }
+        .stat-card .stat-label { font-size: 8.5px !important; }
+        .stat-card .stat-value { font-size: 14px !important; }
+        .chart-container { padding: 10px 8px !important; }
     }
 </style>
 
 <div class="reports-page">
-    {{-- FILTER SECTION --}}
-    <div class="glass-card filter-card">
-        <form action="{{ route('System.Reports') }}" method="GET" class="row g-3 align-items-end position-relative">
-            <div class="col-md-4">
-                <label>Start Month</label>
+    
+    {{-- ═══════ COMPACT FILTER HEADER CARD ═══════ --}}
+    <div class="filter-card">
+        <form method="GET" action="{{ route('System.Reports') }}" class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label><i class="fas fa-calendar-alt me-1 text-primary"></i>Start Month</label>
                 <input type="month" name="start_date" class="form-control" value="{{ request('start_date') }}">
             </div>
-            <div class="col-md-4">
-                <label>End Month</label>
+            <div class="col-6 col-md-3">
+                <label><i class="fas fa-calendar-alt me-1 text-primary"></i>End Month</label>
                 <input type="month" name="end_date" class="form-control" value="{{ request('end_date') }}">
             </div>
-            <div class="col-md-4 d-flex gap-2">
+            <div class="col-12 col-md-6 d-flex flex-wrap gap-2">
                 <button type="submit" class="btn btn-filter flex-grow-1">
-                    <i class="fas fa-filter me-2"></i>Apply Filter
+                    <i class="fas fa-filter"></i> Apply Filter
                 </button>
-                <a href="{{ route('System.Reports.PDF', request()->all()) }}" class="btn" style="background:#dc2626;border:none;border-radius:12px;padding:10px 20px;font-weight:700;font-size:14px;color:#fff;transition:all 0.25s;display:inline-flex;align-items:center;gap:8px;text-decoration:none;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(220,38,38,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow=''" target="_blank">
+                <a href="{{ route('System.Reports.PDF', request()->all()) }}" class="btn btn-export-pdf" target="_blank">
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>
-                <a href="{{ route('System.Reports.PDF.BW', request()->all()) }}" class="btn" style="background:#374151;border:none;border-radius:12px;padding:10px 20px;font-weight:700;font-size:14px;color:#fff;transition:all 0.25s;display:inline-flex;align-items:center;gap:8px;text-decoration:none;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(55,65,81,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow=''" target="_blank">
+                <a href="{{ route('System.Reports.PDF.BW', request()->all()) }}" class="btn btn-export-bw" target="_blank">
                     <i class="fas fa-file-alt"></i> B&amp;W
                 </a>
                 <a href="{{ route('System.Reports') }}" class="btn btn-reset">
-                    <i class="fas fa-undo me-1"></i> Reset
+                    <i class="fas fa-undo"></i> Reset
                 </a>
             </div>
         </form>
     </div>
 
-    {{-- STAT CARDS --}}
-    <div class="row g-3 mb-4">
+    {{-- ═══════ SECTION 1: INVENTORY & ENTITIES (SMALL ATTRACTIVE CARDS) ═══════ --}}
+    <div class="report-section-hdr">
+        <i class="fas fa-cubes text-primary"></i> Inventory & Master Entities
+    </div>
+    <div class="row g-2 g-md-3 mb-3">
         <div class="col-6 col-md-3">
             <div class="glass-card stat-card border-accent-1">
                 <div>
@@ -392,7 +424,7 @@
                 <div>
                     <div class="stat-label">Customers</div>
                     <div class="stat-value">{{ $customerscount }}</div>
-                    <div class="stat-sub">Total customers</div>
+                    <div class="stat-sub">Registered accounts</div>
                 </div>
                 <div class="stat-icon" style="background:#fffbeb;color:#f59e0b;">
                     <i class="fas fa-users"></i>
@@ -401,14 +433,17 @@
         </div>
     </div>
 
-    {{-- FINANCIAL STAT CARDS --}}
-    <div class="row g-3 mb-4">
+    {{-- ═══════ SECTION 2: TRADE & TURNOVER ═══════ --}}
+    <div class="report-section-hdr">
+        <i class="fas fa-arrows-split-up-and-left text-success"></i> Trade & Turnover Summary
+    </div>
+    <div class="row g-2 g-md-3 mb-3">
         <div class="col-6 col-md-3">
             <div class="glass-card stat-card border-accent-5">
                 <div>
                     <div class="stat-label">Total Purchases</div>
-                    <div class="stat-value" style="font-size:22px;">Rs {{ number_format($totalPurchases, 0) }}</div>
-                    <div class="stat-sub">Purchase value</div>
+                    <div class="stat-value">Rs {{ number_format($totalPurchases, 0) }}</div>
+                    <div class="stat-sub">Procurement value</div>
                 </div>
                 <div class="stat-icon" style="background:#ecfdf5;color:#10b981;">
                     <i class="fas fa-file-invoice-dollar"></i>
@@ -419,8 +454,8 @@
             <div class="glass-card stat-card border-accent-3">
                 <div>
                     <div class="stat-label">Purchase Returns</div>
-                    <div class="stat-value" style="font-size:22px;">Rs {{ number_format($totalPurchaseReturns, 0) }}</div>
-                    <div class="stat-sub">Returned value</div>
+                    <div class="stat-value">Rs {{ number_format($totalPurchaseReturns, 0) }}</div>
+                    <div class="stat-sub">Returned to vendors</div>
                 </div>
                 <div class="stat-icon" style="background:#fef2f2;color:#ef4444;">
                     <i class="fas fa-undo-alt"></i>
@@ -431,8 +466,8 @@
             <div class="glass-card stat-card border-accent-5">
                 <div>
                     <div class="stat-label">Total Sales</div>
-                    <div class="stat-value" style="font-size:22px;">Rs {{ number_format($totalSales, 0) }}</div>
-                    <div class="stat-sub">Sale value</div>
+                    <div class="stat-value">Rs {{ number_format($totalSales, 0) }}</div>
+                    <div class="stat-sub">Gross sales value</div>
                 </div>
                 <div class="stat-icon" style="background:#ecfdf5;color:#10b981;">
                     <i class="fas fa-shopping-cart"></i>
@@ -443,8 +478,8 @@
             <div class="glass-card stat-card border-accent-6">
                 <div>
                     <div class="stat-label">Sales Returns</div>
-                    <div class="stat-value" style="font-size:22px;">Rs {{ number_format($totalSalesReturns, 0) }}</div>
-                    <div class="stat-sub">Returned value</div>
+                    <div class="stat-value">Rs {{ number_format($totalSalesReturns, 0) }}</div>
+                    <div class="stat-sub">Customer returns</div>
                 </div>
                 <div class="stat-icon" style="background:#fff7ed;color:#f97316;">
                     <i class="fas fa-undo"></i>
@@ -453,13 +488,16 @@
         </div>
     </div>
 
-    {{-- PROFIT / LOSS CARDS --}}
-    <div class="row g-3 mb-4">
+    {{-- ═══════ SECTION 3: PROFIT & LOSS METRICS ═══════ --}}
+    <div class="report-section-hdr">
+        <i class="fas fa-coins text-warning"></i> Profit & Loss Highlights
+    </div>
+    <div class="row g-2 g-md-3 mb-3">
         <div class="col-6 col-md-3">
             <div class="glass-card stat-card border-accent-5">
                 <div>
                     <div class="stat-label">Net Sales</div>
-                    <div class="stat-value" style="font-size:20px;">Rs {{ number_format($netSales, 0) }}</div>
+                    <div class="stat-value">Rs {{ number_format($netSales, 0) }}</div>
                     <div class="stat-sub">Sales - Returns</div>
                 </div>
                 <div class="stat-icon" style="background:#ecfdf5;color:#10b981;">
@@ -471,7 +509,7 @@
             <div class="glass-card stat-card border-accent-1">
                 <div>
                     <div class="stat-label">Net Purchases</div>
-                    <div class="stat-value" style="font-size:20px;">Rs {{ number_format($netPurchases, 0) }}</div>
+                    <div class="stat-value">Rs {{ number_format($netPurchases, 0) }}</div>
                     <div class="stat-sub">Purchases - Returns</div>
                 </div>
                 <div class="stat-icon" style="background:#eef2ff;color:#4f46e5;">
@@ -483,8 +521,8 @@
             <div class="glass-card stat-card border-accent-3">
                 <div>
                     <div class="stat-label">Total Expenses</div>
-                    <div class="stat-value" style="font-size:20px;">Rs {{ number_format($totalExpenses, 0) }}</div>
-                    <div class="stat-sub">Operating expenses</div>
+                    <div class="stat-value">Rs {{ number_format($totalExpenses, 0) }}</div>
+                    <div class="stat-sub">Operating costs</div>
                 </div>
                 <div class="stat-icon" style="background:#fef2f2;color:#ef4444;">
                     <i class="fas fa-receipt"></i>
@@ -492,13 +530,13 @@
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="glass-card stat-card" style="{{ $grossProfit >= 0 ? 'border-left:4px solid #10b981;' : 'border-left:4px solid #ef4444;' }}">
+            <div class="glass-card stat-card" style="{{ $grossProfit >= 0 ? 'border-left:3.5px solid #10b981;' : 'border-left:3.5px solid #ef4444;' }}">
                 <div>
                     <div class="stat-label">{{ $grossProfit >= 0 ? 'Net Profit' : 'Net Loss' }}</div>
-                    <div class="stat-value" style="font-size:20px;{{ $grossProfit >= 0 ? 'color:#10b981;' : 'color:#ef4444;' }}">
+                    <div class="stat-value" style="{{ $grossProfit >= 0 ? 'color:#10b981;' : 'color:#ef4444;' }}">
                         Rs {{ number_format(abs($grossProfit), 0) }}
                     </div>
-                    <div class="stat-sub">{{ $grossProfit >= 0 ? 'Net Sales - Purchases - Expenses' : 'Loss incurred' }}</div>
+                    <div class="stat-sub">{{ $grossProfit >= 0 ? 'Net Sales - Pur - Exp' : 'Loss incurred' }}</div>
                 </div>
                 <div class="stat-icon" style="background:{{ $grossProfit >= 0 ? '#ecfdf5' : '#fef2f2' }};color:{{ $grossProfit >= 0 ? '#10b981' : '#ef4444' }};">
                     <i class="fas fa-{{ $grossProfit >= 0 ? 'arrow-trend-up' : 'arrow-trend-down' }}"></i>
@@ -507,14 +545,14 @@
         </div>
     </div>
 
-    {{-- CHARTS ROW --}}
-    <div class="row g-3 mb-4">
+    {{-- ═══════ SMALL BEAUTIFUL CHARTS (ROW 1: SALES & PURCHASE) ═══════ --}}
+    <div class="row g-2 g-md-3 mb-2">
         <div class="col-lg-6">
             <div class="glass-card chart-container">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><i class="fas fa-chart-line me-2" style="color:var(--primary);"></i>Sales Report</div>
-                        <div class="chart-sub">Revenue overview for selected period</div>
+                        <div class="chart-title"><i class="fas fa-chart-line me-2" style="color:var(--primary);"></i>Sales Trend</div>
+                        <div class="chart-sub">Revenue for selected period</div>
                     </div>
                     <select id="salesFilter" class="chart-filter-select">
                         <option value="daily">Daily</option>
@@ -523,15 +561,16 @@
                     </select>
                 </div>
                 <div class="chart-wrapper">
-                    <div id="salesReportChart" style="height:380px;"></div>
+                    <div id="salesReportChart" style="height:230px;"></div>
                 </div>
             </div>
         </div>
+
         <div class="col-lg-6">
             <div class="glass-card chart-container">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><i class="fas fa-chart-bar me-2" style="color:#10b981;"></i>Purchase Report</div>
+                        <div class="chart-title"><i class="fas fa-chart-bar me-2" style="color:#10b981;"></i>Purchase Trend</div>
                         <div class="chart-sub">Procurement spending overview</div>
                     </div>
                     <select id="purchaseFilter" class="chart-filter-select">
@@ -541,65 +580,69 @@
                     </select>
                 </div>
                 <div class="chart-wrapper">
-                    <div id="purchaseReportChart" style="height:380px;"></div>
+                    <div id="purchaseReportChart" style="height:230px;"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    {{-- ═══════ SMALL BEAUTIFUL CHARTS (ROW 2: P&L BREAKDOWN & SUMMARY) ═══════ --}}
+    <div class="row g-2 g-md-3 mb-2">
         <div class="col-lg-6">
             <div class="glass-card chart-container">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><i class="fas fa-chart-pie me-2" style="color:#8b5cf6;"></i>Profit / Loss Breakdown</div>
+                        <div class="chart-title"><i class="fas fa-chart-pie me-2" style="color:#8b5cf6;"></i>Profit / Loss Ratio</div>
                         <div class="chart-sub">Revenue vs Cost vs Expense</div>
                     </div>
                 </div>
                 <div class="chart-wrapper">
-                    <div id="profitLossChart" style="height:350px;"></div>
+                    <div id="profitLossChart" style="height:230px;"></div>
                 </div>
             </div>
         </div>
+
         <div class="col-lg-6">
             <div class="glass-card chart-container">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><i class="fas fa-scale-balanced me-2" style="color:#f59e0b;"></i>Financial Summary</div>
-                        <div class="chart-sub">Complete financial overview</div>
+                        <div class="chart-title"><i class="fas fa-scale-balanced me-2" style="color:#f59e0b;"></i>Financial Comparison</div>
+                        <div class="chart-sub">Summary overview</div>
                     </div>
                 </div>
                 <div class="chart-wrapper">
-                    <div id="summaryChart" style="height:350px;"></div>
+                    <div id="summaryChart" style="height:220px;"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    {{-- ═══════ SMALL BEAUTIFUL CHARTS (ROW 3: CATEGORY STOCK & EXPENSE) ═══════ --}}
+    <div class="row g-2 g-md-3 mb-3">
         <div class="col-lg-6">
             <div class="glass-card chart-container">
                 <div class="chart-header">
                     <div>
                         <div class="chart-title"><i class="fas fa-cubes me-2" style="color:var(--accent-2);"></i>Category Wise Products</div>
-                        <div class="chart-sub">Click on a bar to view products</div>
+                        <div class="chart-sub">Tap bar to view products</div>
                     </div>
                 </div>
                 <div class="chart-wrapper">
-                    <div id="categoryStockChart" style="height:400px;"></div>
+                    <div id="categoryStockChart" style="height:240px;"></div>
                 </div>
             </div>
         </div>
+
         <div class="col-lg-6">
             <div class="glass-card chart-container">
                 <div class="chart-header">
                     <div>
                         <div class="chart-title"><i class="fas fa-file-invoice me-2" style="color:#f59e0b;"></i>Account Wise Expense</div>
-                        <div class="chart-sub">Expense distribution by account head</div>
+                        <div class="chart-sub">Distribution by head</div>
                     </div>
                 </div>
-                <div>
-                    <select id="expenseHeadSelect" class="chart-filter-select w-100 mb-3">
+                <div class="mb-2">
+                    <select id="expenseHeadSelect" class="chart-filter-select w-100">
                         <option value="">Select Account Head</option>
                         @foreach($expenseChartData as $hid => $head)
                         <option value="{{ $hid }}">{{ $head['head_name'] }}</option>
@@ -607,7 +650,7 @@
                     </select>
                 </div>
                 <div class="chart-wrapper">
-                    <div id="expenseAccountChart" style="height:330px;"></div>
+                    <div id="expenseAccountChart" style="height:220px;"></div>
                 </div>
             </div>
         </div>
@@ -628,16 +671,18 @@
                         <input type="text" id="productSearch" class="form-control" placeholder="Search product..." onkeyup="searchProducts()">
                     </div>
                 </div>
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Product Name</th>
-                            <th>Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody id="productsTableBody"></tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">#</th>
+                                <th>Product Name</th>
+                                <th style="width:120px;" class="text-end">Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody"></tbody>
+                    </table>
+                </div>
                 <nav>
                     <ul class="pagination justify-content-center" id="pagination"></ul>
                 </nav>
@@ -658,35 +703,35 @@
         return {
             chart: {
                 type: 'bar',
-                height: 380,
-                toolbar: { show: true, tools: { download: true, zoom: false, pan: false } },
+                height: 230,
+                toolbar: { show: false },
                 foreColor: '#94a3b8',
                 background: 'transparent',
-                animations: { enabled: true, easing: 'easeinout', speed: 800, animateGradually: { enabled: true, delay: 150 } }
+                animations: { enabled: true, easing: 'easeinout', speed: 800 }
             },
             responsive: [{
                 breakpoint: 768,
-                options: { chart: { height: 280, toolbar: { show: false } }, plotOptions: { bar: { columnWidth: '55%', borderRadius: 6 } } }
+                options: { chart: { height: 190, toolbar: { show: false } }, plotOptions: { bar: { columnWidth: '50%', borderRadius: 5 } } }
             }],
             series: data.series,
             xaxis: {
                 categories: data.categories,
-                labels: { style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 600 } },
+                labels: { style: { colors: '#94a3b8', fontSize: '10.5px', fontWeight: 600 } },
                 axisBorder: { show: false },
                 axisTicks: { show: false }
             },
             yaxis: {
                 labels: {
-                    style: { colors: '#94a3b8', fontSize: '12px', fontWeight: 600 },
-                    formatter: val => 'Rs ' + val.toLocaleString()
+                    style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 600 },
+                    formatter: val => 'Rs ' + (val >= 1000 ? (val/1000).toFixed(0) + 'k' : val)
                 }
             },
             dataLabels: { enabled: false },
             plotOptions: {
                 bar: {
                     horizontal: false,
-                    columnWidth: '45%',
-                    borderRadius: 8,
+                    columnWidth: '38%',
+                    borderRadius: 6,
                     distributed: false
                 }
             },
@@ -734,35 +779,35 @@
         return {
             chart: {
                 type: 'bar',
-                height: 380,
-                toolbar: { show: true, tools: { download: true, zoom: false, pan: false } },
+                height: 230,
+                toolbar: { show: false },
                 foreColor: '#94a3b8',
                 background: 'transparent',
                 animations: { enabled: true, easing: 'easeinout', speed: 800 }
             },
             responsive: [{
                 breakpoint: 768,
-                options: { chart: { height: 280, toolbar: { show: false } }, plotOptions: { bar: { columnWidth: '55%', borderRadius: 6 } } }
+                options: { chart: { height: 190, toolbar: { show: false } }, plotOptions: { bar: { columnWidth: '50%', borderRadius: 5 } } }
             }],
             series: data.series,
             xaxis: {
                 categories: data.categories,
-                labels: { style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 600 } },
+                labels: { style: { colors: '#94a3b8', fontSize: '10.5px', fontWeight: 600 } },
                 axisBorder: { show: false },
                 axisTicks: { show: false }
             },
             yaxis: {
                 labels: {
-                    style: { colors: '#94a3b8', fontSize: '12px', fontWeight: 600 },
-                    formatter: val => 'Rs ' + val.toLocaleString()
+                    style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 600 },
+                    formatter: val => 'Rs ' + (val >= 1000 ? (val/1000).toFixed(0) + 'k' : val)
                 }
             },
             dataLabels: { enabled: false },
             plotOptions: {
                 bar: {
                     horizontal: false,
-                    columnWidth: '45%',
-                    borderRadius: 8
+                    columnWidth: '38%',
+                    borderRadius: 6
                 }
             },
             fill: {
@@ -807,7 +852,7 @@
         const options = {
             chart: {
                 type: 'bar',
-                height: 400,
+                height: 240,
                 toolbar: { show: false },
                 foreColor: '#94a3b8',
                 background: 'transparent',
@@ -823,17 +868,17 @@
             responsive: [{
                 breakpoint: 768,
                 options: {
-                    chart: { height: 320 },
+                    chart: { height: 210 },
                     xaxis: {
                         labels: {
                             rotate: -45,
                             rotateAlways: true,
-                            style: { colors: '#64748b', fontSize: '10px', fontWeight: 600 },
-                            offsetY: 5
+                            style: { colors: '#64748b', fontSize: '9.5px', fontWeight: 600 },
+                            offsetY: 3
                         }
                     },
-                    yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '10px', fontWeight: 600 } } },
-                    plotOptions: { bar: { columnWidth: '65%', borderRadius: 5 } },
+                    yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '9.5px', fontWeight: 600 } } },
+                    plotOptions: { bar: { columnWidth: '55%', borderRadius: 4 } },
                     tooltip: { theme: 'light', y: { formatter: val => val.toLocaleString() + ' Products' } }
                 }
             }],
@@ -841,27 +886,27 @@
             plotOptions: {
                 bar: {
                     horizontal: false,
-                    columnWidth: '50%',
-                    borderRadius: 8,
+                    columnWidth: '42%',
+                    borderRadius: 6,
                     distributed: true
                 }
             },
             xaxis: {
                 categories: categoryStockData.categories,
                 labels: {
-                    rotate: -45,
+                    rotate: -35,
                     rotateAlways: true,
                     hideOverlappingLabels: true,
                     trim: true,
-                    maxHeight: 100,
-                    style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 }
+                    maxHeight: 70,
+                    style: { colors: '#64748b', fontSize: '10.5px', fontWeight: 600 }
                 },
                 axisBorder: { show: false },
                 axisTicks: { show: false }
             },
             yaxis: {
                 labels: {
-                    style: { colors: '#94a3b8', fontSize: '12px', fontWeight: 600 },
+                    style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 600 },
                     formatter: val => val.toLocaleString()
                 }
             },
@@ -898,7 +943,7 @@
                 rows += `<tr>
                     <td>${((res.current_page - 1) * 100) + index + 1}</td>
                     <td>${item.item_name}</td>
-                    <td>${item.stock}</td>
+                    <td class="text-end fw-bold">${item.stock}</td>
                 </tr>`;
             });
             $('#productsTableBody').html(rows);
@@ -927,35 +972,35 @@
         const options = {
             chart: {
                 type: 'bar',
-                height: 330,
-                toolbar: { show: true, tools: { download: true } },
+                height: 220,
+                toolbar: { show: false },
                 foreColor: '#94a3b8',
                 background: 'transparent',
                 animations: { enabled: true, easing: 'easeinout', speed: 800 }
             },
             responsive: [{
                 breakpoint: 768,
-                options: { chart: { height: 260, toolbar: { show: false } } }
+                options: { chart: { height: 190, toolbar: { show: false } } }
             }],
             series: data.series,
             xaxis: {
                 categories: data.categories,
-                labels: { style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 600 } },
+                labels: { style: { colors: '#94a3b8', fontSize: '10px', fontWeight: 600 } },
                 axisBorder: { show: false },
                 axisTicks: { show: false }
             },
             yaxis: {
                 labels: {
-                    style: { colors: '#94a3b8', fontWeight: 600 },
-                    formatter: val => 'Rs ' + val.toLocaleString()
+                    style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 600 },
+                    formatter: val => 'Rs ' + (val >= 1000 ? (val/1000).toFixed(0) + 'k' : val)
                 }
             },
             dataLabels: { enabled: false },
             plotOptions: {
                 bar: {
                     horizontal: true,
-                    borderRadius: 6,
-                    barHeight: '55%'
+                    borderRadius: 5,
+                    barHeight: '45%'
                 }
             },
             fill: {
@@ -989,10 +1034,10 @@
         const totalExpenses = {{ $totalExpenses }};
 
         new ApexCharts(document.querySelector('#profitLossChart'), {
-            chart: { type: 'donut', height: 350, background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            chart: { type: 'donut', height: 230, background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
             responsive: [{
                 breakpoint: 768,
-                options: { chart: { height: 260 }, legend: { position: 'bottom', fontSize: '11px' } }
+                options: { chart: { height: 200 }, legend: { position: 'bottom', fontSize: '10px' } }
             }],
             series: [netSales, netPurchases, totalExpenses],
             labels: ['Net Sales', 'Net Purchases', 'Total Expenses'],
@@ -1000,17 +1045,17 @@
             plotOptions: {
                 pie: {
                     donut: {
-                        size: '65%',
+                        size: '68%',
                         labels: {
                             show: true,
-                            name: { show: true, fontSize: '14px', fontWeight: 700 },
-                            value: { show: true, fontSize: '16px', fontWeight: 800, formatter: val => 'Rs ' + parseInt(val).toLocaleString() }
+                            name: { show: true, fontSize: '12px', fontWeight: 700 },
+                            value: { show: true, fontSize: '14px', fontWeight: 800, formatter: val => 'Rs ' + parseInt(val).toLocaleString() }
                         }
                     }
                 }
             },
             dataLabels: { enabled: false },
-            legend: { position: 'bottom', fontSize: '13px', fontWeight: 600, labels: { colors: '#64748b' } },
+            legend: { position: 'bottom', fontSize: '11.5px', fontWeight: 600, labels: { colors: '#64748b' } },
             tooltip: { theme: 'light', y: { formatter: val => 'Rs ' + val.toLocaleString() } }
         }).render();
     });
@@ -1025,32 +1070,32 @@
         ];
 
         new ApexCharts(document.querySelector('#summaryChart'), {
-            chart: { type: 'bar', height: 350, toolbar: { show: false }, foreColor: '#94a3b8', background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            chart: { type: 'bar', height: 220, toolbar: { show: false }, foreColor: '#94a3b8', background: 'transparent', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
             responsive: [{
                 breakpoint: 768,
                 options: {
-                    chart: { height: 290 },
+                    chart: { height: 190 },
                     dataLabels: { enabled: false },
-                    legend: { position: 'bottom', fontSize: '11px', markers: { size: 3 } },
-                    xaxis: { labels: { style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 } } },
-                    yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '10px', fontWeight: 600 } } },
-                    plotOptions: { bar: { columnWidth: '65%', borderRadius: 6 } }
+                    legend: { position: 'bottom', fontSize: '10px', markers: { size: 3 } },
+                    xaxis: { labels: { style: { colors: '#64748b', fontSize: '10px', fontWeight: 600 } } },
+                    yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '9px', fontWeight: 600 } } },
+                    plotOptions: { bar: { columnWidth: '55%', borderRadius: 5 } }
                 }
             }],
             series: summaryData,
             xaxis: {
-                categories: ['This Month'],
-                labels: { style: { colors: '#64748b', fontSize: '13px', fontWeight: 600 } },
+                categories: ['Period'],
+                labels: { style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 } },
                 axisBorder: { show: false },
                 axisTicks: { show: false }
             },
             yaxis: {
-                labels: { style: { colors: '#94a3b8', fontWeight: 600 }, formatter: val => 'Rs ' + val.toLocaleString() }
+                labels: { style: { colors: '#94a3b8', fontWeight: 600 }, formatter: val => 'Rs ' + (val >= 1000 ? (val/1000).toFixed(0) + 'k' : val) }
             },
-            dataLabels: { enabled: true, style: { fontSize: '12px', fontWeight: 700 }, formatter: val => 'Rs ' + val.toLocaleString() },
-            plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 8, distributed: true } },
+            dataLabels: { enabled: false },
+            plotOptions: { bar: { horizontal: false, columnWidth: '42%', borderRadius: 6, distributed: true } },
             colors: ['#10b981', '#4f46e5', '#ef4444', '{{ $grossProfit >= 0 ? "#f59e0b" : "#ef4444" }}'],
-            legend: { show: true, position: 'bottom', fontSize: '13px', fontWeight: 600, labels: { colors: '#64748b' } },
+            legend: { show: true, position: 'bottom', fontSize: '11.5px', fontWeight: 600, labels: { colors: '#64748b' } },
             tooltip: { theme: 'light', y: { formatter: val => 'Rs ' + val.toLocaleString() } },
             grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } }
         }).render();

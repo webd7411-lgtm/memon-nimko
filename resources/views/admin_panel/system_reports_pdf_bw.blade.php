@@ -171,6 +171,6 @@
     </div>
     @endif
 
-    <div class="footer">Memon Nimko — System Reports (B&amp;W)</div>
+    <div class="footer">{{ shop_name() }} — System Reports (B&amp;W) &bull; Developed by {{ developer_name() }}</div>
 </body>
 </html>

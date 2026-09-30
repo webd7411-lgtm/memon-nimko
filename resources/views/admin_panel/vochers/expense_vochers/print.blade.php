@@ -190,11 +190,29 @@
 
   <div class="receipt" id="receipt">
     <div class="center">
+      @php
+        $currentBranch = $voucher->branch 
+            ?? ($voucher->branch_id ? \App\Models\Branch::find($voucher->branch_id) : null)
+            ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+            ?? \App\Models\Branch::find(active_branch_id())
+            ?? \App\Models\Branch::first();
+
+        $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+        $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+        $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+      @endphp
       <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-      <h1 class="title">Memon Nimko</h1>
-      <div class="subtitle">Sweet & Bakers</div>
-      <div class="muted">Latifabad no 6 Near Shadman Hall  Hyderabad</div>
-      <div class="muted">Phone: 022786661</div>
+      <h1 class="title">{{ shop_name() }}</h1>
+      <div class="subtitle">{{ shop_tagline() }}</div>
+      @if(!empty($currentBranch?->name))
+      <div class="muted" style="font-weight:bold;text-transform:uppercase;margin-top:2px;">BRANCH: {{ $currentBranch->name }}</div>
+      @endif
+      @if(!empty($bAddress))
+      <div class="muted">{{ $bAddress }}</div>
+      @endif
+      @if(!empty($bPhone))
+      <div class="muted">Phone: {{ $bPhone }}</div>
+      @endif
     </div>
 
     <div class="line"></div>

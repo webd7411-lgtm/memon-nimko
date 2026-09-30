@@ -265,7 +265,7 @@
                         <input type="date"
                             name="start_date"
                             class="rp-input"
-                            value="{{ date('Y-m-d') }}">
+                            value="{{ date('Y-m-01') }}">
                     </div>
 
                     {{-- End Date --}}
@@ -363,10 +363,6 @@
 
     $(document).ready(function() {
 
-        $('.select2').select2({
-            width: '100%'
-        });
-
         $('.btn-primary').on('click', function(e) {
             e.preventDefault();
 
@@ -380,15 +376,19 @@
                     end_date: $('input[name="end_date"]').val(),
                 },
                 beforeSend() {
+                    $('#resultCard').removeClass('d-none');
                     $('#expenseRows').html(
                         `<tr><td colspan="7" class="text-center">Loading...</td></tr>`
+                    );
+                    $('#expenseCards').html(
+                        `<div class="text-center p-3 text-muted">Loading...</div>`
                     );
                 },
                 success(res) {
                     let rows = '';
                     let cards = '';
 
-                    if (res.rows.length === 0) {
+                    if (!res.rows || res.rows.length === 0) {
                         rows = `<tr>
                         <td colspan="7" class="text-center text-muted">
     No expense found
@@ -442,9 +442,21 @@
     <div class="expc-total"><span>Grand Total</span><b>${res.total}</b></div>
 </div>`);
                     $('#resultCard').removeClass('d-none');
+                },
+                error(xhr) {
+                    let msg = 'Error loading expenses. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    $('#expenseRows').html(`<tr><td colspan="7" class="text-center text-danger font-weight-bold">${msg}</td></tr>`);
+                    $('#expenseCards').html(`<div class="expc-empty text-danger"><i class="bi bi-exclamation-triangle"></i><span>${msg}</span></div>`);
+                    $('#resultCard').removeClass('d-none');
                 }
             });
         });
+
+        // Auto load report on page load
+        $('.btn-primary').trigger('click');
 
     });
 </script>

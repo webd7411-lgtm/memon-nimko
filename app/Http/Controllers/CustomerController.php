@@ -97,6 +97,9 @@ class CustomerController extends Controller
             $data['branch_id'] = active_branch_id();
         }
 
+        // Handle checkbox (unchecked = not submitted)
+        $data['credit_allowed'] = $request->has('credit_allowed') ? 1 : 0;
+
         // Customer create
         $data['opening_balance'] = $data['opening_balance'] ?? 0;
         $customer = Customer::create($data);
@@ -143,6 +146,9 @@ class CustomerController extends Controller
         if (empty($data['branch_id']) && empty($customer->branch_id)) {
             $data['branch_id'] = active_branch_id();
         }
+
+        // Handle checkbox (not submitted when unchecked)
+        $data['credit_allowed'] = $request->has('credit_allowed') ? 1 : 0;
 
         // Update customer basic info
         $data['opening_balance'] = $data['opening_balance'] ?? 0;
@@ -219,7 +225,7 @@ class CustomerController extends Controller
     // View all customer payments
     public function customer_payments()
     {
-        $query = CustomerPayment::with(['customer', 'customer.branch'])->orderByDesc('id');
+        $query = CustomerPayment::with(['customer', 'customer.branch', 'cardAccount'])->orderByDesc('id');
         if (!is_all_branches()) {
             $query->where('branch_id', active_branch_id());
         }
@@ -231,19 +237,55 @@ class CustomerController extends Controller
         }
         $customers = $customerQuery->get();
 
-        return view('admin_panel.customers.customer_payments', compact('payments', 'customers'));
+        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+
+        return view('admin_panel.customers.customer_payments', compact('payments', 'customers', 'bankAccounts'));
     }
 
     public function store_customer_payment(Request $request)
     {
         $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'amount' => 'required|numeric|min:0',
+            'customer_id'     => 'required|exists:customers,id',
+            'amount'          => 'required|numeric|min:0.01',
             'adjustment_type' => 'required|in:plus,minus',
-            'payment_method' => 'nullable|string',
-            'payment_date' => 'required|date',
-            'note' => 'nullable|string',
+            'payment_mode'    => 'nullable|in:cash,card,split',
+            'payment_method'  => 'nullable|string',
+            'cash'            => 'nullable|numeric|min:0',
+            'card'            => 'nullable|numeric|min:0',
+            'card_account_id' => 'nullable|exists:accounts,id',
+            'payment_date'    => 'required|date',
+            'note'            => 'nullable|string',
         ]);
+
+        $mode = $request->payment_mode ?? 'cash';
+        $totalAmount = (float) $request->amount;
+        $cashAmount = 0;
+        $cardAmount = 0;
+        $cardAccountId = null;
+        $paymentMethod = $request->payment_method;
+
+        if ($mode === 'cash') {
+            $cashAmount = $totalAmount;
+            $cardAmount = 0;
+            $cardAccountId = null;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        } elseif ($mode === 'card') {
+            $cashAmount = 0;
+            $cardAmount = $totalAmount;
+            $cardAccountId = $request->card_account_id ?: null;
+            $paymentMethod = $paymentMethod ?: 'Card';
+        } elseif ($mode === 'split') {
+            $cashAmount = (float) ($request->cash ?? 0);
+            $cardAmount = (float) ($request->card ?? 0);
+            $cardAccountId = $request->card_account_id ?: null;
+            if (($cashAmount + $cardAmount) > 0) {
+                $totalAmount = $cashAmount + $cardAmount;
+            }
+            $paymentMethod = $paymentMethod ?: 'Split (Cash + Card)';
+        } else {
+            $cashAmount = $totalAmount;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        }
 
         $userId = Auth::id();
 
@@ -263,10 +305,13 @@ class CustomerController extends Controller
         CustomerPayment::create([
             'received_no'     => $receivedNo,
             'customer_id'     => $request->customer_id,
-            'admin_or_user_id' => $userId,
+            'admin_or_user_id'=> $userId,
             'branch_id'       => active_branch_id(),
-            'amount'          => $request->amount,
-            'payment_method'  => $request->payment_method,
+            'amount'          => $totalAmount,
+            'cash'            => $cashAmount,
+            'card'            => $cardAmount,
+            'card_account_id' => $cardAccountId,
+            'payment_method'  => $paymentMethod,
             'payment_date'    => $request->payment_date,
             'note'            => $request->note,
         ]);
@@ -276,8 +321,8 @@ class CustomerController extends Controller
 
         if ($ledger) {
             $newBalance = $request->adjustment_type === 'plus'
-                ? $ledger->closing_balance + $request->amount
-                : $ledger->closing_balance - $request->amount;
+                ? $ledger->closing_balance + $totalAmount
+                : $ledger->closing_balance - $totalAmount;
 
             $ledger->update([
                 'previous_balance' => $ledger->closing_balance,
@@ -290,7 +335,7 @@ class CustomerController extends Controller
 
     public function customer_payment_receipt($id)
     {
-        $payment = CustomerPayment::with('customer')->findOrFail($id);
+        $payment = CustomerPayment::with(['customer', 'cardAccount'])->findOrFail($id);
         return view('admin_panel.customers.customer_payment_receipt', compact('payment'));
     }
 
@@ -298,7 +343,7 @@ class CustomerController extends Controller
     // Edit customer payment
     public function edit_customer_payment($id)
     {
-        $payment = CustomerPayment::with('customer')->findOrFail($id);
+        $payment = CustomerPayment::with(['customer', 'cardAccount'])->findOrFail($id);
 
         $customerQuery = Customer::where('status', '!=', 'inactive');
         if (!is_all_branches()) {
@@ -310,6 +355,8 @@ class CustomerController extends Controller
         }
         $customers = $customerQuery->get();
 
+        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+
         // Get current ledger balance
         $ledger = CustomerLedger::where('customer_id', $payment->customer_id)->latest()->first();
         $current_balance = $ledger ? $ledger->closing_balance : 0;
@@ -319,22 +366,56 @@ class CustomerController extends Controller
 
         $adjustment_type = 'minus';
 
-        return view('admin_panel.customers.edit_customer_payment', compact('payment', 'customers', 'original_balance', 'adjustment_type'));
+        return view('admin_panel.customers.edit_customer_payment', compact('payment', 'customers', 'original_balance', 'adjustment_type', 'bankAccounts'));
     }
 
     // Update customer payment
     public function update_customer_payment(Request $request, $id)
     {
         $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'payment_date' => 'required|date',
-            'amount' => 'required|numeric|min:0',
-            'payment_method' => 'nullable|string',
-            'note' => 'nullable|string',
+            'customer_id'     => 'required|exists:customers,id',
+            'payment_date'    => 'required|date',
+            'amount'          => 'required|numeric|min:0.01',
+            'payment_mode'    => 'nullable|in:cash,card,split',
+            'payment_method'  => 'nullable|string',
+            'cash'            => 'nullable|numeric|min:0',
+            'card'            => 'nullable|numeric|min:0',
+            'card_account_id' => 'nullable|exists:accounts,id',
+            'note'            => 'nullable|string',
             'adjustment_type' => 'required|in:plus,minus',
         ]);
 
         $payment = CustomerPayment::findOrFail($id);
+
+        $mode = $request->payment_mode ?? ($payment->card > 0 && $payment->cash > 0 ? 'split' : ($payment->card > 0 ? 'card' : 'cash'));
+        $totalAmount = (float) $validated['amount'];
+        $cashAmount = 0;
+        $cardAmount = 0;
+        $cardAccountId = null;
+        $paymentMethod = $validated['payment_method'] ?? null;
+
+        if ($mode === 'cash') {
+            $cashAmount = $totalAmount;
+            $cardAmount = 0;
+            $cardAccountId = null;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        } elseif ($mode === 'card') {
+            $cashAmount = 0;
+            $cardAmount = $totalAmount;
+            $cardAccountId = $request->card_account_id ?: null;
+            $paymentMethod = $paymentMethod ?: 'Card';
+        } elseif ($mode === 'split') {
+            $cashAmount = (float) ($request->cash ?? 0);
+            $cardAmount = (float) ($request->card ?? 0);
+            $cardAccountId = $request->card_account_id ?: null;
+            if (($cashAmount + $cardAmount) > 0) {
+                $totalAmount = $cashAmount + $cardAmount;
+            }
+            $paymentMethod = $paymentMethod ?: 'Split (Cash + Card)';
+        } else {
+            $cashAmount = $totalAmount;
+            $paymentMethod = $paymentMethod ?: 'Cash';
+        }
 
         // Get current ledger
         $ledger = CustomerLedger::where('customer_id', $payment->customer_id)->latest()->first();
@@ -343,7 +424,7 @@ class CustomerController extends Controller
             $current_balance = $ledger->closing_balance;
             $original_balance = $current_balance + $payment->amount;
             $new_balance = $original_balance +
-                ($validated['adjustment_type'] === 'minus' ? -1 : 1) * $validated['amount'];
+                ($validated['adjustment_type'] === 'minus' ? -1 : 1) * $totalAmount;
 
             $ledger->closing_balance = $new_balance;
             $ledger->save();
@@ -351,11 +432,14 @@ class CustomerController extends Controller
 
         // Update payment record
         $payment->update([
-            'customer_id' => $validated['customer_id'],
-            'payment_date' => $validated['payment_date'],
-            'amount' => $validated['amount'],
-            'payment_method' => $validated['payment_method'],
-            'note' => $validated['note'],
+            'customer_id'     => $validated['customer_id'],
+            'payment_date'    => $validated['payment_date'],
+            'amount'          => $totalAmount,
+            'cash'            => $cashAmount,
+            'card'            => $cardAmount,
+            'card_account_id' => $cardAccountId,
+            'payment_method'  => $paymentMethod,
+            'note'            => $validated['note'],
         ]);
 
         return redirect()->route('customer.payments')->with('success', 'Customer payment updated successfully.');
@@ -396,5 +480,20 @@ class CustomerController extends Controller
         $customers = $query->get(['id', 'customer_name']);
 
         return response()->json(['customers' => $customers]);
+    }
+
+    /**
+     * AJAX: Return credit_allowed status for a customer (used by POS)
+     */
+    public function getCreditInfo($id)
+    {
+        $customer = Customer::find($id);
+        if (!$customer) {
+            return response()->json(['credit_allowed' => false]);
+        }
+        return response()->json([
+            'credit_allowed' => (bool)$customer->credit_allowed,
+            'customer_name'  => $customer->customer_name,
+        ]);
     }
 }

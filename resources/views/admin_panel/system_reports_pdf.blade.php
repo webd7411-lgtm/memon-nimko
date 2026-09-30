@@ -187,7 +187,7 @@
     @endif
 
     <div class="footer">
-        Memon Nimko — System Reports &bull; Page 1 of 1
+        {{ shop_name() }} — System Reports &bull; Developed by {{ developer_name() }}
     </div>
 </body>
 </html>

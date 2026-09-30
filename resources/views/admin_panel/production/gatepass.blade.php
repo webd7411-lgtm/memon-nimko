@@ -67,12 +67,29 @@
 
 <div class="receipt">
     <div class="center">
+        @php
+            $currentBranch = $entry->branch 
+                ?? ($entry->branch_id ? \App\Models\Branch::find($entry->branch_id) : null)
+                ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+                ?? \App\Models\Branch::find(active_branch_id())
+                ?? \App\Models\Branch::first();
+
+            $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+            $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+            $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+        @endphp
         <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-        <div class="brand">Memon Nimko</div>
-        <div class="address" style="font-size:15px; margin-bottom: 3px;">Sweets & Bakers</div>
-        <div class="address">Latifabad no 6 Near Shadman</div>
-        <div class="address">Hall Hyderabad</div>
-        <div class="address">Ph: 022 2786661</div>
+        <div class="brand">{{ shop_name() }}</div>
+        <div class="address" style="font-size:13px; margin-bottom: 2px;">{{ shop_tagline() }}</div>
+        @if(!empty($currentBranch?->name))
+        <div class="address" style="font-weight:900;text-transform:uppercase;margin:2px 0;">BRANCH: {{ $currentBranch->name }}</div>
+        @endif
+        @if(!empty($bAddress))
+        <div class="address">{{ $bAddress }}</div>
+        @endif
+        @if(!empty($bPhone))
+        <div class="address">Ph: {{ $bPhone }}</div>
+        @endif
     </div>
 
     <div class="dbl-line" style="margin-top:10px;"></div>
@@ -149,6 +166,7 @@
         <div class="sig-box">CHECKED</div>
         <div class="sig-box">RECEIVED</div>
     </div>
+    <div style="text-align:center; font-size:9px; color:#888; margin-top:8px;">Develop By: <strong>{{ developer_name() }}</strong></div>
 </div>
 
 <script>

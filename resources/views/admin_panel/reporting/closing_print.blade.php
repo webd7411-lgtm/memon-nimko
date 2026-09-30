@@ -96,11 +96,24 @@ table tbody tr:last-child td { border-bottom: none; }
 
 <div class="receipt">
   <div class="center">
+    @php
+        $currentBranch = isset($branchId) && $branchId 
+            ? \App\Models\Branch::find($branchId) 
+            : (\App\Models\Branch::find(active_branch_id()) ?? \App\Models\Branch::first());
+
+        $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+        $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
+        $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
+    @endphp
     <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px;">
-    <div class="brand">Memon Nimko</div>
-    <div class="address" style="font-size:11px; font-weight:900;">Sweets & Bakers</div>
-    <div class="address">Latifabad no 6 Near Shadman Hall Hyderabad</div>
-    <div class="address">Ph: 022 2786661</div>
+    <div class="brand">{{ shop_name() }}</div>
+    <div class="address" style="font-size:11px; font-weight:900;">{{ shop_tagline() }}</div>
+    @if(!empty($bAddress))
+    <div class="address">{{ $bAddress }}</div>
+    @endif
+    @if(!empty($bPhone))
+    <div class="address">Ph: {{ $bPhone }}</div>
+    @endif
   </div>
 
   <div class="dbl-line" style="margin-top:6px;"></div>
@@ -209,7 +222,10 @@ table tbody tr:last-child td { border-bottom: none; }
     <div class="sig-box">MANAGER / VERIFIED</div>
   </div>
 
-  <div class="center bold" style="font-size:8px; margin-top:12px; color:#555;">
+  <div class="center" style="font-size:8px; margin-top:8px; color:#777;">
+    Develop By: <strong>{{ developer_name() }}</strong>
+  </div>
+  <div class="center bold" style="font-size:8px; margin-top:4px; color:#555;">
     — End of Closing Report —
   </div>
 </div>

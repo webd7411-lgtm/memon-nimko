@@ -470,7 +470,7 @@
             </div>
         </div>
 
-        <div class="pt-footer" style="display:none;">Memon Nimko — Stock Adjustment Report</div>
+        <div class="pt-footer" style="display:none;">{{ shop_name() }} — Stock Adjustment Report | Developed by {{ developer_name() }}</div>
 
     </div>
 </div>

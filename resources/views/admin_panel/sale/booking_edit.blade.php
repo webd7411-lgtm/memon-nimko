@@ -84,10 +84,24 @@
                     <div class="ribbon">BOOKED</div>
                 </div>
                 <div class="center">
+                    @php
+                        $currentBranch = $booking->branch 
+                            ?? ($booking->branch_id ? \App\Models\Branch::find($booking->branch_id) : null)
+                            ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
+                            ?? \App\Models\Branch::find(active_branch_id())
+                            ?? \App\Models\Branch::first();
+
+                        $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
+                    @endphp
                     <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
-                    <div class="store-name">Memon Nimko</div>
-                    <div class="store-info">Sweet & Bakers</div>
-                    <div class="store-info">Latifabad no 6 Hyderabad</div>
+                    <div class="store-name">{{ shop_name() }}</div>
+                    <div class="store-info">{{ shop_tagline() }}</div>
+                    @if(!empty($currentBranch?->name))
+                    <div class="store-info" style="font-weight:bold;text-transform:uppercase;">BRANCH: {{ $currentBranch->name }}</div>
+                    @endif
+                    @if(!empty($bAddress))
+                    <div class="store-info">{{ $bAddress }}</div>
+                    @endif
                     <div class="receipt-title">Booking Confirmation</div>
                 </div>
 

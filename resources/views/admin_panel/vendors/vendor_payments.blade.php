@@ -155,7 +155,21 @@
                                 <td class="fw-bold">{{ $pay->vendor->name ?? 'N/A' }}</td>
                                 <td class="amt text-end">{{ number_format($pay->amount, 2) }}</td>
                                 <td><i class="bi bi-calendar3 me-1 text-muted"></i>{{ $pay->payment_date }}</td>
-                                <td><span class="rp-chip bg-method">{{ $pay->payment_method ?? '—' }}</span></td>
+                                <td>
+                                    @if($pay->cash > 0 && $pay->card > 0)
+                                        <span class="rp-chip bg-method" style="background:#fef3c7 !important; color:#92400e !important; border:1px solid #fde68a;" title="Cash: {{ number_format($pay->cash, 2) }} | Card: {{ number_format($pay->card, 2) }}">
+                                            <i class="bi bi-pie-chart-fill me-1"></i> ⚡ Split: 💵 {{ number_format($pay->cash, 0) }} + 💳 {{ number_format($pay->card, 0) }}{{ $pay->cardAccount ? ' ('.$pay->cardAccount->title.')' : '' }}
+                                        </span>
+                                    @elseif($pay->card > 0 || $pay->payment_method === 'Card')
+                                        <span class="rp-chip bg-method" style="background:#eff6ff !important; color:#1d4ed8 !important; border:1px solid #bfdbfe;">
+                                            <i class="bi bi-credit-card me-1"></i> 💳 Card{{ $pay->cardAccount ? ' ('.$pay->cardAccount->title.')' : '' }}
+                                        </span>
+                                    @else
+                                        <span class="rp-chip bg-method" style="background:#ecfdf5 !important; color:#047857 !important; border:1px solid #a7f3d0;">
+                                            <i class="bi bi-cash me-1"></i> 💵 {{ $pay->payment_method ?: 'Cash' }}
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="note-cell">{{ $pay->note ?? '—' }}</td>
                                 <td class="text-center" style="white-space:nowrap;">
                                     <a href="{{ route('vendor.payments.edit', $pay->id) }}" class="btn btn-info me-1" title="Edit">
@@ -197,7 +211,16 @@
                     <b>{{ number_format($pay->amount, 2) }}</b>
                 </div>
                 <div class="rp-uc-info">
-                    <span>Method: {{ $pay->payment_method ?? '—' }}</span>
+                    <span>
+                        Method: 
+                        @if($pay->cash > 0 && $pay->card > 0)
+                            ⚡ Split (💵 {{ number_format($pay->cash, 0) }} + 💳 {{ number_format($pay->card, 0) }})
+                        @elseif($pay->card > 0 || $pay->payment_method === 'Card')
+                            💳 Card {{ $pay->cardAccount ? '('.$pay->cardAccount->title.')' : '' }}
+                        @else
+                            {{ $pay->payment_method ?: '💵 Cash' }}
+                        @endif
+                    </span>
                     <span>Note: {{ $pay->note ?? '—' }}</span>
                 </div>
                 <div class="rp-uc-acts">
@@ -221,10 +244,16 @@
         </div>
     </div>
 
+    @php
+        if (!isset($bankAccounts)) {
+            $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        }
+    @endphp
+
     <!-- Payment Modal -->
     <div class="modal fade" id="paymentModal">
-        <div class="modal-dialog">
-            <form action="{{ route('vendor.payments.store') }}" method="POST">@csrf
+        <div class="modal-dialog modal-dialog-centered">
+            <form action="{{ route('vendor.payments.store') }}" method="POST" id="vendorPaymentForm">@csrf
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title"><i class="bi bi-cash-coin me-1"></i> Add Vendor Payment</h5>
@@ -246,36 +275,85 @@
                             <input type="text" id="vendor_stock" class="form-control" readonly placeholder="Select a vendor">
                         </div>
 
-                        <div class="row g-3 mb-1">
+                        <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Payment Date</label>
-                                    <input type="date" name="payment_date" class="form-control" required>
-                                </div>
+                                <label class="form-label">Payment Date</label>
+                                <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                             </div>
                             <div class="col-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Type</label>
-                                    <select name="adjustment_type" class="form-select" required>
-                                        <option value="minus">Minus (Payment)</option>
-                                        <option value="plus">Plus (Return / Advance)</option>
-                                    </select>
-                                </div>
+                                <label class="form-label">Type</label>
+                                <select name="adjustment_type" class="form-select" required>
+                                    <option value="minus">Minus (Payment)</option>
+                                    <option value="plus">Plus (Return / Advance)</option>
+                                </select>
                             </div>
                         </div>
 
+                        {{-- Payment Mode Selection (Pills) --}}
                         <div class="mb-3">
-                            <label class="form-label">Amount</label>
-                            <input type="number" step="0.01" name="amount" id="amount" class="form-control" required>
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Payment Mode</span>
+                                <span class="badge bg-light text-dark border" style="font-size:10px;">Select Mode</span>
+                            </label>
+                            <div class="btn-group w-100" role="group" id="vpayModeGroup">
+                                <input type="radio" class="btn-check" name="payment_mode" id="vpay_mode_cash" value="cash" checked onchange="toggleVpayMode('cash')">
+                                <label class="btn btn-outline-success fw-bold" for="vpay_mode_cash" style="font-size:12px; padding:7px 0;"><i class="bi bi-cash-stack"></i> 💵 Cash</label>
+
+                                <input type="radio" class="btn-check" name="payment_mode" id="vpay_mode_card" value="card" onchange="toggleVpayMode('card')">
+                                <label class="btn btn-outline-primary fw-bold" for="vpay_mode_card" style="font-size:12px; padding:7px 0;"><i class="bi bi-credit-card"></i> 💳 Card / Bank</label>
+
+                                <input type="radio" class="btn-check" name="payment_mode" id="vpay_mode_split" value="split" onchange="toggleVpayMode('split')">
+                                <label class="btn btn-outline-warning fw-bold text-dark" for="vpay_mode_split" style="font-size:12px; padding:7px 0;"><i class="bi bi-pie-chart"></i> ⚡ Split</label>
+                            </div>
                         </div>
+
+                        {{-- Split Payment Inputs (Only shown when mode is split) --}}
+                        <div id="vpaySplitWrap" style="display:none; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:10px; margin-bottom:12px;">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label mb-1" style="font-size:11px; font-weight:700;">💵 Cash Amount</label>
+                                    <input type="number" step="any" name="cash" id="vpay_cash" class="form-control form-control-sm" placeholder="0" oninput="calcVpaySplit()">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label mb-1" style="font-size:11px; font-weight:700;">💳 Card Amount</label>
+                                    <input type="number" step="any" name="card" id="vpay_card" class="form-control form-control-sm" placeholder="0" oninput="calcVpaySplit()">
+                                </div>
+                            </div>
+                            <div class="d-flex gap-1 justify-content-end">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fw-bold" style="font-size:11px; background:#fff;" onclick="vpayQuickSplit('50')">⚡ 50/50 Split</button>
+                            </div>
+                        </div>
+
+                        {{-- Card / Bank Account Dropdown (Shown in card & split modes) --}}
+                        <div class="mb-3" id="vpayAccountWrap" style="display:none; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:10px; padding:9px 12px;">
+                            <label class="form-label d-flex justify-content-between align-items-center mb-1 text-primary" style="font-size:11.5px; font-weight:700;">
+                                <span><i class="bi bi-bank me-1"></i> Select Card / Bank Account:</span>
+                                <span class="badge bg-primary" style="font-size:9.5px;">Chart of Accounts</span>
+                            </label>
+                            <select name="card_account_id" id="vpay_card_account_id" class="form-select form-select-sm" style="font-weight:600;">
+                                <option value="">-- Choose Account / POS Machine --</option>
+                                @if(isset($bankAccounts) && count($bankAccounts) > 0)
+                                    @foreach($bankAccounts as $acc)
+                                        <option value="{{ $acc->id }}">{{ $acc->title }} {{ $acc->head ? '('.$acc->head->name.')' : '' }}</option>
+                                    @endforeach
+                                @else
+                                    <option value="" disabled>No accounts found in Chart of Accounts</option>
+                                @endif
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" id="vpayAmountLabel">Total Amount (Rs)</label>
+                            <input type="number" step="0.01" name="amount" id="amount" class="form-control" required placeholder="0.00" oninput="handleVpayAmountInput()">
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">Amount in Words</label>
                             <input type="text" id="amount_in_words" class="form-control fw-words" readonly>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Payment Method</label>
-                            <input type="text" name="payment_method" class="form-control" placeholder="e.g. Cash, Bank">
-                        </div>
+
+                        <input type="hidden" name="payment_method" id="vpay_payment_method" value="Cash">
+
                         <div class="mb-1">
                             <label class="form-label">Note</label>
                             <textarea name="note" class="form-control" placeholder="Optional note" rows="2"></textarea>
@@ -294,6 +372,124 @@
 
 @section('scripts')
 <script>
+    let currentVpayMode = 'cash';
+
+    function toggleVpayMode(mode) {
+        currentVpayMode = mode;
+        const splitWrap = document.getElementById('vpaySplitWrap');
+        const accWrap = document.getElementById('vpayAccountWrap');
+        const accSelect = document.getElementById('vpay_card_account_id');
+        const amountInput = document.getElementById('amount');
+        const methodInput = document.getElementById('vpay_payment_method');
+        const cashInput = document.getElementById('vpay_cash');
+        const cardInput = document.getElementById('vpay_card');
+
+        if (mode === 'cash') {
+            if (splitWrap) splitWrap.style.display = 'none';
+            if (accWrap) accWrap.style.display = 'none';
+            if (amountInput) amountInput.readOnly = false;
+            if (methodInput) methodInput.value = 'Cash';
+            if (accSelect) accSelect.value = '';
+            if (cashInput) cashInput.value = '';
+            if (cardInput) cardInput.value = '';
+        } else if (mode === 'card') {
+            if (splitWrap) splitWrap.style.display = 'none';
+            if (accWrap) accWrap.style.display = 'block';
+            if (amountInput) amountInput.readOnly = false;
+            if (methodInput) methodInput.value = 'Card';
+            if (accSelect && !accSelect.value && accSelect.options.length > 1) {
+                accSelect.selectedIndex = 1;
+            }
+            if (cashInput) cashInput.value = '';
+            if (cardInput) cardInput.value = '';
+        } else if (mode === 'split') {
+            if (splitWrap) splitWrap.style.display = 'block';
+            if (accWrap) accWrap.style.display = 'block';
+            if (amountInput) amountInput.readOnly = true;
+            if (methodInput) methodInput.value = 'Split (Cash + Card)';
+            if (accSelect && !accSelect.value && accSelect.options.length > 1) {
+                accSelect.selectedIndex = 1;
+            }
+            calcVpaySplit();
+        }
+    }
+
+    function calcVpaySplit() {
+        const cs = parseFloat(document.getElementById('vpay_cash')?.value) || 0;
+        const cd = parseFloat(document.getElementById('vpay_card')?.value) || 0;
+        const tot = cs + cd;
+        const amountInput = document.getElementById('amount');
+        if (amountInput) amountInput.value = tot > 0 ? tot.toFixed(2) : '';
+        $('#amount_in_words').val(tot > 0 ? numberToWords(Math.round(tot)) : '');
+    }
+
+    function vpayQuickSplit(type) {
+        let base = parseFloat(document.getElementById('amount')?.value) || 0;
+        if (base <= 0) {
+            base = parseFloat(document.getElementById('vendor_stock')?.value) || 0;
+        }
+        if (base <= 0) return;
+
+        if (type === '50') {
+            const half = Math.round(base / 2);
+            const cEl = document.getElementById('vpay_cash');
+            const dEl = document.getElementById('vpay_card');
+            if (cEl) cEl.value = half;
+            if (dEl) dEl.value = (base - half);
+            calcVpaySplit();
+        }
+    }
+
+    function handleVpayAmountInput() {
+        const val = parseFloat($('#amount').val()) || 0;
+        $('#amount_in_words').val(val > 0 ? numberToWords(Math.round(val)) : '');
+    }
+
+    function numberToWords(num) {
+        if (!num || num === 0) return 'Zero Rupees Only';
+
+        const a = [
+            '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
+            'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen',
+            'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
+        ];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty',
+            'Sixty', 'Seventy', 'Eighty', 'Ninety'
+        ];
+
+        function inWords(n) {
+            if (n < 20) return a[n];
+            if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '');
+            if (n < 1000)
+                return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + inWords(n % 100) : '');
+            if (n < 100000)
+                return inWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + inWords(n % 1000) : '');
+            if (n < 10000000)
+                return inWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + inWords(n % 100000) : '');
+            return inWords(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + inWords(n % 10000000) : '');
+        }
+
+        let parts = num.toString().split('.');
+        let rupees = parseInt(parts[0]);
+        let paisa = parts[1] ? parseInt(parts[1].substring(0, 2)) : 0;
+
+        let words = inWords(rupees) + ' Rupees';
+
+        if (paisa > 0) {
+            words += ' and ' + inWords(paisa) + ' Paisa';
+        }
+
+        return words + ' Only';
+    }
+
+    function clearPaymentForm() {
+        $('#paymentModal').find('form')[0].reset ? $('#paymentModal').find('form')[0].reset() : null;
+        $('#amount_in_words').val('');
+        $('#vendor_stock').val('');
+        $('#vpay_mode_cash').prop('checked', true);
+        toggleVpayMode('cash');
+    }
+
     $(document).ready(function() {
         $('#default-datatable').DataTable({
             pageLength: 10,
@@ -302,6 +498,48 @@
             language: {
                 search: "Search Payments:",
                 lengthMenu: "Show _MENU_ entries"
+            }
+        });
+
+        // Form Submit Validation
+        $('#vendorPaymentForm').on('submit', function(e) {
+            const mode = $('input[name="payment_mode"]:checked').val();
+            const amount = parseFloat($('#amount').val()) || 0;
+            const cardAcc = $('#vpay_card_account_id').val();
+
+            if (amount <= 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Amount Required',
+                    text: 'Barah-e-karam payment amount enter karein!'
+                });
+                return false;
+            }
+
+            if ((mode === 'card' || mode === 'split') && !cardAcc && $('#vpay_card_account_id option').length > 1) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Card Account Required',
+                    text: 'Barah-e-karam Card / Bank Account select karein!'
+                });
+                $('#vpay_card_account_id').focus();
+                return false;
+            }
+
+            if (mode === 'split') {
+                const cs = parseFloat($('#vpay_cash').val()) || 0;
+                const cd = parseFloat($('#vpay_card').val()) || 0;
+                if ((cs + cd) <= 0) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Split Details Required',
+                        text: 'Cash aur Card dono ka amount enter karein!'
+                    });
+                    return false;
+                }
             }
         });
 
@@ -345,53 +583,11 @@
             }
         });
 
-        function numberToWords(num) {
-            if (!num || num === 0) return 'Zero Rupees Only';
-
-            const a = [
-                '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
-                'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen',
-                'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
-            ];
-            const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty',
-                'Sixty', 'Seventy', 'Eighty', 'Ninety'
-            ];
-
-            function inWords(n) {
-                if (n < 20) return a[n];
-                if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '');
-                if (n < 1000)
-                    return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + inWords(n % 100) : '');
-                if (n < 100000)
-                    return inWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + inWords(n % 1000) : '');
-                if (n < 10000000)
-                    return inWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + inWords(n % 100000) : '');
-                return inWords(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + inWords(n % 10000000) : '');
+        $('#paymentModal').on('shown.bs.modal', function() {
+            if (!$('#amount').val()) {
+                $('#amount_in_words').val('');
             }
-
-            let parts = num.toString().split('.');
-            let rupees = parseInt(parts[0]);
-            let paisa = parts[1] ? parseInt(parts[1].substring(0, 2)) : 0;
-
-            let words = inWords(rupees) + ' Rupees';
-
-            if (paisa > 0) {
-                words += ' and ' + inWords(paisa) + ' Paisa';
-            }
-
-            return words + ' Only';
-        }
-
-        $(document).on('input', 'input[name="amount"]', function() {
-            let val = $(this).val();
-            $('#amount_in_words').val(val ? numberToWords(val) : '');
         });
-
-        function clearPaymentForm() {
-            $('#paymentModal').find('form')[0].reset ? $('#paymentModal').find('form')[0].reset() : null;
-            $('#amount_in_words').val('');
-            $('#vendor_stock').val('');
-        }
     });
 </script>
 @endsection

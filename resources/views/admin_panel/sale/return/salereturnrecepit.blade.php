@@ -210,8 +210,8 @@
     <!-- Header -->
     <div class="center">
       <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
-      <div class="store-name">Memon Nimko</div>
-      <div class="store-info">Sweets & Bakers</div>
+      <div class="store-name">{{ sys_setting('software_name', 'Memon Nimko') }}</div>
+      <div class="store-info">{{ sys_setting('tagline', 'Sweets & Bakers') }}</div>
       @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))
       <div class="store-info" style="font-weight: 700; text-transform: uppercase;">{{ $receiptBranch->name }}</div>
       @endif

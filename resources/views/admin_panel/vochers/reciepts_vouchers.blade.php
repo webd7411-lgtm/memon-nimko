@@ -189,6 +189,41 @@
     cursor: not-allowed;
 }
 
+/* ══════════ FIX INPUT GROUP ALIGNMENT ══════════ */
+.input-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    width: 100% !important;
+}
+.input-group > .input-group-text {
+    border: 1.5px solid #e2e8f0 !important;
+    border-right: none !important;
+    border-radius: var(--rvf-radius-sm) 0 0 var(--rvf-radius-sm) !important;
+    background: #f8fafc;
+    color: #64748b;
+    padding: 0.55rem 0.85rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+.input-group > .rvf-input {
+    flex: 1 1 auto !important;
+    width: 1% !important;
+    min-width: 0 !important;
+    border-radius: 0 var(--rvf-radius-sm) var(--rvf-radius-sm) 0 !important;
+}
+.input-group > .btn {
+    border: 1.5px solid #e2e8f0 !important;
+    border-left: none !important;
+    border-radius: 0 var(--rvf-radius-sm) var(--rvf-radius-sm) 0 !important;
+    padding: 0.4rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* ══════════ TABLE STYLING ══════════ */
 .rvf-table-container {
     border: 1px solid var(--rvf-border);
@@ -346,11 +381,121 @@ table.rvf-table tfoot th {
     background: #ffffff;
 }
 
-table.rvf-table {
-    min-width: 860px;
+@media (min-width: 992px) {
+    table.rvf-table {
+        min-width: 860px;
+    }
 }
 
 @media (max-width: 991.98px) {
+    .rvf-table-container {
+        border: none !important;
+        background: transparent !important;
+        overflow: visible !important;
+        margin-bottom: 1.25rem !important;
+    }
+    table.rvf-table {
+        min-width: 0 !important;
+        width: 100% !important;
+        display: block !important;
+        border: none !important;
+    }
+    table.rvf-table thead {
+        display: none !important;
+    }
+    table.rvf-table tbody {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1.15rem !important;
+        width: 100% !important;
+    }
+    table.rvf-table tbody tr {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.75rem 0.85rem !important;
+        background: #ffffff !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-left: 4.5px solid var(--rvf-primary) !important;
+        border-radius: 14px !important;
+        padding: 1.1rem !important;
+        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06) !important;
+        position: relative !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    table.rvf-table tbody tr:hover {
+        background: #ffffff !important;
+    }
+    table.rvf-table tbody td {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 0 !important;
+        border: none !important;
+        min-width: 0 !important;
+    }
+    /* Narration spans full width */
+    table.rvf-table tbody td:nth-child(1) {
+        grid-column: 1 / -1 !important;
+    }
+    /* Reference spans full width or 1 col */
+    table.rvf-table tbody td:nth-child(2) {
+        grid-column: 1 / -1 !important;
+    }
+    /* Account Head & Destination Account */
+    table.rvf-table tbody td:nth-child(3) {
+        grid-column: 1 / 2 !important;
+    }
+    table.rvf-table tbody td:nth-child(4) {
+        grid-column: 2 / 3 !important;
+    }
+    /* Discount & Amount */
+    table.rvf-table tbody td:nth-child(5) {
+        grid-column: 1 / 2 !important;
+    }
+    table.rvf-table tbody td:nth-child(6) {
+        grid-column: 2 / 3 !important;
+    }
+    /* Delete button full width */
+    table.rvf-table tbody td:nth-child(7) {
+        grid-column: 1 / -1 !important;
+        padding-top: 0.5rem !important;
+        margin-top: 0.35rem !important;
+        border-top: 1px dashed #e2e8f0 !important;
+    }
+    /* Labels on mobile */
+    table.rvf-table tbody td::before {
+        content: attr(data-label);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+    table.rvf-table tbody td:nth-child(7)::before {
+        display: none !important;
+    }
+    table.rvf-table tbody td:nth-child(7) .removeRow {
+        width: 100% !important;
+        border-radius: 9px !important;
+        padding: 0.5rem 0.75rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.4rem !important;
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+        background: #fef2f2 !important;
+        color: #dc2626 !important;
+        border: 1px solid #fecaca !important;
+        transition: all 0.2s ease !important;
+    }
+    table.rvf-table tbody td:nth-child(7) .removeRow::after {
+        content: " Delete Transaction Row";
+    }
+
     .rvf-hero {
         padding: 1.25rem 1.15rem;
         flex-direction: column;
@@ -384,6 +529,17 @@ table.rvf-table {
     .rvf-card {
         padding: 1.2rem;
         border-radius: 14px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    table.rvf-table tbody tr {
+        grid-template-columns: 1fr 1fr !important;
+        padding: 0.85rem !important;
+    }
+    table.rvf-table tbody td:nth-child(3),
+    table.rvf-table tbody td:nth-child(4) {
+        grid-column: 1 / -1 !important;
     }
 }
 
@@ -555,8 +711,8 @@ table.rvf-table {
                 </div>
 
                 <div class="d-md-none text-muted small mb-2 d-flex align-items-center gap-1">
-                    <i class="bi bi-arrow-left-right text-success fw-bold"></i>
-                    <span>Table ko left / right swipe karein sub columns ke liye</span>
+                    <i class="bi bi-card-checklist text-success fw-bold"></i>
+                    <span>Mobile View: Transactions are stacked in clean responsive cards</span>
                 </div>
 
                 <div class="rvf-table-container">
@@ -574,22 +730,28 @@ table.rvf-table {
                         </thead>
                         <tbody>
                             <tr>
-                                <td>
-                                    <div class="input-group">
+                                <td data-label="Narration / Detail">
+                                    <div class="narration-wrapper">
                                         <input type="hidden" name="narration_text[]" class="narrationTextHidden">
                                         <select name="narration_id[]" class="rvf-input narrationSelect">
-                                            <option value="">Select / Type New</option>
+                                            <option value="">-- Select Detail --</option>
+                                            <option value="new" style="font-weight: 700; color: #059669;">➕ Type New Detail / Manual</option>
                                             @foreach($narrations as $id => $name)
                                              <option value="{{ $id }}">{{ $name }}</option>
                                             @endforeach
                                         </select>
-                                        <input type="text" class="rvf-input narrationInput mt-1" placeholder="Type new narration here" style="display:none;">
+                                        <div class="narrationInputWrap mt-1" style="display:none;">
+                                            <div class="input-group">
+                                                <input type="text" class="rvf-input narrationInput" placeholder="Type new detail...">
+                                                <button type="button" class="btn btn-sm btn-outline-success btnCancelNewNarr" title="Back to dropdown"><i class="bi bi-x-lg"></i></button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="Reference #">
                                     <input name="reference_no[]" type="text" class="rvf-input" placeholder="Ref#">
                                 </td>
-                                <td>
+                                <td data-label="Account Head">
                                     <select name="row_account_head[]" class="rvf-input rowAccountHead" required>
                                         <option value="">Select Head</option>
                                         @foreach($AccountHeads as $head)
@@ -597,18 +759,18 @@ table.rvf-table {
                                         @endforeach
                                     </select>
                                 </td>
-                                <td>
+                                <td data-label="Destination Account">
                                     <select name="row_account_id[]" class="rvf-input rowAccountSub" required>
                                         <option value="">Select Account</option>
                                     </select>
                                 </td>
-                                <td>
+                                <td data-label="Discount">
                                     <input name="discount_value[]" type="number" step="0.01" class="rvf-input text-end discountValue" value="0">
                                 </td>
-                                <td>
+                                <td data-label="Amount (PKR)">
                                     <input name="amount[]" type="number" step="0.01" class="rvf-input text-end fw-bold text-success amount" placeholder="0.00" required>
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center" data-label="Action">
                                     <button type="button" class="rvf-row-btn-del removeRow" title="Delete Row">
                                         <i class="bi bi-trash3-fill"></i>
                                     </button>
@@ -656,19 +818,28 @@ table.rvf-table {
 <script>
     // Narration toggle for custom text
     $(document).on('change', '.narrationSelect', function() {
-        let $row = $(this).closest('td');
-        let $input = $row.find('.narrationInput');
+        let $cell = $(this).closest('td');
+        let $wrap = $cell.find('.narrationInputWrap');
+        let $input = $wrap.find('.narrationInput');
+        let $hidden = $cell.find('.narrationTextHidden');
 
-        if ($(this).val() === '') {
-            $input.show().focus();
+        if ($(this).val() === 'new') {
+            $wrap.show();
+            $input.focus();
         } else {
-            $input.hide().val('');
-            $row.find('.narrationTextHidden').val('');
+            $wrap.hide();
+            $input.val('');
+            $hidden.val('');
         }
     });
 
     $(document).on('input', '.narrationInput', function() {
         $(this).closest('td').find('.narrationTextHidden').val($(this).val());
+    });
+
+    $(document).on('click', '.btnCancelNewNarr', function() {
+        let $cell = $(this).closest('td');
+        $cell.find('.narrationSelect').val('').trigger('change');
     });
 
     // Party Type change -> fetch parties
@@ -763,20 +934,26 @@ table.rvf-table {
     function appendNewRow() {
         let newRow = `
         <tr>
-            <td>
-                <div class="input-group">
+            <td data-label="Narration / Detail">
+                <div class="narration-wrapper">
                     <input type="hidden" name="narration_text[]" class="narrationTextHidden">
                     <select name="narration_id[]" class="rvf-input narrationSelect">
-                        <option value="">Select / Type New</option>
+                        <option value="">-- Select Detail --</option>
+                        <option value="new" style="font-weight: 700; color: #059669;">➕ Type New Detail / Manual</option>
                         @foreach($narrations as $id => $name)
                         <option value="{{ $id }}">{{ $name }}</option>
                         @endforeach
                     </select>
-                    <input type="text" class="rvf-input narrationInput mt-1" placeholder="Type new narration here" style="display:none;">
+                    <div class="narrationInputWrap mt-1" style="display:none;">
+                        <div class="input-group">
+                            <input type="text" class="rvf-input narrationInput" placeholder="Type new detail...">
+                            <button type="button" class="btn btn-sm btn-outline-success btnCancelNewNarr" title="Back to dropdown"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                    </div>
                 </div>
             </td>
-            <td><input name="reference_no[]" type="text" class="rvf-input" placeholder="Ref#"></td>
-            <td>
+            <td data-label="Reference #"><input name="reference_no[]" type="text" class="rvf-input" placeholder="Ref#"></td>
+            <td data-label="Account Head">
                 <select name="row_account_head[]" class="rvf-input rowAccountHead" required>
                     <option value="">Select Head</option>
                     @foreach($AccountHeads as $head)
@@ -784,14 +961,14 @@ table.rvf-table {
                     @endforeach
                 </select>
             </td>
-            <td>
+            <td data-label="Destination Account">
                 <select name="row_account_id[]" class="rvf-input rowAccountSub" required>
                     <option value="">Select Account</option>
                 </select>
             </td>
-            <td><input name="discount_value[]" type="number" step="0.01" class="rvf-input text-end discountValue" value="0"></td>
-            <td><input name="amount[]" type="number" step="0.01" class="rvf-input text-end fw-bold text-success amount" placeholder="0.00" required></td>
-            <td class="text-center">
+            <td data-label="Discount"><input name="discount_value[]" type="number" step="0.01" class="rvf-input text-end discountValue" value="0"></td>
+            <td data-label="Amount (PKR)"><input name="amount[]" type="number" step="0.01" class="rvf-input text-end fw-bold text-success amount" placeholder="0.00" required></td>
+            <td class="text-center" data-label="Action">
                 <button type="button" class="rvf-row-btn-del removeRow" title="Delete Row"><i class="bi bi-trash3-fill"></i></button>
             </td>
         </tr>`;
