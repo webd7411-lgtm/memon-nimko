@@ -229,7 +229,7 @@
 
     <!-- HEADER LOGO & COMPANY NAME -->
     <div class="center">
-      <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;" onerror="this.style.display='none'">
+      <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast;" onerror="this.style.display='none'">
       <div class="company-title">{{ shop_name() }}</div>
       <p style="margin:0; font-size:12px; font-weight:bold;">{{ shop_tagline() }}</p>
     </div>

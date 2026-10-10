@@ -272,6 +272,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/search-product-name', [SaleController::class, 'searchpname'])->name('search-product-name');
     Route::get('/pos/products', [SaleController::class, 'getPosProducts'])->name('pos.products');
     Route::get('/pos/product-variants/{id}', [SaleController::class, 'getProductVariants'])->name('pos.product.variants');
+    Route::get('/pos/scan-barcode', [SaleController::class, 'scanBarcode'])->name('pos.scan.barcode');
     Route::get('/pos/recent-products', [SaleController::class, 'getRecentProducts'])->name('pos.recent.products');
     Route::get('/pos/invoice-search', [SaleController::class, 'searchInvoiceForExchange'])->name('pos.invoice.search');
     Route::get('/pos/table-active-sale/{id}', [SaleController::class, 'getActiveSaleForTable'])->name('pos.table.active');

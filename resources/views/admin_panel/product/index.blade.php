@@ -708,6 +708,9 @@
                     <div>
                       <span>
                         <strong>{{ $variant->variant_name }}</strong> - Rs {{ number_format($variant->price) }} <span style="color:var(--pc-text-muted)">({{ $vStockDisplay }})</span>
+                        @if(!empty($variant->expiry_date) && !in_array(trim((string)$variant->expiry_date), ['0000-00-00', 'null', '']))
+                          <span class="badge bg-light text-danger border ms-1" style="font-size:0.65rem;" title="Expiry Date"><i class="bi bi-calendar-x"></i> Exp: {{ \Carbon\Carbon::parse($variant->expiry_date)->format('d M Y') }}</span>
+                        @endif
                       </span>
                       @if($variant->is_default)<span class="v-default">Default</span>@endif
                     </div>

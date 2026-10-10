@@ -91,7 +91,7 @@
             $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
             $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
         @endphp
-        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
+        <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 70px; margin-bottom: 5px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast;">
         <h1>{{ shop_name() }}</h1>
         <p>{{ shop_tagline() }}</p>
         @if(!empty($currentBranch?->name))

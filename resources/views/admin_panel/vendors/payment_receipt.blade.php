@@ -68,7 +68,7 @@
         @endphp
 
         <div class="center">
-            <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px;">
+            <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast;">
         </div>
 
         <div class="center bold">

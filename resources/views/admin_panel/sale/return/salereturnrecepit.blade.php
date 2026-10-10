@@ -54,7 +54,8 @@
     .receipt-container {
       width: 80mm;
       margin: 0 auto;
-      padding: 5mm 2mm;
+      padding: 0 2mm 2mm;
+      padding-top: 0 !important;
       background: #fff;
     }
 
@@ -180,7 +181,8 @@
 
       .receipt-container {
         width: 100%;
-        padding: 2mm;
+        padding: 0 2mm 2mm;
+        padding-top: 0 !important;
       }
     }
   </style>
@@ -208,8 +210,8 @@
       $branchPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
     @endphp
     <!-- Header -->
-    <div class="center">
-      <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
+    <div class="center" style="margin-top:0;padding-top:0;">
+      <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 60px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
       <div class="store-name">{{ sys_setting('software_name', 'Memon Nimko') }}</div>
       <div class="store-info">{{ sys_setting('tagline', 'Sweets & Bakers') }}</div>
       @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))

@@ -14,23 +14,6 @@ class CategorySeeder extends Seeder
      */
     public function run(): void
     {
-        $data = [
-            'Men' => ['Shirts', 'T-Shirts', 'Trousers', 'Jeans', 'Kurta', 'Sherwani'],
-            'Women' => ['Tops', 'Kurtis', 'Sarees', 'Dresses', 'Abayas', 'Lawn'],
-            'Kids' => ['Boys', 'Girls', 'Infant Wear'],
-            'Accessories' => ['Belts', 'Caps', 'Socks', 'Scarves', 'Bags'],
-            'Footwear' => ['Men Shoes', 'Women Shoes', 'Kids Shoes'],
-        ];
-
-        foreach ($data as $categoryName => $subcategories) {
-            $category = Category::create(['name' => $categoryName]);
-
-            foreach ($subcategories as $sub) {
-                Subcategory::create([
-                    'category_id' => $category->id,
-                    'name' => $sub,
-                ]);
-            }
-        }
+        // No default categories — client will add their own categories after fresh install
     }
 }

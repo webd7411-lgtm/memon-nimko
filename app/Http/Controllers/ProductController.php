@@ -283,6 +283,7 @@ class ProductController extends Controller
             $variantCosts = $request->input('variant_cost_price', []);
             $variantStocks = $request->input('variant_stock', []);
             $variantBarcodes = $request->input('variant_barcode', []);
+            $variantExpiries = $request->input('variant_expiry_date', []);
             $defaultVariantIndex = $request->input('variant_default', 0);
             $unitType = $request->input('unit_type');
             $recipeYield = (float)($request->input('recipe_batch_yield', 1) ?: 1);
@@ -297,6 +298,7 @@ class ProductController extends Controller
                     $vCost    = floatval($variantCosts[$i] ?? 0);
                     $vStock   = floatval($variantStocks[$i] ?? 0);
                     $vBarcode = trim($variantBarcodes[$i] ?? '');
+                    $vExpiry  = (!empty($variantExpiries[$i]) && trim((string)$variantExpiries[$i]) !== '') ? trim((string)$variantExpiries[$i]) : null;
                     $sizeUnit = strtolower(trim($variantUnits[$i] ?? $unitType));
                     $isDefault = ($defaultVariantIndex == $i);
 
@@ -331,6 +333,7 @@ class ProductController extends Controller
                         'alert_quantity'  => 0,
                         'is_default'      => $isDefault,
                         'is_active'       => true,
+                        'expiry_date'     => $vExpiry,
                     ]);
                     $createdVariants[$i] = $variant->id;
 
@@ -512,6 +515,7 @@ class ProductController extends Controller
             $variantCostPrices = $request->input('variant_cost_price', []);
             $variantStocks = $request->input('variant_stock', []);
             $variantBarcodes = $request->input('variant_barcode', []);
+            $variantExpiries = $request->input('variant_expiry_date', []);
             $variantDefault = $request->input('variant_default', 0);
 
             // 1. Delete removed variants and their stocks
@@ -545,6 +549,7 @@ class ProductController extends Controller
                     $vPrice = floatval($variantPrices[$index] ?? 0);
                     $vCost = floatval($variantCostPrices[$index] ?? 0);
                     $vStock = floatval($variantStocks[$index] ?? 0);
+                    $vExpiry = (!empty($variantExpiries[$index]) && trim((string)$variantExpiries[$index]) !== '') ? trim((string)$variantExpiries[$index]) : null;
                     $isDefault = ((int)$variantDefault === $index);
 
                     $vBarcode = !empty($variantBarcodes[$index]) ? $variantBarcodes[$index] : null;
@@ -570,6 +575,7 @@ class ProductController extends Controller
                         'alert_quantity'  => 0,
                         'is_default'      => $isDefault,
                         'is_active'       => true,
+                        'expiry_date'     => $vExpiry,
                     ];
 
                     if ($vId) {

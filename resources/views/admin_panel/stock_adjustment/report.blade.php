@@ -252,7 +252,7 @@
     <div class="container-fluid px-3 px-md-4 py-3">
         <div class="print-title" style="display:none;">
             <div class="pt-header">
-                <img src="{{ str_replace('\\', '/', public_path('assets/images/logo.png')) }}" alt="Logo" class="pt-logo">
+                <img src="{{ str_replace('\\', '/', public_path('assets/images/logo_thermal.png')) }}" alt="Logo" class="pt-logo" style="filter: contrast(180%);">
                 <h1>STOCK ADJUSTMENT REPORT</h1>
                 <p>Period: {{ $from }} to {{ $to }} &nbsp;|&nbsp; Generated: {{ now()->format('d-M-Y h:i A') }}</p>
             </div>

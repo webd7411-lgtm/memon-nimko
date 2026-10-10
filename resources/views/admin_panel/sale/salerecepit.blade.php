@@ -17,7 +17,8 @@
         width: 100%;
         max-width: 340px;
         margin: auto;
-        padding: 10px;
+        padding: 0 10px 10px;
+        padding-top: 0 !important;
     }
     .center {
         text-align: center;
@@ -68,7 +69,8 @@
             width: 74mm !important;
             max-width: 100% !important;
             margin: 0 auto !important;
-            padding: 2mm !important;
+            padding: 0 2mm 2mm !important;
+            padding-top: 0 !important;
             page-break-inside: avoid;
             page-break-after: avoid;
         }
@@ -99,8 +101,8 @@
 <div class="receipt-container">
 
     <!-- Header -->
-    <div class="center">
-        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+    <div class="center" style="margin-top: 0; padding-top: 0;">
+        <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 55px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
         <h2 style="margin:0;font-size:15px;" class="bold">{{ shop_name() }}</h2>
         <p style="margin:0;font-size:11px;">{{ shop_tagline() }}</p>
         @php

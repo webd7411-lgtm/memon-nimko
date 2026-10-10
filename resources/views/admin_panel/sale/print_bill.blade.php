@@ -4,16 +4,18 @@
     <meta charset="UTF-8">
     <title>Bill - {{ $table_name }}</title>
     <style>
-        @media print { @page { margin: 0; } body { margin: 0; padding: 5px; } .no-print { display: none; } }
+        @media print { @page { margin: 0; } body { margin: 0; padding: 0 5px 5px; padding-top: 0 !important; } .no-print { display: none; } }
         body {
             font-family: 'Arial', sans-serif;
             width: 80mm;
             margin: 0 auto;
+            padding: 0 5px 5px;
+            padding-top: 0 !important;
             color: #000;
             font-weight: 700;
             font-size: 13px;
         }
-        .header { text-align: center; margin-bottom: 8px; }
+        .header { text-align: center; margin-bottom: 8px; margin-top: 0; padding-top: 0; }
         .header h2 { margin: 0; text-transform: uppercase; font-size: 16px; }
         .header p { margin: 2px 0; font-size: 11px; font-weight: 400; }
         .table-name { text-align: center; font-size: 15px; font-weight: 900; margin: 5px 0; }
@@ -42,7 +44,7 @@
     </div>
 
     <div class="header">
-        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 4px;">
+        <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 50px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
         <h2>{{ shop_name() }}</h2>
         @php
             $currentBranch = \App\Models\Branch::find(active_branch_id());

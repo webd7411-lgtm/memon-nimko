@@ -105,7 +105,7 @@ table tbody tr:last-child td { border-bottom: none; }
         $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '');
         $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
     @endphp
-    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px;">
+    <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 50px; margin-bottom: 3px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast;">
     <div class="brand">{{ shop_name() }}</div>
     <div class="address" style="font-size:11px; font-weight:900;">{{ shop_tagline() }}</div>
     @if(!empty($bAddress))

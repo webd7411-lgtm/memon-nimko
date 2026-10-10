@@ -1391,11 +1391,19 @@ $(document).ready(function() {
                 </div>
             </div>
             <div class="variant-barcode-row">
-                <label class="pz-label small fw-bold mb-1"><i class="las la-barcode"></i> Barcode</label>
-                <div class="pz-barcode-group">
-                    <input type="text" name="variant_barcode[]" class="pz-control variant-barcode-input"
-                        placeholder="6-digit barcode">
-                    <button type="button" class="pz-barcode-btn variant-barcode-btn" title="Generate barcode"><i class="la la-barcode"></i></button>
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-6">
+                        <label class="pz-label small fw-bold mb-1"><i class="las la-barcode"></i> Barcode</label>
+                        <div class="pz-barcode-group">
+                            <input type="text" name="variant_barcode[]" class="pz-control variant-barcode-input"
+                                placeholder="6-digit barcode">
+                            <button type="button" class="pz-barcode-btn variant-barcode-btn" title="Generate barcode"><i class="la la-barcode"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="pz-label small fw-bold mb-1"><i class="las la-calendar-times text-danger"></i> Expiry Date (Optional)</label>
+                        <input type="date" name="variant_expiry_date[]" class="pz-control variant-expiry-input" value="">
+                    </div>
                 </div>
             </div>
         `;
@@ -1635,10 +1643,12 @@ function buildReview() {
             const vPrice = r.querySelector('input[name="variant_price[]"]').value;
             const vStock = r.querySelector('input[name="variant_stock[]"]').value;
             const vBarcode = r.querySelector('input[name="variant_barcode[]"]').value;
+            const vExpiry = r.querySelector('input[name="variant_expiry_date[]"]')?.value;
             html += '<span class="pz-review-chip">' + (i+1) + '. ' + (vName || '?') +
                 (vSize && parseFloat(vSize) > 0 ? ' (' + vSize + ')' : '') +
                 ' — Rs ' + (vPrice || 0) +
                 (vStock && parseFloat(vStock) > 0 ? ' | Stock: ' + vStock : '') +
+                (vExpiry ? ' | Exp: ' + vExpiry : '') +
                 (vBarcode ? ' <span class="pz-review-mono">| BC: ' + vBarcode + '</span>' : '') + '</span>';
         });
         variantsBox.innerHTML = html;

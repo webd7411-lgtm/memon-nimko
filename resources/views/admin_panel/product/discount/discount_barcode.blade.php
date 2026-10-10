@@ -85,7 +85,7 @@
 </head>
 <body>
     <div class="label">
-        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 42px; margin-bottom: 3px;">
+        <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 42px; margin-bottom: 3px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast;">
         <div class="brand-name">{{ shop_name() }}</div>
 
         <div class="barcode-block">

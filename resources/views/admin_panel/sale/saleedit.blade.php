@@ -233,9 +233,10 @@
     <div class="pos-topbar">
         <div class="pos-brand">🎂 {{ shop_name() }}</div>
         <div class="srchwrap">
-            <i class="la la-search"></i>
-            <input type="text" id="posSearch" placeholder="Search products…" autocomplete="off">
+            <i class="la la-barcode" style="font-size:18px; color:#667eea;"></i>
+            <input type="text" id="posSearch" placeholder="Search item or scan barcode (F2)…" autocomplete="off">
         </div>
+        <button type="button" class="btn-cls btn-scanner" style="background:#667eea; color:#fff; border:none; margin-right: 4px;" onclick="openCameraScanner()" title="Open Live Camera Barcode Scanner (F3)"><i class="la la-camera"></i> <span>📷 Scan</span></button>
         @if(config('app.enable_restaurant_tables', false))
         <button type="button" class="btn-cls" style="background:#f39c12; color:#fff; border:none; margin-right: 10px;" onclick="showModal('tableModal')"><i class="la la-server"></i> <span>Running Orders</span></button>
         @endif
@@ -412,12 +413,39 @@
 </div>
 @endif
 
+{{-- ======= CAMERA BARCODE SCANNER MODAL ======= --}}
+<div class="modal fade" id="cameraScanModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px; overflow:hidden; border:none; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <div class="mod-hdr" style="background:linear-gradient(135deg,#667eea,#764ba2); padding:14px 18px;">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size:18px;">📷</span>
+                    <h5 style="margin:0; font-size:15px; font-weight:700; color:#fff;">Live Camera Barcode Scanner</h5>
+                </div>
+                <button type="button" class="mod-x" id="cameraScanClose" onclick="stopCameraScanner()">✕</button>
+            </div>
+            <div class="modal-body p-3 text-center">
+                <div id="cameraScannerContainer" style="width:100%; min-height:260px; background:#000; border-radius:12px; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center;">
+                    <div id="cameraScannerVideo" style="width:100%;"></div>
+                </div>
+                <div class="mt-3 d-flex justify-content-between align-items-center">
+                    <span class="badge bg-success py-2 px-3" id="scanCountBadge" style="font-size:12px;">Scanned: 0 items</span>
+                    <button type="button" class="btn btn-sm btn-dark px-3 fw-bold" onclick="stopCameraScanner()">✓ Done Scanning</button>
+                </div>
+                <small class="text-muted d-block mt-2" style="font-size:11.5px;">Point camera at product/variant barcode. It will auto-beep and add to cart instantly.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const POS_URL     = "{{ route('pos.products') }}";
 const VAR_URL     = "{{ url('/pos/product-variants') }}";
+const SCAN_URL    = "{{ route('pos.scan.barcode') }}";
 
 let cart = [
     @foreach($saleItems as $item)
@@ -463,10 +491,273 @@ document.getElementById('szClose').onclick = () => hideModal('szModal');
 document.getElementById('bkClose').onclick = () => hideModal('bkModal');
 document.getElementById('bkCancel').onclick = () => hideModal('bkModal');
 if(document.getElementById('tableClose')) document.getElementById('tableClose').onclick = () => hideModal('tableModal');
+if(document.getElementById('cameraScanClose')) document.getElementById('cameraScanClose').onclick = () => stopCameraScanner();
 
 document.getElementById('szModal').addEventListener('click', function(e){ if(e.target===this) hideModal('szModal'); });
 document.getElementById('bkModal').addEventListener('click', function(e){ if(e.target===this) hideModal('bkModal'); });
 if(document.getElementById('tableModal')) document.getElementById('tableModal').addEventListener('click', function(e){ if(e.target===this) hideModal('tableModal'); });
+if(document.getElementById('cameraScanModal')) document.getElementById('cameraScanModal').addEventListener('click', function(e){ if(e.target===this) stopCameraScanner(); });
+
+/* ---- AUDIO FEEDBACK (Web Audio API) ---- */
+function playBeep(type = 'success') {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        if (type === 'success') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
+        } else if (type === 'error') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.25);
+        }
+    } catch(e) {}
+}
+
+/* ---- INSTANT BARCODE SCANNING & CART INSERTION ---- */
+let isScanningBarcode = false;
+async function handleBarcodeScan(barcode) {
+    barcode = (barcode || '').trim();
+    if (!barcode) return;
+    if (isScanningBarcode) return;
+    isScanningBarcode = true;
+
+    const searchInput = document.getElementById('posSearch');
+    const oldPlaceholder = searchInput ? searchInput.placeholder : '';
+    if (searchInput) searchInput.placeholder = 'Scanning: ' + barcode + '...';
+
+    try {
+        const response = await fetch(`${SCAN_URL}?barcode=${encodeURIComponent(barcode)}`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await response.json();
+
+        if (data.success && data.found && data.item) {
+            const item = data.item;
+            playBeep('success');
+
+            const targetVariantId = item.variant_id || null;
+            const targetLabel = item.label || item.name;
+            
+            const existingIdx = cart.findIndex(ci => {
+                if (targetVariantId && ci.variantId) {
+                    return ci.id == item.id && ci.variantId == targetVariantId;
+                }
+                return ci.id == item.id && ci.label === targetLabel;
+            });
+
+            if (existingIdx >= 0) {
+                cart[existingIdx].qty += 1;
+                if (item.price) cart[existingIdx].price = item.price;
+            } else {
+                cart.push({
+                    id: item.id,
+                    name: item.name,
+                    code: item.code,
+                    price: item.price,
+                    qty: 1,
+                    disc: item.disc || 0,
+                    note: item.note || '',
+                    image: item.image || '',
+                    unitId: item.unit_id || '',
+                    label: targetLabel,
+                    variantId: targetVariantId
+                });
+            }
+
+            renderCart();
+            recalc();
+
+            const ordList = document.getElementById('ordList');
+            if (ordList) {
+                ordList.style.transition = 'none';
+                ordList.style.background = '#e8f5e9';
+                setTimeout(() => {
+                    ordList.style.transition = 'background .5s';
+                    ordList.style.background = '';
+                }, 100);
+            }
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: '⚡ ' + (data.message || (targetLabel + ' added!')),
+                showConfirmButton: false,
+                timer: 1600
+            });
+
+            if (searchInput) {
+                searchInput.value = '';
+                curQ = '';
+            }
+        } else {
+            playBeep('error');
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'Barcode Not Found: ' + barcode,
+                showConfirmButton: false,
+                timer: 2200
+            });
+        }
+    } catch (err) {
+        console.error('Scan error:', err);
+        playBeep('error');
+        toast('Error scanning barcode: ' + (err.message || ''));
+    } finally {
+        isScanningBarcode = false;
+        if (searchInput) searchInput.placeholder = oldPlaceholder || 'Search item or scan barcode (F2)…';
+    }
+}
+
+/* ---- CAMERA BARCODE SCANNER (Html5Qrcode) ---- */
+let html5QrCodeScanner = null;
+let cameraScanCount = 0;
+
+function openCameraScanner() {
+    showModal('cameraScanModal');
+    cameraScanCount = 0;
+    updateScanCountBadge();
+    
+    setTimeout(() => {
+        if (typeof Html5Qrcode !== 'undefined') {
+            startHtml5QrCode();
+        } else {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+            script.onload = () => { startHtml5QrCode(); };
+            script.onerror = () => {
+                document.getElementById('cameraScannerContainer').innerHTML = '<div class="p-4 text-white">Camera scanner library could not be loaded. Please check internet connection.</div>';
+            };
+            document.head.appendChild(script);
+        }
+    }, 150);
+}
+
+function startHtml5QrCode() {
+    if (html5QrCodeScanner) {
+        try { html5QrCodeScanner.stop(); } catch(e){}
+    }
+    
+    html5QrCodeScanner = new Html5Qrcode("cameraScannerVideo");
+    const config = { fps: 15, qrbox: { width: 280, height: 160 }, aspectRatio: 1.3333 };
+    
+    html5QrCodeScanner.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText, decodedResult) => {
+            handleBarcodeScan(decodedText);
+            cameraScanCount++;
+            updateScanCountBadge();
+            if (html5QrCodeScanner) {
+                try {
+                    html5QrCodeScanner.pause();
+                    setTimeout(() => {
+                        try { if (html5QrCodeScanner) html5QrCodeScanner.resume(); } catch(e){}
+                    }, 1300);
+                } catch(e){}
+            }
+        },
+        (errorMessage) => {}
+    ).catch(err => {
+        console.error("Camera start error: ", err);
+        document.getElementById('cameraScannerContainer').innerHTML = `<div class="p-4 text-white"><i class="la la-exclamation-triangle" style="font-size:32px;display:block;margin-bottom:8px;"></i>Camera access error: ${err.message || err}<br><small>Make sure camera permission is allowed.</small></div>`;
+    });
+}
+
+function stopCameraScanner() {
+    if (html5QrCodeScanner) {
+        try {
+            html5QrCodeScanner.stop().then(() => {
+                html5QrCodeScanner.clear();
+                html5QrCodeScanner = null;
+            }).catch(() => {
+                html5QrCodeScanner = null;
+            });
+        } catch(e) {
+            html5QrCodeScanner = null;
+        }
+    }
+    hideModal('cameraScanModal');
+}
+
+function updateScanCountBadge() {
+    const badge = document.getElementById('scanCountBadge');
+    if (badge) badge.innerText = `Scanned: ${cameraScanCount} items`;
+}
+
+/* ---- GLOBAL BARCODE GUN & SHORTCUT LISTENER ---- */
+let barcodeGunBuffer = '';
+let lastGunKeyTime = 0;
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'F2') {
+        e.preventDefault();
+        const s = document.getElementById('posSearch');
+        if (s) { s.focus(); s.select(); }
+        return;
+    }
+    if (e.key === 'F3') {
+        e.preventDefault();
+        openCameraScanner();
+        return;
+    }
+
+    if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) {
+        return;
+    }
+
+    const now = Date.now();
+    const timeDiff = now - lastGunKeyTime;
+    lastGunKeyTime = now;
+
+    if (e.key === 'Enter') {
+        if (barcodeGunBuffer.length >= 2 && timeDiff < 100) {
+            e.preventDefault();
+            e.stopPropagation();
+            const code = barcodeGunBuffer;
+            barcodeGunBuffer = '';
+            handleBarcodeScan(code);
+            return;
+        }
+        
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl.id === 'posSearch') {
+            const val = activeEl.value.trim();
+            if (val) {
+                e.preventDefault();
+                handleBarcodeScan(val);
+                return;
+            }
+        }
+        
+        barcodeGunBuffer = '';
+        return;
+    }
+
+    if (e.key.length === 1) {
+        if (timeDiff < 65 || barcodeGunBuffer.length === 0) {
+            barcodeGunBuffer += e.key;
+        } else {
+            barcodeGunBuffer = e.key;
+        }
+    } else {
+        barcodeGunBuffer = '';
+    }
+}, true);
 
 /* ---- SPECIFIC FUNCS FOR ORDER TYPE ---- */
 function handleOrderTypeChange() {

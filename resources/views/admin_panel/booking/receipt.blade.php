@@ -54,7 +54,8 @@
     .receipt-container {
       width: 80mm;
       margin: 0 auto;
-      padding: 5mm 2mm;
+      padding: 0 2mm 2mm;
+      padding-top: 0 !important;
       background: #fff;
       position: relative;
     }
@@ -196,7 +197,8 @@
 
       .receipt-container {
         width: 100%;
-        padding: 2mm;
+        padding: 0 2mm 2mm;
+        padding-top: 0 !important;
       }
     }
 
@@ -249,7 +251,7 @@
         <div class="ribbon">BOOKED</div>
     </div>
     <!-- Header -->
-    <div class="center">
+    <div class="center" style="margin-top:0;padding-top:0;">
       @php
         $receiptBranch = $booking->branch 
             ?? ($booking->branch_id ? \App\Models\Branch::find($booking->branch_id) : null)
@@ -261,7 +263,7 @@
         $rawPhone = !empty($receiptBranch?->number) ? $receiptBranch->number : (!empty($receiptBranch?->phone) ? $receiptBranch->phone : '0334 2615888');
         $branchPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
       @endphp
-      <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+      <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 55px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
       <div class="store-name">{{ shop_name() }}</div>
       <div class="store-info">{{ shop_tagline() }}</div>
       @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))

@@ -19,7 +19,13 @@ class ProductVariant extends Model
         'stock_qty'       => 'float',
         'is_default'      => 'boolean',
         'is_active'       => 'boolean',
+        'expiry_date'     => 'date',
     ];
+
+    public function setExpiryDateAttribute($value)
+    {
+        $this->attributes['expiry_date'] = (!empty($value) && trim((string)$value) !== '') ? $value : null;
+    }
 
     public function product()
     {

@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('sales', function (Blueprint $table) {
                 $table->id();
                 $table->text('customer');
-                $table->text('reference');
+                $table->text('reference')->nullable();
                 $table->text('product');
-                $table->text('product_code');
-                $table->text('brand');
-                $table->text('unit');
+                $table->text('product_code')->nullable();
+                $table->text('brand')->nullable();
+                $table->text('unit')->nullable();
                 $table->text('per_price');
                 $table->text('per_discount');
                 $table->text('qty');

@@ -55,7 +55,8 @@
       width: 100%;
       max-width: 80mm; /* Limit on screen, but adapt to smaller screens/printers */
       margin: 0 auto;
-      padding: 2mm;
+      padding: 0 2mm 2mm;
+      padding-top: 0 !important;
       background: #fff;
       overflow: hidden; /* Prevent horizontal overflow */
     }
@@ -214,7 +215,8 @@
         width: 74mm !important; /* Printable area for 80mm paper is ~72-76mm */
         max-width: 100% !important;
         margin: 0 auto !important;
-        padding: 2mm !important;
+        padding: 0 2mm 2mm !important;
+        padding-top: 0 !important;
         page-break-inside: avoid;
         page-break-after: avoid;
       }
@@ -271,8 +273,8 @@
 
       @foreach($categoryGroups as $categoryName => $groupItems)
       <div class="receipt-container @if(!$loop->last || $mode == 'token_and_invoice') page-break @endif">
-          <div class="center">
-              <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 60px; margin-bottom: 5px;">
+          <div class="center" style="margin-top:0;padding-top:0;">
+              <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 60px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
               <div class="store-name">{{ shop_name() }}</div>
               <div style="font-weight:bold; border:1px dashed #000; padding:4px; margin:5px 0;">TOKEN ({{ strtoupper($categoryName) }})</div>
               <p style="margin:5px 0; font-size:14px; font-weight:bold;">Order: {{ $sale->order_type ?? 'Walk-in' }} @if($sale->table_id) | Table: {{ \App\Models\Table::find($sale->table_id)->table_name ?? '' }} @endif</p>
@@ -329,8 +331,8 @@
       $branchPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
     @endphp
     <!-- Header -->
-    <div class="center">
-      <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 80px; margin-bottom: 5px;">
+    <div class="center" style="margin-top:0;padding-top:0;">
+      <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 70px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
       <div class="store-name">{{ shop_name() }}</div>
       <div class="store-info">{{ shop_tagline() }}</div>
       @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))

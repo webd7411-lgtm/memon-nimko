@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Models\Stock;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\ProductDiscount;
 use App\Models\Customer;
 use App\Models\SalesReturn;
 use Illuminate\Http\Request;
@@ -313,7 +315,12 @@ class SaleController extends Controller
         if ($q !== '') {
             $query->where(function ($sub) use ($q) {
                 $sub->where('item_name', 'like', "%{$q}%")
-                    ->orWhere('item_code', 'like', "%{$q}%");
+                    ->orWhere('item_code', 'like', "%{$q}%")
+                    ->orWhere('barcode_path', 'like', "%{$q}%")
+                    ->orWhereHas('variants', function($vq) use ($q) {
+                        $vq->where('barcode_path', 'like', "%{$q}%")
+                           ->orWhere('variant_name', 'like', "%{$q}%");
+                    });
             });
         }
 
@@ -582,6 +589,216 @@ class SaleController extends Controller
             'total_stock'    => (float) $totalStock,
             'variants'       => $variants,
         ]);
+    }
+
+    /**
+     * Scan Barcode for POS (instantly returns variant/product for cart)
+     */
+    public function scanBarcode(Request $request)
+    {
+        $barcode = trim($request->get('barcode', ''));
+        if ($barcode === '') {
+            return response()->json([
+                'success' => false,
+                'found'   => false,
+                'message' => 'Barcode cannot be empty.'
+            ], 422);
+        }
+
+        $branchId = active_branch_id();
+
+        // 1. Exact match in ProductVariant (Variant Barcode or Variant ID)
+        $variant = ProductVariant::with(['product.brand', 'product.category_relation', 'product.activeDiscount'])
+            ->where(function ($q) use ($barcode) {
+                $q->where('barcode_path', $barcode)
+                  ->orWhere('id', $barcode);
+            })
+            ->whereHas('product')
+            ->first();
+
+        if ($variant && $variant->product) {
+            $product = $variant->product;
+            $isKg    = strtolower($product->unit_type ?? '') === 'kg';
+
+            // Calculate stock
+            if ($isKg) {
+                $stock = (float) Stock::where('product_id', $product->id)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('warehouse_id')
+                    ->sum('qty');
+            } else {
+                $vStock = Stock::where('product_id', $product->id)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('warehouse_id')
+                    ->where('variant_id', $variant->id)
+                    ->first();
+                $stock = $vStock ? (float) $vStock->qty : 0;
+            }
+
+            // Price & discount
+            $rawPrice = (float) $variant->price;
+            $price = $rawPrice;
+            $discPercent = 0;
+            if ($product->activeDiscount) {
+                $discPercent = (float) $product->activeDiscount->discount_percentage;
+                $price = (float) ($product->activeDiscount->final_price ?? $rawPrice);
+            }
+
+            $variantTitle = $variant->size_label ?: $variant->variant_name;
+            $displayLabel = $product->item_name . ' (' . $variantTitle . ')';
+
+            $imageUrl = null;
+            if ($product->image) {
+                $imgPath = public_path('uploads/products/' . $product->image);
+                if (is_file($imgPath)) {
+                    $imageUrl = asset('uploads/products/' . $product->image);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'found'   => true,
+                'type'    => 'variant',
+                'item'    => [
+                    'id'               => $product->id,
+                    'variant_id'       => $variant->id,
+                    'product_id'       => $product->id,
+                    'name'             => $product->item_name,
+                    'code'             => $product->item_code ?: $variant->barcode_path,
+                    'barcode'          => $variant->barcode_path,
+                    'label'            => $displayLabel,
+                    'variant_name'     => $variantTitle,
+                    'price'            => $price,
+                    'original_price'   => $rawPrice,
+                    'qty'              => 1,
+                    'disc'             => $discPercent,
+                    'note'             => $product->note ?? '',
+                    'image'            => $imageUrl,
+                    'unit_id'          => $product->unit_id,
+                    'unit_type'        => $product->unit_type ?? 'piece',
+                    'stock'            => $stock,
+                ],
+                'message' => "{$product->item_name} ({$variantTitle}) added to cart!"
+            ]);
+        }
+
+        // 2. Search in Product (Main Product Barcode or Item Code or ID)
+        $product = Product::with(['brand', 'variants', 'activeDiscount', 'category_relation'])
+            ->where(function ($q) use ($barcode) {
+                $q->where('barcode_path', $barcode)
+                  ->orWhere('item_code', $barcode)
+                  ->orWhere('id', $barcode);
+            })
+            ->first();
+
+        if ($product) {
+            $isKg = strtolower($product->unit_type ?? '') === 'kg';
+            $stock = (float) Stock::where('product_id', $product->id)
+                ->where('branch_id', $branchId)
+                ->whereNull('warehouse_id')
+                ->sum('qty');
+
+            // If product has variants, pick default or first variant
+            $variant = null;
+            if ($product->variants && $product->variants->count() > 0) {
+                $variant = $product->variants->firstWhere('is_default', true)
+                    ?? $product->variants->first();
+            }
+
+            $rawPrice = $variant ? (float) $variant->price : (float) $product->price;
+            $price = $rawPrice;
+            $discPercent = 0;
+            if ($product->activeDiscount) {
+                $discPercent = (float) $product->activeDiscount->discount_percentage;
+                $price = (float) ($product->activeDiscount->final_price ?? $rawPrice);
+            }
+
+            $variantTitle = $variant ? ($variant->size_label ?: $variant->variant_name) : null;
+            $displayLabel = $product->item_name;
+            if ($variantTitle) {
+                $displayLabel .= ' (' . $variantTitle . ')';
+            }
+
+            $imageUrl = null;
+            if ($product->image) {
+                $imgPath = public_path('uploads/products/' . $product->image);
+                if (is_file($imgPath)) {
+                    $imageUrl = asset('uploads/products/' . $product->image);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'found'   => true,
+                'type'    => $variant ? 'variant' : 'product',
+                'item'    => [
+                    'id'               => $product->id,
+                    'variant_id'       => $variant ? $variant->id : null,
+                    'product_id'       => $product->id,
+                    'name'             => $product->item_name,
+                    'code'             => $product->item_code,
+                    'barcode'          => $variant ? $variant->barcode_path : $product->barcode_path,
+                    'label'            => $displayLabel,
+                    'variant_name'     => $variantTitle,
+                    'price'            => $price,
+                    'original_price'   => $rawPrice,
+                    'qty'              => 1,
+                    'disc'             => $discPercent,
+                    'note'             => $product->note ?? '',
+                    'image'            => $imageUrl,
+                    'unit_id'          => $product->unit_id,
+                    'unit_type'        => $product->unit_type ?? 'piece',
+                    'stock'            => $stock,
+                ],
+                'message' => "{$displayLabel} added to cart!"
+            ]);
+        }
+
+        // 3. Search in ProductDiscount by discount_code
+        $discount = \App\Models\ProductDiscount::with(['product.variants', 'product.brand'])
+            ->where('discount_code', $barcode)
+            ->where('status', 1)
+            ->first();
+
+        if ($discount && $discount->product) {
+            $product = $discount->product;
+            $variant = $product->variants ? ($product->variants->firstWhere('is_default', true) ?? $product->variants->first()) : null;
+            $price   = (float) ($discount->final_price ?: $product->price);
+            $variantTitle = $variant ? ($variant->size_label ?: $variant->variant_name) : null;
+            $label   = $product->item_name . ($variantTitle ? ' (' . $variantTitle . ')' : '');
+
+            return response()->json([
+                'success' => true,
+                'found'   => true,
+                'type'    => 'discount',
+                'item'    => [
+                    'id'               => $product->id,
+                    'variant_id'       => $variant ? $variant->id : null,
+                    'product_id'       => $product->id,
+                    'name'             => $product->item_name,
+                    'code'             => $product->item_code,
+                    'barcode'          => $discount->discount_code,
+                    'label'            => $label,
+                    'variant_name'     => $variantTitle,
+                    'price'            => $price,
+                    'original_price'   => (float) $product->price,
+                    'qty'              => 1,
+                    'disc'             => (float) $discount->discount_percentage,
+                    'note'             => $product->note ?? '',
+                    'image'            => null,
+                    'unit_id'          => $product->unit_id,
+                    'unit_type'        => $product->unit_type ?? 'piece',
+                    'stock'            => 100,
+                ],
+                'message' => "Discounted {$label} added to cart!"
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'found'   => false,
+            'message' => "Barcode [{$barcode}] nahi mila."
+        ], 404);
     }
 
     public function searchpname(Request $request)
@@ -1085,7 +1302,7 @@ class SaleController extends Controller
 
             // --- Fill common fields ---
             $model->customer             = $request->customer;
-            $model->reference            = $request->reference;
+            $model->reference            = $request->reference ?? '';
             $model->product              = implode(',', $combined_product_ids);
             $model->product_code         = implode(',', $combined_codes);
             $model->brand                = implode(',', $combined_brands);
@@ -1445,7 +1662,7 @@ class SaleController extends Controller
 
             // Update Sale record
             $sale->customer        = $request->customer;
-            $sale->reference       = $request->reference;
+            $sale->reference       = $request->reference ?? '';
             $sale->product         = implode(',', $combined_products);
             $sale->variant_id      = implode(',', $combined_variant_ids);
             $sale->product_code    = implode(',', $combined_codes);
@@ -2654,7 +2871,7 @@ class SaleController extends Controller
             $old_total = $sale->total_net;
 
             $sale->customer            = $request->customer;
-            $sale->reference           = $request->reference;
+            $sale->reference           = $request->reference ?? '';
             $sale->product             = implode(',', $combined_products);
             $sale->variant_id          = implode(',', $combined_variant_ids);
             $sale->product_code        = implode(',', $combined_codes);

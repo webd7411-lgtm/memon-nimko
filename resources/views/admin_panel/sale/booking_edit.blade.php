@@ -93,7 +93,7 @@
 
                         $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : '';
                     @endphp
-                    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px;">
+                    <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 55px; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast;">
                     <div class="store-name">{{ shop_name() }}</div>
                     <div class="store-info">{{ shop_tagline() }}</div>
                     @if(!empty($currentBranch?->name))
