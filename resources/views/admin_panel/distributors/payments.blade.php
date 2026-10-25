@@ -285,7 +285,14 @@
                                 <i class="fas fa-wallet text-muted me-1 small"></i>
                                 {{ str_replace('_', ' ', $p->payment_method) }}
                             </div>
-                            @if($p->bank_name)
+                            @if($p->account)
+                            <div class="small fw-semibold" style="font-size: 0.74rem; color: #0f766e;">
+                                <i class="fas fa-university me-1"></i> {{ $p->account->title }}
+                                @if($p->account->head)
+                                <span class="text-muted fw-normal" style="font-size: 0.68rem;">({{ $p->account->head->name }})</span>
+                                @endif
+                            </div>
+                            @elseif($p->bank_name)
                             <div class="text-muted small" style="font-size: 0.74rem;">
                                 {{ $p->bank_name }} {{ $p->account_number ? '('.$p->account_number.')' : '' }}
                             </div>
@@ -346,7 +353,7 @@
                             <div class="d-inline-flex align-items-center gap-1.5">
                                 <!-- Approve Button -->
                                 <button type="button" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;"
-                                        onclick="openApproveModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}')">
+                                        onclick="openApproveModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}', '{{ $p->account_id }}')">
                                     <i class="fas fa-check me-1"></i> Approve
                                 </button>
 
@@ -413,7 +420,9 @@
 
                 <div class="small text-muted my-1">
                     <i class="fas fa-wallet me-1"></i> Method: <strong class="text-dark text-capitalize">{{ str_replace('_', ' ', $p->payment_method) }}</strong>
-                    @if($p->bank_name)
+                    @if($p->account)
+                    <span class="badge bg-light border ms-1" style="color: #0f766e;"><i class="fas fa-university me-1"></i>{{ $p->account->title }}</span>
+                    @elseif($p->bank_name)
                     <span>• {{ $p->bank_name }}</span>
                     @endif
                 </div>
@@ -443,7 +452,7 @@
                     <div class="d-flex align-items-center gap-1.5 ms-auto">
                         @if($p->status === 'pending')
                         <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-semibold shadow-sm" style="font-size: 0.75rem;"
-                                onclick="openApproveModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}')">
+                                onclick="openApproveModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}', '{{ $p->account_id }}')">
                             <i class="fas fa-check me-1"></i> Approve
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" style="font-size: 0.75rem;"
@@ -505,6 +514,41 @@
                             </select>
                         </div>
 
+                        <!-- Company Cash / Bank Account Selector -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="fas fa-university me-1" style="color: #0f766e;"></i> Company Account (Cash / Bank)
+                            </label>
+                            <select name="account_id" id="adminDirectAccountSelect" class="form-select form-select-lg" onchange="handleAdminDirectAccountChange(this)" style="border-color: #0f766e;">
+                                <option value="">-- Select Cash or Bank Account --</option>
+                                @if(isset($companyAccounts) && $companyAccounts->count() > 0)
+                                    @php
+                                        $grouped = $companyAccounts->groupBy(function($item) {
+                                            return $item->head ? $item->head->name : 'Company Accounts';
+                                        });
+                                    @endphp
+                                    @foreach($grouped as $headName => $accounts)
+                                        <optgroup label="{{ $headName }}">
+                                            @foreach($accounts as $acc)
+                                                @php
+                                                    $isCash = stripos($headName, 'cash') !== false || stripos($acc->title, 'cash') !== false;
+                                                    $method = $isCash ? 'cash' : 'bank_transfer';
+                                                @endphp
+                                                <option value="{{ $acc->id }}"
+                                                        data-title="{{ $acc->title }}"
+                                                        data-code="{{ $acc->account_code }}"
+                                                        data-method="{{ $method }}"
+                                                        data-head="{{ $headName }}">
+                                                    {{ $acc->title }} {{ $acc->account_code ? '• ' . $acc->account_code : '' }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                @endif
+                            </select>
+                            <div class="form-text small text-muted">Amount will be credited into this account automatically.</div>
+                        </div>
+
                         <!-- Amount -->
                         <div class="col-12 col-md-6">
                             <label class="form-label small fw-bold text-dark">Amount Received (PKR) <span class="text-danger">*</span></label>
@@ -524,7 +568,7 @@
                         <!-- Payment Method -->
                         <div class="col-12 col-md-6">
                             <label class="form-label small fw-bold text-dark">Payment Method <span class="text-danger">*</span></label>
-                            <select name="payment_method" class="form-select form-select-lg" required>
+                            <select name="payment_method" id="adminDirectPaymentMethodSelect" class="form-select form-select-lg" required>
                                 <option value="cash" selected>Cash Collection</option>
                                 <option value="bank_transfer">Bank Transfer / Online IBFT</option>
                                 <option value="cheque">Cheque / Pay Order</option>
@@ -536,8 +580,8 @@
 
                         <!-- Bank Name -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">Bank Name (if applicable)</label>
-                            <input type="text" name="bank_name" class="form-control form-control-lg" placeholder="e.g. Meezan Bank">
+                            <label class="form-label small fw-bold text-dark">Bank / Counter Name</label>
+                            <input type="text" name="bank_name" id="adminDirectBankNameInput" class="form-control form-control-lg" placeholder="e.g. Meezan Bank / Head Office Cash">
                         </div>
 
                         <!-- Reference / Trx ID / Cheque No -->
@@ -597,6 +641,34 @@
                         <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
                             <span class="text-muted small">Amount to Credit:</span>
                             <span class="fw-bold fs-5 text-success">Rs. <span id="approveAmount">0.00</span></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark">
+                            <i class="fas fa-university me-1" style="color: #0f766e;"></i> Credit To Company Account (Cash / Bank)
+                        </label>
+                        <select name="account_id" id="approveAccountId" class="form-select">
+                            <option value="">-- Keep Payment's Account or Select Company Account --</option>
+                            @if(isset($companyAccounts) && $companyAccounts->count() > 0)
+                                @php
+                                    $grouped = $companyAccounts->groupBy(function($item) {
+                                        return $item->head ? $item->head->name : 'Company Accounts';
+                                    });
+                                @endphp
+                                @foreach($grouped as $headName => $accounts)
+                                    <optgroup label="{{ $headName }}">
+                                        @foreach($accounts as $acc)
+                                            <option value="{{ $acc->id }}">
+                                                {{ $acc->title }} {{ $acc->account_code ? '• ' . $acc->account_code : '' }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            @endif
+                        </select>
+                        <div class="form-text small text-muted">
+                            Payment amount will be automatically added to this company account's balance in the software.
                         </div>
                     </div>
 
@@ -708,10 +780,14 @@
         modal.show();
     }
 
-    function openApproveModal(id, no, distName, amount) {
+    function openApproveModal(id, no, distName, amount, accountId) {
         document.getElementById('approvePaymentNo').innerText = no;
         document.getElementById('approveDistName').innerText = distName;
         document.getElementById('approveAmount').innerText = amount;
+        const accSelect = document.getElementById('approveAccountId');
+        if (accSelect) {
+            accSelect.value = accountId || '';
+        }
         document.getElementById('approveForm').action = "{{ url('admin/distributors/payments') }}/" + id + "/approve";
         let modal = new bootstrap.Modal(document.getElementById('approveModal'));
         modal.show();
@@ -724,6 +800,21 @@
         document.getElementById('rejectForm').action = "{{ url('admin/distributors/payments') }}/" + id + "/reject";
         let modal = new bootstrap.Modal(document.getElementById('rejectModal'));
         modal.show();
+    }
+
+    function handleAdminDirectAccountChange(select) {
+        const opt = select.options[select.selectedIndex];
+        if (!opt || !opt.value) return;
+        const method = opt.dataset.method || 'cash';
+        const title = opt.dataset.title || '';
+        const methodSelect = document.getElementById('adminDirectPaymentMethodSelect');
+        const bankInput = document.getElementById('adminDirectBankNameInput');
+        if (methodSelect) {
+            methodSelect.value = method;
+        }
+        if (bankInput && !bankInput.value) {
+            bankInput.value = title;
+        }
     }
 </script>
 @endsection

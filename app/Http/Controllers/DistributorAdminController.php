@@ -9,6 +9,8 @@ use App\Models\DistributorOrderItem;
 use App\Models\DistributorStock;
 use App\Models\DistributorLedger;
 use App\Models\DistributorPayment;
+use App\Models\Account;
+use App\Models\AccountHead;
 use App\Models\DistributorSale;
 use App\Models\DistributorCustomer;
 use App\Models\User;
@@ -688,7 +690,7 @@ class DistributorAdminController extends Controller
      */
     public function payments(Request $request)
     {
-        $query = DistributorPayment::with(['distributor', 'approver', 'creator'])
+        $query = DistributorPayment::with(['distributor', 'approver', 'creator', 'account.head'])
             ->orderBy('payment_date', 'desc')
             ->orderBy('id', 'desc');
 
@@ -704,12 +706,19 @@ class DistributorAdminController extends Controller
             $query->where('payment_method', $request->payment_method);
         }
 
+        if ($request->filled('account_id')) {
+            $query->where('account_id', $request->account_id);
+        }
+
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('payment_date', [$request->start_date, $request->end_date]);
         }
 
         $payments = $query->paginate(20)->withQueryString();
         $distributors = Distributor::orderBy('name')->get();
+
+        // Fetch company Cash & Bank Accounts
+        $companyAccounts = Account::where('status', 1)->with('head')->orderBy('head_id')->orderBy('title')->get();
 
         $totalApproved = DistributorPayment::where('status', 'approved')->sum('amount');
         $totalPending = DistributorPayment::where('status', 'pending')->sum('amount');
@@ -719,6 +728,7 @@ class DistributorAdminController extends Controller
         return view('admin_panel.distributors.payments', compact(
             'payments',
             'distributors',
+            'companyAccounts',
             'totalApproved',
             'totalPending',
             'pendingPaymentsCount',
@@ -732,7 +742,7 @@ class DistributorAdminController extends Controller
      */
     public function approvePayment(Request $request, $id)
     {
-        $payment = DistributorPayment::with('distributor')->findOrFail($id);
+        $payment = DistributorPayment::with(['distributor', 'account'])->findOrFail($id);
 
         if ($payment->status === 'approved') {
             return back()->with('info', "Payment #{$payment->payment_no} is already approved.");
@@ -743,6 +753,20 @@ class DistributorAdminController extends Controller
             $distributor = $payment->distributor;
             $newBalance = (float) $distributor->current_balance - (float) $payment->amount;
 
+            // Target Account in Chart of Accounts
+            $accountId = $request->account_id ?: $payment->account_id;
+            $account = null;
+            if ($accountId) {
+                $account = Account::with('head')->find($accountId);
+                if ($account) {
+                    // Automatically add the payment to Company Account balance!
+                    $account->opening_balance = (float)$account->opening_balance + (float)$payment->amount;
+                    $account->save();
+                }
+            }
+
+            $accountNote = $account ? " (Deposited into: {$account->title})" : '';
+
             // 1. Post to Distributor Ledger (Credit reduces amount owed to company)
             DistributorLedger::create([
                 'distributor_id' => $distributor->id,
@@ -751,6 +775,7 @@ class DistributorAdminController extends Controller
                 'reference_no'   => $payment->payment_no,
                 'description'    => "Payment approved via " . ucwords(str_replace('_', ' ', $payment->payment_method)) . 
                                     ($payment->bank_name ? " ({$payment->bank_name})" : '') .
+                                    $accountNote .
                                     ($payment->transaction_reference ? " Ref #{$payment->transaction_reference}" : '') .
                                     ($request->approval_notes ? ". Note: {$request->approval_notes}" : ''),
                 'debit'          => 0,
@@ -765,13 +790,14 @@ class DistributorAdminController extends Controller
             // 3. Update Payment Record to Approved
             $payment->update([
                 'status'      => 'approved',
+                'account_id'  => $account ? $account->id : $payment->account_id,
                 'approved_by' => Auth::id(),
                 'approved_at' => now(),
                 'notes'       => $payment->notes . ($request->approval_notes ? " | Approval: {$request->approval_notes}" : ''),
             ]);
 
             DB::commit();
-            return back()->with('success', "Payment #{$payment->payment_no} of Rs. " . number_format($payment->amount, 2) . " from '{$distributor->name}' approved and credited to ledger successfully!");
+            return back()->with('success', "Payment #{$payment->payment_no} of Rs. " . number_format($payment->amount, 2) . " from '{$distributor->name}' approved" . ($account ? " & credited to '{$account->title}'" : "") . " successfully!");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error approving payment: ' . $e->getMessage());
@@ -812,7 +838,8 @@ class DistributorAdminController extends Controller
             'distributor_id'        => 'required|exists:distributors,id',
             'amount'                => 'required|numeric|min:1',
             'payment_date'          => 'required|date',
-            'payment_method'        => 'required|string|max:50',
+            'account_id'            => 'nullable|exists:accounts,id',
+            'payment_method'        => 'nullable|string|max:50',
             'bank_name'             => 'nullable|string|max:100',
             'account_number'        => 'nullable|string|max:100',
             'transaction_reference' => 'nullable|string|max:100',
@@ -821,6 +848,29 @@ class DistributorAdminController extends Controller
         ]);
 
         $distributor = Distributor::findOrFail($request->distributor_id);
+
+        $accountId = $request->account_id ? (int)$request->account_id : null;
+        $bankName = $request->bank_name;
+        $accountNumber = $request->account_number;
+        $paymentMethod = $request->payment_method ?: 'cash';
+
+        $account = null;
+        if ($accountId) {
+            $account = Account::with('head')->find($accountId);
+            if ($account) {
+                $headName = strtolower($account->head->name ?? '');
+                $accTitle = strtolower($account->title ?? '');
+                if (!$request->filled('payment_method')) {
+                    $paymentMethod = (str_contains($headName, 'cash') || str_contains($accTitle, 'cash')) ? 'cash' : 'bank_transfer';
+                }
+                if (empty($bankName)) {
+                    $bankName = $account->title;
+                }
+                if (empty($accountNumber)) {
+                    $accountNumber = $account->account_code;
+                }
+            }
+        }
 
         $slipFileName = null;
         if ($request->hasFile('slip_image')) {
@@ -835,15 +885,22 @@ class DistributorAdminController extends Controller
             $newBalance = (float) $distributor->current_balance - $amount;
             $paymentNo = DistributorPayment::generatePaymentNo();
 
+            // Automatically credit funds to company Cash/Bank Account
+            if ($account) {
+                $account->opening_balance = (float)$account->opening_balance + $amount;
+                $account->save();
+            }
+
             // 1. Create Payment (auto-approved)
             $payment = DistributorPayment::create([
                 'payment_no'            => $paymentNo,
                 'distributor_id'        => $distributor->id,
                 'amount'                => $amount,
                 'payment_date'          => $request->payment_date,
-                'payment_method'        => $request->payment_method,
-                'bank_name'             => $request->bank_name,
-                'account_number'        => $request->account_number,
+                'payment_method'        => $paymentMethod,
+                'account_id'            => $account ? $account->id : null,
+                'bank_name'             => $bankName,
+                'account_number'        => $accountNumber,
                 'transaction_reference' => $request->transaction_reference,
                 'slip_image'            => $slipFileName,
                 'notes'                 => $request->notes,
@@ -854,13 +911,15 @@ class DistributorAdminController extends Controller
             ]);
 
             // 2. Post to Ledger
+            $accountNote = $account ? " (Deposited into: {$account->title})" : '';
             DistributorLedger::create([
                 'distributor_id' => $distributor->id,
                 'date'           => $request->payment_date,
                 'type'           => 'payment_received',
                 'reference_no'   => $paymentNo,
-                'description'    => "Direct payment received via " . ucwords(str_replace('_', ' ', $request->payment_method)) .
-                                    ($request->bank_name ? " ({$request->bank_name})" : '') .
+                'description'    => "Direct payment received via " . ucwords(str_replace('_', ' ', $paymentMethod)) .
+                                    ($bankName ? " ({$bankName})" : '') .
+                                    $accountNote .
                                     ($request->transaction_reference ? " Ref #{$request->transaction_reference}" : '') .
                                     ($request->notes ? ". Note: {$request->notes}" : ''),
                 'debit'          => 0,
@@ -873,7 +932,7 @@ class DistributorAdminController extends Controller
             $distributor->update(['current_balance' => $newBalance]);
 
             DB::commit();
-            return back()->with('success', "Payment #{$paymentNo} of Rs. " . number_format($amount, 2) . " recorded and credited to {$distributor->name}'s ledger successfully!");
+            return back()->with('success', "Payment #{$paymentNo} of Rs. " . number_format($amount, 2) . " recorded and credited to {$distributor->name}'s ledger" . ($account ? " and '{$account->title}'" : "") . " successfully!");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error recording payment: ' . $e->getMessage());

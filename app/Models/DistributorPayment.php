@@ -17,6 +17,7 @@ class DistributorPayment extends Model
         'amount',
         'payment_date',
         'payment_method',
+        'account_id',
         'bank_name',
         'account_number',
         'transaction_reference',
@@ -38,6 +39,11 @@ class DistributorPayment extends Model
     public function distributor()
     {
         return $this->belongsTo(Distributor::class, 'distributor_id');
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
     }
 
     public function approver()

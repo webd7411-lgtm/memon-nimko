@@ -13,6 +13,8 @@ use App\Models\DistributorSale;
 use App\Models\DistributorSaleItem;
 use App\Models\DistributorLedger;
 use App\Models\DistributorPayment;
+use App\Models\Account;
+use App\Models\AccountHead;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -650,7 +652,7 @@ class DistributorPortalController extends Controller
         $distributor = $this->getDistributor();
 
         $query = DistributorPayment::where('distributor_id', $distributor->id)
-            ->with(['approver'])
+            ->with(['approver', 'account.head'])
             ->orderBy('payment_date', 'desc')
             ->orderBy('id', 'desc');
 
@@ -669,13 +671,21 @@ class DistributorPortalController extends Controller
         $pendingCount = DistributorPayment::where('distributor_id', $distributor->id)->where('status', 'pending')->count();
         $currentBalance = (float) $distributor->current_balance;
 
+        // Auto fetch active company Cash & Bank accounts from Chart of Accounts
+        $companyAccounts = Account::where('status', 1)
+            ->with('head')
+            ->orderBy('head_id')
+            ->orderBy('title')
+            ->get();
+
         return view('distributor_panel.payments.index', compact(
             'distributor',
             'payments',
             'totalApproved',
             'totalPending',
             'pendingCount',
-            'currentBalance'
+            'currentBalance',
+            'companyAccounts'
         ));
     }
 
@@ -689,13 +699,37 @@ class DistributorPortalController extends Controller
         $request->validate([
             'amount'                => 'required|numeric|min:1',
             'payment_date'          => 'required|date',
-            'payment_method'        => 'required|string|max:50',
+            'account_id'            => 'nullable|exists:accounts,id',
+            'payment_method'        => 'nullable|string|max:50',
             'bank_name'             => 'nullable|string|max:100',
             'account_number'        => 'nullable|string|max:100',
             'transaction_reference' => 'nullable|string|max:100',
             'slip_image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'notes'                 => 'nullable|string|max:1000',
         ]);
+
+        $accountId = $request->account_id ? (int)$request->account_id : null;
+        $bankName = $request->bank_name;
+        $accountNumber = $request->account_number;
+        $paymentMethod = $request->payment_method ?: 'bank_transfer';
+
+        // Auto populate bank & account details if selected from company accounts
+        if ($accountId) {
+            $selectedAccount = Account::with('head')->find($accountId);
+            if ($selectedAccount) {
+                $headName = strtolower($selectedAccount->head->name ?? '');
+                $accTitle = strtolower($selectedAccount->title ?? '');
+                if (!$request->filled('payment_method')) {
+                    $paymentMethod = (str_contains($headName, 'cash') || str_contains($accTitle, 'cash')) ? 'cash' : 'bank_transfer';
+                }
+                if (empty($bankName)) {
+                    $bankName = $selectedAccount->title;
+                }
+                if (empty($accountNumber)) {
+                    $accountNumber = $selectedAccount->account_code;
+                }
+            }
+        }
 
         $slipFileName = null;
         if ($request->hasFile('slip_image')) {
@@ -709,9 +743,10 @@ class DistributorPortalController extends Controller
             'distributor_id'        => $distributor->id,
             'amount'                => (float) $request->amount,
             'payment_date'          => $request->payment_date,
-            'payment_method'        => $request->payment_method,
-            'bank_name'             => $request->bank_name,
-            'account_number'        => $request->account_number,
+            'payment_method'        => $paymentMethod,
+            'account_id'            => $accountId,
+            'bank_name'             => $bankName,
+            'account_number'        => $accountNumber,
             'transaction_reference' => $request->transaction_reference,
             'slip_image'            => $slipFileName,
             'notes'                 => $request->notes,

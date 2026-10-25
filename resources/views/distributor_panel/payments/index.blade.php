@@ -168,7 +168,14 @@
                                 <i class="fas fa-credit-card text-muted me-1 small"></i>
                                 {{ str_replace('_', ' ', $p->payment_method) }}
                             </div>
-                            @if($p->bank_name || $p->account_number)
+                            @if($p->account)
+                            <div class="small fw-semibold" style="font-size: 0.76rem; color: #0f766e;">
+                                <i class="fas fa-university me-1"></i> {{ $p->account->title }}
+                                @if($p->account->head)
+                                <span class="text-muted fw-normal" style="font-size: 0.70rem;">({{ $p->account->head->name }})</span>
+                                @endif
+                            </div>
+                            @elseif($p->bank_name || $p->account_number)
                             <div class="text-muted small" style="font-size: 0.75rem;">
                                 {{ $p->bank_name }} {{ $p->account_number ? '('.$p->account_number.')' : '' }}
                             </div>
@@ -282,7 +289,9 @@
 
                 <div class="small text-muted my-1">
                     <i class="fas fa-wallet me-1"></i> Method: <strong class="text-dark text-capitalize">{{ str_replace('_', ' ', $p->payment_method) }}</strong>
-                    @if($p->bank_name)
+                    @if($p->account)
+                    <span class="badge bg-light border ms-1" style="color: #0f766e;"><i class="fas fa-university me-1"></i>{{ $p->account->title }}</span>
+                    @elseif($p->bank_name)
                     <span>• {{ $p->bank_name }}</span>
                     @endif
                 </div>
@@ -358,6 +367,44 @@
                     </div>
 
                     <div class="row g-3">
+                        <!-- Company Cash / Bank Account Selector -->
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="fas fa-university me-1" style="color: #0f766e;"></i> Deposit To Company Account (Cash / Bank)
+                            </label>
+                            <select name="account_id" id="distCompanyAccountSelect" class="form-select form-select-lg" onchange="handleDistAccountChange(this)" style="border-color: #0f766e;">
+                                <option value="">-- Select Company Cash or Bank Account (Auto-fill) --</option>
+                                @if(isset($companyAccounts) && $companyAccounts->count() > 0)
+                                    @php
+                                        $grouped = $companyAccounts->groupBy(function($item) {
+                                            return $item->head ? $item->head->name : 'Company Accounts';
+                                        });
+                                    @endphp
+                                    @foreach($grouped as $headName => $accounts)
+                                        <optgroup label="{{ $headName }}">
+                                            @foreach($accounts as $acc)
+                                                @php
+                                                    $isCash = stripos($headName, 'cash') !== false || stripos($acc->title, 'cash') !== false;
+                                                    $method = $isCash ? 'cash' : 'bank_transfer';
+                                                @endphp
+                                                <option value="{{ $acc->id }}"
+                                                        data-title="{{ $acc->title }}"
+                                                        data-code="{{ $acc->account_code }}"
+                                                        data-method="{{ $method }}"
+                                                        data-head="{{ $headName }}">
+                                                    {{ $acc->title }} {{ $acc->account_code ? '• ' . $acc->account_code : '' }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                @endif
+                                <option value="" data-manual="1">-- Other / Manual Account Details --</option>
+                            </select>
+                            <div class="form-text small text-muted">
+                                Select the company bank or cash counter you paid into. Details will auto-fill automatically below.
+                            </div>
+                        </div>
+
                         <!-- Amount -->
                         <div class="col-12 col-md-6">
                             <label class="form-label small fw-bold text-dark">Payment Amount (PKR) <span class="text-danger">*</span></label>
@@ -390,16 +437,16 @@
 
                         <!-- Bank Name -->
                         <div class="col-12 col-md-6" id="bankNameField">
-                            <label class="form-label small fw-bold text-dark">Bank Name</label>
-                            <input type="text" name="bank_name" class="form-control form-control-lg"
-                                   placeholder="e.g. Meezan Bank / HBL / Bank Alfalah">
+                            <label class="form-label small fw-bold text-dark">Bank / Counter Name</label>
+                            <input type="text" name="bank_name" id="distBankNameInput" class="form-control form-control-lg"
+                                   placeholder="e.g. Meezan Bank / Head Office Cash">
                         </div>
 
                         <!-- Account Number / Title -->
                         <div class="col-12 col-md-6" id="accountNumberField">
-                            <label class="form-label small fw-bold text-dark">Account Number / Title Deposited To</label>
-                            <input type="text" name="account_number" class="form-control form-control-lg"
-                                   placeholder="e.g. Memon Nimko 0101-01010101">
+                            <label class="form-label small fw-bold text-dark">Account Code / Number</label>
+                            <input type="text" name="account_number" id="distAccountNumberInput" class="form-control form-control-lg font-monospace"
+                                   placeholder="e.g. 0101-01010101">
                         </div>
 
                         <!-- Reference / Trx ID / Cheque No -->
@@ -466,6 +513,35 @@
         document.getElementById('slipModalTitle').innerText = 'Receipt Slip - ' + no;
         let modal = new bootstrap.Modal(document.getElementById('slipModal'));
         modal.show();
+    }
+
+    function handleDistAccountChange(select) {
+        const opt = select.options[select.selectedIndex];
+        const bankNameInput = document.getElementById('distBankNameInput');
+        const accountNumInput = document.getElementById('distAccountNumberInput');
+        const methodSelect = document.getElementById('distPaymentMethodSelect');
+
+        if (!opt || !opt.value) {
+            if (opt && opt.dataset.manual) {
+                if (bankNameInput) bankNameInput.value = '';
+                if (accountNumInput) accountNumInput.value = '';
+            }
+            return;
+        }
+
+        const title = opt.dataset.title || '';
+        const code = opt.dataset.code || '';
+        const method = opt.dataset.method || 'bank_transfer';
+
+        if (methodSelect) {
+            methodSelect.value = method;
+        }
+        if (bankNameInput) {
+            bankNameInput.value = title;
+        }
+        if (accountNumInput) {
+            accountNumInput.value = code;
+        }
     }
 </script>
 @endsection
