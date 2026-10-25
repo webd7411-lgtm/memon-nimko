@@ -111,7 +111,7 @@
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.payments' ? 'active' : '' }}">
                 Payments
                 @if($pendingPaymentsCount > 0)
-                    <span class="badge bg-warning text-dark badge-count">{{ $pendingPaymentsCount }}</span>
+                    <span class="badge rounded-pill badge-count shadow-sm" style="background: #ef4444 !important; color: #ffffff !important; font-weight: 700; box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);">{{ $pendingPaymentsCount }}</span>
                 @endif
             </a>
         </nav>

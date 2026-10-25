@@ -83,8 +83,12 @@
                 <i class="fas fa-money-check-alt text-teal" style="color: #0f766e;"></i>
                 Distributor Payments & Approvals
                 @if($pendingPaymentsCount > 0)
-                <span class="badge rounded-pill bg-warning text-dark" style="font-size: 0.68rem; padding: 3px 8px;">
-                    {{ $pendingPaymentsCount }} Pending Approval
+                <span class="badge rounded-pill shadow-sm" style="background: #fee2e2 !important; color: #dc2626 !important; border: 1px solid #fca5a5 !important; font-size: 0.72rem; font-weight: 700; padding: 3px 9px;">
+                    <i class="fas fa-bell me-1"></i> {{ $pendingPaymentsCount }} Pending Verification
+                </span>
+                @else
+                <span class="badge rounded-pill" style="background: #ecfdf5 !important; color: #047857 !important; border: 1px solid #a7f3d0 !important; font-size: 0.72rem; font-weight: 600; padding: 3px 9px;">
+                    <i class="fas fa-check-circle me-1 text-success"></i> All Payments Verified
                 </span>
                 @endif
             </h5>
@@ -121,19 +125,29 @@
 
         <!-- 2. Pending Approvals -->
         <div class="col-12 col-md-4">
-            <div class="dist-kpi-card" style="border-left: 4px solid #f59e0b !important;">
+            <div class="dist-kpi-card" style="border-left: 4px solid {{ $pendingPaymentsCount > 0 ? '#ef4444' : '#f59e0b' }} !important; {{ $pendingPaymentsCount > 0 ? 'background: #fffafa !important;' : '' }}">
                 <div>
-                    <span class="text-muted fw-semibold text-uppercase" style="font-size: 0.74rem;">Pending Verification</span>
-                    <h4 class="fw-bold mb-0 text-warning mt-1" style="font-size: 1.35rem;">
-                        Rs. {{ number_format($totalPending, 2) }}
-                        <span class="badge bg-warning text-dark rounded-pill fs-7" style="font-size: 0.65rem; vertical-align: middle;">
-                            {{ $pendingPaymentsCount }}
+                    <div class="d-flex align-items-center gap-1.5 mb-1">
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 0.74rem;">Pending Verification</span>
+                        @if($pendingPaymentsCount > 0)
+                        <span class="badge rounded-pill shadow-sm" 
+                              style="background: #fee2e2 !important; color: #dc2626 !important; border: 1px solid #fca5a5 !important; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; vertical-align: middle;">
+                            <i class="fas fa-bell me-0.5"></i> {{ $pendingPaymentsCount }} New
                         </span>
+                        @else
+                        <span class="badge rounded-pill" 
+                              style="background: #ecfdf5 !important; color: #059669 !important; border: 1px solid #a7f3d0 !important; font-size: 0.68rem; font-weight: 600; padding: 2px 7px; vertical-align: middle;">
+                            <i class="fas fa-check-circle me-0.5 text-success"></i> 0 Pending
+                        </span>
+                        @endif
+                    </div>
+                    <h4 class="fw-bold mb-0 mt-1" style="font-size: 1.35rem; color: {{ $pendingPaymentsCount > 0 ? '#dc2626' : '#d97706' }} !important;">
+                        Rs. {{ number_format($totalPending, 2) }}
                     </h4>
                     <span class="text-muted" style="font-size: 0.72rem;">Submitted by distributors via portal</span>
                 </div>
-                <div class="rounded-3 p-2.5 bg-warning-subtle text-warning">
-                    <i class="fas fa-clock fs-4"></i>
+                <div class="rounded-3 p-2.5" style="background: {{ $pendingPaymentsCount > 0 ? '#fee2e2' : '#fef3c7' }} !important; color: {{ $pendingPaymentsCount > 0 ? '#dc2626' : '#d97706' }} !important;">
+                    <i class="fas {{ $pendingPaymentsCount > 0 ? 'fa-bell' : 'fa-clock' }} fs-4"></i>
                 </div>
             </div>
         </div>

@@ -81,19 +81,27 @@
         </div>
 
         <div class="col-12 col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white" style="border-left: 4px solid #f59e0b !important;">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white" style="border-left: 4px solid {{ $pendingCount > 0 ? '#f59e0b' : '#0f766e' }} !important;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="text-muted small fw-semibold text-uppercase">Pending Approval</span>
-                        <h4 class="fw-bold mb-0 text-warning mt-1">
-                            Rs. {{ number_format($totalPending, 2) }}
-                            <span class="badge bg-warning text-dark rounded-pill fs-7" style="font-size: 0.65rem; vertical-align: middle;">
-                                {{ $pendingCount }} payment{{ $pendingCount == 1 ? '' : 's' }}
+                        <div class="d-flex align-items-center gap-1.5 mb-1">
+                            <span class="text-muted small fw-semibold text-uppercase">Pending Approval</span>
+                            @if($pendingCount > 0)
+                            <span class="badge rounded-pill shadow-sm" style="background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fcd34d !important; font-size: 0.68rem; font-weight: 700; padding: 2px 7px;">
+                                <i class="fas fa-clock me-0.5"></i> {{ $pendingCount }} Pending
                             </span>
+                            @else
+                            <span class="badge rounded-pill" style="background: #ecfdf5 !important; color: #059669 !important; border: 1px solid #a7f3d0 !important; font-size: 0.68rem; font-weight: 600; padding: 2px 7px;">
+                                <i class="fas fa-check-circle me-0.5 text-success"></i> 0 Pending
+                            </span>
+                            @endif
+                        </div>
+                        <h4 class="fw-bold mb-0 mt-1" style="color: #d97706 !important; font-size: 1.35rem;">
+                            Rs. {{ number_format($totalPending, 2) }}
                         </h4>
                         <div class="small text-muted mt-0.5" style="font-size: 0.72rem;">Submitted to Head Office, awaiting verification</div>
                     </div>
-                    <div class="rounded-3 p-2 bg-light text-warning">
+                    <div class="rounded-3 p-2 bg-light" style="color: #d97706;">
                         <i class="fas fa-clock fs-4"></i>
                     </div>
                 </div>

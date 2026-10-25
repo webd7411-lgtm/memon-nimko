@@ -87,27 +87,128 @@
                             </span>
 
                             @php
-                                $headerPendingCount = 0;
+                                $headerPendingTransfers = 0;
+                                $headerPendingDistPayments = 0;
+                                $headerPendingDistOrders = 0;
                                 if (auth()->check()) {
-                                    $headerPendingCount = \App\Models\StockTransfer::where('status', 'pending')
-                                        ->when(!is_all_branches(), function($q) {
-                                            $q->where('to_branch_id', active_branch_id());
-                                        })->count();
+                                    try {
+                                        $headerPendingTransfers = \App\Models\StockTransfer::where('status', 'pending')
+                                            ->when(!is_all_branches(), function($q) {
+                                                $q->where('to_branch_id', active_branch_id());
+                                            })->count();
+                                    } catch (\Throwable $e) {}
+
+                                    try {
+                                        $headerPendingDistPayments = \App\Models\DistributorPayment::where('status', 'pending')->count();
+                                    } catch (\Throwable $e) {}
+
+                                    try {
+                                        $headerPendingDistOrders = \App\Models\DistributorOrder::where('status', 'pending')->count();
+                                    } catch (\Throwable $e) {}
                                 }
+                                $headerPendingCount = $headerPendingTransfers + $headerPendingDistPayments + $headerPendingDistOrders;
                             @endphp
-                            <a href="{{ route('stock_transfers.index') }}" 
-                               class="nav-bell-link position-relative d-inline-flex align-items-center justify-content-center text-decoration-none shadow-sm" 
-                               title="Pending Stock Transfers"
-                               style="width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; transition: all 0.2s ease;">
-                                <i class="fas fa-bell" style="font-size: 0.9rem;"></i>
-                                @if($headerPendingCount > 0)
-                                <span class="badge rounded-pill bg-danger shadow position-absolute" 
-                                      id="navTransferBadge" 
-                                      style="font-size: 0.6rem; top: -3px; right: -3px; padding: 2px 5px; border: 1.5px solid #090d16; box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);">
-                                    {{ $headerPendingCount }}
-                                </span>
-                                @endif
-                            </a>
+                            <div class="dropdown d-inline-block">
+                                <a href="#" 
+                                   class="nav-bell-link position-relative d-inline-flex align-items-center justify-content-center text-decoration-none shadow-sm" 
+                                   data-bs-toggle="dropdown" aria-expanded="false"
+                                   id="headerNotificationsDropdown"
+                                   title="Pending Notifications & Approvals"
+                                   style="width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; transition: all 0.2s ease; cursor: pointer;">
+                                    <i class="fas fa-bell" style="font-size: 0.9rem;"></i>
+                                    @if($headerPendingCount > 0)
+                                    <span class="badge rounded-pill bg-danger shadow position-absolute" 
+                                          id="navTransferBadge" 
+                                          style="font-size: 0.6rem; top: -3px; right: -3px; padding: 2px 5px; border: 1.5px solid #090d16; box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);">
+                                        {{ $headerPendingCount }}
+                                    </span>
+                                    @endif
+                                </a>
+
+                                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 mt-2" aria-labelledby="headerNotificationsDropdown"
+                                     style="border-radius: 14px; min-width: 290px; background: #ffffff;">
+                                    <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold text-dark small">
+                                            <i class="fas fa-bell me-1 text-primary"></i> Pending Approvals
+                                        </span>
+                                        @if($headerPendingCount > 0)
+                                        <span class="badge bg-danger rounded-pill">{{ $headerPendingCount }} New</span>
+                                        @else
+                                        <span class="badge bg-success rounded-pill">All Clear</span>
+                                        @endif
+                                    </div>
+
+                                    <div class="py-1">
+                                        <!-- 1. Distributor Payments -->
+                                        <a href="{{ route('admin.distributors.payments', ['status' => 'pending']) }}" 
+                                           class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center justify-content-between {{ $headerPendingDistPayments > 0 ? 'bg-light' : '' }}">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center" 
+                                                     style="width: 30px; height: 30px; background: #fee2e2; color: #dc2626;">
+                                                    <i class="fas fa-money-check-alt" style="font-size: 0.8rem;"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="small fw-bold text-dark">Distributor Payments</div>
+                                                    <div class="text-muted" style="font-size: 0.7rem;">Verification requests</div>
+                                                </div>
+                                            </div>
+                                            @if($headerPendingDistPayments > 0)
+                                            <span class="badge bg-danger rounded-pill">{{ $headerPendingDistPayments }}</span>
+                                            @else
+                                            <span class="badge bg-light text-muted rounded-pill">0</span>
+                                            @endif
+                                        </a>
+
+                                        <!-- 2. Distributor Demand Orders -->
+                                        <a href="{{ route('admin.distributors.orders') }}" 
+                                           class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center justify-content-between {{ $headerPendingDistOrders > 0 ? 'bg-light' : '' }}">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center" 
+                                                     style="width: 30px; height: 30px; background: #fef3c7; color: #d97706;">
+                                                    <i class="fas fa-cart-arrow-down" style="font-size: 0.8rem;"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="small fw-bold text-dark">Demand Orders</div>
+                                                    <div class="text-muted" style="font-size: 0.7rem;">Stock requests</div>
+                                                </div>
+                                            </div>
+                                            @if($headerPendingDistOrders > 0)
+                                            <span class="badge bg-warning text-dark rounded-pill">{{ $headerPendingDistOrders }}</span>
+                                            @else
+                                            <span class="badge bg-light text-muted rounded-pill">0</span>
+                                            @endif
+                                        </a>
+
+                                        <!-- 3. Stock Transfers -->
+                                        <a href="{{ route('stock_transfers.index') }}" 
+                                           class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center justify-content-between {{ $headerPendingTransfers > 0 ? 'bg-light' : '' }}">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center" 
+                                                     style="width: 30px; height: 30px; background: #e0f2fe; color: #0284c7;">
+                                                    <i class="fas fa-exchange-alt" style="font-size: 0.8rem;"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="small fw-bold text-dark">Stock Transfers</div>
+                                                    <div class="text-muted" style="font-size: 0.7rem;">Inter-branch transfers</div>
+                                                </div>
+                                            </div>
+                                            @if($headerPendingTransfers > 0)
+                                            <span class="badge bg-info text-white rounded-pill">{{ $headerPendingTransfers }}</span>
+                                            @else
+                                            <span class="badge bg-light text-muted rounded-pill">0</span>
+                                            @endif
+                                        </a>
+                                    </div>
+
+                                    @if($headerPendingDistPayments > 0)
+                                    <div class="border-top pt-2 mt-1 text-center">
+                                        <a href="{{ route('admin.distributors.payments', ['status' => 'pending']) }}" class="small fw-semibold text-danger text-decoration-none">
+                                            <i class="fas fa-arrow-right me-1"></i> Review {{ $headerPendingDistPayments }} Pending Payment{{ $headerPendingDistPayments == 1 ? '' : 's' }}
+                                        </a>
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
 
                             <form action="{{ route('branch.switch') }}" method="POST" id="branchSwitchForm" class="d-flex align-items-center mb-0">
                                 @csrf
