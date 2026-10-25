@@ -12,6 +12,7 @@ use App\Models\DistributorCustomerLedger;
 use App\Models\DistributorSale;
 use App\Models\DistributorSaleItem;
 use App\Models\DistributorLedger;
+use App\Models\DistributorPayment;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -639,5 +640,86 @@ class DistributorPortalController extends Controller
         $currentBalance = (float) $distributor->current_balance;
 
         return view('distributor_panel.company_ledger.index', compact('distributor', 'entries', 'totalGoodsReceived', 'totalPaidToCompany', 'currentBalance'));
+    }
+
+    /**
+     * Display payments made/submitted to Company / Head Office.
+     */
+    public function payments(Request $request)
+    {
+        $distributor = $this->getDistributor();
+
+        $query = DistributorPayment::where('distributor_id', $distributor->id)
+            ->with(['approver'])
+            ->orderBy('payment_date', 'desc')
+            ->orderBy('id', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('payment_date', [$request->start_date, $request->end_date]);
+        }
+
+        $payments = $query->paginate(20)->withQueryString();
+
+        $totalApproved = DistributorPayment::where('distributor_id', $distributor->id)->where('status', 'approved')->sum('amount');
+        $totalPending = DistributorPayment::where('distributor_id', $distributor->id)->where('status', 'pending')->sum('amount');
+        $pendingCount = DistributorPayment::where('distributor_id', $distributor->id)->where('status', 'pending')->count();
+        $currentBalance = (float) $distributor->current_balance;
+
+        return view('distributor_panel.payments.index', compact(
+            'distributor',
+            'payments',
+            'totalApproved',
+            'totalPending',
+            'pendingCount',
+            'currentBalance'
+        ));
+    }
+
+    /**
+     * Submit a payment made to Company / Head Office.
+     */
+    public function storePayment(Request $request)
+    {
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'amount'                => 'required|numeric|min:1',
+            'payment_date'          => 'required|date',
+            'payment_method'        => 'required|string|max:50',
+            'bank_name'             => 'nullable|string|max:100',
+            'account_number'        => 'nullable|string|max:100',
+            'transaction_reference' => 'nullable|string|max:100',
+            'slip_image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'notes'                 => 'nullable|string|max:1000',
+        ]);
+
+        $slipFileName = null;
+        if ($request->hasFile('slip_image')) {
+            $file = $request->file('slip_image');
+            $slipFileName = 'slip_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/distributor_payments'), $slipFileName);
+        }
+
+        $payment = DistributorPayment::create([
+            'payment_no'            => DistributorPayment::generatePaymentNo(),
+            'distributor_id'        => $distributor->id,
+            'amount'                => (float) $request->amount,
+            'payment_date'          => $request->payment_date,
+            'payment_method'        => $request->payment_method,
+            'bank_name'             => $request->bank_name,
+            'account_number'        => $request->account_number,
+            'transaction_reference' => $request->transaction_reference,
+            'slip_image'            => $slipFileName,
+            'notes'                 => $request->notes,
+            'status'                => 'pending',
+            'created_by'            => Auth::id(),
+        ]);
+
+        return redirect()->route('distributor.payments.index')
+            ->with('success', "Payment #{$payment->payment_no} of Rs. " . number_format($request->amount, 2) . " submitted successfully! It will be verified and approved by Head Office.");
     }
 }

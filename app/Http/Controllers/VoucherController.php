@@ -54,6 +54,12 @@ class VoucherController extends Controller
                 $partyName = $walkin->customer_name ?? '-';
             }
 
+            elseif ($voucher->type === 'distributor') {
+                $dist = DB::table('distributors')->where('id', $voucher->party_id)->first();
+                $typeLabel = 'Distributor';
+                $partyName = $dist ? ($dist->name . ' (' . $dist->code . ')') : '-';
+            }
+
             // Attach new properties to the object
             $voucher->type_label = $typeLabel;
             $voucher->party_name = $partyName;
@@ -195,6 +201,42 @@ class VoucherController extends Controller
                     'created_at'       => now(),
                     'updated_at'       => now(),
                 ]);
+            } elseif ($request->vendor_type === 'distributor') {
+                $distributor = \App\Models\Distributor::find($request->vendor_id);
+                if ($distributor) {
+                    $newBalance = (float) $distributor->current_balance - $amount;
+
+                    // 1. Create Distributor Payment Record (approved directly)
+                    \App\Models\DistributorPayment::create([
+                        'payment_no'            => \App\Models\DistributorPayment::generatePaymentNo(),
+                        'distributor_id'        => $distributor->id,
+                        'amount'                => $amount,
+                        'payment_date'          => $request->receipt_date ?? now()->toDateString(),
+                        'payment_method'        => 'receipt_voucher',
+                        'transaction_reference' => $rvid,
+                        'notes'                 => 'Direct receipt via Voucher #' . $rvid . ($request->remarks ? ' - ' . $request->remarks : ''),
+                        'status'                => 'approved',
+                        'approved_by'           => auth()->id(),
+                        'approved_at'           => now(),
+                        'created_by'            => auth()->id(),
+                    ]);
+
+                    // 2. Post to Distributor Ledger (Credit reduces balance)
+                    \App\Models\DistributorLedger::create([
+                        'distributor_id' => $distributor->id,
+                        'date'           => $request->receipt_date ?? now()->toDateString(),
+                        'type'           => 'payment_received',
+                        'reference_no'   => $rvid,
+                        'description'    => 'Receipt Voucher #' . $rvid . ($request->remarks ? '. Remarks: ' . $request->remarks : ''),
+                        'debit'          => 0,
+                        'credit'         => $amount,
+                        'balance'        => $newBalance,
+                        'created_by'     => auth()->id(),
+                    ]);
+
+                    // 3. Update Distributor balance
+                    $distributor->update(['current_balance' => $newBalance]);
+                }
             } else {
                 // Bank/Head case → pehle vendor/account side minus
                 $account = Account::find($request->vendor_id);
@@ -365,6 +407,17 @@ class VoucherController extends Controller
                 ->where('id', $voucher->party_id)
                 ->where('customer_type', 'Walking Customer')
                 ->first();
+        } elseif ($voucher->type === 'distributor') {
+            $dist = DB::table('distributors')->where('id', $voucher->party_id)->first();
+            if ($dist) {
+                $party = (object)[
+                    'name'    => $dist->name . ' (' . $dist->code . ')',
+                    'address' => $dist->address ?: ($dist->area . ', ' . $dist->city),
+                    'mobile'  => $dist->phone,
+                    'phone'   => $dist->phone,
+                ];
+                $previousBalance = (float) $dist->current_balance;
+            }
         } else {
             // fallback: try to lookup as customer or vendor
             $tryCustomer = DB::table('customers')->where('id', $voucher->party_id)->first();

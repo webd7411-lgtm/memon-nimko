@@ -59,6 +59,9 @@
             <p class="mb-0 text-white-50 small">Distributor & Order Booker Portal</p>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="{{ route('distributor.payments.index') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 py-2 shadow-sm">
+                <i class="fas fa-money-bill-wave me-1"></i> Pay Company
+            </a>
             <a href="{{ route('distributor.orders.create') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 py-2 shadow-sm">
                 <i class="fas fa-cart-arrow-down me-1"></i> Demand Stock
             </a>
@@ -203,7 +206,7 @@
             <i class="fas fa-bolt me-1 text-teal" style="color: #0f766e;"></i> Quick Action Shortcuts
         </h6>
         <div class="row g-2">
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md">
                 <a href="{{ route('distributor.sales.create') }}" class="touch-btn text-white w-100 shadow-sm" style="background: linear-gradient(135deg, #0f766e, #0d9488);">
                     <i class="fas fa-shopping-cart fs-5"></i>
                     <div>
@@ -213,7 +216,7 @@
                 </a>
             </div>
 
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md">
                 <a href="{{ route('distributor.customers.index') }}" class="touch-btn text-white w-100 shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669);">
                     <i class="fas fa-hand-holding-usd fs-5"></i>
                     <div>
@@ -223,7 +226,17 @@
                 </a>
             </div>
 
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md">
+                <a href="{{ route('distributor.payments.index') }}" class="touch-btn text-white w-100 shadow-sm" style="background: linear-gradient(135deg, #090d16, #1e293b); border: 1px solid rgba(255,255,255,0.15);">
+                    <i class="fas fa-money-bill-wave text-warning fs-5"></i>
+                    <div>
+                        <div class="lh-1">Pay Company</div>
+                        <span class="text-white-50" style="font-size: 0.68rem;">Deposit & Slips</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-6 col-md">
                 <a href="{{ route('distributor.orders.create') }}" class="touch-btn btn-outline-secondary w-100 border text-dark">
                     <i class="fas fa-plus-circle text-teal fs-5" style="color: #0f766e;"></i>
                     <div>
@@ -233,7 +246,7 @@
                 </a>
             </div>
 
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md">
                 <a href="{{ route('distributor.company_ledger.index') }}" class="touch-btn btn-outline-secondary w-100 border text-dark">
                     <i class="fas fa-file-invoice text-primary fs-5"></i>
                     <div>

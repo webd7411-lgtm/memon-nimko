@@ -18,7 +18,10 @@
             <h4 class="mb-0 mt-1 fw-bold text-white">My Company Account Statement</h4>
             <p class="mb-0 text-white-50 small">Track all goods received from Head Office, payments deposited, and current outstanding balance</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('distributor.payments.index') }}" class="btn btn-teal btn-sm rounded-pill px-3 py-2 shadow-sm">
+                <i class="fas fa-money-bill-wave me-1"></i> Make Payment to Company
+            </a>
             <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3 py-2" onclick="window.print()">
                 <i class="fas fa-print me-1"></i> Print Statement
             </button>

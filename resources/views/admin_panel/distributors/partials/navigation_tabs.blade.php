@@ -2,6 +2,7 @@
     $currentRoute = Route::currentRouteName();
     $currentType = request('type');
     $pendingCount = isset($pendingOrdersCount) ? $pendingOrdersCount : \App\Models\DistributorOrder::where('status', 'pending')->count();
+    $pendingPaymentsCount = \App\Models\DistributorPayment::where('status', 'pending')->count();
 @endphp
 
 <style>
@@ -103,6 +104,15 @@
             <a href="{{ route('admin.distributors.secondary_sales') }}" 
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.secondary_sales' ? 'active' : '' }}">
                 Reports
+            </a>
+
+            <!-- 7. Payments & Approvals -->
+            <a href="{{ route('admin.distributors.payments') }}" 
+               class="dist-nav-tab {{ $currentRoute === 'admin.distributors.payments' ? 'active' : '' }}">
+                Payments
+                @if($pendingPaymentsCount > 0)
+                    <span class="badge bg-warning text-dark badge-count">{{ $pendingPaymentsCount }}</span>
+                @endif
             </a>
         </nav>
 

@@ -169,6 +169,11 @@
                                 <i class="fas fa-file-invoice-dollar"></i> Company Ledger
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="portal-nav-link {{ request()->routeIs('distributor.payments.*') ? 'active' : '' }}" href="{{ route('distributor.payments.index') }}">
+                                <i class="fas fa-money-bill-wave"></i> Payments
+                            </a>
+                        </li>
                     </ul>
 
                     <!-- Right Controls / Profile -->

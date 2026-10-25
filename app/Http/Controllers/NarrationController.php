@@ -72,6 +72,13 @@ class NarrationController extends Controller
             return response()->json($walkins);
         }
 
+        elseif ($type === 'distributor') {
+            $distributors = \App\Models\Distributor::where('status', 'active')
+                ->select('id', \Illuminate\Support\Facades\DB::raw("CONCAT(name, ' (', code, ')') as text"))
+                ->get();
+            return response()->json($distributors);
+        }
+
         return response()->json([]);
     }
 
@@ -91,6 +98,19 @@ class NarrationController extends Controller
                 'mobile' => $v->phone, // assuming 'phone' field for vendors
                 'remarks' => '', // No remarks for vendors
                 'previous_balance' => 0, // Vendors may not have balance logic
+            ]);
+        }
+
+        if ($type === 'distributor') {
+            $dist = \App\Models\Distributor::find($id);
+            if (!$dist) {
+                return response()->json(['error' => 'Distributor not found'], 404);
+            }
+            return response()->json([
+                'address'          => $dist->address ?: ($dist->area . ', ' . $dist->city),
+                'mobile'           => $dist->phone,
+                'remarks'          => "Distributor: {$dist->name} ({$dist->code})",
+                'previous_balance' => (float) $dist->current_balance,
             ]);
         }
 

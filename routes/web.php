@@ -428,6 +428,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/ledger/{id}', [DistributorAdminController::class, 'ledger'])->name('ledger');
         Route::post('/payment/{id}', [DistributorAdminController::class, 'storePayment'])->name('payment.store');
         Route::get('/secondary-sales', [DistributorAdminController::class, 'secondarySales'])->name('secondary_sales');
+        
+        // Payments / Collections & Approvals
+        Route::get('/payments', [DistributorAdminController::class, 'payments'])->name('payments');
+        Route::post('/payments/store', [DistributorAdminController::class, 'storeAdminPayment'])->name('payments.store');
+        Route::post('/payments/{id}/approve', [DistributorAdminController::class, 'approvePayment'])->name('payments.approve');
+        Route::post('/payments/{id}/reject', [DistributorAdminController::class, 'rejectPayment'])->name('payments.reject');
     });
 
     // ==========================================
@@ -459,6 +465,10 @@ Route::middleware('auth')->group(function () {
         
         // Company Ledger
         Route::get('/company-ledger', [DistributorPortalController::class, 'companyLedger'])->name('company_ledger.index');
+
+        // Payments to Company (Submit & Track)
+        Route::get('/payments', [DistributorPortalController::class, 'payments'])->name('payments.index');
+        Route::post('/payments/store', [DistributorPortalController::class, 'storePayment'])->name('payments.store');
     });
 });
 

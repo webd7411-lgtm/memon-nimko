@@ -673,6 +673,7 @@ table.rvf-table tfoot th {
                             <option value="vendor">Vendor</option>
                             <option value="customer">Customer</option>
                             <option value="walkin">Walk-in Customer</option>
+                            <option value="distributor">Distributor</option>
                         </select>
                     </div>
 
@@ -852,7 +853,7 @@ table.rvf-table tfoot th {
 
         $vendorSelect.empty().append('<option disabled selected>Loading...</option>');
 
-        if (type === 'vendor' || type === 'customer' || type === 'walkin') {
+        if (type === 'vendor' || type === 'customer' || type === 'walkin' || type === 'distributor') {
             $.get('{{ route("party.list") }}?type=' + type, function(data) {
                 $vendorSelect.empty().append('<option disabled selected>Select Party</option>');
                 data.forEach(function(item) {

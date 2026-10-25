@@ -41,6 +41,11 @@ class Distributor extends Model
         return $this->hasMany(DistributorLedger::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(DistributorPayment::class);
+    }
+
     public static function generateCode()
     {
         $last = self::latest('id')->first();
