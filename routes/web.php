@@ -34,6 +34,8 @@ use App\Http\Controllers\TableController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\RawMaterialController;
+use App\Http\Controllers\DistributorAdminController;
+use App\Http\Controllers\DistributorPortalController;
 
 /*
     |--------------------------------------------------------------------------
@@ -406,6 +408,57 @@ Route::middleware('auth')->group(function () {
         Route::delete('/purchase/delete/{id}', [RawMaterialController::class, 'deletePurchase'])->name('raw-materials.purchase.delete');
         Route::get('/purchase/print/{id}', [RawMaterialController::class, 'printPurchase'])->name('raw-materials.purchase.print');
         Route::get('/stock/get', [RawMaterialController::class, 'getStock'])->name('raw-materials.stock.get');
+    });
+
+    // ==========================================
+    // SUPER ADMIN / COMPANY DISTRIBUTOR ROUTES
+    // ==========================================
+    Route::prefix('admin/distributors')->name('admin.distributors.')->group(function () {
+        Route::get('/', [DistributorAdminController::class, 'index'])->name('index');
+        Route::post('/store', [DistributorAdminController::class, 'store'])->name('store');
+        Route::post('/update/{id}', [DistributorAdminController::class, 'update'])->name('update');
+        Route::get('/orders', [DistributorAdminController::class, 'orders'])->name('orders');
+        Route::get('/sales', [DistributorAdminController::class, 'salesList'])->name('sales');
+        Route::get('/sales/{id}', [DistributorAdminController::class, 'saleInvoice'])->name('sales.invoice');
+        Route::get('/direct-sale', [DistributorAdminController::class, 'createDirectSale'])->name('direct_sale');
+        Route::post('/direct-sale/store', [DistributorAdminController::class, 'storeDirectSale'])->name('direct_sale.store');
+        Route::get('/orders/{id}', [DistributorAdminController::class, 'showOrder'])->name('orders.show');
+        Route::post('/orders/{id}/dispatch', [DistributorAdminController::class, 'dispatchOrder'])->name('orders.dispatch');
+        Route::get('/stocks', [DistributorAdminController::class, 'stocks'])->name('stocks');
+        Route::get('/ledger/{id}', [DistributorAdminController::class, 'ledger'])->name('ledger');
+        Route::post('/payment/{id}', [DistributorAdminController::class, 'storePayment'])->name('payment.store');
+        Route::get('/secondary-sales', [DistributorAdminController::class, 'secondarySales'])->name('secondary_sales');
+    });
+
+    // ==========================================
+    // DISTRIBUTOR / ORDER BOOKER DEDICATED PORTAL
+    // ==========================================
+    Route::prefix('distributor-portal')->name('distributor.')->group(function () {
+        Route::get('/dashboard', [DistributorPortalController::class, 'dashboard'])->name('dashboard');
+        
+        // Stock
+        Route::get('/stock', [DistributorPortalController::class, 'myStock'])->name('stock.index');
+        
+        // Demand Orders (to Super Admin)
+        Route::get('/orders', [DistributorPortalController::class, 'myOrders'])->name('orders.index');
+        Route::get('/orders/create', [DistributorPortalController::class, 'createOrder'])->name('orders.create');
+        Route::post('/orders/store', [DistributorPortalController::class, 'storeOrder'])->name('orders.store');
+        Route::get('/orders/{id}', [DistributorPortalController::class, 'showOrder'])->name('orders.show');
+        
+        // Customers (Retail Shops)
+        Route::get('/customers', [DistributorPortalController::class, 'myCustomers'])->name('customers.index');
+        Route::post('/customers/store', [DistributorPortalController::class, 'storeCustomer'])->name('customers.store');
+        Route::get('/customers/{id}/ledger', [DistributorPortalController::class, 'customerLedger'])->name('customers.ledger');
+        Route::post('/customers/{id}/payment', [DistributorPortalController::class, 'storeCustomerPayment'])->name('customers.payment.store');
+
+        // Secondary Sales (to Retail Shops)
+        Route::get('/sales', [DistributorPortalController::class, 'salesList'])->name('sales.index');
+        Route::get('/sales/create', [DistributorPortalController::class, 'createSale'])->name('sales.create');
+        Route::post('/sales/store', [DistributorPortalController::class, 'storeSale'])->name('sales.store');
+        Route::get('/sales/receipt/{id}', [DistributorPortalController::class, 'saleReceipt'])->name('sales.receipt');
+        
+        // Company Ledger
+        Route::get('/company-ledger', [DistributorPortalController::class, 'companyLedger'])->name('company_ledger.index');
     });
 });
 

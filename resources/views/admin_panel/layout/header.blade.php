@@ -365,6 +365,68 @@
                     </li>
                     @endcanany
 
+                    @php
+                        $isDistActive = request()->is('admin/distributors*');
+                        $pendingOrdersNavCount = 0;
+                        if (\Illuminate\Support\Facades\Schema::hasTable('distributor_orders')) {
+                            $pendingOrdersNavCount = \App\Models\DistributorOrder::where('status', 'pending')->count();
+                        }
+                    @endphp
+                    <!-- Distributors Menu -->
+                    <li class="nav-item {{ $isDistActive ? 'active' : '' }}">
+                        <a href="#" class="nav-link">
+                            <i class="menu_icon fas fa-truck-loading"></i>
+                            <span class="menu-title">Distributors</span>
+                            @if($pendingOrdersNavCount > 0)
+                            <span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem; padding: 2px 6px;">{{ $pendingOrdersNavCount }}</span>
+                            @endif
+                            <i class="menu-arrow feather ft-chevron-down"></i>
+                        </a>
+                        <div class="submenu">
+                            <ul class="submenu-item">
+                                <li>
+                                    <a href="{{ route('admin.distributors.index') }}">
+                                        <i class="fas fa-users-cog"></i>
+                                        <span>Distributors Directory</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('admin.distributors.sales') }}">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                        <span>Distributor Sales Register</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('admin.distributors.direct_sale') }}">
+                                        <i class="fas fa-cart-arrow-down"></i>
+                                        <span>+ Issue / Sale Stock</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('admin.distributors.orders') }}">
+                                        <i class="fas fa-clipboard-list"></i>
+                                        <span>Demand Orders</span>
+                                        @if($pendingOrdersNavCount > 0)
+                                        <span class="badge bg-danger ms-auto">{{ $pendingOrdersNavCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('admin.distributors.stocks') }}">
+                                        <i class="fas fa-boxes"></i>
+                                        <span>Custody Stocks</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('admin.distributors.secondary_sales') }}">
+                                        <i class="fas fa-chart-line"></i>
+                                        <span>Secondary Market Sales</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+
                     @canany(['Item Stock Report','Branch Stock Report','Purchase Report','Sale Report','Category Sale Report','Daily Sale Closing Report','Profit Loss Report','Customer Ledger','Vendor Ledger','Expense Report','Expense Audit Report','Stock Adjustment Audit Report','System Reports'])
                     @php
                         $isReportsActive = request()->is('report*') || request()->is('System/Reports*') || request()->is('expense-vocher*') || request()->is('stock-adjustment-report*');

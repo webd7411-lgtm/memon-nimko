@@ -20,6 +20,11 @@ class HomeController extends Controller
         $usertype = Auth::user()->usertype;
         $userId = Auth::id();
 
+        // Redirect Distributor to dedicated portal
+        if ($usertype == 'distributor' || (Auth::user()->distributor && !Auth::user()->hasRole('Super Admin') && Auth::user()->email !== 'admin@admin.com')) {
+            return redirect()->route('distributor.dashboard');
+        }
+
         if ($usertype == 'user') {
             return view('user_panel.dashboard', compact('userId'));
         } elseif ($usertype == 'admin') {
