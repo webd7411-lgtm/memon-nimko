@@ -91,7 +91,31 @@ class DistributorAdminController extends Controller
                 'password' => Hash::make($request->password),
                 'usertype' => 'distributor',
             ]);
-            $user->assignRole('Distributor');
+            // Ensure Distributor role exists and assign safely
+            try {
+                if (class_exists(\Spatie\Permission\Models\Role::class)) {
+                    $role = \Spatie\Permission\Models\Role::firstOrCreate([
+                        'name'       => 'Distributor',
+                        'guard_name' => 'web',
+                    ]);
+
+                    if (class_exists(\Spatie\Permission\Models\Permission::class)) {
+                        $portalPerm = \Spatie\Permission\Models\Permission::firstOrCreate([
+                            'name'       => 'Distributor Portal',
+                            'guard_name' => 'web',
+                        ]);
+                        if (!$role->hasPermissionTo($portalPerm)) {
+                            $role->givePermissionTo($portalPerm);
+                        }
+                    }
+
+                    if (method_exists($user, 'assignRole')) {
+                        $user->assignRole($role);
+                    }
+                }
+            } catch (\Throwable $roleEx) {
+                \Illuminate\Support\Facades\Log::warning('Distributor role auto-assignment notice: ' . $roleEx->getMessage());
+            }
 
             // 2. Create Distributor Record
             $openingBalance = (float) ($request->opening_balance ?? 0);

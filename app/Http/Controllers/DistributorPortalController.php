@@ -32,7 +32,14 @@ class DistributorPortalController extends Controller
         $distributor = Distributor::where('user_id', $user->id)->first();
 
         // Fallback for Super Admin testing portal
-        if (!$distributor && ($user->email === 'admin@admin.com' || $user->hasRole(['Super Admin', 'super-admin']))) {
+        $isAdmin = false;
+        try {
+            $isAdmin = (method_exists($user, 'hasRole') && $user->hasRole(['Super Admin', 'super-admin'])) || ($user->usertype === 'admin');
+        } catch (\Throwable $e) {
+            $isAdmin = ($user->usertype === 'admin');
+        }
+
+        if (!$distributor && ($user->email === 'admin@admin.com' || $isAdmin)) {
             $distributor = Distributor::first();
             if (!$distributor) {
                 // Auto create demo distributor if none exists
