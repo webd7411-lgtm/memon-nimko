@@ -28,6 +28,41 @@ class Sale extends Model
         return $prefix . $newNumber;
     }
 
+    public function getCustomerDisplayNameAttribute()
+    {
+        if (empty($this->customer) || $this->customer === "Walk-in Customer") {
+            return "Walk-in Customer";
+        }
+        if ($this->customer_relation) {
+            return $this->customer_relation->customer_name;
+        }
+        if (str_starts_with($this->customer, "dist_")) {
+            $id = (int) str_replace("dist_", "", $this->customer);
+            $dist = \App\Models\Distributor::find($id);
+            return $dist ? $dist->name . " (Distributor)" : "Distributor #" . $id;
+        }
+        if (str_starts_with($this->customer, "booker_")) {
+            $id = (int) str_replace("booker_", "", $this->customer);
+            $booker = \App\Models\Distributor::find($id);
+            return $booker ? $booker->name . " (Order Booker)" : "Order Booker #" . $id;
+        }
+        if (str_starts_with($this->customer, "officer_")) {
+            $id = (int) str_replace("officer_", "", $this->customer);
+            $so = \App\Models\SalesOfficer::find($id);
+            return $so ? $so->name . " (Sales Officer)" : "Sales Officer #" . $id;
+        }
+        if (str_starts_with($this->customer, "dc_")) {
+            $id = (int) str_replace("dc_", "", $this->customer);
+            $dc = \App\Models\DistributorCustomer::find($id);
+            return $dc ? $dc->shop_name . " (" . $dc->owner_name . ")" : "Retail Shop #" . $id;
+        }
+        if (is_numeric($this->customer)) {
+            $c = \App\Models\Customer::find($this->customer);
+            if ($c) return $c->customer_name;
+        }
+        return $this->customer;
+    }
+
     public function customer_relation()
     {
         return $this->belongsTo(Customer::class, 'customer', 'id');

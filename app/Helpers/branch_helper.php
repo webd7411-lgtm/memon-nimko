@@ -88,7 +88,7 @@ if (!function_exists('shop_name')) {
      */
     function shop_name(): string
     {
-        return sys_setting('shop_name') ?: 'Memon Nimko';
+        return sys_setting('shop_name') ?: 'ProWave';
     }
 }
 
@@ -98,7 +98,7 @@ if (!function_exists('shop_tagline')) {
      */
     function shop_tagline(): string
     {
-        return sys_setting('shop_tagline') ?: 'Sweets & Bakers';
+        return sys_setting('shop_tagline') ?: '';
     }
 }
 
@@ -108,7 +108,37 @@ if (!function_exists('developer_name')) {
      */
     function developer_name(): string
     {
-        return sys_setting('developer_name') ?: 'ProWave Software Solutions';
+        return sys_setting('developer_name') ?: 'ProWave Technologies';
     }
 }
 
+if (!function_exists('receipt_logo_url')) {
+    /**
+     * Get the receipt / store logo absolute URL if one has been uploaded and physically exists.
+     * Returns null if no logo is configured or file is missing, so no empty/broken image or placeholder is rendered.
+     */
+    function receipt_logo_url(): ?string
+    {
+        $logo = sys_setting('shop_logo');
+        if (empty($logo)) {
+            $logo = sys_setting('receipt_logo');
+        }
+
+        if (empty($logo)) {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $logo)) {
+            return $logo;
+        }
+
+        $cleanPath = ltrim(str_replace('\\', '/', $logo), '/');
+        $fullPath = public_path($cleanPath);
+
+        if (file_exists($fullPath)) {
+            return asset($cleanPath);
+        }
+
+        return null;
+    }
+}

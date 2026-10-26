@@ -46,6 +46,11 @@ class Distributor extends Model
         return $this->hasMany(DistributorPayment::class);
     }
 
+    public function accounts()
+    {
+        return $this->hasMany(Account::class);
+    }
+
     public static function generateCode()
     {
         $last = self::latest('id')->first();

@@ -341,25 +341,45 @@
                             </div>
                             @endif
                             @else
-                            <span class="badge bg-warning text-dark px-2.5 py-1 rounded-pill fw-semibold" style="font-size: 0.75rem;">
-                                <i class="fas fa-clock me-1"></i> Pending
+                            <span class="badge rounded-pill fw-bold px-2.5 py-1" style="background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fcd34d !important; font-size: 0.75rem;">
+                                <i class="fas fa-clock me-1 text-warning"></i> Pending
                             </span>
                             @endif
                         </td>
 
                         <!-- Actions -->
                         <td class="text-end pe-4">
+                            @php
+                                $pData = [
+                                    'id'             => $p->id,
+                                    'payment_no'     => $p->payment_no,
+                                    'dist_name'      => $p->distributor ? $p->distributor->name : 'Distributor',
+                                    'dist_code'      => $p->distributor ? $p->distributor->code : '',
+                                    'dist_phone'     => $p->distributor ? $p->distributor->phone : '',
+                                    'dist_balance'   => $p->distributor ? number_format($p->distributor->current_balance, 2) : '0.00',
+                                    'amount'         => number_format($p->amount, 2),
+                                    'date'           => $p->payment_date ? $p->payment_date->format('d M, Y') : '-',
+                                    'method'         => ucwords(str_replace('_', ' ', $p->payment_method)),
+                                    'bank_name'      => $p->bank_name ?: '',
+                                    'account_number' => $p->account_number ?: '',
+                                    'account_title'  => $p->account ? $p->account->title : '',
+                                    'account_id'     => $p->account_id ?: '',
+                                    'reference'      => $p->transaction_reference ?: '',
+                                    'notes'          => $p->notes ?: '',
+                                    'slip_url'       => $p->slip_image ? asset('uploads/distributor_payments/' . $p->slip_image) : '',
+                                ];
+                            @endphp
                             @if($p->status === 'pending')
                             <div class="d-inline-flex align-items-center gap-1.5">
                                 <!-- Approve Button -->
                                 <button type="button" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;"
-                                        onclick="openApproveModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}', '{{ $p->account_id }}')">
+                                        onclick='openApproveModal(@json($pData))'>
                                     <i class="fas fa-check me-1"></i> Approve
                                 </button>
 
                                 <!-- Reject Button -->
                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 text-nowrap fw-semibold" style="font-size: 0.75rem;"
-                                        onclick="openRejectModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}')">
+                                        onclick='openRejectModal(@json($pData))'>
                                     <i class="fas fa-times me-1"></i> Reject
                                 </button>
                             </div>
@@ -406,8 +426,8 @@
                             Rejected
                         </span>
                         @else
-                        <span class="badge bg-warning text-dark px-2 py-0.5 rounded-pill" style="font-size: 0.7rem;">
-                            Pending Approval
+                        <span class="badge rounded-pill fw-bold px-2 py-0.5" style="background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fcd34d !important; font-size: 0.7rem;">
+                            <i class="fas fa-clock me-0.5 text-warning"></i> Pending
                         </span>
                         @endif
                     </div>
@@ -450,13 +470,33 @@
                     </div>
 
                     <div class="d-flex align-items-center gap-1.5 ms-auto">
+                        @php
+                            $pDataMobile = [
+                                'id'             => $p->id,
+                                'payment_no'     => $p->payment_no,
+                                'dist_name'      => $p->distributor ? $p->distributor->name : 'Distributor',
+                                'dist_code'      => $p->distributor ? $p->distributor->code : '',
+                                'dist_phone'     => $p->distributor ? $p->distributor->phone : '',
+                                'dist_balance'   => $p->distributor ? number_format($p->distributor->current_balance, 2) : '0.00',
+                                'amount'         => number_format($p->amount, 2),
+                                'date'           => $p->payment_date ? $p->payment_date->format('d M, Y') : '-',
+                                'method'         => ucwords(str_replace('_', ' ', $p->payment_method)),
+                                'bank_name'      => $p->bank_name ?: '',
+                                'account_number' => $p->account_number ?: '',
+                                'account_title'  => $p->account ? $p->account->title : '',
+                                'account_id'     => $p->account_id ?: '',
+                                'reference'      => $p->transaction_reference ?: '',
+                                'notes'          => $p->notes ?: '',
+                                'slip_url'       => $p->slip_image ? asset('uploads/distributor_payments/' . $p->slip_image) : '',
+                            ];
+                        @endphp
                         @if($p->status === 'pending')
                         <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-semibold shadow-sm" style="font-size: 0.75rem;"
-                                onclick="openApproveModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}', '{{ $p->account_id }}')">
+                                onclick='openApproveModal(@json($pDataMobile))'>
                             <i class="fas fa-check me-1"></i> Approve
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" style="font-size: 0.75rem;"
-                                onclick="openRejectModal('{{ $p->id }}', '{{ $p->payment_no }}', '{{ $p->distributor ? addslashes($p->distributor->name) : '' }}', '{{ number_format($p->amount, 2) }}')">
+                                onclick='openRejectModal(@json($pDataMobile))'>
                             Reject
                         </button>
                         @elseif($p->distributor)
@@ -487,24 +527,24 @@
 <div class="modal fade" id="receiveDirectPaymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header text-white" style="background: linear-gradient(135deg, #090d16 0%, #0f766e 100%);">
+            <div class="modal-header text-white py-2.5 px-3" style="background: linear-gradient(135deg, #090d16 0%, #0f766e 100%);">
                 <div>
-                    <h5 class="modal-title fw-bold">
-                        <i class="fas fa-hand-holding-usd me-2"></i> Receive Direct Payment from Distributor
+                    <h5 class="modal-title fw-bold fs-6 mb-0">
+                        <i class="fas fa-hand-holding-usd me-1.5"></i> Receive Direct Payment from Distributor
                     </h5>
-                    <div class="small text-white-50">Directly record and auto-credit payment into distributor ledger</div>
+                    <div class="text-white-50" style="font-size: 0.72rem;">Directly record and auto-credit payment into distributor ledger</div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <form action="{{ route('admin.distributors.payments.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                <div class="modal-body p-4 bg-light">
-                    <div class="row g-3">
+                <div class="modal-body px-3 py-2.5 bg-light">
+                    <div class="row g-2">
                         <!-- Select Distributor -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">Distributor <span class="text-danger">*</span></label>
-                            <select name="distributor_id" class="form-select form-select-lg" required>
+                            <label class="form-label mb-1 small fw-bold text-dark">Distributor <span class="text-danger">*</span></label>
+                            <select name="distributor_id" class="form-select" required>
                                 <option value="">Select Distributor...</option>
                                 @foreach($distributors as $dist)
                                 <option value="{{ $dist->id }}" data-balance="{{ $dist->current_balance }}">
@@ -516,10 +556,10 @@
 
                         <!-- Company Cash / Bank Account Selector -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">
+                            <label class="form-label mb-1 small fw-bold text-dark">
                                 <i class="fas fa-university me-1" style="color: #0f766e;"></i> Company Account (Cash / Bank)
                             </label>
-                            <select name="account_id" id="adminDirectAccountSelect" class="form-select form-select-lg" onchange="handleAdminDirectAccountChange(this)" style="border-color: #0f766e;">
+                            <select name="account_id" id="adminDirectAccountSelect" class="form-select" onchange="handleAdminDirectAccountChange(this)" style="border-color: #0f766e;">
                                 <option value="">-- Select Cash or Bank Account --</option>
                                 @if(isset($companyAccounts) && $companyAccounts->count() > 0)
                                     @php
@@ -546,31 +586,30 @@
                                     @endforeach
                                 @endif
                             </select>
-                            <div class="form-text small text-muted">Amount will be credited into this account automatically.</div>
                         </div>
 
                         <!-- Amount -->
-                        <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">Amount Received (PKR) <span class="text-danger">*</span></label>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label mb-1 small fw-bold text-dark">Amount Received (PKR) <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <span class="input-group-text bg-white fw-bold">Rs.</span>
-                                <input type="number" step="0.01" min="1" name="amount" class="form-control form-control-lg fw-bold text-success"
-                                       placeholder="e.g. 50000" required>
+                                <span class="input-group-text bg-white fw-bold py-1 px-2" style="font-size: 0.85rem;">Rs.</span>
+                                <input type="number" step="0.01" min="1" name="amount" class="form-control fw-bold text-success"
+                                       placeholder="50000" required>
                             </div>
                         </div>
 
                         <!-- Date -->
-                        <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">Received Date <span class="text-danger">*</span></label>
-                            <input type="date" name="payment_date" class="form-control form-control-lg" value="{{ date('Y-m-d') }}" required>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label mb-1 small fw-bold text-dark">Received Date <span class="text-danger">*</span></label>
+                            <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                         </div>
 
                         <!-- Payment Method -->
-                        <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">Payment Method <span class="text-danger">*</span></label>
-                            <select name="payment_method" id="adminDirectPaymentMethodSelect" class="form-select form-select-lg" required>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label mb-1 small fw-bold text-dark">Payment Method <span class="text-danger">*</span></label>
+                            <select name="payment_method" id="adminDirectPaymentMethodSelect" class="form-select" required>
                                 <option value="cash" selected>Cash Collection</option>
-                                <option value="bank_transfer">Bank Transfer / Online IBFT</option>
+                                <option value="bank_transfer">Bank Transfer / IBFT</option>
                                 <option value="cheque">Cheque / Pay Order</option>
                                 <option value="raast">Raast Instant Transfer</option>
                                 <option value="easypaisa">EasyPaisa / JazzCash</option>
@@ -580,33 +619,33 @@
 
                         <!-- Bank Name -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">Bank / Counter Name</label>
-                            <input type="text" name="bank_name" id="adminDirectBankNameInput" class="form-control form-control-lg" placeholder="e.g. Meezan Bank / Head Office Cash">
+                            <label class="form-label mb-1 small fw-bold text-dark">Bank / Counter Name</label>
+                            <input type="text" name="bank_name" id="adminDirectBankNameInput" class="form-control" placeholder="e.g. Meezan Bank / Head Office Cash">
                         </div>
 
                         <!-- Reference / Trx ID / Cheque No -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label small fw-bold text-dark">Reference # / Cheque # / Trx ID</label>
-                            <input type="text" name="transaction_reference" class="form-control form-control-lg font-monospace" placeholder="e.g. TRX1234567">
+                            <label class="form-label mb-1 small fw-bold text-dark">Reference # / Cheque # / Trx ID</label>
+                            <input type="text" name="transaction_reference" class="form-control font-monospace" placeholder="e.g. TRX1234567">
                         </div>
 
                         <!-- Upload Slip -->
-                        <div class="col-12">
-                            <label class="form-label small fw-bold text-dark">Upload Deposit Slip / Cheque Photo (Optional)</label>
-                            <input type="file" name="slip_image" class="form-control form-control-lg bg-white" accept="image/*,.pdf">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label mb-1 small fw-bold text-dark">Upload Deposit Slip / Cheque Photo</label>
+                            <input type="file" name="slip_image" class="form-control bg-white" accept="image/*,.pdf">
                         </div>
 
                         <!-- Notes -->
-                        <div class="col-12">
-                            <label class="form-label small fw-bold text-dark">Notes / Narration</label>
-                            <textarea name="notes" rows="2" class="form-control" placeholder="Remarks or deposit details..."></textarea>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label mb-1 small fw-bold text-dark">Notes / Narration</label>
+                            <input type="text" name="notes" class="form-control" placeholder="Remarks or deposit details...">
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer bg-white border-top p-3 d-flex justify-content-between">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-teal rounded-pill px-5 shadow-sm fw-bold">
+                <div class="modal-footer bg-white border-top py-2 px-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-teal rounded-pill px-4 shadow-sm fw-bold">
                         <i class="fas fa-check-circle me-1"></i> Record & Credit Ledger
                     </button>
                 </div>
@@ -617,39 +656,88 @@
 
 <!-- Modal 2: Approve Payment Modal -->
 <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header bg-success text-white py-3">
-                <h5 class="modal-title fw-bold">
-                    <i class="fas fa-check-circle me-2"></i> Approve Payment
-                </h5>
+            <div class="modal-header bg-success text-white py-2.5 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-check-circle fs-5"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0">Approve Distributor Payment</h6>
+                        <span class="text-white-50" style="font-size: 0.72rem;">Verify payment details and credit into company account & distributor ledger</span>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <form id="approveForm" method="POST" action="">
                 @csrf
-                <div class="modal-body p-4 bg-light">
+                <div class="modal-body p-3 bg-light">
+                    <!-- Detailed Info Card -->
                     <div class="card border-0 shadow-none rounded-3 p-3 bg-white mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted small">Payment Number:</span>
-                            <span class="font-monospace fw-bold text-dark" id="approvePaymentNo">-</span>
+                        <div class="row g-2">
+                            <!-- Left: Sender & Amount -->
+                            <div class="col-12 col-md-6 border-end-md pb-2 pb-md-0">
+                                <div class="text-muted small text-uppercase fw-semibold" style="font-size: 0.70rem;">Payment Received From</div>
+                                <h6 class="fw-bold text-dark mb-0 mt-0.5" id="approveDistName">-</h6>
+                                <div class="text-muted small" style="font-size: 0.75rem;" id="approveDistSub">-</div>
+
+                                <div class="mt-2.5 p-2 rounded-2" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-success small fw-bold text-uppercase" style="font-size: 0.72rem;">Amount Received</span>
+                                        <span class="fw-bold text-success fs-5">Rs. <span id="approveAmount">0.00</span></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style="font-size: 0.72rem; border-color: rgba(16, 185, 129, 0.2) !important;">
+                                        <span class="text-muted">Current Ledger Balance:</span>
+                                        <span class="fw-bold text-danger" id="approveDistBalance">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Transaction Details -->
+                            <div class="col-12 col-md-6 ps-md-3">
+                                <div class="text-muted small text-uppercase fw-semibold" style="font-size: 0.70rem;">Submission Details</div>
+                                <div class="d-flex justify-content-between py-1 border-bottom" style="font-size: 0.78rem;">
+                                    <span class="text-muted">Payment Number:</span>
+                                    <span class="font-monospace fw-bold text-dark" id="approvePaymentNo">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom" style="font-size: 0.78rem;">
+                                    <span class="text-muted">Payment Date:</span>
+                                    <span class="fw-semibold text-dark" id="approveDate">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom" style="font-size: 0.78rem;">
+                                    <span class="text-muted">Payment Method:</span>
+                                    <span class="fw-semibold text-dark text-capitalize" id="approveMethod">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom" style="font-size: 0.78rem;">
+                                    <span class="text-muted">Deposited Into:</span>
+                                    <span class="fw-bold text-teal" style="color: #0f766e;" id="approveSubmittedAccount">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom" style="font-size: 0.78rem;" id="approveRefRow">
+                                    <span class="text-muted">Reference / Trx:</span>
+                                    <span class="font-monospace fw-semibold text-dark" id="approveRef">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1" style="font-size: 0.78rem;" id="approveSlipRow">
+                                    <span class="text-muted">Deposit Slip:</span>
+                                    <a id="approveSlipLink" href="#" target="_blank" class="text-decoration-none fw-bold" style="color: #0f766e;">
+                                        <i class="fas fa-image me-1"></i> View Receipt Slip
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted small">Distributor:</span>
-                            <span class="fw-bold text-dark" id="approveDistName">-</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
-                            <span class="text-muted small">Amount to Credit:</span>
-                            <span class="fw-bold fs-5 text-success">Rs. <span id="approveAmount">0.00</span></span>
+
+                        <!-- Notes if present -->
+                        <div class="mt-2 pt-2 border-top small text-muted" id="approveNotesRow" style="font-size: 0.75rem; display: none;">
+                            <i class="fas fa-comment-alt me-1 text-muted"></i> <strong>Remarks:</strong> <span id="approveNotes"></span>
                         </div>
                     </div>
 
+                    <!-- Target Company Account (Pre-selected) -->
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-dark">
-                            <i class="fas fa-university me-1" style="color: #0f766e;"></i> Credit To Company Account (Cash / Bank)
+                            <i class="fas fa-university me-1" style="color: #0f766e;"></i> Credit To Company Account (Cash / Bank) <span class="text-danger">*</span>
                         </label>
-                        <select name="account_id" id="approveAccountId" class="form-select">
-                            <option value="">-- Keep Payment's Account or Select Company Account --</option>
+                        <select name="account_id" id="approveAccountId" class="form-select fw-semibold" style="border-color: #0f766e;" required>
+                            <option value="">-- Choose Account --</option>
                             @if(isset($companyAccounts) && $companyAccounts->count() > 0)
                                 @php
                                     $grouped = $companyAccounts->groupBy(function($item) {
@@ -659,7 +747,7 @@
                                 @foreach($grouped as $headName => $accounts)
                                     <optgroup label="{{ $headName }}">
                                         @foreach($accounts as $acc)
-                                            <option value="{{ $acc->id }}">
+                                            <option value="{{ $acc->id }}" data-title="{{ $acc->title }}" data-code="{{ $acc->account_code }}">
                                                 {{ $acc->title }} {{ $acc->account_code ? '• ' . $acc->account_code : '' }}
                                             </option>
                                         @endforeach
@@ -668,26 +756,26 @@
                             @endif
                         </select>
                         <div class="form-text small text-muted">
-                            Payment amount will be automatically added to this company account's balance in the software.
+                            Payment amount will be automatically added to this company account's software balance.
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-dark">Approval Note (Optional)</label>
-                        <input type="text" name="approval_notes" class="form-control" placeholder="e.g. Verified with Meezan Bank statement">
+                        <input type="text" name="approval_notes" class="form-control" placeholder="e.g. Verified with bank statement">
                     </div>
 
-                    <div class="alert alert-info py-2 px-3 rounded-3 small mb-0 d-flex align-items-center gap-2">
+                    <div class="alert alert-info py-2 px-3 rounded-3 small mb-0 d-flex align-items-center gap-2" style="font-size: 0.75rem;">
                         <i class="fas fa-info-circle fs-5"></i>
                         <div>
-                            Approving will immediately <strong>credit the distributor ledger</strong> and reduce their outstanding balance by this amount.
+                            Approving will immediately <strong>credit the distributor ledger</strong> and reduce their outstanding payable balance.
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer bg-white border-top p-3 d-flex justify-content-between">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success rounded-pill px-5 shadow-sm fw-bold">
+                <div class="modal-footer bg-white border-top py-2 px-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-success rounded-pill px-4 shadow-sm fw-bold">
                         <i class="fas fa-check me-1"></i> Confirm & Approve
                     </button>
                 </div>
@@ -780,20 +868,105 @@
         modal.show();
     }
 
-    function openApproveModal(id, no, distName, amount, accountId) {
-        document.getElementById('approvePaymentNo').innerText = no;
-        document.getElementById('approveDistName').innerText = distName;
-        document.getElementById('approveAmount').innerText = amount;
+    function openApproveModal(data) {
+        if (typeof data !== 'object') {
+            data = {
+                id: arguments[0],
+                payment_no: arguments[1],
+                dist_name: arguments[2],
+                amount: arguments[3],
+                account_id: arguments[4]
+            };
+        }
+
+        document.getElementById('approvePaymentNo').innerText = data.payment_no || '-';
+        document.getElementById('approveDistName').innerText = data.dist_name || '-';
+        const distSubEl = document.getElementById('approveDistSub');
+        if (distSubEl) {
+            distSubEl.innerText = (data.dist_code ? 'Code: ' + data.dist_code : '') + (data.dist_phone ? ' • Phone: ' + data.dist_phone : '');
+        }
+        const distBalEl = document.getElementById('approveDistBalance');
+        if (distBalEl) {
+            distBalEl.innerText = 'Rs. ' + (data.dist_balance || '0.00');
+        }
+        document.getElementById('approveAmount').innerText = data.amount || '0.00';
+        const dateEl = document.getElementById('approveDate');
+        if (dateEl) dateEl.innerText = data.date || '-';
+        const methodEl = document.getElementById('approveMethod');
+        if (methodEl) methodEl.innerText = data.method || '-';
+
+        let submitted = data.account_title || data.bank_name || '';
+        if (data.account_number) {
+            submitted += ' (' + data.account_number + ')';
+        }
+        const subAccEl = document.getElementById('approveSubmittedAccount');
+        if (subAccEl) {
+            subAccEl.innerText = submitted || 'Company Account';
+        }
+
+        // Reference
+        const refRow = document.getElementById('approveRefRow');
+        const refEl = document.getElementById('approveRef');
+        if (refRow && refEl) {
+            if (data.reference) {
+                refEl.innerText = data.reference;
+                refRow.style.display = 'flex';
+            } else {
+                refRow.style.display = 'none';
+            }
+        }
+
+        // Slip Proof
+        const slipRow = document.getElementById('approveSlipRow');
+        const slipLink = document.getElementById('approveSlipLink');
+        if (slipRow && slipLink) {
+            if (data.slip_url) {
+                slipLink.href = data.slip_url;
+                slipRow.style.display = 'flex';
+            } else {
+                slipRow.style.display = 'none';
+            }
+        }
+
+        // Notes
+        const notesRow = document.getElementById('approveNotesRow');
+        const notesEl = document.getElementById('approveNotes');
+        if (notesRow && notesEl) {
+            if (data.notes) {
+                notesEl.innerText = data.notes;
+                notesRow.style.display = 'block';
+            } else {
+                notesRow.style.display = 'none';
+            }
+        }
+
+        // Target Account Dropdown Pre-selection
         const accSelect = document.getElementById('approveAccountId');
         if (accSelect) {
-            accSelect.value = accountId || '';
+            accSelect.value = data.account_id || '';
+            // If account_id was not explicitly passed, match by account title or bank name
+            if (!accSelect.value && (data.account_title || data.bank_name)) {
+                const searchKey = (data.account_title || data.bank_name).toLowerCase().trim();
+                for (let i = 0; i < accSelect.options.length; i++) {
+                    const optText = accSelect.options[i].text.toLowerCase();
+                    if (searchKey && optText.includes(searchKey)) {
+                        accSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
         }
-        document.getElementById('approveForm').action = "{{ url('admin/distributors/payments') }}/" + id + "/approve";
+
+        document.getElementById('approveForm').action = "{{ url('admin/distributors/payments') }}/" + data.id + "/approve";
         let modal = new bootstrap.Modal(document.getElementById('approveModal'));
         modal.show();
     }
 
-    function openRejectModal(id, no, distName, amount) {
+    function openRejectModal(data) {
+        const id = typeof data === 'object' ? data.id : data;
+        const no = typeof data === 'object' ? data.payment_no : arguments[1];
+        const distName = typeof data === 'object' ? data.dist_name : arguments[2];
+        const amount = typeof data === 'object' ? data.amount : arguments[3];
         document.getElementById('rejectPaymentNo').innerText = no;
         document.getElementById('rejectDistName').innerText = distName;
         document.getElementById('rejectAmount').innerText = amount;

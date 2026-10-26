@@ -179,9 +179,11 @@
                             <span class="text-muted small"><i class="fas fa-envelope me-1"></i> {{ $dist->user->email ?? 'N/A' }}</span>
                         </td>
                         <td class="text-center">
-                            <span class="badge rounded-pill bg-light text-dark border px-2.5 py-1">
-                                <i class="fas fa-store me-1 text-muted"></i> {{ $dist->customers_count }} shops
-                            </span>
+                            <a href="{{ route('admin.distributors.customers', ['distributor_id' => $dist->id]) }}" 
+                               class="badge rounded-pill bg-light text-primary border text-decoration-none px-2.5 py-1" 
+                               title="Click to view all shops for this distributor">
+                                <i class="fas fa-store me-1 text-primary"></i> {{ $dist->customers_count }} shops
+                            </a>
                         </td>
                         <td class="text-end">
                             <span class="fw-bold {{ $dist->current_balance > 0 ? 'text-danger' : 'text-success' }}" style="font-size: 0.95rem;">
@@ -197,6 +199,9 @@
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ route('admin.distributors.ledger', $dist->id) }}" class="btn btn-outline-secondary rounded-pill px-2.5" title="View Statement / Ledger">
                                     <i class="fas fa-file-invoice-dollar me-1"></i> Ledger
+                                </a>
+                                <a href="{{ route('admin.distributors.customers', ['distributor_id' => $dist->id]) }}" class="btn btn-outline-secondary rounded-pill px-2.5 ms-1" title="View Customers / Retailers">
+                                    <i class="fas fa-store me-1"></i> Shops
                                 </a>
                                 <button type="button" class="btn btn-outline-secondary rounded-pill px-2.5 ms-1"
                                         data-bs-toggle="modal" data-bs-target="#editDistributorModal{{ $dist->id }}" title="Edit Profile">
@@ -293,11 +298,6 @@
                             <li>
                                 <a class="dropdown-item py-2" href="{{ route('admin.distributors.ledger', $dist->id) }}">
                                     <i class="fas fa-file-invoice-dollar me-2 text-primary"></i> View Statement / Ledger
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item py-2" href="{{ route('admin.distributors.direct_sale') }}?distributor_id={{ $dist->id }}">
-                                    <i class="fas fa-cart-plus me-2 text-success"></i> Issue / Sale Stock
                                 </a>
                             </li>
                             <li>

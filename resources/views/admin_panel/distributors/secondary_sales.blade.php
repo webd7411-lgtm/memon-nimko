@@ -109,8 +109,14 @@
                             <span class="text-muted small">{{ $sale->distributor->code ?? '' }}</span>
                         </td>
                         <td>
-                            <div class="fw-bold text-dark">{{ $sale->customer->shop_name ?? 'Walk-in' }}</div>
-                            <span class="text-muted small">{{ $sale->customer->phone ?? '' }} {{ $sale->customer->area ? "({$sale->customer->area})" : '' }}</span>
+                            @if($sale->customer)
+                            <a href="{{ route('admin.distributors.customers.ledger', $sale->distributor_customer_id) }}" class="fw-bold text-dark text-decoration-none" title="View Customer Ledger">
+                                {{ $sale->customer->shop_name }} <i class="fas fa-external-link-alt text-muted ms-0.5" style="font-size: 0.65rem;"></i>
+                            </a>
+                            <div class="text-muted small">{{ $sale->customer->phone ?? '' }} {{ $sale->customer->area ? "({$sale->customer->area})" : '' }}</div>
+                            @else
+                            <div class="fw-bold text-dark">Walk-in</div>
+                            @endif
                         </td>
                         <td>
                             <span class="text-muted">{{ \Carbon\Carbon::parse($sale->sale_date)->format('d M, Y') }}</span>

@@ -31,15 +31,42 @@ class DistributorPortalController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Check if distributor relation exists
-        $distributor = Distributor::where('user_id', $user->id)->first();
-
-        // Fallback for Super Admin testing portal
         $isAdmin = false;
         try {
-            $isAdmin = (method_exists($user, 'hasRole') && $user->hasRole(['Super Admin', 'super-admin'])) || ($user->usertype === 'admin');
+            $isAdmin = ($user->email === 'admin@admin.com') || ($user->usertype === 'admin') || (method_exists($user, 'hasRole') && $user->hasRole(['Super Admin', 'super-admin']));
         } catch (\Throwable $e) {
-            $isAdmin = ($user->usertype === 'admin');
+            $isAdmin = ($user->email === 'admin@admin.com') || ($user->usertype === 'admin');
+        }
+
+        // Allow Admin to view any distributor via request parameter or session
+        if ($isAdmin) {
+            if (request()->has('distributor_id')) {
+                $chosen = Distributor::find(request('distributor_id'));
+                if ($chosen) {
+                    session(['active_portal_distributor_id' => $chosen->id]);
+                    return $chosen;
+                }
+            }
+
+            if (session()->has('active_portal_distributor_id')) {
+                $sessionDist = Distributor::find(session('active_portal_distributor_id'));
+                if ($sessionDist) {
+                    return $sessionDist;
+                }
+            }
+        }
+
+        // Check if distributor relation exists for current user
+        $distributor = Distributor::where('user_id', $user->id)->first();
+
+        // For Super Admin / Admin testing portal: if user's distributor is null or has zero records, fallback to active distributor
+        if ($isAdmin) {
+            if (!$distributor || $distributor->code === 'DIST-0001') {
+                $activeDist = Distributor::where('id', '!=', 1)->first();
+                if ($activeDist) {
+                    return $activeDist;
+                }
+            }
         }
 
         if (!$distributor && ($user->email === 'admin@admin.com' || $isAdmin)) {
@@ -70,50 +97,123 @@ class DistributorPortalController extends Controller
     /**
      * Distributor Portal Dashboard.
      */
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         $distributor = $this->getDistributor();
 
-        // 1. Company Ledger Hisab Kitab
+        $user = Auth::user();
+        $isAdmin = false;
+        try {
+            $isAdmin = ($user->email === 'admin@admin.com') || ($user->usertype === 'admin') || (method_exists($user, 'hasRole') && $user->hasRole(['Super Admin', 'super-admin']));
+        } catch (\Throwable $e) {
+            $isAdmin = ($user->email === 'admin@admin.com') || ($user->usertype === 'admin');
+        }
+
+        $allDistributors = $isAdmin ? Distributor::where('status', 'active')->orderBy('name')->get() : collect();
+
+        // Date Filter (Matching Super Admin)
+        $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+
+        // 1. Company Ledger & Settlement (Head Office Account)
         $companyLedgerEntries = DistributorLedger::where('distributor_id', $distributor->id)->get();
-        $totalGoodsFromCompany = $companyLedgerEntries->sum('debit');
-        $totalPaidToCompany = $companyLedgerEntries->sum('credit');
+        $totalGoodsFromCompany = (float) $companyLedgerEntries->sum('debit');
+        $totalPaidToCompany = (float) $companyLedgerEntries->sum('credit');
         $payableBalanceToCompany = (float) $distributor->current_balance;
 
-        // 2. Retail Market & Recovery Hisab Kitab
-        $totalStockUnits = DistributorStock::where('distributor_id', $distributor->id)->sum('qty');
-        $totalCustomers = DistributorCustomer::where('distributor_id', $distributor->id)->count();
-        $totalMarketDue = DistributorCustomer::where('distributor_id', $distributor->id)->sum('current_balance');
+        // 2. Retail Market & Trade Receivables (Field Operations)
+        $retailCustomers = DistributorCustomer::where('distributor_id', $distributor->id)->get();
+        $totalCustomers = $retailCustomers->count();
+        $totalMarketDue = (float) $retailCustomers->sum('current_balance');
+        $customersWithDueCount = $retailCustomers->where('current_balance', '>', 0)->count();
 
-        $totalCustomerRecovery = DistributorCustomerLedger::where('distributor_id', $distributor->id)
+        $totalCustomerRecovery = (float) DistributorCustomerLedger::where('distributor_id', $distributor->id)
             ->where('type', 'payment_received')
             ->sum('credit');
 
-        // Recent recovery collections from retail shops
+        // Van Custody Stock
+        $stockItems = DistributorStock::with('product')
+            ->where('distributor_id', $distributor->id)
+            ->get();
+        $totalStockUnits = (float) $stockItems->sum('qty');
+        $stockValuation = (float) $stockItems->sum(function($s) {
+            return (float)$s->qty * (float)($s->avg_price ?: 0);
+        });
+
+        // 3. Secondary Sales Metrics
+        $todaySales = (float) DistributorSale::where('distributor_id', $distributor->id)
+            ->whereDate('sale_date', now()->format('Y-m-d'))
+            ->sum('grand_total');
+
+        $monthSales = (float) DistributorSale::where('distributor_id', $distributor->id)
+            ->whereBetween('sale_date', [now()->startOfMonth()->format('Y-m-d'), now()->endOfMonth()->format('Y-m-d')])
+            ->sum('grand_total');
+
+        $periodSales = (float) DistributorSale::where('distributor_id', $distributor->id)
+            ->whereBetween('sale_date', [$startDate, $endDate])
+            ->sum('grand_total');
+
+        $periodSalesCount = DistributorSale::where('distributor_id', $distributor->id)
+            ->whereBetween('sale_date', [$startDate, $endDate])
+            ->count();
+
+        $allSales = DistributorSale::where('distributor_id', $distributor->id)->get();
+        $totalSalesCount = $allSales->count();
+        $totalSalesSum = (float) $allSales->sum('grand_total');
+        $averageSaleValue = $totalSalesCount > 0 ? ($totalSalesSum / $totalSalesCount) : 0;
+
+        // Demand Orders
+        $pendingDemandsCount = DistributorOrder::where('distributor_id', $distributor->id)
+            ->where('status', 'pending')
+            ->count();
+        $approvedDemandsCount = DistributorOrder::where('distributor_id', $distributor->id)
+            ->where('status', 'approved')
+            ->count();
+        $totalDemandsCount = DistributorOrder::where('distributor_id', $distributor->id)->count();
+
+        // 4. Trend Charts (Last 14 Days)
+        $salesTrendLabels = [];
+        $salesTrendData = [];
+        $recoveryTrendData = [];
+
+        for ($i = 13; $i >= 0; $i--) {
+            $dayDate = now()->subDays($i)->format('Y-m-d');
+            $salesTrendLabels[] = now()->subDays($i)->format('d M');
+
+            $daySaleVal = (float) DistributorSale::where('distributor_id', $distributor->id)
+                ->whereDate('sale_date', $dayDate)
+                ->sum('grand_total');
+
+            $dayRecVal = (float) DistributorCustomerLedger::where('distributor_id', $distributor->id)
+                ->where('type', 'payment_received')
+                ->whereDate('date', $dayDate)
+                ->sum('credit');
+
+            $salesTrendData[] = $daySaleVal;
+            $recoveryTrendData[] = $dayRecVal;
+        }
+
+        // 5. Stock Breakdown for Donut/Bar Chart
+        $stockBreakdownLabels = [];
+        $stockBreakdownData = [];
+        foreach ($stockItems as $st) {
+            $name = $st->product->item_name ?? ('Item #' . $st->product_id);
+            $stockBreakdownLabels[] = $name;
+            $stockBreakdownData[] = (float) $st->qty;
+        }
+
+        // 6. Action Lists
         $recentRecoveries = DistributorCustomerLedger::with('customer')
             ->where('distributor_id', $distributor->id)
             ->where('type', 'payment_received')
             ->latest('id')
-            ->take(5)
+            ->take(6)
             ->get();
-
-        // 3. Sales
-        $todaySales = DistributorSale::where('distributor_id', $distributor->id)
-            ->whereDate('sale_date', now()->format('Y-m-d'))
-            ->sum('grand_total');
-
-        $monthSales = DistributorSale::where('distributor_id', $distributor->id)
-            ->whereBetween('sale_date', [now()->startOfMonth()->format('Y-m-d'), now()->endOfMonth()->format('Y-m-d')])
-            ->sum('grand_total');
-
-        $pendingDemandsCount = DistributorOrder::where('distributor_id', $distributor->id)
-            ->where('status', 'pending')
-            ->count();
 
         $recentSales = DistributorSale::with('customer')
             ->where('distributor_id', $distributor->id)
             ->latest('id')
-            ->take(5)
+            ->take(6)
             ->get();
 
         $recentOrders = DistributorOrder::where('distributor_id', $distributor->id)
@@ -121,21 +221,52 @@ class DistributorPortalController extends Controller
             ->take(5)
             ->get();
 
+        $topRetailers = DistributorCustomer::where('distributor_id', $distributor->id)
+            ->orderByDesc('current_balance')
+            ->take(5)
+            ->get();
+
+        $topStockItems = DistributorStock::with('product')
+            ->where('distributor_id', $distributor->id)
+            ->orderByDesc('qty')
+            ->take(5)
+            ->get();
+
         return view('distributor_panel.dashboard', compact(
             'distributor',
+            'isAdmin',
+            'allDistributors',
+            'startDate',
+            'endDate',
+            'periodSales',
+            'periodSalesCount',
             'totalGoodsFromCompany',
             'totalPaidToCompany',
             'payableBalanceToCompany',
             'totalMarketDue',
+            'customersWithDueCount',
             'totalCustomerRecovery',
+            'totalStockUnits',
+            'stockValuation',
             'todaySales',
             'monthSales',
-            'totalStockUnits',
+            'totalSalesCount',
+            'totalSalesSum',
+            'averageSaleValue',
             'totalCustomers',
+            'pendingDemandsCount',
+            'approvedDemandsCount',
+            'totalDemandsCount',
+            'salesTrendLabels',
+            'salesTrendData',
+            'recoveryTrendData',
+            'stockBreakdownLabels',
+            'stockBreakdownData',
             'recentRecoveries',
             'recentSales',
             'recentOrders',
-            'pendingDemandsCount'
+            'topRetailers',
+            'topStockItems'
         ));
     }
 
@@ -351,9 +482,26 @@ class DistributorPortalController extends Controller
             }
 
             DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'customer' => $customer,
+                    'message' => "Customer '{$customer->shop_name}' added successfully!"
+                ]);
+            }
+
             return back()->with('success', "Customer '{$customer->shop_name}' added successfully!");
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error adding customer: ' . $e->getMessage()
+                ], 422);
+            }
+
             return back()->withInput()->with('error', 'Error adding customer: ' . $e->getMessage());
         }
     }
@@ -365,6 +513,12 @@ class DistributorPortalController extends Controller
     {
         $distributor = $this->getDistributor();
 
+        // Ensure a default walk-in customer exists for this distributor
+        $walkin = DistributorCustomer::firstOrCreate(
+            ['distributor_id' => $distributor->id, 'shop_name' => 'Walk-in Customer'],
+            ['owner_name' => 'Walk-in', 'phone' => '', 'area' => 'Counter', 'status' => 'active', 'current_balance' => 0]
+        );
+
         // Get customers belonging to distributor
         $customers = DistributorCustomer::where('distributor_id', $distributor->id)
             ->where('status', 'active')
@@ -372,12 +526,23 @@ class DistributorPortalController extends Controller
             ->get();
 
         // Get products available in distributor's inventory
-        $stocks = DistributorStock::with(['product.unit', 'variant'])
+        $stocks = DistributorStock::with(['product.unit', 'product.category_relation', 'variant'])
             ->where('distributor_id', $distributor->id)
             ->where('qty', '>', 0)
             ->get();
 
-        return view('distributor_panel.sales.create', compact('distributor', 'customers', 'stocks'));
+        // Extract categories for quick panel
+        $categoryIds = $stocks->pluck('product.category_id')->filter()->unique();
+        $categories = \App\Models\Category::whereIn('id', $categoryIds)->get();
+
+        $invoiceNo = DistributorSale::generateInvoiceNo();
+        // ONLY load distributor's own active accounts (Super Admin accounts are NEVER loaded)
+        $bankAccounts = \App\Models\Account::where('status', 1)
+            ->where('distributor_id', $distributor->id)
+            ->get();
+        $accountHeads = \App\Models\AccountHead::where('status', 1)->get();
+
+        return view('distributor_panel.sales.create', compact('distributor', 'customers', 'stocks', 'invoiceNo', 'categories', 'bankAccounts', 'walkin', 'accountHeads'));
     }
 
     /**
@@ -390,14 +555,14 @@ class DistributorPortalController extends Controller
         $request->validate([
             'distributor_customer_id' => 'required|exists:distributor_customers,id',
             'product_id'              => 'required|array|min:1',
-            'product_id.*'            => 'required|exists:products,id',
+            'product_id.*'            => 'nullable',
             'qty'                     => 'required|array|min:1',
-            'qty.*'                   => 'required|numeric|min:0.01',
-            'unit_price'              => 'required|array|min:1',
-            'unit_price.*'            => 'required|numeric|min:0',
+            'qty.*'                   => 'nullable|numeric|min:0',
+            'unit_price'              => 'nullable|array',
+            'price'                   => 'nullable|array',
             'discount'                => 'nullable|numeric|min:0',
             'paid_amount'             => 'nullable|numeric|min:0',
-            'payment_type'            => 'required|in:cash,credit,partial',
+            'payment_type'            => 'nullable|in:cash,credit,partial',
         ]);
 
         DB::beginTransaction();
@@ -409,8 +574,9 @@ class DistributorPortalController extends Controller
             $itemsData = [];
 
             foreach ($request->product_id as $index => $productId) {
+                if (empty($productId)) continue;
                 $qty = (float) ($request->qty[$index] ?? 0);
-                $price = (float) ($request->unit_price[$index] ?? 0);
+                $price = (float) ($request->unit_price[$index] ?? $request->price[$index] ?? 0);
                 $variantId = $request->variant_id[$index] ?? null;
 
                 if ($qty <= 0) continue;
@@ -424,7 +590,7 @@ class DistributorPortalController extends Controller
                 if (!$distStock || (float)$distStock->qty < $qty) {
                     $prodName = Product::find($productId)->item_name ?? 'Item';
                     $avail = $distStock ? (float)$distStock->qty : 0;
-                    throw new \Exception("Insufficient stock for '{$prodName}'. Available: {$avail}, Requested: {$qty}");
+                    throw new \Exception("Insufficient van stock for '{$prodName}'. Available: {$avail}, Requested: {$qty}");
                 }
 
                 $itemSubtotal = $qty * $price;
@@ -441,13 +607,39 @@ class DistributorPortalController extends Controller
             }
 
             if (empty($itemsData)) {
-                throw new \Exception('No valid items in sale.');
+                throw new \Exception('No valid items in sale. Please add at least one product with quantity.');
             }
 
             $discount = (float) ($request->discount ?? 0);
             $grandTotal = max(0, $subtotal - $discount);
             $paidAmount = min($grandTotal, (float) ($request->paid_amount ?? 0));
             $dueAmount = max(0, $grandTotal - $paidAmount);
+
+            // Determine payment_type if not sent explicitly
+            $paymentType = $request->payment_type;
+            if (!$paymentType) {
+                if ($paidAmount >= $grandTotal && $grandTotal > 0) {
+                    $paymentType = 'cash';
+                } elseif ($paidAmount > 0) {
+                    $paymentType = 'partial';
+                } else {
+                    $paymentType = 'credit';
+                }
+            }
+
+            // 1. Create Sale
+            $accountId = null;
+            $accountDesc = "Cash";
+            if (!empty($request->payment_account) && is_array($request->payment_account)) {
+                $firstAcc = $request->payment_account[0];
+                if (is_numeric($firstAcc)) {
+                    $distAcc = Account::where('id', (int)$firstAcc)->where('distributor_id', $distributor->id)->first();
+                    if ($distAcc) {
+                        $accountId = $distAcc->id;
+                        $accountDesc = $distAcc->title;
+                    }
+                }
+            }
 
             // 1. Create Sale
             $sale = DistributorSale::create([
@@ -460,7 +652,8 @@ class DistributorPortalController extends Controller
                 'grand_total'             => $grandTotal,
                 'paid_amount'             => $paidAmount,
                 'due_amount'              => $dueAmount,
-                'payment_type'            => $request->payment_type,
+                'payment_type'            => $paymentType,
+                'account_id'              => $accountId,
                 'notes'                   => $request->notes,
             ]);
 
@@ -503,7 +696,7 @@ class DistributorPortalController extends Controller
                     'date'                    => now()->format('Y-m-d'),
                     'type'                    => 'payment_received',
                     'reference_no'            => 'RCP-' . $sale->invoice_no,
-                    'description'             => "Cash payment received for Invoice #{$sale->invoice_no}",
+                    'description'             => "Payment received via {$accountDesc} for Invoice #{$sale->invoice_no}",
                     'debit'                   => 0,
                     'credit'                  => $paidAmount,
                     'balance'                 => $newCustBalance,
@@ -673,6 +866,7 @@ class DistributorPortalController extends Controller
 
         // Auto fetch active company Cash & Bank accounts from Chart of Accounts
         $companyAccounts = Account::where('status', 1)
+            ->whereNull('distributor_id')
             ->with('head')
             ->orderBy('head_id')
             ->orderBy('title')
@@ -757,4 +951,245 @@ class DistributorPortalController extends Controller
         return redirect()->route('distributor.payments.index')
             ->with('success', "Payment #{$payment->payment_no} of Rs. " . number_format($request->amount, 2) . " submitted successfully! It will be verified and approved by Head Office.");
     }
+
+    /**
+     * Update an unapproved payment submission.
+     * Approved payments CANNOT be edited by distributors (only Super Admin).
+     */
+    public function updatePayment(Request $request, $id)
+    {
+        $distributor = $this->getDistributor();
+        $payment = DistributorPayment::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        if ($payment->status === 'approved') {
+            return back()->with('error', 'Approved payments cannot be edited by distributor. Only Super Admin has permission to modify approved payments.');
+        }
+
+        $request->validate([
+            'amount'                => 'required|numeric|min:1',
+            'payment_date'          => 'required|date',
+            'account_id'            => 'nullable|exists:accounts,id',
+            'payment_method'        => 'nullable|string|max:50',
+            'bank_name'             => 'nullable|string|max:100',
+            'account_number'        => 'nullable|string|max:100',
+            'transaction_reference' => 'nullable|string|max:100',
+            'slip_image'            => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
+            'notes'                 => 'nullable|string|max:1000',
+        ]);
+
+        $accountId = $request->account_id ? (int)$request->account_id : null;
+        $bankName = $request->bank_name;
+        $accountNumber = $request->account_number;
+        $paymentMethod = $request->payment_method ?: $payment->payment_method;
+
+        if ($accountId) {
+            $selectedAccount = Account::with('head')->find($accountId);
+            if ($selectedAccount) {
+                $headName = strtolower($selectedAccount->head->name ?? '');
+                $accTitle = strtolower($selectedAccount->title ?? '');
+                if (!$request->filled('payment_method')) {
+                    $paymentMethod = (str_contains($headName, 'cash') || str_contains($accTitle, 'cash')) ? 'cash' : 'bank_transfer';
+                }
+                if (empty($bankName)) {
+                    $bankName = $selectedAccount->title;
+                }
+                if (empty($accountNumber)) {
+                    $accountNumber = $selectedAccount->account_code;
+                }
+            }
+        }
+
+        $slipFileName = $payment->slip_image;
+        if ($request->hasFile('slip_image')) {
+            if ($payment->slip_image && file_exists(public_path('uploads/distributor_payments/' . $payment->slip_image))) {
+                @unlink(public_path('uploads/distributor_payments/' . $payment->slip_image));
+            }
+            $file = $request->file('slip_image');
+            $slipFileName = 'slip_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/distributor_payments'), $slipFileName);
+        }
+
+        $payment->update([
+            'amount'                => (float) $request->amount,
+            'payment_date'          => $request->payment_date,
+            'payment_method'        => $paymentMethod,
+            'account_id'            => $accountId,
+            'bank_name'             => $bankName,
+            'account_number'        => $accountNumber,
+            'transaction_reference' => $request->transaction_reference,
+            'slip_image'            => $slipFileName,
+            'notes'                 => $request->notes,
+            'status'                => 'pending',
+            'rejection_reason'      => null,
+        ]);
+
+        return redirect()->route('distributor.payments.index')
+            ->with('success', "Payment #{$payment->payment_no} updated successfully!");
+    }
+
+    /**
+     * Delete an unapproved payment submission.
+     * Approved payments CANNOT be deleted.
+     */
+    public function destroyPayment($id)
+    {
+        $distributor = $this->getDistributor();
+        $payment = DistributorPayment::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        if ($payment->status === 'approved') {
+            return back()->with('error', 'Approved payments cannot be deleted as they have already been credited to ledger.');
+        }
+
+        if ($payment->slip_image && file_exists(public_path('uploads/distributor_payments/' . $payment->slip_image))) {
+            @unlink(public_path('uploads/distributor_payments/' . $payment->slip_image));
+        }
+
+        $paymentNo = $payment->payment_no;
+        $payment->delete();
+
+        return redirect()->route('distributor.payments.index')
+            ->with('success', "Payment submission #{$paymentNo} has been deleted successfully.");
+    }
+
+    /**
+     * Chart of Accounts for Distributor.
+     */
+    public function accountsList()
+    {
+        $distributor = $this->getDistributor();
+
+        $accounts = Account::with('head')
+            ->where('distributor_id', $distributor->id)
+            ->latest('id')
+            ->get();
+
+        $heads = AccountHead::where('status', 1)->get();
+
+        $stats = [
+            'total_accounts'  => $accounts->count(),
+            'bank_accounts'   => $accounts->filter(fn($a) => str_contains(strtolower($a->head->name ?? ''), 'bank'))->count(),
+            'cash_accounts'   => $accounts->filter(fn($a) => !str_contains(strtolower($a->head->name ?? ''), 'bank'))->count(),
+            'opening_balance' => $accounts->sum('opening_balance'),
+        ];
+
+        return view('distributor_panel.accounts.index', compact('distributor', 'accounts', 'heads', 'stats'));
+    }
+
+    /**
+     * Store new or update existing account for distributor.
+     */
+    public function storeAccount(Request $request)
+    {
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'head_id'         => 'required|exists:account_heads,id',
+            'title'           => 'required|string|max:150',
+            'account_code'    => 'nullable|string|max:50',
+            'account_number'  => 'nullable|string|max:100',
+            'bank_name'       => 'nullable|string|max:100',
+            'branch_name'     => 'nullable|string|max:100',
+            'opening_balance' => 'nullable|numeric',
+        ]);
+
+        $status = $request->has('status') ? 1 : 0;
+        $accCode = $request->account_code ?: ('D' . $distributor->id . '-ACC-' . rand(1000, 9999));
+
+        if ($request->account_id) {
+            $account = Account::where('distributor_id', $distributor->id)->findOrFail($request->account_id);
+            $account->update([
+                'head_id'         => $request->head_id,
+                'account_code'    => $request->account_code ?: $account->account_code,
+                'title'           => $request->title,
+                'account_number'  => $request->account_number,
+                'bank_name'       => $request->bank_name,
+                'branch_name'     => $request->branch_name,
+                'opening_balance' => $request->opening_balance ?? 0,
+                'status'          => $status,
+            ]);
+
+            return redirect()->route('distributor.accounts.index')->with('success', 'Account updated successfully.');
+        }
+
+        Account::create([
+            'distributor_id'  => $distributor->id,
+            'head_id'         => $request->head_id,
+            'account_code'    => $accCode,
+            'title'           => $request->title,
+            'account_number'  => $request->account_number,
+            'bank_name'       => $request->bank_name,
+            'branch_name'     => $request->branch_name,
+            'type'            => 'Debit',
+            'opening_balance' => $request->opening_balance ?? 0,
+            'status'          => 1,
+        ]);
+
+        return redirect()->route('distributor.accounts.index')->with('success', 'Account added successfully to your Chart of Accounts.');
+    }
+
+    /**
+     * Quick store account via AJAX from the secondary POS sale screen.
+     */
+    public function storeQuickAccount(Request $request)
+    {
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'title'           => 'required|string|max:150',
+            'head_id'         => 'nullable|exists:account_heads,id',
+            'account_number'  => 'nullable|string|max:100',
+            'bank_name'       => 'nullable|string|max:100',
+            'opening_balance' => 'nullable|numeric',
+        ]);
+
+        $headId = $request->head_id;
+        if (!$headId) {
+            $bankHead = AccountHead::where('name', 'like', '%Bank%')->first();
+            $headId = $bankHead ? $bankHead->id : (AccountHead::first()->id ?? 1);
+        }
+
+        $cleanSlug = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $request->title), 0, 6));
+        $accCode = 'D' . $distributor->id . '-' . ($cleanSlug ?: 'ACC') . '-' . rand(100, 999);
+
+        $account = Account::create([
+            'distributor_id'  => $distributor->id,
+            'head_id'         => $headId,
+            'account_code'    => $accCode,
+            'title'           => $request->title,
+            'account_number'  => $request->account_number,
+            'bank_name'       => $request->bank_name ?? $request->title,
+            'type'            => 'Debit',
+            'opening_balance' => $request->opening_balance ?? 0,
+            'status'          => 1,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Account created successfully!',
+            'account' => [
+                'id'             => $account->id,
+                'title'          => $account->title,
+                'account_code'   => $account->account_code,
+                'account_number' => $account->account_number,
+            ],
+        ]);
+    }
+
+    /**
+     * Delete account owned by distributor.
+     */
+    public function destroyAccount($id)
+    {
+        $distributor = $this->getDistributor();
+        $account = Account::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        $usedInSales = DistributorSale::where('account_id', $account->id)->exists();
+        if ($usedInSales) {
+            return back()->with('error', 'Cannot delete this account because secondary sales have been recorded against it.');
+        }
+
+        $account->delete();
+        return redirect()->route('distributor.accounts.index')->with('success', 'Account deleted successfully.');
+    }
+
 }

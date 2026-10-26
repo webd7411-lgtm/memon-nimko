@@ -11,11 +11,11 @@ class AccountsHeadController extends Controller
 {
     public function index()
     {
-        $accounts = Account::with('head')->get();
-        // dd( $accounts->toArray());
+        $accounts = Account::whereNull('distributor_id')->with('head')->get();
         $heads = AccountHead::all();
         return view('admin_panel.chart_of_accounts', compact('accounts', 'heads'));
     }
+
     public function storeHead(Request $request)
     {
         $request->validate(['name' => 'required|string|max:100']);
@@ -36,7 +36,6 @@ class AccountsHeadController extends Controller
 
         // 🔥 UPDATE
         if ($request->account_id) {
-
             $account = Account::findOrFail($request->account_id);
 
             $account->update([
@@ -51,11 +50,8 @@ class AccountsHeadController extends Controller
         }
 
         // 🔥 CREATE
-        $request->validate([
-            'account_code' => 'unique:accounts,account_code',
-        ]);
-
         Account::create([
+            'distributor_id'  => null,
             'head_id'         => $request->head_id,
             'account_code'    => $request->account_code,
             'title'           => $request->title,

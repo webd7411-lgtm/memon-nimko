@@ -26,6 +26,11 @@ class DistributorSale extends Model
         return $this->hasMany(DistributorSaleItem::class);
     }
 
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
+
     public static function generateInvoiceNo()
     {
         $last = self::latest('id')->first();

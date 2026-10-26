@@ -96,14 +96,15 @@ class SaleController extends Controller
                 $orderColumnIndex = $request->order[0]['column'];
                 $orderDir = $request->order[0]['dir'];
                 
-                // Map column index to database column (adjust as needed)
+                // Map column index to database column (compact 9-column ERP table)
                 $columns = [
                     1 => 'invoice_no',
-                    2 => 'customer',
-                    3 => 'reference',
-                    10 => 'total_bill_amount',
-                    11 => 'created_at',
-                    12 => 'sale_status'
+                    2 => 'created_at',
+                    3 => 'customer',
+                    4 => 'user_id',
+                    5 => 'total_items',
+                    6 => 'total_net',
+                    7 => 'sale_status'
                 ]; 
                 
                 $colName = $columns[$orderColumnIndex] ?? 'id';
@@ -202,52 +203,85 @@ class SaleController extends Controller
                 // Status Badge
                 $statusBadge = '<span class="badge bg-secondary">Unknown</span>';
                 if ((string)$sale->sale_status === '2') {
-                    $statusBadge = '<span class="badge" style="background:#8e44ad; color:#fff;"><i class="bi bi-arrow-repeat me-1"></i>Exchange</span>';
+                    $statusBadge = '<span class="badge badge-erp badge-erp-exchange"><i class="bi bi-arrow-repeat me-1"></i>Exchange</span>';
                 } elseif ((string)$sale->sale_status === '1' || ($sale->returns_count ?? 0) > 0) {
-                    $statusBadge = '<span class="badge bg-danger"><i class="bi bi-arrow-return-left me-1"></i>Return</span>';
+                    $statusBadge = '<span class="badge badge-erp badge-erp-return"><i class="bi bi-arrow-return-left me-1"></i>Return</span>';
                 } else {
-                    $statusBadge = '<span class="badge bg-success"><i class="bi bi-check2 me-1"></i>Sale</span>';
+                    $statusBadge = '<span class="badge badge-erp badge-erp-success"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>';
                 }
 
-                // Action Buttons (Modern 2-Tier: Row 1 = Docs, Row 2 = Operations)
+                // Financial Calculation (Gross, Discount, Net Amount after discount)
+                $gross = (float)($sale->total_bill_amount ?: 0);
+                $extraDisc = (float)($sale->total_extradiscount ?: 0);
+                $lineDiscSum = 0;
+                foreach($discounts as $d) {
+                    $lineDiscSum += (float)trim($d);
+                }
+                $totDisc = $extraDisc > 0 ? $extraDisc : $lineDiscSum;
+                $net = (float)($sale->total_net ?: ($gross - $totDisc));
+
+                // Amount HTML with clear net calculation
+                $amountHtml = '<div class="sl-amt-block">';
+                $amountHtml .= '<div class="sl-amt-net"><span class="curr">PKR</span> ' . $fmt($net) . '</div>';
+                if ($totDisc > 0) {
+                    $amountHtml .= '<div class="sl-amt-breakdown">';
+                    $amountHtml .= '<span class="sub" title="Gross Subtotal">Gross: ' . $fmt($gross) . '</span>';
+                    $amountHtml .= '<span class="disc text-danger fw-bold" title="Total Discount">-' . $fmt($totDisc) . '</span>';
+                    $amountHtml .= '</div>';
+                }
+                $amountHtml .= '</div>';
+
+                // Professional Action Buttons with "View More" (Details) Modal Button
                 $actions = '<div class="sl-actions-wrap">
+                    <button type="button" class="sl-act sl-act-view btn-view-sale" data-id="'.$sale->id.'" title="View Invoice Details">
+                        <i class="bi bi-eye-fill"></i><span>Details</span>
+                    </button>
                     <a href="'.route('sales.recepit', $sale->id).'" class="sl-act sl-act-print" target="_blank" title="Thermal Print Bill / Slip">
-                        <i class="bi bi-printer-fill"></i><span>Bill</span>
+                        <i class="bi bi-printer-fill"></i><span>Slip</span>
                     </a>
                     <a href="'.route('sales.invoice', $sale->id).'" class="sl-act sl-act-inv" target="_blank" title="Sale Invoice (A4)">
-                        <i class="bi bi-file-earmark-text-fill"></i><span>Invoice</span>
-                    </a>
-                    <a href="'.route('sales.dc', $sale->id).'" class="sl-act sl-act-dc" target="_blank" title="Delivery Challan">
-                        <i class="bi bi-truck"></i><span>DC</span>
+                        <i class="bi bi-file-earmark-text-fill"></i><span>A4</span>
                     </a>
                     <a href="'.route('sales.edit', $sale->id).'" class="sl-act sl-act-edit" title="Edit Sale">
-                        <i class="bi bi-pencil-square"></i><span>Edit</span>
+                        <i class="bi bi-pencil-square"></i>
                     </a>
-                    <a href="'.route('sale.add', ['exchange_invoice' => $sale->invoice_no]).'" class="sl-act sl-act-exchange" title="Exchange Items">
-                        <i class="bi bi-arrow-repeat"></i><span>Exchange</span>
-                    </a>
-                    <a href="'.route('sales.return.create', $sale->id).'" class="sl-act sl-act-return" title="Sale Return">
-                        <i class="bi bi-arrow-return-left"></i><span>Return</span>
-                    </a>
+                    <div class="dropdown sl-dropdown">
+                        <button type="button" class="sl-act sl-act-more" data-bs-toggle="dropdown" aria-expanded="false" title="More Operations">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 sl-dropdown-menu">
+                            <li><a class="dropdown-item" href="'.route('sales.dc', $sale->id).'" target="_blank"><i class="bi bi-truck text-emerald me-2"></i>Delivery Challan (DC)</a></li>
+                            <li><a class="dropdown-item" href="'.route('sale.add', ['exchange_invoice' => $sale->invoice_no]).'"><i class="bi bi-arrow-repeat text-purple me-2"></i>Exchange Items</a></li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li><a class="dropdown-item text-danger" href="'.route('sales.return.create', $sale->id).'"><i class="bi bi-arrow-return-left me-2"></i>Sale Return</a></li>
+                        </ul>
+                    </div>
                 </div>';
                 
                 // Date formatting
-                $date = \Carbon\Carbon::parse($sale->created_at)->format('d-m-Y h:i A');
+                $dateObj = \Carbon\Carbon::parse($sale->created_at);
+                $date = '<div class="sl-date-wrap"><span class="sl-d">' . $dateObj->format('d M Y') . '</span><span class="sl-t">' . $dateObj->format('h:i A') . '</span></div>';
+
+                // Compact Total Items badge (full product list is in View Details modal)
+                $prodIds = array_filter(array_map('trim', explode(',', $sale->product ?? '')));
+                $itemCount = count($prodIds);
+                $totalQty = array_sum(array_map('floatval', explode(',', $sale->qty ?? '')));
+                $fmtQty = ($totalQty == (int)$totalQty) ? number_format($totalQty, 0) : number_format($totalQty, 2);
+
+                $itemsBadge = '<div class="sl-items-badge" title="' . $itemCount . ' Products (' . $fmtQty . ' Qty)">'
+                    . '<span class="badge bg-light text-primary border px-2 py-1"><i class="bi bi-box-seam me-1"></i>' . $itemCount . ' ' . ($itemCount === 1 ? 'Item' : 'Items') . ' (' . $fmtQty . ')</span>'
+                    . '</div>';
 
                 $data[] = [
-                    $skip + $index + 1, // S.No
-                    $sale->user ? $sale->user->name : 'N/A', // User Name
-                    $sale->invoice_no,
-                    $sale->customer_relation->customer_name ?? 'Walk-in Customer',
-                    $productHtml,
-                    $qtyHtml,
-                    $priceHtml,
-                    $discHtml,
-                    $totalHtml,
-                    '<span class="fw-bold fs-5">' . $fmt($sale->total_bill_amount) . '</span>', // Bold Total Amount
-                    $date,
-                    $statusBadge,
-                    $actions
+                    $skip + $index + 1, // 0: S.No
+                    '<span class="fw-bold font-monospace text-dark">' . $sale->invoice_no . '</span>', // 1: Invoice No
+                    $date, // 2: Date | Time
+                    $sale->customer_display_name, // 3: Customer
+                    $sale->user ? $sale->user->name : 'N/A', // 4: Cashier / User
+                    $itemsBadge, // 5: Total Items & Qty
+                    $amountHtml, // 6: Net Amount with Gross and Discount calculation
+                    $statusBadge, // 7: Status
+                    $actions // 8: Actions
                 ];
             }
 
@@ -270,7 +304,8 @@ class SaleController extends Controller
         if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin')) {
             $todaySalesQuery->where('user_id', auth()->id());
         }
-        $todaySales = $todaySalesQuery->sum('total_bill_amount');
+        $todaySales = (clone $todaySalesQuery)->sum('total_bill_amount');
+        $todayNetSales = (clone $todaySalesQuery)->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(total_net, total_bill_amount - COALESCE(total_extradiscount, 0))'));
 
         // Calculate today's expenses
         $todayExpenseQuery = \App\Models\ExpenseVoucher::query()->whereDate('date', date('Y-m-d'));
@@ -282,12 +317,33 @@ class SaleController extends Controller
         }
         $todayExpense = $todayExpenseQuery->sum('total_amount');
 
-        $netCash = $openingBalance + $todaySales - $todayExpense;
+        $netCash = $openingBalance + $todayNetSales - $todayExpense;
 
-        return view('admin_panel.sale.index', compact('openingBalance', 'todaySales', 'todayExpense', 'netCash'));
+        // KPI Summary Stats for ERP Header
+        $statsQuery = Sale::query();
+        if (!is_all_branches()) {
+            $statsQuery->where('branch_id', active_branch_id());
+        }
+        if (!auth()->user()->hasRole('Admin')) {
+            $statsQuery->where('user_id', auth()->id());
+        }
+        $totalSalesCount = (clone $statsQuery)->count();
+        $totalGrossSales = (clone $statsQuery)->sum('total_bill_amount');
+        $totalDiscountGiven = (clone $statsQuery)->sum('total_extradiscount');
+        $totalNetSales = (clone $statsQuery)->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(total_net, total_bill_amount - COALESCE(total_extradiscount, 0))'));
+
+        return view('admin_panel.sale.index', compact(
+            'openingBalance', 'todaySales', 'todayNetSales', 'todayExpense', 'netCash',
+            'totalSalesCount', 'totalGrossSales', 'totalDiscountGiven', 'totalNetSales'
+        ));
     }
 
     public function addsale()
+    {
+        return $this->saleScreen();
+    }
+
+    public function posSale()
     {
         $customerQuery = Customer::where('status', '!=', 'inactive');
         if (!is_all_branches()) {
@@ -298,6 +354,226 @@ class SaleController extends Controller
         $tables = \App\Models\Table::orderBy('table_name')->get();
         $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
         return view('admin_panel.sale.add_sale', compact('Customer', 'categories', 'tables', 'bankAccounts'));
+    }
+
+    public function saleScreen()
+    {
+        $branchId = active_branch_id();
+        $customerQuery = Customer::where('status', '!=', 'inactive');
+        if (!is_all_branches()) {
+            $customerQuery->where('branch_id', $branchId);
+        }
+        $customers = $customerQuery->orderBy('customer_name')->get();
+
+        // 🔹 Fetch Active Distributors
+        $distributors = \App\Models\Distributor::where('status', 'active')
+            ->where(function($q) {
+                $q->where('type', 'distributor')
+                  ->orWhereNull('type');
+            })
+            ->where('name', 'not like', '%booker%')
+            ->orderBy('name')
+            ->get();
+
+        // 🔹 Fetch Active Order Bookers (from distributors table with type=order_booker or name like booker)
+        $orderBookers = \App\Models\Distributor::where('status', 'active')
+            ->where(function($q) {
+                $q->where('type', 'order_booker')
+                  ->orWhere('name', 'like', '%booker%');
+            })
+            ->orderBy('name')
+            ->get();
+
+        // 🔹 Fetch Sales Officers (Field Order Bookers)
+        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
+
+        // 🔹 Fetch Market Retail Customers (distributor_customers)
+        $distributorCustomers = \App\Models\DistributorCustomer::where('status', 'active')
+            ->orderBy('shop_name')
+            ->get();
+
+        $categories = \App\Models\Category::with(['products' => function($q) use ($branchId) {
+            $q->with(['brand', 'variants', 'activeDiscount'])
+              ->withSum(['stocks as total_stock' => function($sq) use ($branchId) {
+                  $sq->where('branch_id', $branchId)->whereNull('warehouse_id');
+              }], 'qty');
+        }])->orderBy('name')->get();
+
+        // ⚡ Fast In-Memory Product Catalog for 0ms Instant Client-Side Search & Scan
+        $allProducts = \App\Models\Product::with(['brand', 'variants', 'activeDiscount'])
+            ->withSum(['stocks as total_stock' => function($sq) use ($branchId) {
+                $sq->where('branch_id', $branchId)->whereNull('warehouse_id');
+            }], 'qty')
+            ->orderBy('item_name')
+            ->get();
+
+        $stockMap = \App\Models\Stock::where('branch_id', $branchId)
+            ->whereNull('warehouse_id')
+            ->get();
+
+        $productsCatalog = [];
+
+        foreach ($allProducts as $p) {
+            $isKg = strtolower($p->unit_type ?? '') === 'kg';
+            if ($p->variants && $p->variants->count() > 0) {
+                foreach ($p->variants as $v) {
+                    $vStockRow = $stockMap->first(function($s) use ($p, $v) {
+                        return $s->product_id == $p->id && $s->variant_id == $v->id;
+                    });
+                    $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+                    if ($isKg) {
+                        $stk = (float) $stockMap->where('product_id', $p->id)->sum('qty');
+                    }
+
+                    $sizeLabel = $v->size_label ?: $v->variant_name ?: '-';
+                    $fullName = $p->item_name . ($sizeLabel !== '-' ? ' (' . $sizeLabel . ')' : '');
+
+                    $productsCatalog[] = [
+                        'id'               => $p->id,
+                        'product_id'       => $p->id,
+                        'variant_id'       => $v->id,
+                        'item_name'        => $fullName,
+                        'base_name'        => $p->item_name,
+                        'size'             => $sizeLabel,
+                        'color'            => $p->color ?: '-',
+                        'unit_type'        => $p->unit_type ?: 'piece',
+                        'item_code'        => $p->item_code,
+                        'barcode'          => $v->barcode_path ?: $p->barcode_path ?: $p->item_code,
+                        'brand'            => $p->brand?->name,
+                        'price'            => (float)($v->price ?: $p->price),
+                        'original_price'   => (float)($v->price ?: $p->price),
+                        'stock'            => $stk,
+                        'category_id'      => $p->category_id,
+                    ];
+                }
+            } else {
+                $price = (float) $p->price;
+                if ($p->activeDiscount) {
+                    $price = (float) $p->activeDiscount->final_price;
+                }
+                $stk = (float) ($p->total_stock ?? 0);
+
+                $productsCatalog[] = [
+                    'id'               => $p->id,
+                    'product_id'       => $p->id,
+                    'variant_id'       => null,
+                    'item_name'        => $p->item_name,
+                    'base_name'        => $p->item_name,
+                    'size'             => '-',
+                    'color'            => $p->color ?: '-',
+                    'unit_type'        => $p->unit_type ?: 'piece',
+                    'item_code'        => $p->item_code,
+                    'barcode'          => $p->barcode_path ?: $p->item_code,
+                    'brand'            => $p->brand?->name,
+                    'price'            => $price,
+                    'original_price'   => (float)$p->price,
+                    'stock'            => $stk,
+                    'category_id'      => $p->category_id,
+                ];
+            }
+        }
+
+        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $tables = \App\Models\Table::orderBy('table_name')->get();
+
+        return view('admin_panel.sale.sale_screen', compact(
+            'customers',
+            'distributors',
+            'orderBookers',
+            'salesOfficers',
+            'distributorCustomers',
+            'categories',
+            'productsCatalog',
+            'bankAccounts',
+            'tables',
+            'branchId'
+        ));
+    }
+
+    public function quickStoreProduct(Request $request)
+    {
+        $request->validate([
+            'item_name'   => 'required|string|max:255',
+            'price'       => 'required|numeric|min:0',
+            'category_id' => 'nullable|integer',
+            'barcode'     => 'nullable|string|max:100',
+            'stock'       => 'nullable|numeric|min:0',
+            'unit_type'   => 'nullable|string|in:piece,kg,pound',
+        ]);
+
+        $branchId = active_branch_id();
+        
+        $lastProduct = Product::orderBy('id', 'desc')->first();
+        $nextId = $lastProduct ? ($lastProduct->id + 1) : 1;
+        $nextCode = 'ITEM-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
+        $barcode = trim($request->barcode ?? '');
+        if (empty($barcode)) {
+            $barcode = str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+        }
+
+        DB::beginTransaction();
+        try {
+            $product = Product::create([
+                'creater_id'       => auth()->id() ?? 1,
+                'category_id'      => $request->category_id ?: null,
+                'item_code'        => $nextCode,
+                'barcode_path'     => $barcode,
+                'item_name'        => $request->item_name,
+                'unit_type'        => $request->unit_type ?: 'piece',
+                'price'            => $request->price,
+                'initial_stock'    => $request->stock ?? 0,
+                'alert_quantity'   => 5,
+            ]);
+
+            $variant = ProductVariant::create([
+                'product_id'     => $product->id,
+                'barcode_path'   => $barcode,
+                'variant_name'   => 'Standard',
+                'size_label'     => 'Standard',
+                'size_value'     => 1,
+                'size_unit'      => $request->unit_type ?: 'piece',
+                'price'          => $request->price,
+                'cost_price'     => 0,
+                'stock_qty'      => $request->stock ?? 0,
+                'is_default'     => true,
+                'is_active'      => true,
+            ]);
+
+            $stockQty = floatval($request->stock ?? 0);
+            $stock = Stock::create([
+                'branch_id'    => $branchId,
+                'warehouse_id' => null,
+                'product_id'   => $product->id,
+                'variant_id'   => $variant->id,
+                'qty'          => $stockQty,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product created successfully!',
+                'product' => [
+                    'id'           => $product->id,
+                    'variant_id'   => $variant->id,
+                    'name'         => $product->item_name,
+                    'code'         => $product->item_code,
+                    'barcode'      => $barcode,
+                    'price'        => (float) $product->price,
+                    'stock'        => $stockQty,
+                    'unit_type'    => $product->unit_type,
+                    'size'         => 'Standard',
+                    'color'        => '-',
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create product: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getPosProducts(Request $request)
@@ -508,7 +784,7 @@ class SaleController extends Controller
             'success'      => true,
             'sale_id'      => $sale->id,
             'invoice_no'   => $sale->invoice_no,
-            'customer'     => $sale->customer_relation->customer_name ?? 'Walk-in Customer',
+            'customer'     => $sale->customer_display_name,
             'date'         => \Carbon\Carbon::parse($sale->created_at)->format('d-m-Y h:i A'),
             'items'        => $items,
         ]);
@@ -804,65 +1080,104 @@ class SaleController extends Controller
     public function searchpname(Request $request)
     {
         $q = trim($request->q ?? '');
+        $branchId = active_branch_id();
 
         // 1. Search products
         $pQuery = Product::with(['brand', 'activeDiscount', 'variants'])
             ->orderBy('item_name');
 
         if ($q !== '') {
-            $pQuery->where(function($query) use ($q) {
+            $keywords = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY);
+            $pQuery->where(function($query) use ($keywords, $q) {
                 $query->where('item_name', 'like', "%{$q}%")
-                      ->orWhere('item_code', 'like', "{$q}%")
-                      ->orWhere('barcode_path', 'like', "{$q}%");
+                      ->orWhere('item_code', 'like', "%{$q}%")
+                      ->orWhere('barcode_path', 'like', "%{$q}%");
+
+                foreach ($keywords as $kw) {
+                    $query->orWhere('item_name', 'like', "%{$kw}%")
+                          ->orWhere('item_code', 'like', "%{$kw}%")
+                          ->orWhere('barcode_path', 'like', "%{$kw}%");
+                }
             });
         }
 
-        $products = $pQuery->limit(30)->get();
+        $products = $pQuery->limit(40)->get();
 
-        // 2. Search variants directly for codes
+        // 2. Search variants directly
         $variantSearchResults = $q !== ''
             ? \App\Models\ProductVariant::with('product.brand')
-                ->where('variant_name', 'like', "%{$q}%")
-                ->limit(20)
+                ->where(function($query) use ($q) {
+                    $query->where('variant_name', 'like', "%{$q}%")
+                          ->orWhere('barcode_path', 'like', "%{$q}%")
+                          ->orWhere('size_label', 'like', "%{$q}%");
+                })
+                ->limit(30)
                 ->get()
             : collect();
 
         $results = collect();
 
+        // Pre-fetch stocks for found product IDs for instant speed
+        $prodIds = $products->pluck('id')->merge($variantSearchResults->pluck('product_id'))->unique()->filter();
+        $stockMap = \App\Models\Stock::whereIn('product_id', $prodIds)
+            ->where('branch_id', $branchId)
+            ->whereNull('warehouse_id')
+            ->get();
+
         // Handle products
         foreach ($products as $p) {
-            if ($p->variants->count() > 0) {
-                // Return each variant if they exist
+            $isKg = strtolower($p->unit_type ?? '') === 'kg';
+            if ($p->variants && $p->variants->count() > 0) {
                 foreach ($p->variants as $v) {
+                    $vStockRow = $stockMap->first(function($s) use ($p, $v) {
+                        return $s->product_id == $p->id && $s->variant_id == $v->id;
+                    });
+                    $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+                    if ($isKg) {
+                        $stk = (float) $stockMap->where('product_id', $p->id)->sum('qty');
+                    }
+
                     $results->push([
                         'id'               => $p->id,
-                        'variant_id'       => $v->id, // Mark as variant
+                        'variant_id'       => $v->id,
                         'item_name'        => $p->item_name . ' (' . ($v->size_label ?: $v->variant_name) . ')',
+                        'base_name'        => $p->item_name,
+                        'size'             => $v->size_label ?: $v->variant_name ?: '-',
+                        'color'            => $p->color ?: '-',
+                        'unit_type'        => $p->unit_type ?: 'piece',
                         'item_code'        => $p->item_code,
+                        'barcode'          => $v->barcode_path ?: $p->barcode_path ?: $p->item_code,
                         'brand'            => $p->brand?->name,
                         'unit_id'          => $p->unit_id,
                         'note'             => $p->note,
                         'wholesale_price'  => $v->wholesale_price ?: $p->wholesale_price,
-                        'price'            => $v->price ?: $p->price,
+                        'price'            => (float)($v->price ?: $p->price),
                         'cost_price'       => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
                         'purchase_price'   => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
-                        'original_price'   => $v->price ?: $p->price,
+                        'original_price'   => (float)($v->price ?: $p->price),
+                        'stock'            => $stk,
                         'discount_percent' => 0,
                         'discount_amount'  => 0,
                         'has_discount'     => false,
                     ]);
                 }
             } else {
-                // No variants, return base product
                 $price = (float) $p->price;
                 if ($p->activeDiscount) {
                     $price = (float) $p->activeDiscount->final_price;
                 }
+                $stk = (float) $stockMap->where('product_id', $p->id)->sum('qty');
+
                 $results->push([
                     'id'               => $p->id,
                     'variant_id'       => null,
                     'item_name'        => $p->item_name,
+                    'base_name'        => $p->item_name,
+                    'size'             => '-',
+                    'color'            => $p->color ?: '-',
+                    'unit_type'        => $p->unit_type ?: 'piece',
                     'item_code'        => $p->item_code,
+                    'barcode'          => $p->barcode_path ?: $p->item_code,
                     'brand'            => $p->brand?->name,
                     'unit_id'          => $p->unit_id,
                     'note'             => $p->note,
@@ -870,7 +1185,8 @@ class SaleController extends Controller
                     'price'            => $price,
                     'cost_price'       => (float)($p->cost_price ?? 0),
                     'purchase_price'   => (float)($p->cost_price ?? 0),
-                    'original_price'   => $p->price,
+                    'original_price'   => (float)$p->price,
+                    'stock'            => $stk,
                     'discount_percent' => $p->activeDiscount?->discount_percentage ?? 0,
                     'discount_amount'  => $p->activeDiscount?->total_discount ?? 0,
                     'has_discount'     => $p->activeDiscount ? true : false,
@@ -880,23 +1196,35 @@ class SaleController extends Controller
 
         // Handle variants found directly
         foreach ($variantSearchResults as $v) {
-            // Avoid duplicate if already added via product loop
             if ($results->where('variant_id', $v->id)->count() > 0) continue;
 
             $p = $v->product;
+            if (!$p) continue;
+
+            $vStockRow = $stockMap->first(function($s) use ($p, $v) {
+                return $s->product_id == $p->id && $s->variant_id == $v->id;
+            });
+            $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+
             $results->push([
                 'id'               => $p->id,
                 'variant_id'       => $v->id,
                 'item_name'        => $p->item_name . ' (' . ($v->size_label ?: $v->variant_name) . ')',
+                'base_name'        => $p->item_name,
+                'size'             => $v->size_label ?: $v->variant_name ?: '-',
+                'color'            => $p->color ?: '-',
+                'unit_type'        => $p->unit_type ?: 'piece',
                 'item_code'        => $p->item_code,
+                'barcode'          => $v->barcode_path ?: $p->barcode_path ?: $p->item_code,
                 'brand'            => $p->brand?->name,
                 'unit_id'          => $p->unit_id,
                 'note'             => $p->note,
                 'wholesale_price'  => $v->wholesale_price ?: $p->wholesale_price,
-                'price'            => $v->price ?: $p->price,
+                'price'            => (float)($v->price ?: $p->price),
                 'cost_price'       => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
                 'purchase_price'   => (float)($v->cost_price ?: ($p->cost_price ?? 0)),
-                'original_price'   => $v->price ?: $p->price,
+                'original_price'   => (float)($v->price ?: $p->price),
+                'stock'            => $stk,
                 'discount_percent' => 0,
                 'discount_amount'  => 0,
                 'has_discount'     => false,
@@ -1094,6 +1422,12 @@ class SaleController extends Controller
         ]);
 
         if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first()
+                ], 422);
+            }
             return back()->withInput()->withErrors($validator);
         }
 
@@ -1113,6 +1447,12 @@ class SaleController extends Controller
         }
 
         if (! $hasRow) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please add at least one product with quantity and price.'
+                ], 422);
+            }
             return back()->withInput()->with('error', 'Please add at least one product with quantity and price.');
         }
 
@@ -1380,71 +1720,137 @@ class SaleController extends Controller
             // Ledger update (only for confirmed sales or direct sales)
             if ($action === 'sale') {
                 $customer_id = $request->customer;
-                if ($customer_id !== 'Walk-in Customer') {
+                if ($customer_id !== 'Walk-in Customer' && !empty($customer_id)) {
                     $net = floatval($request->total_net ?? 0);
                     $paidAmount = floatval($request->cash ?? 0) + floatval($request->card ?? 0);
 
-                    // Update customer ledger with full sale amount (debit/receivable)
-                    $ledger = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
-                    if ($ledger) {
-                        $ledger->previous_balance = $ledger->closing_balance;
-                        $ledger->closing_balance += $net;
-                        $ledger->save();
-                    } else {
-                        \App\Models\CustomerLedger::create([
-                            'customer_id'      => $customer_id,
-                            'admin_or_user_id' => auth()->id(),
-                            'previous_balance' => 0,
-                            'closing_balance'  => $net,
-                            'opening_balance'  => $net,
-                        ]);
-                    }
+                    if (str_starts_with($customer_id, 'dist_') || str_starts_with($customer_id, 'booker_')) {
+                        // 🚚 DISTRIBUTOR / ORDER BOOKER LEDGER
+                        $distId = (int) str_replace(['dist_', 'booker_'], '', $customer_id);
+                        $distributor = \App\Models\Distributor::find($distId);
+                        if ($distributor) {
+                            $oldBalance = (float) $distributor->current_balance;
+                            $balanceChange = $net - $paidAmount;
+                            $newBalance = $oldBalance + $balanceChange;
 
-                    // If partial payment (udhar), also record what was paid in customer_payments
-                    // so that the closing balance reduces by amount paid
-                    if ($paidAmount > 0 && $paidAmount < $net) {
-                        $lastCp = DB::table('customer_payments')->latest('id')->first();
-                        $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
-                        DB::table('customer_payments')->insert([
-                            'received_no'      => $nextNo,
-                            'customer_id'      => $customer_id,
-                            'admin_or_user_id' => auth()->id(),
-                            'payment_date'     => now()->toDateString(),
-                            'amount'           => $paidAmount,
-                            'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
-                            'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
-                            'branch_id'        => active_branch_id(),
-                            'created_at'       => now(),
-                            'updated_at'       => now(),
-                        ]);
-                        // Reduce ledger by what was paid
-                        $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
-                        if ($ledger2) {
-                            $ledger2->previous_balance = $ledger2->closing_balance;
-                            $ledger2->closing_balance -= $paidAmount;
-                            $ledger2->save();
+                            \App\Models\DistributorLedger::create([
+                                'distributor_id' => $distributor->id,
+                                'date'           => $request->sale_date ?: now()->toDateString(),
+                                'type'           => 'sale',
+                                'reference_no'   => $model->invoice_no,
+                                'description'    => "Sale Invoice #{$model->invoice_no}" . ($paidAmount > 0 ? " (Paid: Rs. " . number_format($paidAmount, 2) . ")" : " (Credit)"),
+                                'debit'          => $net,
+                                'credit'         => $paidAmount,
+                                'balance'        => $newBalance,
+                                'created_by'     => auth()->id(),
+                            ]);
+
+                            $distributor->update(['current_balance' => $newBalance]);
+
+                            if ($paidAmount > 0) {
+                                \App\Models\DistributorPayment::create([
+                                    'payment_no'            => \App\Models\DistributorPayment::generatePaymentNo(),
+                                    'distributor_id'        => $distributor->id,
+                                    'amount'                => $paidAmount,
+                                    'payment_date'          => $request->sale_date ?: now()->toDateString(),
+                                    'payment_method'        => ($request->cash > 0 ? 'Cash' : 'Card'),
+                                    'transaction_reference' => $model->invoice_no,
+                                    'notes'                 => "Payment on Sale Invoice #{$model->invoice_no}",
+                                    'status'                => 'approved',
+                                    'approved_by'           => auth()->id(),
+                                    'approved_at'           => now(),
+                                    'created_by'            => auth()->id(),
+                                ]);
+                            }
                         }
-                    } elseif ($paidAmount >= $net && $net > 0) {
-                        // Full payment — record in customer_payments too (reduces balance back to 0)
-                        $lastCp = DB::table('customer_payments')->latest('id')->first();
-                        $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
-                        DB::table('customer_payments')->insert([
-                            'received_no'      => $nextNo,
-                            'customer_id'      => $customer_id,
-                            'admin_or_user_id' => auth()->id(),
-                            'payment_date'     => now()->toDateString(),
-                            'amount'           => $net,
-                            'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
-                            'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
-                            'branch_id'        => active_branch_id(),
-                            'created_at'       => now(),
-                            'updated_at'       => now(),
-                        ]);
-                        $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
-                        if ($ledger2) {
-                            $ledger2->previous_balance = $ledger2->closing_balance;
-                            $ledger2->closing_balance -= $net;
-                            $ledger2->save();
+                    } elseif (str_starts_with($customer_id, 'dc_')) {
+                        // 🏪 DISTRIBUTOR CUSTOMER (RETAIL SHOP) LEDGER
+                        $dcId = (int) str_replace('dc_', '', $customer_id);
+                        $dc = \App\Models\DistributorCustomer::find($dcId);
+                        if ($dc) {
+                            $oldBalance = (float) $dc->current_balance;
+                            $balanceChange = $net - $paidAmount;
+                            $newBalance = $oldBalance + $balanceChange;
+
+                            \App\Models\DistributorCustomerLedger::create([
+                                'distributor_id'          => $dc->distributor_id ?? 1,
+                                'distributor_customer_id' => $dc->id,
+                                'date'                    => $request->sale_date ?: now()->toDateString(),
+                                'type'                    => 'sale',
+                                'reference_no'            => $model->invoice_no,
+                                'description'             => "Direct Sale #{$model->invoice_no}",
+                                'debit'                   => $net,
+                                'credit'                  => $paidAmount,
+                                'balance'                 => $newBalance,
+                            ]);
+
+                            $dc->update(['current_balance' => $newBalance]);
+                        }
+                    } elseif (str_starts_with($customer_id, 'officer_')) {
+                        // Sales Officer - recorded on sale model, no balance table
+                    } else {
+                        // 📋 REGULAR CUSTOMER LEDGER
+                        $ledger = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
+                        if ($ledger) {
+                            $ledger->previous_balance = $ledger->closing_balance;
+                            $ledger->closing_balance += $net;
+                            $ledger->save();
+                        } else {
+                            \App\Models\CustomerLedger::create([
+                                'customer_id'      => $customer_id,
+                                'admin_or_user_id' => auth()->id(),
+                                'previous_balance' => 0,
+                                'closing_balance'  => $net,
+                                'opening_balance'  => $net,
+                            ]);
+                        }
+
+                        // If partial payment (udhar), also record what was paid in customer_payments
+                        // so that the closing balance reduces by amount paid
+                        if ($paidAmount > 0 && $paidAmount < $net) {
+                            $lastCp = DB::table('customer_payments')->latest('id')->first();
+                            $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
+                            DB::table('customer_payments')->insert([
+                                'received_no'      => $nextNo,
+                                'customer_id'      => $customer_id,
+                                'admin_or_user_id' => auth()->id(),
+                                'payment_date'     => now()->toDateString(),
+                                'amount'           => $paidAmount,
+                                'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
+                                'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
+                                'branch_id'        => active_branch_id(),
+                                'created_at'       => now(),
+                                'updated_at'       => now(),
+                            ]);
+                            // Reduce ledger by what was paid
+                            $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
+                            if ($ledger2) {
+                                $ledger2->previous_balance = $ledger2->closing_balance;
+                                $ledger2->closing_balance -= $paidAmount;
+                                $ledger2->save();
+                            }
+                        } elseif ($paidAmount >= $net && $net > 0) {
+                            // Full payment — record in customer_payments too (reduces balance back to 0)
+                            $lastCp = DB::table('customer_payments')->latest('id')->first();
+                            $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
+                            DB::table('customer_payments')->insert([
+                                'received_no'      => $nextNo,
+                                'customer_id'      => $customer_id,
+                                'admin_or_user_id' => auth()->id(),
+                                'payment_date'     => now()->toDateString(),
+                                'amount'           => $net,
+                                'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
+                                'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
+                                'branch_id'        => active_branch_id(),
+                                'created_at'       => now(),
+                                'updated_at'       => now(),
+                            ]);
+                            $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
+                            if ($ledger2) {
+                                $ledger2->previous_balance = $ledger2->closing_balance;
+                                $ledger2->closing_balance -= $net;
+                                $ledger2->save();
+                            }
                         }
                     }
                 }
@@ -1454,10 +1860,22 @@ class SaleController extends Controller
 
             // Redirect logic
             if ($model instanceof \App\Models\Sale) {
-                $returnTo = route('sale.add');
+                $source = $request->input('source');
+                $returnTo = ($source === 'pos') ? route('sale.pos') : route('sale.screen');
                 $printMode = ($action === 'save_token') ? 'token_only' : 'invoice';
                 if ($action === 'sale' && strtolower($model->order_type ?? '') === 'takeaway') {
                     $printMode = 'token_and_invoice';
+                }
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success'     => true,
+                        'message'     => $action === 'save_token' ? 'Order Saved.' : 'Sale completed successfully.',
+                        'sale_id'     => $model->id,
+                        'invoice_no'  => $model->invoice_no,
+                        'invoice_url' => route('sales.invoice', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1&mode=' . $printMode,
+                        'receipt_url' => route('sales.recepit', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1',
+                        'redirect_to' => $returnTo,
+                    ]);
                 }
                 $invoiceUrl = route('sales.invoice', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1&mode=' . $printMode;
                 return redirect()->to($invoiceUrl)->with('success', $action === 'save_token' ? 'Order Saved.' : 'Sale completed.');
@@ -2428,6 +2846,150 @@ class SaleController extends Controller
         ]);
     }
 
+        /**
+     * Return comprehensive sale invoice details for the View More / Details ERP modal
+     */
+    public function saleDetails($id)
+    {
+        $sale = Sale::with(['user', 'branch', 'customer_relation', 'cardAccount'])->findOrFail($id);
+
+        $prodIds = array_filter(array_map('trim', explode(',', $sale->product ?? '')));
+        $variantIds = array_filter(array_map('trim', explode(',', $sale->variant_id ?? '')));
+        $productsMap = \App\Models\Product::with('category_relation')->whereIn('id', $prodIds)->get()->keyBy('id');
+        $variantsMap = \App\Models\ProductVariant::whereIn('id', $variantIds)->get()->keyBy('id');
+
+        $codes     = explode(',', $sale->product_code ?? '');
+        $units     = explode(',', $sale->unit ?? '');
+        $prices    = explode(',', $sale->per_price ?? '');
+        $discounts = explode(',', $sale->per_discount ?? '');
+        $qtys      = explode(',', $sale->qty ?? '');
+        $totals    = explode(',', $sale->per_total ?? '');
+        $rawVariants = explode(',', $sale->variant_id ?? '');
+
+        $items = [];
+        $totalLineDiscount = 0;
+        foreach ($prodIds as $i => $pid) {
+            $qty = (float)($qtys[$i] ?? 0);
+            if ($qty == 0 && empty($pid)) continue;
+
+            $p = $productsMap[$pid] ?? null;
+            $vId = $rawVariants[$i] ?? null;
+            $v = $vId ? ($variantsMap[$vId] ?? null) : null;
+            $price = (float)($prices[$i] ?? 0);
+            $disc = (float)($discounts[$i] ?? 0);
+            $lineTot = (float)($totals[$i] ?? ($qty * $price - $disc));
+            $totalLineDiscount += $disc;
+
+            $pName = $p ? $p->item_name : 'Item #' . $pid;
+            $vLabel = $v ? ($v->size_label ?: $v->variant_name) : '';
+            $unit = $units[$i] ?? ($p ? $p->unit_type : 'Piece');
+            $code = $codes[$i] ?? ($p ? ($p->barcode_path ?: $p->item_code) : '');
+
+            $items[] = [
+                'index' => $i + 1,
+                'item_id' => $pid,
+                'item_name' => $pName,
+                'variant' => $vLabel,
+                'item_code' => $code,
+                'unit' => strtoupper($unit),
+                'qty' => $qty,
+                'price' => $price,
+                'discount' => $disc,
+                'total' => $lineTot,
+            ];
+        }
+
+        $gross = (float)($sale->total_bill_amount ?: 0);
+        $extraDiscount = (float)($sale->total_extradiscount ?: 0);
+        $totalDiscount = $extraDiscount > 0 ? $extraDiscount : $totalLineDiscount;
+        $net = (float)($sale->total_net ?: ($gross - $totalDiscount));
+
+        $customerInfo = [
+            'name' => $sale->customer_display_name,
+            'type' => 'Walk-in Customer',
+            'phone' => '-',
+            'address' => '-',
+        ];
+
+        if ($sale->customer_relation) {
+            $customerInfo['type'] = 'Registered Customer';
+            $customerInfo['phone'] = $sale->customer_relation->mobile_no ?: ($sale->customer_relation->phone ?: '-');
+            $customerInfo['address'] = $sale->customer_relation->address ?: '-';
+        } elseif (str_starts_with((string)$sale->customer, 'dist_')) {
+            $dist = \App\Models\Distributor::find(str_replace('dist_', '', $sale->customer));
+            if ($dist) {
+                $customerInfo['type'] = 'Distributor';
+                $customerInfo['phone'] = $dist->phone ?: '-';
+                $customerInfo['address'] = $dist->address ?: '-';
+            }
+        } elseif (str_starts_with((string)$sale->customer, 'booker_')) {
+            $dist = \App\Models\Distributor::find(str_replace('booker_', '', $sale->customer));
+            if ($dist) {
+                $customerInfo['type'] = 'Order Booker';
+                $customerInfo['phone'] = $dist->phone ?: '-';
+                $customerInfo['address'] = $dist->address ?: '-';
+            }
+        } elseif (str_starts_with((string)$sale->customer, 'officer_')) {
+            $so = \App\Models\SalesOfficer::find(str_replace('officer_', '', $sale->customer));
+            if ($so) {
+                $customerInfo['type'] = 'Sales Officer';
+                $customerInfo['phone'] = $so->phone ?: '-';
+            }
+        } elseif (str_starts_with((string)$sale->customer, 'dc_')) {
+            $dc = \App\Models\DistributorCustomer::find(str_replace('dc_', '', $sale->customer));
+            if ($dc) {
+                $customerInfo['type'] = 'Retail Shop / Outlet';
+                $customerInfo['phone'] = $dc->phone_no ?: '-';
+                $customerInfo['address'] = $dc->address ?: '-';
+            }
+        }
+
+        $statusLabel = 'Completed';
+        $statusBadgeClass = 'badge-erp-success';
+        if ((string)$sale->sale_status === '2') {
+            $statusLabel = 'Exchanged';
+            $statusBadgeClass = 'badge-erp-exchange';
+        } elseif ((string)$sale->sale_status === '1' || ($sale->returns_count ?? 0) > 0) {
+            $statusLabel = 'Returned';
+            $statusBadgeClass = 'badge-erp-return';
+        }
+
+        return response()->json([
+            'success' => true,
+            'sale' => [
+                'id' => $sale->id,
+                'invoice_no' => $sale->invoice_no,
+                'date' => \Carbon\Carbon::parse($sale->created_at)->format('d M Y, h:i A'),
+                'cashier' => $sale->user ? $sale->user->name : 'N/A',
+                'order_type' => $sale->order_type ?: 'Walk-in',
+                'reference' => $sale->reference ?: '-',
+                'status' => $statusLabel,
+                'status_class' => $statusBadgeClass,
+                'customer' => $customerInfo,
+                'branch' => $sale->branch ? $sale->branch->name : 'Main Store',
+                'financial' => [
+                    'gross' => $gross,
+                    'line_discount' => $totalLineDiscount,
+                    'extra_discount' => $extraDiscount,
+                    'total_discount' => $totalDiscount,
+                    'net' => $net,
+                    'cash' => (float)($sale->cash ?: 0),
+                    'card' => (float)($sale->card ?: 0),
+                    'card_account' => $sale->cardAccount ? $sale->cardAccount->title : null,
+                    'change' => (float)($sale->change ?: 0),
+                ],
+                'items' => $items,
+                'urls' => [
+                    'receipt' => route('sales.recepit', $sale->id),
+                    'invoice' => route('sales.invoice', $sale->id),
+                    'dc' => route('sales.dc', $sale->id),
+                    'edit' => route('sales.edit', $sale->id),
+                    'exchange' => route('sale.add', ['exchange_invoice' => $sale->invoice_no]),
+                    'return' => route('sales.return.create', $sale->id),
+                ]
+            ]
+        ]);
+    }
     public function saleinvoice($id)
     {
         $sale = Sale::with(['customer_relation', 'branch'])->findOrFail($id);
@@ -2575,19 +3137,126 @@ class SaleController extends Controller
     public function saleedit($id)
     {
         $sale = Sale::findOrFail($id);
+        $branchId = $sale->branch_id ?? active_branch_id();
 
+        // 1. Fetch Customers
         $customerQuery = Customer::where('status', '!=', 'inactive');
         if (!is_all_branches()) {
-            $branchId = $sale->branch_id ?? active_branch_id();
             $customerQuery->where(function($q) use ($branchId, $sale) {
                 $q->where('branch_id', $branchId);
-                if ($sale->customer) {
+                if ($sale->customer && is_numeric($sale->customer)) {
                     $q->orWhere('id', $sale->customer);
                 }
             });
         }
-        $customers = $customerQuery->get();
+        $customers = $customerQuery->orderBy('customer_name')->get();
 
+        // 2. Fetch Active Distributors
+        $distributors = \App\Models\Distributor::where('status', 'active')
+            ->where(function($q) {
+                $q->where('type', 'distributor')->orWhereNull('type');
+            })
+            ->where('name', 'not like', '%booker%')
+            ->orderBy('name')
+            ->get();
+
+        // 3. Fetch Active Order Bookers
+        $orderBookers = \App\Models\Distributor::where('status', 'active')
+            ->where(function($q) {
+                $q->where('type', 'order_booker')->orWhere('name', 'like', '%booker%');
+            })
+            ->orderBy('name')
+            ->get();
+
+        // 4. Fetch Sales Officers
+        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
+
+        // 5. Fetch Market Retail Customers
+        $distributorCustomers = \App\Models\DistributorCustomer::where('status', 'active')
+            ->orderBy('shop_name')
+            ->get();
+
+        // 6. Categories for quick panel
+        $categories = \App\Models\Category::with(['products' => function($q) use ($branchId) {
+            $q->with(['brand', 'variants', 'activeDiscount'])
+              ->withSum(['stocks as total_stock' => function($sq) use ($branchId) {
+                  $sq->where('branch_id', $branchId)->whereNull('warehouse_id');
+              }], 'qty');
+        }])->orderBy('name')->get();
+
+        // 7. Fast In-Memory Product Catalog for 0ms instant search
+        $allProducts = \App\Models\Product::with(['brand', 'variants', 'activeDiscount'])
+            ->withSum(['stocks as total_stock' => function($sq) use ($branchId) {
+                $sq->where('branch_id', $branchId)->whereNull('warehouse_id');
+            }], 'qty')
+            ->orderBy('item_name')
+            ->get();
+
+        $stockMap = \App\Models\Stock::where('branch_id', $branchId)
+            ->whereNull('warehouse_id')
+            ->get();
+
+        $productsCatalog = [];
+        foreach ($allProducts as $p) {
+            $isKg = strtolower($p->unit_type ?? '') === 'kg';
+            if ($p->variants && $p->variants->count() > 0) {
+                foreach ($p->variants as $v) {
+                    $vStockRow = $stockMap->first(function($s) use ($p, $v) {
+                        return $s->product_id == $p->id && $s->variant_id == $v->id;
+                    });
+                    $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+                    if ($isKg) {
+                        $stk = (float) $stockMap->where('product_id', $p->id)->sum('qty');
+                    }
+                    $sizeLabel = $v->size_label ?: $v->variant_name ?: '-';
+                    $fullName = $p->item_name . ($sizeLabel !== '-' ? ' (' . $sizeLabel . ')' : '');
+
+                    $productsCatalog[] = [
+                        'id'               => $p->id,
+                        'product_id'       => $p->id,
+                        'variant_id'       => $v->id,
+                        'item_name'        => $fullName,
+                        'base_name'        => $p->item_name,
+                        'size'             => $sizeLabel,
+                        'color'            => $p->color ?: '-',
+                        'unit_type'        => $p->unit_type ?: 'piece',
+                        'item_code'        => $p->item_code,
+                        'barcode'          => $v->barcode_path ?: $p->barcode_path ?: $p->item_code,
+                        'brand'            => $p->brand?->name,
+                        'price'            => (float)($v->price ?: $p->price),
+                        'original_price'   => (float)($v->price ?: $p->price),
+                        'stock'            => $stk,
+                        'category_id'      => $p->category_id,
+                    ];
+                }
+            } else {
+                $price = (float) $p->price;
+                if ($p->activeDiscount) {
+                    $price = (float) $p->activeDiscount->final_price;
+                }
+                $stk = (float) ($p->total_stock ?? 0);
+
+                $productsCatalog[] = [
+                    'id'               => $p->id,
+                    'product_id'       => $p->id,
+                    'variant_id'       => null,
+                    'item_name'        => $p->item_name,
+                    'base_name'        => $p->item_name,
+                    'size'             => '-',
+                    'color'            => $p->color ?: '-',
+                    'unit_type'        => $p->unit_type ?: 'piece',
+                    'item_code'        => $p->item_code,
+                    'barcode'          => $p->barcode_path ?: $p->item_code,
+                    'brand'            => $p->brand?->name,
+                    'price'            => $price,
+                    'original_price'   => (float)$p->price,
+                    'stock'            => $stk,
+                    'category_id'      => $p->category_id,
+                ];
+            }
+        }
+
+        // 8. Decode Existing Sale Items for the Excel Grid
         $products   = explode(',', $sale->product);
         $codes      = explode(',', $sale->product_code);
         $brands     = explode(',', $sale->brand);
@@ -2598,73 +3267,82 @@ class SaleController extends Controller
         $totals     = explode(',', $sale->per_total);
         $vIds       = explode(',', $sale->variant_id ?? '');
 
-        // Expecting sale->color to be JSON array (each element a JSON-encoded note or plain string)
-        $colors_json = json_decode($sale->color, true);
-        if (!is_array($colors_json)) {
-            $colors_json = [];
-        }
-
         $items = [];
+        foreach ($products as $index => $pidOrName) {
+            $pidOrName = trim($pidOrName);
+            if ($pidOrName === '') continue;
 
-        foreach ($products as $index => $p) {
-            $product = Product::where('item_name', trim($p))
-                ->orWhere('item_code', trim($codes[$index] ?? ''))
-                ->first();
+            $product = is_numeric($pidOrName)
+                ? Product::with('variants')->find($pidOrName)
+                : Product::where('item_name', $pidOrName)->orWhere('item_code', trim($codes[$index] ?? ''))->first();
 
-            // Get note safely:
-            $note_value = '';
-            if (isset($colors_json[$index])) {
-                // If stored as JSON-encoded string, decode; else use directly
-                $maybe = $colors_json[$index];
+            $vId = $vIds[$index] ?? null;
+            $variant = ($vId && $product) ? $product->variants->firstWhere('id', $vId) : null;
+            $sizeLabel = $variant ? ($variant->size_label ?: $variant->variant_name ?: '-') : '-';
+            $pName = $product ? $product->item_name : $pidOrName;
+            $fullName = ($sizeLabel !== '-') ? ($pName . ' (' . $sizeLabel . ')') : $pName;
 
-                if (is_string($maybe)) {
-                    // try json decode in case it's JSON string
-                    $try = json_decode($maybe, true);
-                    if ($try !== null) {
-                        // decoded OK (could be array or string)
-                        if (is_array($try)) {
-                            // join array into newline-separated text
-                            $note_value = implode("\n", $try);
-                        } else {
-                            $note_value = (string)$try;
-                        }
-                    } else {
-                        // plain string note
-                        $note_value = $maybe;
-                    }
-                } elseif (is_array($maybe)) {
-                    // join into text
-                    $note_value = implode("\n", $maybe);
-                } else {
-                    $note_value = (string)$maybe;
+            $pStock = 0;
+            if ($product) {
+                $stockRow = $stockMap->first(function($s) use ($product, $vId) {
+                    return $s->product_id == $product->id && ($vId ? $s->variant_id == $vId : true);
+                });
+                $pStock = $stockRow ? (float)$stockRow->qty : 0;
+            }
+
+            $disc = floatval($discounts[$index] ?? 0);
+            $price = floatval($prices[$index] ?? 0);
+            $qty = floatval($qtys[$index] ?? 1);
+            $lineSubtotal = $price * $qty;
+
+            $discType = 'pkr';
+            $discVal = $disc;
+            if ($lineSubtotal > 0 && $disc > 0 && ($disc / $lineSubtotal <= 1.0)) {
+                $pct = ($disc / $lineSubtotal) * 100;
+                if (abs($pct - round($pct)) < 0.01) {
+                    $discType = 'percent';
+                    $discVal = round($pct);
                 }
             }
 
             $items[] = [
-                'product_id' => $product->id ?? '',
-                'variant_id' => $vIds[$index] ?? '',
-                'item_name'  => $product->item_name ?? $p,
-                'item_code'  => $product->item_code ?? ($codes[$index] ?? ''),
-                'brand'      => $product->brand->name ?? ($brands[$index] ?? ''),
-                'unit'       => $product->unit ?? ($units[$index] ?? ''),
-                'price'      => floatval($prices[$index] ?? 0),
-                'discount'   => floatval($discounts[$index] ?? 0),
-                'qty'        => floatval($qtys[$index] ?? 1),
-                'total'      => floatval($totals[$index] ?? 0),
-                'note'       => $note_value,
+                'id'             => $product->id ?? $pidOrName,
+                'product_id'     => $product->id ?? $pidOrName,
+                'variant_id'     => $vId ?? '',
+                'item_name'      => $fullName,
+                'base_name'      => $pName,
+                'code'           => $codes[$index] ?? ($product->item_code ?? ''),
+                'barcode'        => $variant->barcode_path ?? $product->barcode_path ?? ($codes[$index] ?? ''),
+                'stock'          => $pStock,
+                'qty'            => $qty,
+                'size'           => $sizeLabel,
+                'color'          => '-',
+                'pcs'            => $units[$index] ?? ($product->unit_type ?? 'piece'),
+                'price'          => $price,
+                'original_price' => $price,
+                'disc_val'       => $discVal,
+                'disc_type'      => $discType,
+                'total'          => floatval($totals[$index] ?? ($lineSubtotal - $disc)),
             ];
         }
 
-        $categories = \App\Models\Category::orderBy('name')->get();
+        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
         $tables = \App\Models\Table::orderBy('table_name')->get();
 
-        return view('admin_panel.sale.saleedit', [
-            'sale' => $sale,
-            'Customer' => $customers,
-            'saleItems' => $items,
-            'categories' => $categories,
-            'tables' => $tables,
-        ]);
+        return view('admin_panel.sale.sale_screen', compact(
+            'sale',
+            'items',
+            'customers',
+            'distributors',
+            'orderBookers',
+            'salesOfficers',
+            'distributorCustomers',
+            'categories',
+            'productsCatalog',
+            'bankAccounts',
+            'tables',
+            'branchId'
+        ));
     }
 
     public function updatesale(Request $request, $id)
@@ -2676,7 +3354,7 @@ class SaleController extends Controller
             $variant_ids    = $request->variant_id ?? [];
             $product_names  = $request->product_name ?? [];
             $product_codes  = $request->item_code ?? [];
-            $brands         = $request->brand ?? [];
+            $brands         = $request->brand ?? $request->uom ?? [];
             $units          = $request->unit ?? [];
             $prices         = $request->price ?? [];
             $discounts      = $request->item_disc ?? [];
@@ -2894,36 +3572,93 @@ class SaleController extends Controller
 
             // --- Ledger Update ---
             $customer_id = $request->customer;
+            $new_total = (float)$sale->total_net;
+            $difference = $new_total - $old_total;
 
-            if ($customer_id !== 'Walk-in Customer') { // ✅ Only update ledger for registered customers
-                $ledger = CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
-                $difference = $request->total_net - $old_total;
-
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  += $difference;
-                    $ledger->save();
-                } else {
-                    CustomerLedger::create([
-                        'customer_id'      => $customer_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'previous_balance' => 0,
-                        'closing_balance'  => $request->total_net,
-                        'opening_balance'  => $request->total_net,
-                    ]);
+            if ($customer_id !== 'Walk-in Customer' && !empty($customer_id)) {
+                if (str_starts_with($customer_id, 'dist_') || str_starts_with($customer_id, 'booker_')) {
+                    $distId = (int) str_replace(['dist_', 'booker_'], '', $customer_id);
+                    $distributor = \App\Models\Distributor::find($distId);
+                    if ($distributor) {
+                        $newBalance = (float)$distributor->current_balance + $difference;
+                        \App\Models\DistributorLedger::create([
+                            'distributor_id' => $distributor->id,
+                            'date'           => $request->sale_date ?: now()->toDateString(),
+                            'type'           => 'sale_edit',
+                            'reference_no'   => $sale->invoice_no,
+                            'description'    => "Updated Sale Invoice #{$sale->invoice_no} (Net adjustment: Rs. " . number_format($difference, 2) . ")",
+                            'debit'          => $difference > 0 ? $difference : 0,
+                            'credit'         => $difference < 0 ? abs($difference) : 0,
+                            'balance'        => $newBalance,
+                            'created_by'     => auth()->id(),
+                        ]);
+                        $distributor->update(['current_balance' => $newBalance]);
+                    }
+                } elseif (str_starts_with($customer_id, 'dc_')) {
+                    $dcId = (int) str_replace('dc_', '', $customer_id);
+                    $dc = \App\Models\DistributorCustomer::find($dcId);
+                    if ($dc) {
+                        $newBalance = (float)$dc->current_balance + $difference;
+                        \App\Models\DistributorCustomerLedger::create([
+                            'distributor_id'          => $dc->distributor_id ?? 1,
+                            'distributor_customer_id' => $dc->id,
+                            'date'                    => $request->sale_date ?: now()->toDateString(),
+                            'type'                    => 'sale_edit',
+                            'reference_no'            => $sale->invoice_no,
+                            'description'             => "Updated Sale #{$sale->invoice_no} (Diff: Rs. {$difference})",
+                            'debit'                   => $difference > 0 ? $difference : 0,
+                            'credit'                  => $difference < 0 ? abs($difference) : 0,
+                            'balance'                 => $newBalance,
+                        ]);
+                        $dc->update(['current_balance' => $newBalance]);
+                    }
+                } elseif (!str_starts_with($customer_id, 'officer_')) {
+                    // Regular customer
+                    $ledger = CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
+                    if ($ledger) {
+                        $ledger->previous_balance = $ledger->closing_balance;
+                        $ledger->closing_balance  += $difference;
+                        $ledger->save();
+                    } else {
+                        CustomerLedger::create([
+                            'customer_id'      => $customer_id,
+                            'admin_or_user_id' => auth()->id(),
+                            'previous_balance' => 0,
+                            'closing_balance'  => $new_total,
+                            'opening_balance'  => $new_total,
+                        ]);
+                    }
                 }
             }
 
             DB::commit();
-            $returnTo   = route('sale.add'); // ya route('sale.edit', $sale->id) agar wapas edit chaho
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success'     => true,
+                    'message'     => 'Sale [' . $sale->invoice_no . '] updated successfully.',
+                    'sale_id'     => $sale->id,
+                    'invoice_no'  => $sale->invoice_no,
+                    'invoice_url' => route('sales.invoice', $sale->id) . '?return_to=' . urlencode(route('sale.screen')) . '&autoprint=1&mode=invoice',
+                    'receipt_url' => route('sales.recepit', $sale->id) . '?return_to=' . urlencode(route('sale.screen')) . '&autoprint=1',
+                    'redirect_to' => route('sale.screen'),
+                ]);
+            }
+
+            $returnTo   = route('sale.screen');
             $invoiceUrl = route('sales.invoice', $sale->id)
                 . '?return_to=' . urlencode($returnTo)
                 . '&autoprint=1';
 
-            return redirect()->to($invoiceUrl)
-                ->with('success', 'Sale updated successfully!');
+            return redirect()->to($invoiceUrl)->with('success', 'Sale updated successfully!');
         } catch (\Exception $e) {
             DB::rollback();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error: ' . $e->getMessage()
+                ], 422);
+            }
             return back()->with('error', 'Error: ' . $e->getMessage());
         }
     }

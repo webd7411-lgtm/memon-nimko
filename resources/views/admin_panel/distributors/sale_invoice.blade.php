@@ -67,8 +67,8 @@
     <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 me-2">
         <i class="fas fa-print me-1"></i> Print Invoice / Gatepass
     </button>
-    <a href="{{ route('admin.distributors.direct_sale') }}" class="btn btn-success rounded-pill px-4 me-2">
-        <i class="fas fa-plus me-1"></i> New Sale
+    <a href="{{ url('/sale-screen') }}" class="btn btn-primary rounded-pill px-4 me-2">
+        <i class="fas fa-cash-register me-1"></i> Sale Screen
     </a>
     <a href="{{ route('admin.distributors.sales') }}" class="btn btn-outline-secondary rounded-pill px-3">
         Back to Sales List

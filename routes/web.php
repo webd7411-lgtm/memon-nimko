@@ -270,7 +270,10 @@ Route::middleware('auth')->group(function () {
 
     // Sale Routes
     Route::get('sale', [SaleController::class, 'index'])->name('sale.index')->middleware('permission:Sales');
-    Route::get('sale/create', [SaleController::class, 'addsale'])->name('sale.add');
+    Route::get('sale/pos', [SaleController::class, 'posSale'])->name('sale.pos')->middleware('permission:Sales');
+    Route::get('sale-screen', [SaleController::class, 'saleScreen'])->name('sale.screen')->middleware('permission:Sales');
+    Route::get('sale/create', [SaleController::class, 'saleScreen'])->name('sale.add')->middleware('permission:Sales');
+    Route::post('/sale/quick-product', [SaleController::class, 'quickStoreProduct'])->name('sale.quick_product');
     Route::get('/search-product-name', [SaleController::class, 'searchpname'])->name('search-product-name');
     Route::get('/pos/products', [SaleController::class, 'getPosProducts'])->name('pos.products');
     Route::get('/pos/product-variants/{id}', [SaleController::class, 'getProductVariants'])->name('pos.product.variants');
@@ -284,8 +287,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/sales-return/store', [SaleController::class, 'storeSaleReturn'])->name('sales.return.store');
     Route::get('/sale-returns', [SaleController::class, 'salereturnview'])->name('sale.returns.index')->middleware('permission:Sale Return');
     Route::get('/sales/{id}/invoice', [SaleController::class, 'saleinvoice'])->name('sales.invoice');
+    Route::get('/sales/{id}/details', [SaleController::class, 'saleDetails'])->name('sales.details');
     Route::get('/sales/{id}/edit', [SaleController::class, 'saleedit'])->name('sales.edit');
-    Route::put('/sales/{id}', [SaleController::class, 'updatesale'])->name('sales.update');
+    Route::match(['put', 'post'], '/sales/{id}', [SaleController::class, 'updatesale'])->name('sales.update');
     Route::get('/sales/{id}/dc', [SaleController::class, 'saledc'])->name('sales.dc');
     Route::get('/sales/{id}/recepit', [SaleController::class, 'salerecepit'])->name('sales.recepit');
     Route::get('/sale-return/invoice/{id}', [SaleController::class, 'retrninvoice'])->name('saleReturn.invoice');
@@ -429,9 +433,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/payment/{id}', [DistributorAdminController::class, 'storePayment'])->name('payment.store');
         Route::get('/secondary-sales', [DistributorAdminController::class, 'secondarySales'])->name('secondary_sales');
         
+        // Distributor Customers (Retailers) & Ledgers
+        Route::get('/customers', [DistributorAdminController::class, 'customers'])->name('customers');
+        Route::post('/customers/store', [DistributorAdminController::class, 'storeCustomer'])->name('customers.store');
+        Route::post('/customers/{id}/update', [DistributorAdminController::class, 'updateCustomer'])->name('customers.update');
+        Route::delete('/customers/{id}/delete', [DistributorAdminController::class, 'destroyCustomer'])->name('customers.destroy');
+        Route::get('/customers/{id}/ledger', [DistributorAdminController::class, 'customerLedger'])->name('customers.ledger');
+        Route::post('/customers/{id}/payment', [DistributorAdminController::class, 'storeCustomerPayment'])->name('customers.payment.store');
+
         // Payments / Collections & Approvals
         Route::get('/payments', [DistributorAdminController::class, 'payments'])->name('payments');
         Route::post('/payments/store', [DistributorAdminController::class, 'storeAdminPayment'])->name('payments.store');
+        Route::post('/payments/{id}/update', [DistributorAdminController::class, 'updatePayment'])->name('payments.update');
+        Route::delete('/payments/{id}/delete', [DistributorAdminController::class, 'destroyPayment'])->name('payments.destroy');
         Route::post('/payments/{id}/approve', [DistributorAdminController::class, 'approvePayment'])->name('payments.approve');
         Route::post('/payments/{id}/reject', [DistributorAdminController::class, 'rejectPayment'])->name('payments.reject');
     });
@@ -462,6 +476,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/create', [DistributorPortalController::class, 'createSale'])->name('sales.create');
         Route::post('/sales/store', [DistributorPortalController::class, 'storeSale'])->name('sales.store');
         Route::get('/sales/receipt/{id}', [DistributorPortalController::class, 'saleReceipt'])->name('sales.receipt');
+
+        // Accounts (Chart of Accounts for Distributor)
+        Route::get('/accounts', [DistributorPortalController::class, 'accountsList'])->name('accounts.index');
+        Route::post('/accounts/store', [DistributorPortalController::class, 'storeAccount'])->name('accounts.store');
+        Route::post('/accounts/store-quick', [DistributorPortalController::class, 'storeQuickAccount'])->name('accounts.store_quick');
+        Route::delete('/accounts/{id}/delete', [DistributorPortalController::class, 'destroyAccount'])->name('accounts.destroy');
         
         // Company Ledger
         Route::get('/company-ledger', [DistributorPortalController::class, 'companyLedger'])->name('company_ledger.index');
@@ -469,6 +489,8 @@ Route::middleware('auth')->group(function () {
         // Payments to Company (Submit & Track)
         Route::get('/payments', [DistributorPortalController::class, 'payments'])->name('payments.index');
         Route::post('/payments/store', [DistributorPortalController::class, 'storePayment'])->name('payments.store');
+        Route::post('/payments/{id}/update', [DistributorPortalController::class, 'updatePayment'])->name('payments.update');
+        Route::delete('/payments/{id}/delete', [DistributorPortalController::class, 'destroyPayment'])->name('payments.destroy');
     });
 });
 

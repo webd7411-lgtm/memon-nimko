@@ -13,6 +13,7 @@ use App\Models\Account;
 use App\Models\AccountHead;
 use App\Models\DistributorSale;
 use App\Models\DistributorCustomer;
+use App\Models\DistributorCustomerLedger;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
@@ -933,6 +934,528 @@ class DistributorAdminController extends Controller
 
             DB::commit();
             return back()->with('success', "Payment #{$paymentNo} of Rs. " . number_format($amount, 2) . " recorded and credited to {$distributor->name}'s ledger" . ($account ? " and '{$account->title}'" : "") . " successfully!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error recording payment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Super Admin update payment details (even after approval).
+     */
+    public function updatePayment(Request $request, $id)
+    {
+        $payment = DistributorPayment::with(['distributor', 'account'])->findOrFail($id);
+
+        $request->validate([
+            'amount'                => 'required|numeric|min:1',
+            'payment_date'          => 'required|date',
+            'account_id'            => 'nullable|exists:accounts,id',
+            'payment_method'        => 'nullable|string|max:50',
+            'bank_name'             => 'nullable|string|max:100',
+            'account_number'        => 'nullable|string|max:100',
+            'transaction_reference' => 'nullable|string|max:100',
+            'slip_image'            => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
+            'notes'                 => 'nullable|string|max:1000',
+        ]);
+
+        $newAmount = (float) $request->amount;
+        $oldAmount = (float) $payment->amount;
+        $distributor = $payment->distributor;
+
+        DB::beginTransaction();
+        try {
+            $accountId = $request->account_id ? (int)$request->account_id : null;
+            $bankName = $request->bank_name;
+            $accountNumber = $request->account_number;
+            $paymentMethod = $request->payment_method ?: $payment->payment_method;
+
+            $newAccount = $accountId ? Account::find($accountId) : null;
+            if ($newAccount) {
+                if (empty($bankName)) $bankName = $newAccount->title;
+                if (empty($accountNumber)) $accountNumber = $newAccount->account_code;
+            }
+
+            // If already approved, adjust ledger, distributor balance, and company accounts
+            if ($payment->status === 'approved') {
+                $amountDiff = $newAmount - $oldAmount;
+
+                // Adjust distributor balance
+                if ($distributor && $amountDiff != 0) {
+                    $distributor->current_balance -= $amountDiff;
+                    $distributor->save();
+                }
+
+                // Adjust ledger entry
+                $ledgerEntry = DistributorLedger::where('distributor_id', $payment->distributor_id)
+                    ->where('reference_no', $payment->payment_no)
+                    ->first();
+                if ($ledgerEntry) {
+                    $ledgerEntry->date = $request->payment_date;
+                    $ledgerEntry->credit = $newAmount;
+                    if ($amountDiff != 0) {
+                        $ledgerEntry->balance -= $amountDiff;
+                    }
+                    $accountNote = $newAccount ? " (Deposited into: {$newAccount->title})" : '';
+                    $ledgerEntry->description = "Payment approved via " . ucwords(str_replace('_', ' ', $paymentMethod)) .
+                        ($bankName ? " ({$bankName})" : '') .
+                        $accountNote .
+                        ($request->transaction_reference ? " Ref #{$request->transaction_reference}" : '') .
+                        ($request->notes ? ". Note: {$request->notes}" : '');
+                    $ledgerEntry->save();
+                }
+
+                // Adjust company bank / cash account balance
+                $oldAccountId = $payment->account_id;
+                if ($oldAccountId == $accountId) {
+                    if ($newAccount && $amountDiff != 0) {
+                        $newAccount->opening_balance += $amountDiff;
+                        $newAccount->save();
+                    }
+                } else {
+                    if ($oldAccountId) {
+                        $oldAcc = Account::find($oldAccountId);
+                        if ($oldAcc) {
+                            $oldAcc->opening_balance -= $oldAmount;
+                            $oldAcc->save();
+                        }
+                    }
+                    if ($newAccount) {
+                        $newAccount->opening_balance += $newAmount;
+                        $newAccount->save();
+                    }
+                }
+            }
+
+            // Slip image
+            $slipFileName = $payment->slip_image;
+            if ($request->hasFile('slip_image')) {
+                if ($payment->slip_image && file_exists(public_path('uploads/distributor_payments/' . $payment->slip_image))) {
+                    @unlink(public_path('uploads/distributor_payments/' . $payment->slip_image));
+                }
+                $file = $request->file('slip_image');
+                $slipFileName = 'slip_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('uploads/distributor_payments'), $slipFileName);
+            }
+
+            $payment->update([
+                'amount'                => $newAmount,
+                'payment_date'          => $request->payment_date,
+                'payment_method'        => $paymentMethod,
+                'account_id'            => $accountId,
+                'bank_name'             => $bankName,
+                'account_number'        => $accountNumber,
+                'transaction_reference' => $request->transaction_reference,
+                'slip_image'            => $slipFileName,
+                'notes'                 => $request->notes,
+            ]);
+
+            DB::commit();
+            return back()->with('success', "Payment #{$payment->payment_no} updated successfully!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error updating payment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Super Admin delete payment.
+     */
+    public function destroyPayment($id)
+    {
+        $payment = DistributorPayment::with('distributor')->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            // If was approved, reverse ledger and account balance
+            if ($payment->status === 'approved') {
+                $distributor = $payment->distributor;
+                if ($distributor) {
+                    $distributor->current_balance += (float)$payment->amount;
+                    $distributor->save();
+                }
+
+                // Delete ledger entry
+                DistributorLedger::where('distributor_id', $payment->distributor_id)
+                    ->where('reference_no', $payment->payment_no)
+                    ->delete();
+
+                // Reverse company account balance
+                if ($payment->account_id) {
+                    $account = Account::find($payment->account_id);
+                    if ($account) {
+                        $account->opening_balance -= (float)$payment->amount;
+                        $account->save();
+                    }
+                }
+            }
+
+            if ($payment->slip_image && file_exists(public_path('uploads/distributor_payments/' . $payment->slip_image))) {
+                @unlink(public_path('uploads/distributor_payments/' . $payment->slip_image));
+            }
+
+            $paymentNo = $payment->payment_no;
+            $payment->delete();
+
+            DB::commit();
+            return back()->with('success', "Payment #{$paymentNo} has been deleted.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error deleting payment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Display a listing of all distributor retail customers and their balances.
+     */
+    public function customers(Request $request)
+    {
+        $query = DistributorCustomer::with(['distributor'])
+            ->withCount(['sales', 'ledgers']);
+
+        if ($request->filled('distributor_id')) {
+            $query->where('distributor_id', $request->distributor_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('shop_name', 'like', "%{$search}%")
+                  ->orWhere('owner_name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhereHas('distributor', function($dq) use ($search) {
+                      $dq->where('name', 'like', "%{$search}%")
+                         ->orWhere('code', 'like', "%{$search}%")
+                         ->orWhere('city', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('balance_status')) {
+            if ($request->balance_status === 'due') {
+                $query->where('current_balance', '>', 0);
+            } elseif ($request->balance_status === 'zero') {
+                $query->where('current_balance', '<=', 0);
+            }
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $customers = $query->latest('id')->paginate(15)->appends($request->all());
+
+        $distributors = Distributor::where('status', 'active')->orderBy('name')->get();
+        $accounts = Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $totalCustomers = DistributorCustomer::count();
+        $totalMarketDue = DistributorCustomer::sum('current_balance');
+        $customersWithDueCount = DistributorCustomer::where('current_balance', '>', 0)->count();
+
+        return view('admin_panel.distributors.customers', compact(
+            'customers',
+            'distributors',
+            'accounts',
+            'totalCustomers',
+            'totalMarketDue',
+            'customersWithDueCount'
+        ));
+    }
+
+    /**
+     * Display the ledger statement of a distributor's customer.
+     */
+    public function customerLedger($id, Request $request)
+    {
+        $customer = DistributorCustomer::with('distributor')->findOrFail($id);
+        $distributor = $customer->distributor;
+
+        $query = DistributorCustomerLedger::where('distributor_customer_id', $customer->id);
+
+        $openingBalanceBeforeFilter = 0;
+        if ($request->filled('start_date')) {
+            $prevDebit = DistributorCustomerLedger::where('distributor_customer_id', $customer->id)
+                ->where('date', '<', $request->start_date)
+                ->sum('debit');
+            $prevCredit = DistributorCustomerLedger::where('distributor_customer_id', $customer->id)
+                ->where('date', '<', $request->start_date)
+                ->sum('credit');
+            $openingBalanceBeforeFilter = (float)$prevDebit - (float)$prevCredit;
+
+            if ($request->filled('end_date')) {
+                $query->whereBetween('date', [$request->start_date, $request->end_date]);
+            } else {
+                $query->where('date', '>=', $request->start_date);
+            }
+        } elseif ($request->filled('end_date')) {
+            $query->where('date', '<=', $request->end_date);
+        }
+
+        $entries = $query->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+
+        $totalDebit = $entries->sum('debit');
+        $totalCredit = $entries->sum('credit');
+
+        // Pre-fetch related distributor sales to link invoice details if available
+        $invoices = DistributorSale::where('distributor_customer_id', $customer->id)
+            ->pluck('id', 'invoice_no')
+            ->toArray();
+
+        $accounts = Account::where('status', 1)->with('head')->orderBy('title')->get();
+
+        return view('admin_panel.distributors.customer_ledger', compact(
+            'customer',
+            'distributor',
+            'entries',
+            'totalDebit',
+            'totalCredit',
+            'openingBalanceBeforeFilter',
+            'invoices',
+            'accounts'
+        ));
+    }
+
+    /**
+     * Store new customer registered under a distributor.
+     */
+    public function storeCustomer(Request $request)
+    {
+        $request->validate([
+            'distributor_id'  => 'required|exists:distributors,id',
+            'shop_name'       => 'required|string|max:255',
+            'owner_name'      => 'nullable|string|max:255',
+            'phone'           => 'nullable|string|max:20',
+            'area'            => 'nullable|string|max:100',
+            'address'         => 'nullable|string',
+            'opening_balance' => 'nullable|numeric|min:0',
+        ]);
+
+        $openingBalance = (float) ($request->opening_balance ?? 0);
+
+        DB::beginTransaction();
+        try {
+            $customer = DistributorCustomer::create([
+                'distributor_id'  => $request->distributor_id,
+                'shop_name'       => $request->shop_name,
+                'owner_name'      => $request->owner_name,
+                'phone'           => $request->phone,
+                'area'            => $request->area,
+                'address'         => $request->address,
+                'opening_balance' => $openingBalance,
+                'current_balance' => $openingBalance,
+                'status'          => 'active',
+            ]);
+
+            if ($openingBalance > 0) {
+                DistributorCustomerLedger::create([
+                    'distributor_customer_id' => $customer->id,
+                    'distributor_id'          => $request->distributor_id,
+                    'date'                    => now()->format('Y-m-d'),
+                    'type'                    => 'opening',
+                    'reference_no'            => 'OP-' . $customer->id,
+                    'description'             => 'Opening Balance on Customer Registration',
+                    'debit'                   => $openingBalance,
+                    'credit'                  => 0,
+                    'balance'                 => $openingBalance,
+                ]);
+            }
+
+            DB::commit();
+            return back()->with('success', "Retail customer '{$customer->shop_name}' created successfully!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Error creating customer: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update existing retail customer details.
+     */
+    public function updateCustomer(Request $request, $id)
+    {
+        $customer = DistributorCustomer::findOrFail($id);
+
+        $request->validate([
+            'distributor_id' => 'required|exists:distributors,id',
+            'shop_name'      => 'required|string|max:255',
+            'owner_name'     => 'nullable|string|max:255',
+            'phone'          => 'nullable|string|max:20',
+            'area'           => 'nullable|string|max:100',
+            'address'        => 'nullable|string',
+            'status'         => 'nullable|string|in:active,inactive',
+        ]);
+
+        $customer->update([
+            'distributor_id' => $request->distributor_id,
+            'shop_name'      => $request->shop_name,
+            'owner_name'     => $request->owner_name,
+            'phone'          => $request->phone,
+            'area'           => $request->area,
+            'address'        => $request->address,
+            'status'         => $request->status ?? 'active',
+        ]);
+
+        return back()->with('success', "Customer '{$customer->shop_name}' details updated successfully!");
+    }
+
+    /**
+     * Delete customer if no sales or ledger history exists.
+     */
+    public function destroyCustomer($id)
+    {
+        $customer = DistributorCustomer::findOrFail($id);
+
+        if ($customer->sales()->count() > 0 || $customer->ledgers()->where('type', '!=', 'opening')->count() > 0) {
+            return back()->with('error', "Cannot delete customer '{$customer->shop_name}' because invoices or payment ledgers are associated with it.");
+        }
+
+        $customer->ledgers()->delete();
+        $customer->delete();
+
+        return back()->with('success', "Customer '{$customer->shop_name}' deleted successfully.");
+    }
+
+    /**
+     * Store payment collection from retail customer on behalf of distributor.
+     */
+    public function storeCustomerPayment(Request $request, $id)
+    {
+        $customer = DistributorCustomer::with('distributor')->findOrFail($id);
+
+        $request->validate([
+            'amount'                => 'required|numeric|min:0.01',
+            'date'                  => 'required|date',
+            'account_id'            => 'nullable|exists:accounts,id',
+            'payment_method'        => 'nullable|string|max:50',
+            'transaction_reference' => 'nullable|string|max:100',
+            'slip_image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'adjust_distributor'    => 'nullable',
+            'notes'                 => 'nullable|string|max:1000',
+        ]);
+
+        $amount = (float) $request->amount;
+        $accountId = $request->account_id ? (int)$request->account_id : null;
+        $paymentMethod = $request->payment_method ?: 'cash';
+        $shouldAdjustDistributor = $request->has('adjust_distributor') ? $request->boolean('adjust_distributor') : true;
+
+        $account = null;
+        $bankName = null;
+        $accountNumber = null;
+        if ($accountId) {
+            $account = Account::with('head')->find($accountId);
+            if ($account) {
+                $bankName = $account->title;
+                $accountNumber = $account->account_code;
+                if (!$request->filled('payment_method')) {
+                    $headName = strtolower($account->head->name ?? '');
+                    $accTitle = strtolower($account->title ?? '');
+                    $paymentMethod = (str_contains($headName, 'cash') || str_contains($accTitle, 'cash')) ? 'cash' : 'bank_transfer';
+                }
+            }
+        }
+
+        $slipFileName = null;
+        if ($request->hasFile('slip_image')) {
+            $file = $request->file('slip_image');
+            $slipFileName = 'cust_slip_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/distributor_payments'), $slipFileName);
+        }
+
+        $receiptNo = 'REC-' . date('ymd') . '-' . rand(100, 999);
+        $methodLabel = ucwords(str_replace('_', ' ', $paymentMethod));
+
+        DB::beginTransaction();
+        try {
+            // 1. Credit retail customer's outstanding balance
+            $newCustomerBalance = (float) $customer->current_balance - $amount;
+            
+            $customerDesc = "Direct payment received via {$methodLabel}";
+            if ($account) {
+                $customerDesc .= " (Deposited into: {$account->title})";
+            }
+            if ($request->transaction_reference) {
+                $customerDesc .= " Ref #{$request->transaction_reference}";
+            }
+            if ($request->notes) {
+                $customerDesc .= ". Note: {$request->notes}";
+            }
+
+            DistributorCustomerLedger::create([
+                'distributor_customer_id' => $customer->id,
+                'distributor_id'          => $customer->distributor_id,
+                'date'                    => $request->date,
+                'type'                    => 'payment_received',
+                'reference_no'            => $request->transaction_reference ?: $receiptNo,
+                'description'             => $customerDesc,
+                'debit'                   => 0,
+                'credit'                  => $amount,
+                'balance'                 => $newCustomerBalance,
+            ]);
+
+            $customer->update(['current_balance' => $newCustomerBalance]);
+
+            // 2. Deposit into Company Bank / Cash Account
+            if ($account) {
+                $account->opening_balance = (float)$account->opening_balance + $amount;
+                $account->save();
+            }
+
+            // 3. Automatically credit Distributor's Company Ledger
+            $distributorUpdatedMsg = '';
+            if ($customer->distributor) {
+                $distributor = $customer->distributor;
+                $newDistBalance = (float) $distributor->current_balance - $amount;
+                $distPaymentNo = DistributorPayment::generatePaymentNo();
+
+                // Create approved DistributorPayment record
+                DistributorPayment::create([
+                    'payment_no'            => $distPaymentNo,
+                    'distributor_id'        => $distributor->id,
+                    'amount'                => $amount,
+                    'payment_date'          => $request->date,
+                    'payment_method'        => $paymentMethod,
+                    'account_id'            => $account ? $account->id : null,
+                    'bank_name'             => $bankName,
+                    'account_number'        => $accountNumber,
+                    'transaction_reference' => $request->transaction_reference ?: $receiptNo,
+                    'slip_image'            => $slipFileName,
+                    'notes'                 => "Direct recovery from retail shop: {$customer->shop_name}" . ($request->notes ? ". Note: {$request->notes}" : ''),
+                    'status'                => 'approved',
+                    'approved_by'           => Auth::id(),
+                    'approved_at'           => now(),
+                    'created_by'            => Auth::id(),
+                ]);
+
+                // Create DistributorLedger entry
+                $distDesc = "Direct recovery from customer '{$customer->shop_name}' via {$methodLabel}";
+                if ($account) {
+                    $distDesc .= " (Deposited into: {$account->title})";
+                }
+                if ($request->transaction_reference) {
+                    $distDesc .= " Ref #{$request->transaction_reference}";
+                }
+
+                DistributorLedger::create([
+                    'distributor_id' => $distributor->id,
+                    'date'           => $request->date,
+                    'type'           => 'payment_received',
+                    'reference_no'   => $distPaymentNo,
+                    'description'    => $distDesc,
+                    'debit'          => 0,
+                    'credit'         => $amount,
+                    'balance'        => $newDistBalance,
+                    'created_by'     => Auth::id(),
+                ]);
+
+                $distributor->update(['current_balance' => $newDistBalance]);
+                $distributorUpdatedMsg = " & credited to '{$distributor->name}' company ledger";
+            }
+
+            DB::commit();
+
+            $bankMsg = $account ? " deposited into '{$account->title}'" : "";
+            return back()->with('success', "Payment of Rs. " . number_format($amount, 2) . " received from '{$customer->shop_name}'{$bankMsg}{$distributorUpdatedMsg} successfully!");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error recording payment: ' . $e->getMessage());

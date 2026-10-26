@@ -107,9 +107,16 @@
         color: #ffffff !important;
     }
 
+    /* Warning Badge (Amber Gold) */
+    .badge.bg-warning, .badge-warning {
+        background: #fef3c7 !important;
+        color: #b45309 !important;
+        border: 1px solid #fcd34d !important;
+    }
+
     /* Buttons — Reset / Danger / Secondary Actions (Midnight Slate) */
     .btn-secondary, .btn-danger, .btn-warning, .pc-btn-danger,
-    .bg-secondary, .bg-danger, .bg-warning {
+    .bg-secondary, .bg-danger {
         background: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
         border-color: #334155 !important;
         color: #ffffff !important;
@@ -180,12 +187,12 @@
         z-index: 1051;
     }
 
-    /* Sub Navigation Bar - Increased Comfortable Height & Y-Axis Padding */
+    /* Sub Navigation Bar - Sleek Modern Single-Row Height */
     .rt_nav_header.horizontal-layout .nav-bottom {
         background: #ffffff !important;
         border-bottom: 1px solid #e2e8f0 !important;
-        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05) !important;
-        padding: 12px 0 !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+        padding: 5px 0 !important;
         overflow: visible !important;
     }
 
@@ -193,7 +200,7 @@
         display: flex;
         align-items: center;
         flex-wrap: wrap !important;
-        gap: 6px;
+        gap: 3px;
         margin: 0;
         padding: 0;
         overflow: visible !important;
@@ -207,32 +214,34 @@
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 12px 20px !important;
-        min-height: 46px !important;
-        font-size: 0.9rem !important;
+        gap: 6px;
+        padding: 7px 13px !important;
+        min-height: 38px !important;
+        font-size: 0.85rem !important;
         font-weight: 600 !important;
+        letter-spacing: 0.1px !important;
         color: #475569 !important;
-        border-radius: 10px !important;
-        transition: all 0.2s ease !important;
+        border-radius: 8px !important;
+        transition: all 0.15s ease !important;
         text-decoration: none !important;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link .menu_icon {
-        font-size: 1.05rem !important;
+        font-size: 0.92rem !important;
         color: #64748b !important;
-        transition: color 0.2s ease, transform 0.2s ease !important;
+        transition: color 0.15s ease, transform 0.15s ease !important;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover > .nav-link,
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .nav-link {
         background: #f1f5f9 !important;
         color: #0f172a !important;
+        border-radius: 8px !important;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover > .nav-link .menu_icon {
         color: #0f766e !important;
-        transform: scale(1.1) !important;
+        transform: scale(1.08) !important;
     }
 
     /* Active Nav Item - Sleek Emerald Pill */
@@ -243,14 +252,15 @@
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.active > .nav-link .menu_icon {
         background: #0f766e !important;
         color: #ffffff !important;
-        box-shadow: 0 4px 12px rgba(15, 118, 110, 0.28) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25) !important;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .menu-arrow {
-        margin-left: 3px;
-        font-size: 0.7rem;
+        margin-left: 2px;
+        font-size: 0.62rem;
         color: #94a3b8;
-        transition: transform 0.2s ease;
+        transition: transform 0.15s ease;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover .menu-arrow {

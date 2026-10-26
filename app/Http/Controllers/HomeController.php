@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         if (!Auth::check()) {
             return redirect()->route('login');
@@ -25,14 +25,11 @@ class HomeController extends Controller
             return redirect()->route('distributor.dashboard');
         }
 
-        if ($usertype == 'user') {
-            return view('user_panel.dashboard', compact('userId'));
-        } elseif ($usertype == 'admin') {
-            $data = $this->getReportData(now()->startOfMonth()->format('Y-m-d'), now()->endOfMonth()->format('Y-m-d'));
-            return view('admin_panel.dashboard', $data);
-        } else {
-            return redirect()->back()->with('error', 'Unauthorized access');
-        }
+        $startDate = $request->start_date ?: now()->startOfMonth()->format('Y-m-d');
+        $endDate   = $request->end_date   ?: now()->endOfMonth()->format('Y-m-d');
+
+        $data = $this->getReportData($startDate, $endDate);
+        return view('admin_panel.dashboard', $data);
     }
 
     private function getReportData($startDate = null, $endDate = null)
@@ -120,6 +117,7 @@ class HomeController extends Controller
             $totalPurchaseReturns = $purchaseReturnsQuery->sum('net_amount');
             $totalSales = $salesQuery->sum('sales.total_net');
             $totalSalesReturns = $salesReturnsQuery->sum('sales_returns.total_net');
+            $salesCount = $salesQuery->count();
 
             $rawMaterialPurchasesQuery = DB::table('raw_material_purchases')
                 ->whereBetween('date', [$startObj->format('Y-m-d'), $endObj->format('Y-m-d')]);
@@ -435,7 +433,7 @@ class HomeController extends Controller
         $topProductAgg = [];
         $allProductsCategoryMap = DB::table('products')
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
-            ->select('products.id', 'products.item_name', 'categories.name as category_name')
+            ->select('products.id', 'products.item_code', 'products.item_name', 'categories.name as category_name')
             ->get()
             ->keyBy('id');
 
@@ -468,39 +466,57 @@ class HomeController extends Controller
             return $b['qty'] <=> $a['qty'];
         });
 
+        $stockMapForTop = DB::table('stocks')
+            ->select('product_id', DB::raw('COALESCE(SUM(qty), 0) as stock_qty'))
+            ->groupBy('product_id')
+            ->pluck('stock_qty', 'product_id');
+
         $topProducts = [];
         $rank = 1;
-        foreach (array_slice($topProductAgg, 0, 6, true) as $pid => $data) {
+        foreach (array_slice($topProductAgg, 0, 10, true) as $pid => $data) {
             if (isset($allProductsCategoryMap[$pid])) {
+                $pObj = $allProductsCategoryMap[$pid];
                 $topProducts[] = [
+                    'id' => $pid,
                     'rank' => $rank++,
-                    'name' => strtoupper($allProductsCategoryMap[$pid]->item_name),
+                    'code' => $pObj->item_code ?: ('PRD-' . str_pad($pid, 4, '0', STR_PAD_LEFT)),
+                    'name' => strtoupper($pObj->item_name),
+                    'category' => $pObj->category_name ?? 'Nimko',
                     'units_sold' => (int)$data['qty'],
-                    'revenue' => $data['total']
+                    'revenue' => (float)$data['total'],
+                    'stock_qty' => (float)($stockMapForTop[$pid] ?? 0)
                 ];
             }
         }
 
-        // If no sales in current range, populate top active products from database catalog
         if (empty($topProducts)) {
-            $catalogProdsQ = DB::table('products');
+            $catalogProdsQ = DB::table('products')
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->select('products.id', 'products.item_code', 'products.item_name', 'products.price', 'products.wholesale_price', 'categories.name as category_name');
             if (!is_all_branches()) {
-                $catalogProdsQ->whereIn('id', function($q) {
+                $catalogProdsQ->whereIn('products.id', function($q) {
                     $q->select('product_id')->from('stocks')
                       ->where('branch_id', active_branch_id())
                       ->whereNull('warehouse_id');
                 });
             }
-            $catalogProds = $catalogProdsQ->limit(6)->get();
+            $catalogProds = $catalogProdsQ->limit(10)->get();
             if ($catalogProds->isEmpty()) {
-                $catalogProds = DB::table('products')->limit(6)->get();
+                $catalogProds = DB::table('products')
+                    ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                    ->select('products.id', 'products.item_code', 'products.item_name', 'products.price', 'products.wholesale_price', 'categories.name as category_name')
+                    ->limit(10)->get();
             }
             foreach ($catalogProds as $idx => $sp) {
                 $topProducts[] = [
+                    'id' => $sp->id,
                     'rank' => $idx + 1,
+                    'code' => $sp->item_code ?: ('PRD-' . str_pad($sp->id, 4, '0', STR_PAD_LEFT)),
                     'name' => strtoupper($sp->item_name),
+                    'category' => $sp->category_name ?? 'Nimko',
                     'units_sold' => 0,
-                    'revenue' => (float)($sp->price ?: $sp->wholesale_price)
+                    'revenue' => (float)($sp->price ?: $sp->wholesale_price),
+                    'stock_qty' => (float)($stockMapForTop[$sp->id] ?? 0)
                 ];
             }
         }
@@ -739,6 +755,157 @@ class HomeController extends Controller
             ];
         }
 
+        
+        // ==========================================
+        // ADDITIONAL MODULES METRICS (WHOLE PROJECT)
+        // ==========================================
+        // 1. Distributor Network
+        $distributorsCount = DB::table('distributors')->count();
+        $activeDistributorsCount = DB::table('distributors')->where('status', 'active')->count();
+
+        $distOrdersQuery = DB::table('distributor_orders');
+        if ($startDate && $endDate) {
+            $distOrdersQuery->whereBetween('order_date', [Carbon::parse($startDate)->format('Y-m-d'), Carbon::parse($endDate)->format('Y-m-d')]);
+        }
+        $distributorOrdersCount = $distOrdersQuery->count();
+        $totalDistOrdersValue = (float) $distOrdersQuery->sum('total_amount');
+        $allTimeDistOrdersValue = (float) DB::table('distributor_orders')->sum('total_amount');
+        $allTimeDistOrdersCount = DB::table('distributor_orders')->count();
+
+        $pendingDistOrdersCount = DB::table('distributor_orders')->where('status', 'pending')->count();
+        $pendingDistPaymentsCount = DB::table('distributor_payments')->where('status', 'pending')->count();
+        $pendingDistPaymentsTotal = (float) DB::table('distributor_payments')->where('status', 'pending')->sum('amount');
+        $distributorReceivables = (float) DB::table('distributors')->where('status', 'active')->sum('current_balance');
+
+        $recentDistOrders = DB::table('distributor_orders')
+            ->leftJoin('distributors', 'distributor_orders.distributor_id', '=', 'distributors.id')
+            ->select('distributor_orders.*', 'distributors.name as distributor_name', 'distributors.city as distributor_city')
+            ->orderBy('distributor_orders.id', 'desc')
+            ->limit(5)
+            ->get();
+
+        $channelRetail = (float) $totalSales;
+        $channelDistributor = (float) ($allTimeDistOrdersValue > 0 ? $allTimeDistOrdersValue : $totalDistOrdersValue);
+
+        // 2. Factory Production & Manufacturing
+        $productionQuery = DB::table('production_entries');
+        if (!is_all_branches()) {
+            $productionQuery->where('branch_id', active_branch_id());
+        }
+        $productionCount = $productionQuery->count();
+        $productionTotalCost = (float) $productionQuery->sum('production_cost');
+
+        $recentProductions = DB::table('production_entries as pe')
+            ->leftJoin('users as u', 'u.id', '=', 'pe.created_by')
+            ->select('pe.*', 'u.name as user_name')
+            ->when(!is_all_branches(), function($q) {
+                $q->where('pe.branch_id', active_branch_id());
+            })
+            ->orderBy('pe.id', 'desc')
+            ->limit(5)
+            ->get();
+
+        $rawMaterialsCount = DB::table('raw_materials')->count();
+        $lowRawMaterialsCount = 0;
+        try {
+            $lowRawMaterialsCount = DB::table('raw_materials')
+                ->leftJoin('raw_material_stocks', 'raw_materials.id', '=', 'raw_material_stocks.raw_material_id')
+                ->select('raw_materials.id', 'raw_materials.alert_qty', DB::raw('COALESCE(SUM(raw_material_stocks.qty), 0) as current_stock'))
+                ->groupBy('raw_materials.id', 'raw_materials.alert_qty')
+                ->havingRaw('COALESCE(SUM(raw_material_stocks.qty), 0) <= COALESCE(raw_materials.alert_qty, 0)')
+                ->get()
+                ->count();
+        } catch (\Throwable $e) {}
+
+        // 3. Logistics, Warehousing & Bookings
+        $warehousesCount = DB::table('warehouses')->count();
+
+        $pendingTransfersQuery = DB::table('stock_transfers')->where('status', 'pending');
+        if (!is_all_branches()) {
+            $pendingTransfersQuery->where('to_branch_id', active_branch_id());
+        }
+        $pendingTransfersCount = $pendingTransfersQuery->count();
+
+        $recentTransfers = DB::table('stock_transfers as st')
+            ->leftJoin('products as p', 'p.id', '=', 'st.product_id')
+            ->select('st.*', 'p.item_name')
+            ->when(!is_all_branches(), function($q) {
+                $q->where(function($sub) {
+                    $sub->where('st.branch_id', active_branch_id())
+                        ->orWhere('st.to_branch_id', active_branch_id());
+                });
+            })
+            ->orderBy('st.id', 'desc')
+            ->limit(5)
+            ->get();
+
+        $bookingsCount = DB::table('product_bookings')->count();
+        $bookingsTotal = (float) DB::table('product_bookings')->sum('total_net');
+
+        $recentReceipts = DB::table('receipts_vouchers')->orderBy('id', 'desc')->limit(4)->get();
+        $recentPayments = DB::table('payment_vouchers')->orderBy('id', 'desc')->limit(4)->get();
+
+        
+        // Top 10 Active Distributors
+        $topDistributors = DB::table('distributors')
+            ->leftJoin('distributor_orders', 'distributors.id', '=', 'distributor_orders.distributor_id')
+            ->select(
+                'distributors.id',
+                'distributors.name',
+                'distributors.code',
+                'distributors.city',
+                'distributors.phone',
+                'distributors.current_balance',
+                'distributors.status',
+                DB::raw('COUNT(distributor_orders.id) as orders_count'),
+                DB::raw('COALESCE(SUM(distributor_orders.total_amount), 0) as total_ordered')
+            )
+            ->groupBy('distributors.id', 'distributors.name', 'distributors.code', 'distributors.city', 'distributors.phone', 'distributors.current_balance', 'distributors.status')
+            ->orderByDesc('current_balance')
+            ->limit(10)
+            ->get();
+
+        // Top 10 Customers / Debtors
+        $topCustomers = DB::table('customers')
+            ->leftJoin('customer_ledgers', function($join) {
+                $join->on('customers.id', '=', 'customer_ledgers.customer_id')
+                     ->whereIn('customer_ledgers.id', function($q) {
+                         $q->select(DB::raw('MAX(id)'))->from('customer_ledgers')->groupBy('customer_id');
+                     });
+            })
+            ->select(
+                'customers.id',
+                'customers.customer_name',
+                'customers.customer_type',
+                'customers.customer_category',
+                'customers.mobile',
+                'customers.address',
+                DB::raw('COALESCE(customer_ledgers.closing_balance, customers.opening_balance, 0) as balance')
+            )
+            ->orderByDesc('balance')
+            ->limit(10)
+            ->get();
+
+        // Recent 10 Sales Invoices
+        $recentSalesList = DB::table('sales')
+            ->leftJoin('customers', 'sales.customer', '=', 'customers.id')
+            ->select(
+                'sales.id',
+                'sales.invoice_no',
+                'sales.customer as customer_field',
+                'customers.customer_name',
+                'sales.total_net',
+                'sales.cash',
+                'sales.card',
+                'sales.created_at'
+            )
+            ->when(!is_all_branches(), function($q) {
+                $q->where('sales.branch_id', active_branch_id());
+            })
+            ->orderByDesc('sales.id')
+            ->limit(10)
+            ->get();
+
         return compact(
             'categoryCount', 'subcategoryCount', 'productCount', 'customerscount',
             'suppliersCount', 'employeesCount',
@@ -754,7 +921,19 @@ class HomeController extends Controller
             'customerReceivables', 'vendorPayables', 'stockInventoryValue',
             'cashInHand', 'easyPaisaBalance', 'meezanBalance', 'recentActivities',
             'branchSalesPerformance', 'lowStockItems',
-            'startDate', 'endDate', 'start', 'end'
+            'startDate', 'endDate', 'start', 'end',
+            'salesCount',
+            'distributorsCount', 'activeDistributorsCount', 'distributorOrdersCount',
+            'totalDistOrdersValue', 'allTimeDistOrdersValue', 'allTimeDistOrdersCount',
+            'pendingDistOrdersCount', 'pendingDistPaymentsCount', 'pendingDistPaymentsTotal',
+            'distributorReceivables', 'recentDistOrders',
+            'productionCount', 'productionTotalCost', 'recentProductions',
+            'rawMaterialsCount', 'lowRawMaterialsCount',
+            'warehousesCount', 'pendingTransfersCount', 'recentTransfers',
+            'bookingsCount', 'bookingsTotal',
+            'recentReceipts', 'recentPayments',
+            'channelRetail', 'channelDistributor',
+            'topDistributors', 'topCustomers', 'recentSalesList'
         );
     }
 

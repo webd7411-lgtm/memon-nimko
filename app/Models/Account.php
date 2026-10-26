@@ -10,16 +10,18 @@ class Account extends Model
     use HasFactory;
 
     protected $fillable = [
-        'head_id',       // foreign key: account head
-        'account_code',  // account code
-        'title',         // account title
-        'type',          // Debit / Credit
+        'distributor_id', // null = Super Admin / Head Office, > 0 = Distributor
+        'head_id',        // foreign key: account head
+        'account_code',   // account code
+        'title',          // account title
+        'account_number', // account number / IBAN
+        'bank_name',      // bank name
+        'branch_name',    // branch name
+        'type',           // Debit / Credit
         'total_debit',
         'total_credit',
-        'status',        // active/inactive
-        'opening_balance',        // active/inactive
-
-        
+        'status',         // active/inactive
+        'opening_balance',
     ];
 
     // Relation with AccountHead
@@ -27,5 +29,10 @@ class Account extends Model
     {
         return $this->belongsTo(AccountHead::class, 'head_id');
     }
-    
+
+    // Relation with Distributor
+    public function distributor()
+    {
+        return $this->belongsTo(Distributor::class, 'distributor_id');
+    }
 }

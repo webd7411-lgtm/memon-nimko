@@ -82,15 +82,21 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
+        if (!$request->filled('customer_id')) {
+            $request->merge([
+                'customer_id' => 'CUST-' . str_pad((Customer::max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT)
+            ]);
+        }
+
         $data = $request->validate([
-            'customer_id'      => 'required|unique:customers',
-            'customer_name'    => 'required|string|max:255',
-            'customer_type'    => 'nullable|string',
+            'customer_id'       => 'required|unique:customers',
+            'customer_name'     => 'required|string|max:255',
+            'customer_type'     => 'nullable|string',
             'customer_category' => 'nullable|string',
-            'mobile'           => 'nullable|string|max:20',
-            'address'          => 'nullable|string',
-            'opening_balance'  => 'nullable|numeric|min:0',
-            'branch_id'        => 'nullable|exists:branches,id',
+            'mobile'            => 'nullable|string|max:20',
+            'address'           => 'nullable|string',
+            'opening_balance'   => 'nullable|numeric|min:0',
+            'branch_id'         => 'nullable|exists:branches,id',
         ]);
 
         if (empty($data['branch_id'])) {
@@ -117,9 +123,16 @@ class CustomerController extends Controller
             ]);
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'  => true,
+                'customer' => $customer,
+                'message'  => 'Customer created successfully.'
+            ]);
+        }
+
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }
-
 
     public function edit($id)
     {

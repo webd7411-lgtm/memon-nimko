@@ -24,7 +24,7 @@ class SettingController extends Controller
             'developer_name' => 'nullable|string|max:255',
             'developer_phone' => 'nullable|string|max:50',
             'developer_website' => 'nullable|string|max:255',
-            'software_name' => 'required|string|max:255',
+            'software_name' => 'nullable|string|max:255',
             'software_name_urdu' => 'nullable|string|max:255',
             'tagline' => 'nullable|string|max:500',
             'footer_text' => 'nullable|string|max:500',
@@ -50,7 +50,11 @@ class SettingController extends Controller
             'tiktok' => 'nullable|string|max:500',
             'youtube' => 'nullable|string|max:500',
             'linkedin' => 'nullable|string|max:500',
+            'receipt_note_1' => 'nullable|string|max:500',
+            'receipt_note_2' => 'nullable|string|max:500',
             'invoice_footer_note' => 'nullable|string|max:500',
+            'shop_logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:3072',
+            'remove_shop_logo' => 'nullable',
         ]);
 
         if ($validator->fails()) {
@@ -68,14 +72,42 @@ class SettingController extends Controller
             'email', 'support_email', 'website', 'whatsapp',
             'ntn', 'strn', 'gst_no',
             'facebook', 'instagram', 'twitter', 'tiktok', 'youtube', 'linkedin',
-            'invoice_footer_note',
+            'receipt_note_1', 'receipt_note_2', 'invoice_footer_note',
         ];
 
         foreach ($keys as $key) {
-            Setting::updateOrCreate(
-                ['key' => $key],
-                ['value' => trim((string)$request->input($key, ''))]
-            );
+            if ($request->has($key)) {
+                Setting::updateOrCreate(
+                    ['key' => $key],
+                    ['value' => trim((string)$request->input($key, ''))]
+                );
+            }
+        }
+
+        // Handle Store / Receipt Logo Upload & Removal
+        if ($request->hasFile('shop_logo')) {
+            $file = $request->file('shop_logo');
+            $filename = 'shop_logo_' . time() . '.' . $file->getClientOriginalExtension();
+            $destPath = public_path('uploads/settings');
+            if (!file_exists($destPath)) {
+                mkdir($destPath, 0777, true);
+            }
+            $file->move($destPath, $filename);
+            $relativePath = 'uploads/settings/' . $filename;
+
+            // Delete old logo file if exists
+            $old = Setting::where('key', 'shop_logo')->value('value');
+            if ($old && file_exists(public_path($old))) {
+                @unlink(public_path($old));
+            }
+            Setting::updateOrCreate(['key' => 'shop_logo'], ['value' => $relativePath]);
+        } elseif ($request->boolean('remove_shop_logo')) {
+            $old = Setting::where('key', 'shop_logo')->value('value');
+            if ($old && file_exists(public_path($old))) {
+                @unlink(public_path($old));
+            }
+            Setting::updateOrCreate(['key' => 'shop_logo'], ['value' => '']);
+            Setting::updateOrCreate(['key' => 'receipt_logo'], ['value' => '']);
         }
 
         if ($request->ajax() || $request->wantsJson()) {

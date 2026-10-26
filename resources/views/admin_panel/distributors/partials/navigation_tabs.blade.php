@@ -78,6 +78,11 @@
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.index' && $currentType === 'booker' ? 'active' : '' }}">
                 Order Bookers
             </a>
+            <!-- 3. Distributor Customers -->
+            <a href="{{ route('admin.distributors.customers') }}" 
+               class="dist-nav-tab {{ in_array($currentRoute, ['admin.distributors.customers', 'admin.distributors.customers.ledger']) ? 'active' : '' }}">
+                Distributor Customers
+            </a>
 
             <!-- 3. Sales Register -->
             <a href="{{ route('admin.distributors.sales') }}" 
@@ -118,14 +123,16 @@
 
         <!-- Right Side Quick Actions (Small, Compact Buttons) -->
         <div class="d-flex align-items-center gap-1.5 py-1">
-            <a href="{{ route('admin.distributors.direct_sale') }}" class="btn text-white dist-btn-action shadow-sm"
-               style="background: linear-gradient(135deg, #0f766e, #0d9488); border: 1px solid #14b8a6;">
-                <i class="fas fa-plus" style="font-size: 0.65rem;"></i> Issue Stock
-            </a>
             @if($currentRoute === 'admin.distributors.index')
             <button type="button" class="btn btn-outline-dark dist-btn-action shadow-sm"
                     data-bs-toggle="modal" data-bs-target="#addDistributorModal">
                 <i class="fas fa-user-plus" style="font-size: 0.65rem;"></i> Add {{ request('type') === 'booker' ? 'Booker' : 'Distributor' }}
+            </button>
+            @endif
+            @if($currentRoute === 'admin.distributors.customers')
+            <button type="button" class="btn btn-outline-dark dist-btn-action shadow-sm"
+                    data-bs-toggle="modal" data-bs-target="#addRetailCustomerModal">
+                <i class="fas fa-store" style="font-size: 0.65rem;"></i> + Add Retailer
             </button>
             @endif
         </div>

@@ -81,10 +81,6 @@
                 </div>
                     <ul class="navbar-nav navbar-nav-right mr-0 ml-auto align-items-center flex-row gap-2">
                         <li class="nav-item me-1 d-flex align-items-center gap-2">
-                            <!-- Online Status Pill -->
-                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 d-none d-lg-inline-flex align-items-center gap-1.5" style="font-size: 0.75rem; background: rgba(16, 185, 129, 0.12) !important; color: #34d399 !important; border-color: rgba(52, 211, 153, 0.25) !important;">
-                                <span class="d-inline-block rounded-circle bg-success" style="width: 7px; height: 7px; box-shadow: 0 0 8px #34d399;"></span> Online
-                            </span>
 
                             @php
                                 $headerPendingTransfers = 0;
@@ -243,6 +239,17 @@
                                 </div>
                             </form>
                         </li>
+                        @can('Settings')
+                        <li class="nav-item">
+                            <a href="{{ route('settings.index') }}" 
+                               class="nav-link px-2.5 py-1 d-flex align-items-center text-decoration-none shadow-sm"
+                               title="System Settings"
+                               style="background: {{ request()->is('settings*') ? 'rgba(15, 118, 110, 0.45)' : 'rgba(255, 255, 255, 0.08)' }}; border-radius: 24px; border: 1px solid {{ request()->is('settings*') ? 'rgba(20, 184, 166, 0.6)' : 'rgba(255, 255, 255, 0.16)' }}; backdrop-filter: blur(8px); height: 32px; color: #ffffff; transition: all 0.2s ease;">
+                                <i class="fas fa-sliders-h me-1.5" style="font-size: 0.82rem; color: {{ request()->is('settings*') ? '#5eead4' : 'rgba(255,255,255,0.7)' }} !important;"></i>
+                                <span class="fw-bold d-none d-sm-inline-block text-white" style="font-size: 0.8rem;">Settings</span>
+                            </a>
+                        </li>
+                        @endcan
                         <li class="nav-item nav-profile dropdown">
                             <a class="nav-link dropdown-toggle p-1 d-flex align-items-center text-decoration-none" href="#" data-bs-toggle="dropdown"
                                 id="profileDropdown" aria-expanded="false" 
@@ -262,6 +269,11 @@
                                     <p class="mb-0 fw-bold text-dark" style="font-size: 0.86rem;">{{ Auth::user()->name }}</p>
                                     <p class="mb-0 text-muted small" style="font-size: 0.75rem;">{{ Auth::user()->email }}</p>
                                 </div>
+                                @can('Settings')
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center text-secondary" href="{{ route('settings.index') }}">
+                                    <i class="fas fa-sliders-h me-2 text-teal" style="color: #0f766e;"></i> System Settings
+                                </a>
+                                @endcan
                                 <a class="dropdown-item rounded-2 py-2 d-flex align-items-center text-secondary" href="{{ route('profile.edit') }}">
                                     <i class="feather ft-user me-2 text-primary"></i> Profile Settings
                                 </a>
@@ -276,10 +288,6 @@
                         </li>
                     </ul>
 
-                    <button class="navbar-toggler align-self-center ms-2" type="button" id="mobileNavToggle"
-                        aria-label="Toggle navigation">
-                        <span class="feather ft-menu text-white"></span>
-                    </button>
 
                 </div>
             </div>
@@ -296,17 +304,17 @@
                     @endcan
 
                     @canany(['Sales'])
-                    <li class="nav-item {{ request()->is('sale/create*') ? 'active' : '' }}">
-                        <a href="{{ url('/sale/create') }}" class="nav-link">
+                    <li class="nav-item {{ (request()->is('sale/create*') || request()->is('sale-screen*')) ? 'active' : '' }}">
+                        <a href="{{ route('sale.screen') }}" class="nav-link">
                             <i class="menu_icon fas fa-cash-register"></i>
-                            <span class="menu-title">Sale (POS)</span>
+                            <span class="menu-title">Sale Screen</span>
                         </a>
                     </li>
                     @endcanany
 
                     @canany(['Products','Category','Sub Category','Brands','Purchase','Purchase Return','Vendor','List Warehouse','Warehouse Stock','Stock Transfer','Sales','Sale Return','Bookings','Customer','Production','Raw Materials','Stock Adjustment'])
                     @php
-                        $isMgmtActive = request()->is('product*') || request()->is('category*') || request()->is('subcategory*') || request()->is('Brand*') || request()->is('Purchase*') || request()->is('add/Purchase*') || request()->is('production*') || request()->is('raw-materials*') || request()->is('stock-adjustment*') || request()->is('vendors*') || request()->is('warehouse*') || request()->is('stock_transfers*') || request()->is('sale') || request()->is('sale-returns*') || request()->is('bookings*') || request()->is('customers*') || request()->is('table*');
+                        $isMgmtActive = request()->is('product*') || request()->is('category*') || request()->is('subcategory*') || request()->is('Brand*') || request()->is('Purchase*') || request()->is('add/Purchase*') || request()->is('production*') || request()->is('raw-materials*') || request()->is('stock-adjustment*') || request()->is('vendors*') || request()->is('warehouse*') || request()->is('stock_transfers*') || request()->is('sale') || request()->is('sale-returns*') || request()->is('bookings*') || request()->is('customers*') || request()->is('table*') || request()->is('sale/pos*');
                     @endphp
                     <li class="nav-item mega-menu {{ $isMgmtActive ? 'active' : '' }}">
                         <a href="#" class="nav-link">
@@ -389,6 +397,7 @@
                                     <p class="category-heading"><i class="fas fa-chart-line me-1"></i> Sales & Customers</p>
                                     <ul class="submenu-item">
                                         @can('Sales')
+                                        <li><a href="{{ route('sale.pos') }}"><i class="fas fa-desktop"></i> Sale (POS)</a></li>
                                         <li><a href="{{ url('sale') }}"><i class="fas fa-file-invoice-dollar"></i> Sales Register</a></li>
                                         @endcan
                                         @can('Sale Return')
@@ -492,15 +501,15 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="{{ route('admin.distributors.sales') }}">
-                                        <i class="fas fa-file-invoice-dollar"></i>
-                                        <span>Distributor Sales Register</span>
+                                    <a href="{{ route('admin.distributors.customers') }}">
+                                        <i class="fas fa-store"></i>
+                                        <span>Distributor Customers</span>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="{{ route('admin.distributors.direct_sale') }}">
-                                        <i class="fas fa-cart-arrow-down"></i>
-                                        <span>+ Issue / Sale Stock</span>
+                                    <a href="{{ route('admin.distributors.sales') }}">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                        <span>Distributor Sales Register</span>
                                     </a>
                                 </li>
                                 <li>
@@ -624,15 +633,6 @@
                         <a href="{{ route('cashbook') }}" class="nav-link">
                             <i class="menu_icon fas fa-book-open"></i>
                             <span class="menu-title">CashBook</span>
-                        </a>
-                    </li>
-                    @endcan
-
-                    @can('Settings')
-                    <li class="nav-item {{ request()->is('settings*') ? 'active' : '' }}">
-                        <a href="{{ route('settings.index') }}" class="nav-link">
-                            <i class="menu_icon fas fa-sliders-h"></i>
-                            <span class="menu-title">Settings</span>
                         </a>
                     </li>
                     @endcan

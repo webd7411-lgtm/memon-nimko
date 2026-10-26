@@ -3,15 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Receipt</title>
+<title>Receipt - {{ $sale->invoice_no }}</title>
 <style>
+    * {
+        color: #000000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-sizing: border-box;
+    }
     body {
-        font-family: 'Courier New', monospace;
+        font-family: 'Courier New', 'Lucida Console', monospace, sans-serif !important;
         font-size: 12px;
-        color: #000;
-        background: #fff;
+        color: #000000 !important;
+        background: #ffffff;
         margin: 0;
         padding: 0;
+        font-weight: 600;
+        -webkit-font-smoothing: antialiased;
     }
     .receipt-container {
         width: 100%;
@@ -23,11 +31,11 @@
     .center {
         text-align: center;
     }
-    .bold {
-        font-weight: bold;
+    .bold, th, h2, .bold-text {
+        font-weight: 900 !important;
     }
     .line {
-        border-top: 1px dashed #000;
+        border-top: 1.5px dashed #000000 !important;
         margin: 4px 0;
     }
     table {
@@ -36,13 +44,16 @@
     }
     th, td {
         padding: 2px 0;
+        color: #000000 !important;
     }
     th {
         text-align: left;
         font-size: 11px;
+        font-weight: 900 !important;
     }
     td {
         font-size: 11px;
+        font-weight: 600;
     }
     td:last-child, th:last-child {
         text-align: right;
@@ -51,10 +62,20 @@
         text-align: center;
         font-size: 11px;
         margin-top: 6px;
-        border-top: 1px dashed #000;
+        border-top: 1.5px dashed #000000 !important;
         padding-top: 4px;
+        color: #000000 !important;
+    }
+    .footer p {
+        margin: 2px 0;
+        color: #000000 !important;
     }
     @media print {
+        * {
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
         @page {
             margin: 0;
             size: 80mm auto;
@@ -64,6 +85,8 @@
             padding: 0;
             width: 100%;
             height: auto;
+            color: #000000 !important;
+            background: #ffffff !important;
         }
         .receipt-container {
             width: 74mm !important;
@@ -76,6 +99,7 @@
         }
         table, tr, td, th, tbody, thead, tfoot {
             page-break-inside: avoid !important;
+            color: #000000 !important;
         }
         table {
             table-layout: fixed;
@@ -86,9 +110,11 @@
             white-space: normal !important;
             padding: 1px !important;
             font-size: 10px !important;
+            color: #000000 !important;
         }
         body {
             font-size: 10px !important;
+            color: #000000 !important;
         }
     }
     .page-break {
@@ -102,9 +128,18 @@
 
     <!-- Header -->
     <div class="center" style="margin-top: 0; padding-top: 0;">
-        <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 55px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
+        @php
+            $receiptLogo = receipt_logo_url();
+        @endphp
+        @if(!empty($receiptLogo))
+            <img src="{{ $receiptLogo }}" alt="" style="max-height: 55px; margin: 0 auto 4px; display: block; filter: contrast(180%); image-rendering: -webkit-optimize-contrast;">
+        @endif
+
         <h2 style="margin:0;font-size:15px;" class="bold">{{ shop_name() }}</h2>
-        <p style="margin:0;font-size:11px;">{{ shop_tagline() }}</p>
+        @if(!empty(shop_tagline()))
+            <p style="margin:0;font-size:11px;">{{ shop_tagline() }}</p>
+        @endif
+
         @php
             $currentBranch = $sale->branch ?? \App\Models\Branch::find(active_branch_id());
             
@@ -145,13 +180,17 @@
                 ?? \App\Models\Branch::find(active_branch_id())
                 ?? \App\Models\Branch::first();
 
-            $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : 'A-16/B Block-D Unit No. 6 Latifabad, Hyderabad';
-            $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : '0334 2615888');
+            $bAddress = !empty($currentBranch?->address) ? $currentBranch->address : sys_setting('address', '');
+            $rawPhone = !empty($currentBranch?->number) ? $currentBranch->number : (!empty($currentBranch?->phone) ? $currentBranch->phone : sys_setting('phone', ''));
             $bPhone = preg_replace('/^Phone:\s*/i', '', $rawPhone);
         @endphp
-        <p style="margin:2px 0 0 0;font-weight:bold;font-size:12px;text-transform:uppercase;">BRANCH: {{ $currentBranch->name ?? 'Main Branch' }}</p>
-        <p style="margin:0;font-size:11px;">{{ $bAddress }}</p>
-        <p style="margin:0;font-size:11px;">Phone: {{ $bPhone }}</p>
+
+        @if(!empty($bAddress))
+            <p style="margin:2px 0 0 0;font-size:11px;">{{ $bAddress }}</p>
+        @endif
+        @if(!empty($bPhone))
+            <p style="margin:0;font-size:11px;">Phone: {{ $bPhone }}</p>
+        @endif
     </div>
 
     <div class="line"></div>
@@ -200,7 +239,7 @@
                             $displayUnit = $fnUnitShort($item['unit'] ?? '');
                         }
                     @endphp
-                    <tr style="color: #c0392b; font-weight: bold;">
+                    <tr style="font-weight: bold;">
                         <td>{{ $item['item_name'] }}</td>
                         <td>{{ number_format($item['price'], 0) }}</td>
                         <td>-{{ $displayQty }} {{ $displayUnit }}</td>
@@ -209,7 +248,7 @@
                     @endforeach
                 </tbody>
             </table>
-            <div style="text-align: right; font-weight: bold; margin: 3px 0; color: #c0392b;">
+            <div style="text-align: right; font-weight: bold; margin: 3px 0;">
                 Return Total: -Rs {{ number_format($returnTotalCost, 0) }}
             </div>
             <div class="line"></div>
@@ -299,7 +338,7 @@
     <table>
         @if($isExchange)
             @if($returnTotalCost > 0)
-            <tr style="color:#c0392b;"><th>Return Total:</th><td>-{{ number_format($returnTotalCost, 0) }}</td></tr>
+            <tr><th>Return Total:</th><td>-{{ number_format($returnTotalCost, 0) }}</td></tr>
             @endif
             @if($newTotalCost > 0)
             <tr><th>New Items Cost:</th><td>{{ number_format($newTotalCost, 0) }}</td></tr>
@@ -319,14 +358,20 @@
         <tr><th>Cash Back:</th><td>{{ number_format($sale->change, 0) }}</td></tr>
     </table>
 
-
-
     <!-- Footer -->
     <div class="footer">
-        <p>Please check bakery items at the time of purchase</p>
-        <p>Bakery & sweets items are non-returnable</p>
-        <p style="margin: 2px 0; font-size: 10px; color: #555;">Develop By: <strong>{{ developer_name() }}</strong></p>
-        <p>*** {{ sys_setting('invoice_footer_note', 'Thank you for the visit') }} ***</p>
+        @if(!empty(sys_setting('receipt_note_1')))
+            <p>{{ sys_setting('receipt_note_1') }}</p>
+        @endif
+        @if(!empty(sys_setting('receipt_note_2')))
+            <p>{{ sys_setting('receipt_note_2') }}</p>
+        @endif
+        @if(!empty(sys_setting('invoice_footer_note')))
+            <p>*** {{ sys_setting('invoice_footer_note') }} ***</p>
+        @endif
+        <div class="line" style="margin: 4px 0 3px;"></div>
+        <p style="margin: 2px 0 1px; font-size: 10px;">Develop By: <strong>ProWave Technologies</strong></p>
+        <p style="margin: 1px 0 0; font-size: 9.5px; font-weight: 700;">+92 317 3836223 | +92 325 9385085</p>
     </div>
 </div>
 

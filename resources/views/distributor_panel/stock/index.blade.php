@@ -15,8 +15,8 @@
                     Physical Inventory
                 </span>
             </div>
-            <h4 class="mb-0 mt-1 fw-bold text-white">Stock in My Custody / Van</h4>
-            <p class="mb-0 text-white-50 small">Goods issued from company warehouse available for your retail market sales</p>
+            <h4 class="mb-0 mt-1 fw-bold text-white">Stock Inventory</h4>
+            <p class="mb-0 text-white-50 small">Goods issued from company warehouse available for retail market sales</p>
         </div>
         <div class="d-flex align-items-center gap-2">
             <a href="{{ route('distributor.orders.create') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 py-2">
