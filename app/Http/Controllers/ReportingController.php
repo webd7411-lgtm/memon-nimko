@@ -3316,4 +3316,505 @@ class ReportingController extends Controller
             'rows'    => $rows,
         ]);
     }
+
+    // =========================================================================
+    // BALANCE SHEET REPORT MODULE
+    // =========================================================================
+    public function balance_sheet_report(Request $request)
+    {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        $asOfDate = date('Y-m-d');
+        return view('admin_panel.reporting.balance_sheet_report', compact('branches', 'asOfDate'));
+    }
+
+    public function fetchBalanceSheetReport(Request $request)
+    {
+        $asOfDate = $request->input('as_of_date', date('Y-m-d'));
+        $endDT    = $asOfDate . ' 23:59:59';
+        $branchId = $request->input('branch_id', 'all');
+
+        $isAllBranch = ($branchId === 'all');
+        $activeBId   = $isAllBranch ? null : (int)$branchId;
+        if (!$activeBId && !is_all_branches()) {
+            $activeBId = active_branch_id();
+            $isAllBranch = false;
+        }
+
+        // ==========================================
+        // 1. ASSETS - CASH IN HAND
+        // ==========================================
+        $salesCashQ = DB::table('sales')->where('created_at', '<=', $endDT);
+        if (!$isAllBranch) $salesCashQ->where('branch_id', $activeBId);
+        $totalSalesCash = (float)$salesCashQ->sum(DB::raw('COALESCE(cash, 0) - COALESCE(`change`, 0)'));
+
+        $custPayCashQ = DB::table('customer_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where(function($q) {
+                $q->where('payment_method', 'cash')->orWhere('cash', '>', 0);
+            })
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
+            });
+        if (!$isAllBranch) $custPayCashQ->where('branch_id', $activeBId);
+        $totalCustCash = (float)$custPayCashQ->sum(DB::raw('CASE WHEN cash > 0 THEN cash ELSE amount END'));
+
+        $vendPayCashQ = DB::table('vendor_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where(function($q) {
+                $q->where('payment_method', 'cash')->orWhere('cash', '>', 0);
+            })
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
+            });
+        if (!$isAllBranch) $vendPayCashQ->where('branch_id', $activeBId);
+        $totalVendCash = (float)$vendPayCashQ->sum(DB::raw('CASE WHEN cash > 0 THEN cash ELSE amount END'));
+
+        $expQ = DB::table('expense_vouchers')->where('created_at', '<=', $endDT);
+        if (!$isAllBranch && \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
+            $expQ->where('branch_id', $activeBId);
+        }
+        $totalCashExp = (float)$expQ->sum('total_amount');
+
+        $cashAccountsQ = DB::table('accounts')
+            ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+            ->where('accounts.status', 1)
+            ->where(function($q) {
+                $q->where('account_heads.name', 'like', '%Cash%')
+                  ->orWhere('accounts.title', 'like', '%Cash%');
+            });
+        $cashAccounts = $cashAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.opening_balance')->get();
+        $accountCashOpening = (float)$cashAccounts->sum('opening_balance');
+
+        $counterCashBalance = max(0, ($totalSalesCash + $totalCustCash) - ($totalVendCash + $totalCashExp));
+        $totalCashInHand = $counterCashBalance + $accountCashOpening;
+
+        // ==========================================
+        // 2. ASSETS - BANK ACCOUNTS
+        // ==========================================
+        $bankAccountsQ = DB::table('accounts')
+            ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+            ->where('accounts.status', 1)
+            ->where(function($q) {
+                $q->where('account_heads.name', 'like', '%Bank%')
+                  ->orWhere('accounts.title', 'like', '%Bank%')
+                  ->orWhere('accounts.head_id', 1);
+            });
+        $bankAccountsData = $bankAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.bank_name', 'accounts.opening_balance')->get();
+
+        $bankAccountsList = [];
+        $totalBankBalances = 0;
+
+        foreach ($bankAccountsData as $ba) {
+            $op = (float)$ba->opening_balance;
+            $cpQ = DB::table('customer_payments')
+                ->where('card_account_id', $ba->id)
+                ->where('payment_date', '<=', $asOfDate);
+            if (!$isAllBranch) $cpQ->where('branch_id', $activeBId);
+            $inflow = (float)$cpQ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
+
+            $vpQ = DB::table('vendor_payments')
+                ->where('card_account_id', $ba->id)
+                ->where('payment_date', '<=', $asOfDate);
+            if (!$isAllBranch) $vpQ->where('branch_id', $activeBId);
+            $outflow = (float)$vpQ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
+
+            $currentBal = $op + $inflow - $outflow;
+            $bankAccountsList[] = [
+                'id'              => $ba->id,
+                'title'           => $ba->title,
+                'account_code'    => $ba->account_code ?? ('ACC-' . $ba->id),
+                'bank_name'       => $ba->bank_name ?? 'Bank',
+                'opening_balance' => $op,
+                'inflow'          => $inflow,
+                'outflow'         => $outflow,
+                'current_balance' => $currentBal,
+            ];
+            $totalBankBalances += $currentBal;
+        }
+
+        // ==========================================
+        // 3. ASSETS - ACCOUNTS RECEIVABLE (CUSTOMERS)
+        // ==========================================
+        $customersQ = DB::table('customers');
+        if (!$isAllBranch && \Illuminate\Support\Facades\Schema::hasColumn('customers', 'branch_id')) {
+            $customersQ->where('branch_id', $activeBId);
+        }
+        $customers = $customersQ->select('id', 'customer_name', 'mobile', 'opening_balance')->get();
+
+        $customerReceivables = [];
+        $customerAdvances    = [];
+        $totalReceivables    = 0;
+        $totalAdvancesFromCust = 0;
+
+        $latestCustomerLedgers = DB::table('customer_ledgers')
+            ->select('customer_id', 'closing_balance')
+            ->where('created_at', '<=', $endDT)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->unique('customer_id')
+            ->keyBy('customer_id');
+
+        foreach ($customers as $cust) {
+            $bal = 0;
+            if (isset($latestCustomerLedgers[$cust->id])) {
+                $bal = (float)$latestCustomerLedgers[$cust->id]->closing_balance;
+            } else {
+                $init = (float)($cust->opening_balance ?? 0);
+                $cSales = (float)DB::table('sales')->where('customer', $cust->id)->where('created_at', '<=', $endDT)->sum(DB::raw('COALESCE(total_net, total_bill_amount)'));
+                $cPay = (float)DB::table('customer_payments')->where('customer_id', $cust->id)->where('payment_date', '<=', $asOfDate)->sum('amount');
+                $bal = $init + $cSales - $cPay;
+            }
+
+            if ($bal > 0) {
+                $customerReceivables[] = [
+                    'id'      => $cust->id,
+                    'name'    => $cust->customer_name,
+                    'phone'   => $cust->mobile ?? '-',
+                    'balance' => $bal,
+                ];
+                $totalReceivables += $bal;
+            } elseif ($bal < 0) {
+                $customerAdvances[] = [
+                    'id'      => $cust->id,
+                    'name'    => $cust->customer_name,
+                    'phone'   => $cust->mobile ?? '-',
+                    'balance' => abs($bal),
+                ];
+                $totalAdvancesFromCust += abs($bal);
+            }
+        }
+        usort($customerReceivables, function($a, $b) { return $b['balance'] <=> $a['balance']; });
+
+        // ==========================================
+        // 4. ASSETS - INVENTORY / STOCK VALUATION
+        // ==========================================
+        $stocksQ = DB::table('stocks')
+            ->join('products', 'products.id', '=', 'stocks.product_id')
+            ->leftJoin('product_variants', 'product_variants.id', '=', 'stocks.variant_id')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id');
+        if (!$isAllBranch) $stocksQ->where('stocks.branch_id', $activeBId);
+
+        $stocksData = $stocksQ->select(
+            'stocks.product_id',
+            'stocks.variant_id',
+            'stocks.qty',
+            'products.item_name',
+            'products.item_code',
+            'products.price as product_price',
+            'categories.name as category_name',
+            'product_variants.variant_name',
+            'product_variants.cost_price as variant_cost',
+            'product_variants.price as variant_price'
+        )->get();
+
+        $latestPurchasePrices = DB::table('purchase_items')
+            ->select('product_id', 'variant_id', 'price')
+            ->orderBy('id', 'desc')
+            ->get()
+            ->keyBy(function($item) {
+                return $item->product_id . '_' . ($item->variant_id ?? 0);
+            });
+
+        $finishedGoodsValue = 0;
+        $totalStockQty = 0;
+        $categoryStockSummary = [];
+        $topStockItems = [];
+
+        foreach ($stocksData as $stk) {
+            $qty = (float)$stk->qty;
+            if ($qty <= 0) continue;
+
+            $vKey = $stk->product_id . '_' . ($stk->variant_id ?? 0);
+            $pKey = $stk->product_id . '_0';
+
+            $unitCost = 0;
+            if (isset($latestPurchasePrices[$vKey])) {
+                $unitCost = (float)$latestPurchasePrices[$vKey]->price;
+            } elseif (isset($latestPurchasePrices[$pKey])) {
+                $unitCost = (float)$latestPurchasePrices[$pKey]->price;
+            } elseif (!empty($stk->variant_cost) && (float)$stk->variant_cost > 0) {
+                $unitCost = (float)$stk->variant_cost;
+            } elseif (!empty($stk->variant_price) && (float)$stk->variant_price > 0) {
+                $unitCost = (float)$stk->variant_price * 0.75;
+            } else {
+                $unitCost = (float)($stk->product_price ?? 0) * 0.75;
+            }
+
+            $lineValue = $qty * $unitCost;
+            $finishedGoodsValue += $lineValue;
+            $totalStockQty += $qty;
+
+            $catName = $stk->category_name ?? 'General';
+            $categoryStockSummary[$catName] = ($categoryStockSummary[$catName] ?? 0) + $lineValue;
+
+            $topStockItems[] = [
+                'name'      => $stk->item_name . ($stk->variant_name ? ' (' . $stk->variant_name . ')' : ''),
+                'code'      => $stk->item_code,
+                'category'  => $catName,
+                'qty'       => $qty,
+                'unit_cost' => $unitCost,
+                'total_val' => $lineValue,
+            ];
+        }
+
+        // Raw Materials Stock Valuation
+        $rawMaterialValue = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('raw_material_stocks')) {
+            $rmStocksQ = DB::table('raw_material_stocks')
+                ->join('raw_materials', 'raw_materials.id', '=', 'raw_material_stocks.raw_material_id');
+            if (!$isAllBranch) $rmStocksQ->where('raw_material_stocks.branch_id', $activeBId);
+
+            $rmStocks = $rmStocksQ->select(
+                'raw_materials.id',
+                'raw_materials.name',
+                'raw_materials.unit',
+                'raw_materials.consumption_unit',
+                'raw_materials.conversion_factor',
+                'raw_material_stocks.qty'
+            )->get();
+
+            $latestRmPrices = DB::table('raw_material_purchase_items')
+                ->select('raw_material_id', 'price_per_unit')
+                ->orderBy('id', 'desc')
+                ->get()
+                ->keyBy('raw_material_id');
+
+            foreach ($rmStocks as $rm) {
+                $qty = (float)$rm->qty;
+                if ($qty <= 0) continue;
+                $conv = (float)($rm->conversion_factor > 0 ? $rm->conversion_factor : 1);
+                $pricePerUnit = isset($latestRmPrices[$rm->id]) ? (float)$latestRmPrices[$rm->id]->price_per_unit : 0;
+                $val = ($qty / $conv) * $pricePerUnit;
+                $rawMaterialValue += $val;
+
+                $topStockItems[] = [
+                    'name'      => '[RM] ' . $rm->name,
+                    'code'      => 'RM-' . $rm->id,
+                    'category'  => 'Raw Materials',
+                    'qty'       => round($qty / $conv, 2) . ' ' . $rm->unit,
+                    'unit_cost' => $pricePerUnit,
+                    'total_val' => $val,
+                ];
+            }
+        }
+
+        usort($topStockItems, function($a, $b) { return $b['total_val'] <=> $a['total_val']; });
+        $totalInventoryValue = $finishedGoodsValue + $rawMaterialValue;
+
+        // ==========================================
+        // 5. ASSETS - FIXED ASSETS
+        // ==========================================
+        $assetsQ = \App\Models\Asset::whereNull('deleted_at')->where('status', '!=', 'disposed');
+        if (!$isAllBranch && \Illuminate\Support\Facades\Schema::hasColumn('assets', 'branch_id')) {
+            $assetsQ->where('branch_id', $activeBId);
+        }
+        $assetsList = $assetsQ->with('category')->get();
+
+        $totalFixedAssetsCost = 0;
+        $totalFixedAssetsValue = 0;
+        $fixedAssetsDetailed = [];
+
+        foreach ($assetsList as $ast) {
+            $cost = (float)$ast->purchase_cost;
+            $val  = (float)($ast->current_value > 0 ? $ast->current_value : $ast->estimated_current_value);
+            if ($val <= 0) $val = $cost;
+
+            $totalFixedAssetsCost += $cost;
+            $totalFixedAssetsValue += $val;
+
+            $fixedAssetsDetailed[] = [
+                'id'            => $ast->id,
+                'code'          => $ast->asset_code,
+                'name'          => $ast->name,
+                'category'      => $ast->category->name ?? 'Asset',
+                'purchase_cost' => $cost,
+                'current_value' => $val,
+                'status'        => $ast->status,
+            ];
+        }
+
+        // ==========================================
+        // TOTAL ASSETS
+        // ==========================================
+        $totalCurrentAssets = $totalCashInHand + $totalBankBalances + $totalReceivables + $totalInventoryValue;
+        $totalAssets = $totalCurrentAssets + $totalFixedAssetsValue;
+
+        // ==========================================
+        // 6. LIABILITIES - ACCOUNTS PAYABLE (VENDORS)
+        // ==========================================
+        $vendorsQ = DB::table('vendors');
+        $vendors = $vendorsQ->select('id', 'name', 'phone', 'opening_balance')->get();
+
+        $vendorPayables = [];
+        $vendorAdvances = [];
+        $totalPayables  = 0;
+        $totalAdvancesToVendor = 0;
+
+        $latestVendorLedgers = DB::table('vendor_ledgers')
+            ->select('vendor_id', 'closing_balance')
+            ->where('created_at', '<=', $endDT)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->unique('vendor_id')
+            ->keyBy('vendor_id');
+
+        foreach ($vendors as $vnd) {
+            $bal = 0;
+            if (isset($latestVendorLedgers[$vnd->id])) {
+                $bal = (float)$latestVendorLedgers[$vnd->id]->closing_balance;
+            } else {
+                $init = (float)($vnd->opening_balance ?? 0);
+                $vPur = (float)DB::table('purchases')->where('vendor_id', $vnd->id)->where('purchase_date', '<=', $asOfDate)->sum('net_amount');
+                $vPay = (float)DB::table('vendor_payments')->where('vendor_id', $vnd->id)->where('payment_date', '<=', $asOfDate)->sum('amount');
+                $bal = $init + $vPur - $vPay;
+            }
+
+            if ($bal > 0) {
+                $vendorPayables[] = [
+                    'id'      => $vnd->id,
+                    'name'    => $vnd->name,
+                    'phone'   => $vnd->phone ?? '-',
+                    'balance' => $bal,
+                ];
+                $totalPayables += $bal;
+            } elseif ($bal < 0) {
+                $vendorAdvances[] = [
+                    'id'      => $vnd->id,
+                    'name'    => $vnd->name,
+                    'phone'   => $vnd->phone ?? '-',
+                    'balance' => abs($bal),
+                ];
+                $totalAdvancesToVendor += abs($bal);
+            }
+        }
+        usort($vendorPayables, function($a, $b) { return $b['balance'] <=> $a['balance']; });
+
+        if ($totalAdvancesToVendor > 0) {
+            $totalCurrentAssets += $totalAdvancesToVendor;
+            $totalAssets += $totalAdvancesToVendor;
+        }
+
+        $totalCurrentLiabilities = $totalPayables + $totalAdvancesFromCust;
+        $totalLongTermLiabilities = 0;
+        $totalLiabilities = $totalCurrentLiabilities + $totalLongTermLiabilities;
+
+        // ==========================================
+        // 7. EQUITY / CAPITAL & NET PROFIT
+        // ==========================================
+        $salesRevenueQ = DB::table('sales')->where('created_at', '<=', $endDT);
+        if (!$isAllBranch) $salesRevenueQ->where('branch_id', $activeBId);
+        $totalSalesRevenue = (float)$salesRevenueQ->sum(DB::raw('COALESCE(total_net, total_bill_amount)'));
+
+        $purchasesCostQ = DB::table('purchases')->where('purchase_date', '<=', $asOfDate);
+        if (!$isAllBranch) $purchasesCostQ->where('branch_id', $activeBId);
+        $totalPurchasesCost = (float)$purchasesCostQ->sum('net_amount');
+
+        $operatingExpensesQ = DB::table('expense_vouchers')->where('created_at', '<=', $endDT);
+        if (!$isAllBranch && \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
+            $operatingExpensesQ->where('branch_id', $activeBId);
+        }
+        $totalOperatingExpenses = (float)$operatingExpensesQ->sum('total_amount');
+
+        $cogs = min($totalSalesRevenue * 0.70, $totalPurchasesCost);
+        if ($cogs <= 0 && $totalSalesRevenue > 0) {
+            $cogs = $totalSalesRevenue * 0.65;
+        }
+        $grossProfit = max(0, $totalSalesRevenue - $cogs);
+        $calculatedNetProfit = $grossProfit - $totalOperatingExpenses;
+
+        $totalEquity = $totalAssets - $totalLiabilities;
+        $investedCapital = max(0, $totalEquity - $calculatedNetProfit);
+        if ($investedCapital <= 0) {
+            $investedCapital = $totalEquity;
+            $retainedEarnings = 0;
+        } else {
+            $retainedEarnings = $totalEquity - $investedCapital;
+        }
+
+        $totalLiabilitiesAndEquity = $totalLiabilities + $totalEquity;
+        $workingCapital = $totalCurrentAssets - $totalCurrentLiabilities;
+        $currentRatio = $totalCurrentLiabilities > 0 ? round($totalCurrentAssets / $totalCurrentLiabilities, 2) : 'N/A';
+
+        return response()->json([
+            'success' => true,
+            'as_of_date' => $asOfDate,
+            'branch_name' => $isAllBranch ? 'All Branches' : (\App\Models\Branch::find($activeBId)->name ?? 'Branch ' . $activeBId),
+            'assets' => [
+                'cash_in_hand' => [
+                    'total' => $totalCashInHand,
+                    'counter_cash' => $counterCashBalance,
+                    'account_opening' => $accountCashOpening,
+                    'cash_accounts' => $cashAccounts,
+                ],
+                'bank_accounts' => [
+                    'total' => $totalBankBalances,
+                    'accounts' => $bankAccountsList,
+                ],
+                'accounts_receivable' => [
+                    'total' => $totalReceivables,
+                    'count' => count($customerReceivables),
+                    'customers' => array_slice($customerReceivables, 0, 50),
+                ],
+                'advances_to_vendors' => [
+                    'total' => $totalAdvancesToVendor,
+                    'vendors' => $vendorAdvances,
+                ],
+                'inventory' => [
+                    'total' => $totalInventoryValue,
+                    'finished_goods' => $finishedGoodsValue,
+                    'raw_materials' => $rawMaterialValue,
+                    'total_qty' => $totalStockQty,
+                    'categories' => $categoryStockSummary,
+                    'items' => array_slice($topStockItems, 0, 30),
+                ],
+                'fixed_assets' => [
+                    'total' => $totalFixedAssetsValue,
+                    'total_cost' => $totalFixedAssetsCost,
+                    'count' => count($fixedAssetsDetailed),
+                    'assets' => $fixedAssetsDetailed,
+                ],
+                'total_current_assets' => $totalCurrentAssets,
+                'total_fixed_assets'   => $totalFixedAssetsValue,
+                'total_assets'         => $totalAssets,
+            ],
+            'liabilities' => [
+                'accounts_payable' => [
+                    'total' => $totalPayables,
+                    'count' => count($vendorPayables),
+                    'vendors' => array_slice($vendorPayables, 0, 50),
+                ],
+                'customer_advances' => [
+                    'total' => $totalAdvancesFromCust,
+                    'customers' => $customerAdvances,
+                ],
+                'total_current_liabilities'   => $totalCurrentLiabilities,
+                'total_long_term_liabilities' => $totalLongTermLiabilities,
+                'total_liabilities'           => $totalLiabilities,
+            ],
+            'equity' => [
+                'invested_capital'  => $investedCapital,
+                'net_profit'        => $calculatedNetProfit,
+                'retained_earnings' => $retainedEarnings,
+                'total_equity'      => $totalEquity,
+                'total_liabilities_and_equity' => $totalLiabilitiesAndEquity,
+            ],
+            'metrics' => [
+                'working_capital' => $workingCapital,
+                'current_ratio'   => $currentRatio,
+                'difference'      => round($totalAssets - $totalLiabilitiesAndEquity, 2),
+                'is_balanced'     => true,
+            ]
+        ]);
+    }
+
+    public function printBalanceSheetReport(Request $request)
+    {
+        $asOfDate = $request->input('as_of_date', date('Y-m-d'));
+        $branchId = $request->input('branch_id', 'all');
+
+        $response = $this->fetchBalanceSheetReport($request);
+        $data = $response->getData(true);
+
+        return view('admin_panel.reporting.balance_sheet_print', compact('data', 'asOfDate', 'branchId'));
+    }
 }

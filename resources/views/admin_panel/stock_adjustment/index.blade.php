@@ -76,6 +76,8 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
 .pc-act { display: inline-flex; align-items: center; gap: 3px; border-radius: 5px; padding: .3rem .7rem; font-size: .72rem; font-weight: 600; transition: all .2s ease; text-decoration: none; border: 1.5px solid transparent; }
 .pc-act-view { background: #f0f4fe; border-color: #dde4f7; color: #3b5bb3; }
 .pc-act-view:hover { background: #dde4f7; color: #2a4a9e; }
+.pc-act-edit { background: #eaf8f0; border-color: #c7eed6; color: #15803d; }
+.pc-act-edit:hover { background: #c7eed6; color: #166534; }
 
 .pc-empty { text-align: center; padding: 2.5rem .85rem; color: var(--pc-text-muted); }
 .pc-empty i { font-size: 2rem; color: #ced8e6; display: block; margin-bottom: .5rem; }
@@ -228,9 +230,9 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
       <div class="pc-tbl-wrap">
         <table class="pc-tbl">
           <thead>
-<tr>
+            <tr>
                <th>Ref #</th><th>Date</th><th>Warehouse</th><th>Branch</th><th>Type</th><th>Reason</th>
-               <th>Items</th><th>By</th><th>Notes</th><th style="width:90px;">Action</th>
+               <th>Items</th><th>By</th><th>Notes</th><th style="width:130px;text-align:center;">Action</th>
              </tr>
           </thead>
           <tbody>
@@ -238,9 +240,9 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
             <tr>
               <td><span class="pc-ref">{{ $adj->ref_no }}</span></td>
               <td><span class="pc-date">{{ \Carbon\Carbon::parse($adj->adjustment_date)->format('d-M-Y') }}</span></td>
-<td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->warehouse ? $adj->warehouse->warehouse_name : 'N/A' }}</span></td>
-               <td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</span></td>
-               <td>
+              <td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->warehouse ? $adj->warehouse->warehouse_name : 'N/A' }}</span></td>
+              <td><span class="pc-badge" style="font-size:.65rem;background:#eef4ff;color:#3b5bb3;border-color:#dde4f7;">{{ $adj->branch ? $adj->branch->name : 'Main Branch' }}</span></td>
+              <td>
                 <span class="pc-badge {{ $adj->type === 'increase' ? 'pc-badge-inc' : 'pc-badge-dec' }}">
                   <i class="bi bi-{{ $adj->type === 'increase' ? 'plus' : 'dash' }}"></i>
                   {{ ucfirst($adj->type) }}
@@ -262,12 +264,15 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
               </td>
               <td><span class="pc-user">{{ optional($adj->user)->name ?? 'System' }}</span></td>
               <td style="color:var(--pc-text-muted);font-size:.78rem;">{{ Str::limit($adj->notes, 35) }}</td>
-              <td>
-                <a href="{{ route('stock-adjustment.show', $adj->id) }}" class="pc-act pc-act-view"><i class="bi bi-eye"></i>View</a>
+              <td style="text-align:center; white-space:nowrap;">
+                <div class="d-inline-flex gap-1">
+                  <a href="{{ route('stock-adjustment.show', $adj->id) }}" class="pc-act pc-act-view" title="View Details"><i class="bi bi-eye"></i>View</a>
+                  <a href="{{ route('stock-adjustment.edit', $adj->id) }}" class="pc-act pc-act-edit" title="Edit Adjustment"><i class="bi bi-pencil-square"></i>Edit</a>
+                </div>
               </td>
             </tr>
             @empty
-            <tr><td colspan="9" class="pc-empty"><i class="bi bi-inbox"></i><span>No adjustments found.</span></td></tr>
+            <tr><td colspan="10" class="pc-empty"><i class="bi bi-inbox"></i><span>No adjustments found.</span></td></tr>
             @endforelse
           </tbody>
         </table>
@@ -336,9 +341,12 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
         </div>
       </div>
 
-      <div class="adj-foot">
-        <a href="{{ route('stock-adjustment.show', $adj->id) }}" class="adj-view">
-          View Details <i class="bi bi-arrow-right"></i>
+      <div class="adj-foot d-flex gap-2">
+        <a href="{{ route('stock-adjustment.show', $adj->id) }}" class="adj-view flex-fill">
+          <i class="bi bi-eye"></i> View Details
+        </a>
+        <a href="{{ route('stock-adjustment.edit', $adj->id) }}" class="adj-view flex-fill" style="background: linear-gradient(135deg, #0fae6b 0%, #0b7a4d 100%); box-shadow: 0 6px 16px rgba(15,174,107,.2);">
+          <i class="bi bi-pencil-square"></i> Edit
         </a>
       </div>
     </div>

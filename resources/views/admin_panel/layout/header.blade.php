@@ -482,6 +482,46 @@
                             $pendingOrdersNavCount = \App\Models\DistributorOrder::where('status', 'pending')->count();
                         }
                     @endphp
+                                        @php
+                        $isAssetsActive = request()->is('fixed-assets*');
+                    @endphp
+                    <!-- Assets Menu (Machinery & Furniture) -->
+                    <li class="nav-item {{ $isAssetsActive ? 'active' : '' }}">
+                        <a href="#" class="nav-link">
+                            <i class="menu_icon fas fa-boxes-stacked"></i>
+                            <span class="menu-title">Assets</span>
+                            <i class="menu-arrow feather ft-chevron-down"></i>
+                        </a>
+                        <div class="submenu">
+                            <ul class="submenu-item">
+                                <li>
+                                    <a href="{{ route('assets.index') }}">
+                                        <i class="fas fa-list"></i>
+                                        <span>Assets Directory</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('assets.create') }}">
+                                        <i class="fas fa-plus-circle"></i>
+                                        <span>Register Asset</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('assets.categories.index') }}">
+                                        <i class="fas fa-tags"></i>
+                                        <span>Asset Categories</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('assets.report') }}">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                        <span>Valuation Report</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+
                     <!-- Distributors Menu -->
                     <li class="nav-item {{ $isDistActive ? 'active' : '' }}">
                         <a href="#" class="nav-link">
@@ -575,6 +615,9 @@
                                 @endcanany
                                 @canany(['Profit Loss Report', 'Sale Report'])
                                 <li><a href="{{ route('report.profit_loss') }}"><i class="fas fa-balance-scale"></i> Profit & Loss Report</a></li>
+                                @canany(['Profit Loss Report', 'Sale Report', 'System Reports'])
+                                <li><a href="{{ route('report.balance_sheet') }}"><i class="fas fa-file-invoice-dollar"></i> Balance Sheet</a></li>
+                                @endcanany
                                 @endcanany
 
                                 @can('Customer Ledger')

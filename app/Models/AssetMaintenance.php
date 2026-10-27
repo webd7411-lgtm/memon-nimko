@@ -14,6 +14,8 @@ class AssetMaintenance extends Model
         'maintenance_date',
         'service_type',
         'cost',
+        'account_id',
+        'expense_voucher_id',
         'performed_by',
         'next_service_date',
         'description',
@@ -31,6 +33,16 @@ class AssetMaintenance extends Model
     public function asset()
     {
         return $this->belongsTo(Asset::class, 'asset_id');
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
+
+    public function expenseVoucher()
+    {
+        return $this->belongsTo(ExpenseVoucher::class, 'expense_voucher_id');
     }
 
     public function creator()

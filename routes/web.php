@@ -360,6 +360,11 @@ Route::middleware('auth')->group(function () {
     Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->name('report.profit_loss')->middleware('permission:Sale Report|Profit Loss Report');
     Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch')->middleware('permission:Sale Report|Profit Loss Report');
 
+    // Balance Sheet Report Routes
+    Route::get('report/balance-sheet', [ReportingController::class, 'balance_sheet_report'])->name('report.balance_sheet')->middleware('permission:Sale Report|Profit Loss Report|System Reports');
+    Route::post('report/balance-sheet/fetch', [ReportingController::class, 'fetchBalanceSheetReport'])->name('report.balance_sheet.fetch')->middleware('permission:Sale Report|Profit Loss Report|System Reports');
+    Route::get('report/balance-sheet/print', [ReportingController::class, 'printBalanceSheetReport'])->name('report.balance_sheet.print')->middleware('permission:Sale Report|Profit Loss Report|System Reports');
+
     // Chart of Accounts
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all')->middleware('permission:Char Of Accounts');
     Route::delete('/coa/account/{id}', [AccountsHeadController::class, 'destroy'])->name('coa.account.delete')->middleware('permission:Char Of Accounts|Delete Account');
@@ -407,6 +412,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock-adjustment/create', [StockAdjustmentController::class, 'create'])->name('stock-adjustment.create')->middleware('permission:Stock Adjustment');
     Route::post('/stock-adjustment/store', [StockAdjustmentController::class, 'store'])->name('stock-adjustment.store')->middleware('permission:Stock Adjustment');
     Route::get('/stock-adjustment/{id}', [StockAdjustmentController::class, 'show'])->name('stock-adjustment.show')->middleware('permission:Stock Adjustment');
+    Route::get('/stock-adjustment/{id}/edit', [StockAdjustmentController::class, 'edit'])->name('stock-adjustment.edit')->middleware('permission:Stock Adjustment');
+    Route::match(['put', 'post'], '/stock-adjustment/{id}', [StockAdjustmentController::class, 'update'])->name('stock-adjustment.update')->middleware('permission:Stock Adjustment');
+    Route::delete('/stock-adjustment/{id}', [StockAdjustmentController::class, 'destroy'])->name('stock-adjustment.destroy')->middleware('permission:Stock Adjustment');
     Route::get('/stock-adjustment-report', [StockAdjustmentController::class, 'report'])->name('stock-adjustment.report')->middleware('permission:Stock Adjustment');
 
     // Raw Material Routes (new grouped)
@@ -503,7 +511,7 @@ Route::middleware('auth')->group(function () {
     // ==========================================
     // ASSETS MANAGEMENT (FURNITURE & MACHINERY)
     // ==========================================
-    Route::prefix('assets')->name('assets.')->group(function () {
+    Route::prefix('fixed-assets')->name('assets.')->group(function () {
         Route::get('/', [AssetController::class, 'index'])->name('index');
         Route::get('/create', [AssetController::class, 'create'])->name('create');
         Route::post('/store', [AssetController::class, 'store'])->name('store');
@@ -518,6 +526,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}/delete', [AssetController::class, 'destroy'])->name('destroy');
         Route::get('/{id}/barcode', [AssetController::class, 'barcode'])->name('barcode');
         Route::post('/{id}/maintenance', [AssetController::class, 'storeMaintenance'])->name('maintenance.store');
+        Route::put('/maintenance/{id}/update', [AssetController::class, 'updateMaintenance'])->name('maintenance.update');
         Route::delete('/maintenance/{id}/delete', [AssetController::class, 'destroyMaintenance'])->name('maintenance.destroy');
         Route::post('/{id}/transfer', [AssetController::class, 'storeTransfer'])->name('transfer.store');
         Route::post('/{id}/dispose', [AssetController::class, 'dispose'])->name('dispose');

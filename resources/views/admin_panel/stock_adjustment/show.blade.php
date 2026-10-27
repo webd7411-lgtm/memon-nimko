@@ -33,6 +33,13 @@
   padding: .5rem 1.1rem; font-size: .8rem; font-weight: 600; transition: all .2s ease; text-decoration: none;
 }
 .pc-back:hover { background: rgba(255,255,255,.15); color: #fff; text-decoration: none; }
+.pc-edit {
+  background: linear-gradient(135deg, #0fae6b 0%, #0b7a4d 100%); color: #fff;
+  display: inline-flex; align-items: center; gap: .45rem; border-radius: var(--pc-radius-sm);
+  padding: .5rem 1.1rem; font-size: .8rem; font-weight: 600; transition: all .2s ease; text-decoration: none;
+  border: none;
+}
+.pc-edit:hover { background: linear-gradient(135deg, #0b7a4d 0%, #085e3a 100%); color: #fff; text-decoration: none; transform: translateY(-1px); }
 
 .pc-card { background: var(--pc-surface); border: 1px solid var(--pc-border); border-radius: var(--pc-radius); box-shadow: var(--pc-shadow); margin-bottom: 1.25rem; }
 .pc-card-hdr {
@@ -119,6 +126,7 @@
         <i class="bi bi-{{ $adjustment->type === 'increase' ? 'plus-lg' : 'dash-lg' }}"></i>
         {{ $adjustment->type === 'increase' ? 'Increase' : 'Decrease' }}
       </span>
+      <a href="{{ route('stock-adjustment.edit', $adjustment->id) }}" class="pc-edit"><i class="bi bi-pencil-square"></i>Edit</a>
       <a href="{{ route('stock-adjustment.index') }}" class="pc-back"><i class="bi bi-arrow-left"></i>Back to Adjustments</a>
     </div>
   </div>

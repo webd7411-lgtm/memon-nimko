@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
+use App\Models\AccountHead;
 use App\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\AssetMaintenance;
 use App\Models\AssetTransfer;
 use App\Models\Branch;
+use App\Models\ExpenseVoucher;
 use App\Models\Vendor;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
@@ -223,12 +226,15 @@ class AssetController extends Controller
             'vendor',
             'creator',
             'maintenances.creator',
+            'maintenances.account.head',
+            'maintenances.expenseVoucher',
             'transfers.fromBranch',
             'transfers.toBranch',
             'transfers.user'
         ])->findOrFail($id);
 
         $branches = Branch::where('id', '!=', $asset->branch_id)->get();
+        $paymentAccounts = Account::whereNull('distributor_id')->where('status', 1)->with('head')->get();
 
         // Barcode preview
         $barcodePng = null;
@@ -237,7 +243,7 @@ class AssetController extends Controller
             $barcodePng = 'data:image/png;base64,' . $dns->getBarcodePNG($asset->asset_code, 'C128', 2, 45);
         } catch (\Throwable $e) {}
 
-        return view('admin_panel.assets.show', compact('asset', 'branches', 'barcodePng'));
+        return view('admin_panel.assets.show', compact('asset', 'branches', 'paymentAccounts', 'barcodePng'));
     }
 
     /**
@@ -334,7 +340,7 @@ class AssetController extends Controller
     }
 
     /**
-     * Record maintenance / service log.
+     * Record maintenance / service log with optional Cash/Bank deduction.
      */
     public function storeMaintenance(Request $request, $id)
     {
@@ -344,6 +350,7 @@ class AssetController extends Controller
             'maintenance_date'  => 'required|date',
             'service_type'      => 'required|string|max:100',
             'cost'              => 'required|numeric|min:0',
+            'account_id'        => 'nullable|exists:accounts,id',
             'performed_by'      => 'nullable|string|max:150',
             'next_service_date' => 'nullable|date',
             'status'            => 'required|in:scheduled,in_progress,completed',
@@ -351,37 +358,236 @@ class AssetController extends Controller
             'parts_replaced'    => 'nullable|string',
         ]);
 
-        AssetMaintenance::create([
-            'asset_id'          => $asset->id,
-            'maintenance_date'  => $request->maintenance_date,
-            'service_type'      => $request->service_type,
-            'cost'              => $request->cost,
-            'performed_by'      => $request->performed_by,
-            'next_service_date' => $request->next_service_date,
-            'description'       => $request->description,
-            'parts_replaced'    => $request->parts_replaced,
-            'status'            => $request->status,
-            'created_by'        => Auth::id(),
-        ]);
+        DB::beginTransaction();
+        try {
+            $cost = (float) $request->cost;
+            $voucherId = null;
+            $accountId = null;
+            $payingAccount = null;
 
-        // Auto update asset status
-        if ($request->status === 'in_progress' || $request->status === 'scheduled') {
-            $asset->update(['status' => 'under_maintenance', 'condition' => 'needs_repair']);
-        } elseif ($request->status === 'completed' && $asset->status === 'under_maintenance') {
-            $asset->update(['status' => 'active', 'condition' => 'good']);
+            // Optional automated Expense Voucher & Cash/Bank deduction
+            if ($request->filled('account_id') && $cost > 0) {
+                $payingAccount = Account::find($request->account_id);
+                if ($payingAccount) {
+                    $accountId = $payingAccount->id;
+
+                    // Ensure an Expense head exists
+                    $expenseHead = AccountHead::firstOrCreate(
+                        ['name' => 'Machinery & Asset Maintenance'],
+                        ['status' => 1]
+                    );
+
+                    // Create automated Expense Voucher
+                    $voucher = ExpenseVoucher::create([
+                        'evid'         => ExpenseVoucher::generateInvoiceNo(),
+                        'user_id'      => Auth::id(),
+                        'branch_id'    => $asset->branch_id ?: active_branch_id(),
+                        'entry_date'   => now(),
+                        'date'         => $request->maintenance_date,
+                        'type'         => $expenseHead->id,
+                        'party_id'     => $payingAccount->id,
+                        'remarks'      => ["Asset Maintenance: {$asset->name} ({$asset->asset_code}) - {$request->service_type}"],
+                        'amount'       => [(string)$cost],
+                        'total_amount' => $cost,
+                    ]);
+
+                    $voucherId = $voucher->id;
+
+                    // Deduct from paying account (Cash in Hand / Bank)
+                    $payingAccount->opening_balance -= $cost;
+                    $payingAccount->save();
+                }
+            }
+
+            AssetMaintenance::create([
+                'asset_id'           => $asset->id,
+                'maintenance_date'   => $request->maintenance_date,
+                'service_type'       => $request->service_type,
+                'cost'               => $cost,
+                'account_id'         => $accountId,
+                'expense_voucher_id' => $voucherId,
+                'performed_by'       => $request->performed_by,
+                'next_service_date'  => $request->next_service_date,
+                'description'        => $request->description,
+                'parts_replaced'     => $request->parts_replaced,
+                'status'             => $request->status,
+                'created_by'         => Auth::id(),
+            ]);
+
+            // Auto update asset status
+            if ($request->status === 'in_progress' || $request->status === 'scheduled') {
+                $asset->update(['status' => 'under_maintenance', 'condition' => 'needs_repair']);
+            } elseif ($request->status === 'completed' && $asset->status === 'under_maintenance') {
+                $asset->update(['status' => 'active', 'condition' => 'good']);
+            }
+
+            DB::commit();
+
+            $msg = 'Maintenance record added successfully.';
+            if ($voucherId && $payingAccount) {
+                $msg .= " Rs. " . number_format($cost, 0) . " deducted from {$payingAccount->title} and Expense Voucher ({$voucher->evid}) generated.";
+            }
+
+            return redirect()->back()->with('success', $msg);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to save maintenance record: ' . $e->getMessage());
         }
-
-        return redirect()->back()->with('success', 'Maintenance record added successfully.');
     }
 
     /**
-     * Delete maintenance record.
+     * Update an existing maintenance record and synchronize account balances.
+     */
+    public function updateMaintenance(Request $request, $id)
+    {
+        $m = AssetMaintenance::findOrFail($id);
+        $asset = $m->asset;
+
+        $request->validate([
+            'maintenance_date'  => 'required|date',
+            'service_type'      => 'required|string|max:100',
+            'cost'              => 'required|numeric|min:0',
+            'account_id'        => 'nullable|exists:accounts,id',
+            'performed_by'      => 'nullable|string|max:150',
+            'next_service_date' => 'nullable|date',
+            'status'            => 'required|in:scheduled,in_progress,completed',
+            'description'       => 'nullable|string',
+            'parts_replaced'    => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $newCost = (float) $request->cost;
+            $oldCost = (float) $m->cost;
+            $newAccountId = $request->account_id ? (int)$request->account_id : null;
+            $oldAccountId = $m->account_id ? (int)$m->account_id : null;
+            $voucherId = $m->expense_voucher_id;
+
+            // Handle account balance and voucher changes
+            if ($voucherId) {
+                $voucher = ExpenseVoucher::find($voucherId);
+                // Refund old cost to old account first
+                if ($oldAccountId) {
+                    $oldAcc = Account::find($oldAccountId);
+                    if ($oldAcc) {
+                        $oldAcc->opening_balance += $oldCost;
+                        $oldAcc->save();
+                    }
+                }
+
+                // If user selected an account for payment
+                if ($newAccountId && $newCost > 0) {
+                    $newAcc = Account::find($newAccountId);
+                    if ($newAcc) {
+                        $newAcc->opening_balance -= $newCost;
+                        $newAcc->save();
+                    }
+                    if ($voucher) {
+                        $voucher->update([
+                            'date'         => $request->maintenance_date,
+                            'party_id'     => $newAccountId,
+                            'remarks'      => ["Asset Maintenance: {$asset->name} ({$asset->asset_code}) - {$request->service_type}"],
+                            'amount'       => [(string)$newCost],
+                            'total_amount' => $newCost,
+                        ]);
+                    }
+                } else {
+                    // User deselected account -> remove voucher
+                    if ($voucher) {
+                        $voucher->delete();
+                    }
+                    $voucherId = null;
+                    $newAccountId = null;
+                }
+            } else {
+                // Previously had no voucher, but now user chose an account
+                if ($newAccountId && $newCost > 0) {
+                    $newAcc = Account::find($newAccountId);
+                    if ($newAcc) {
+                        $newAcc->opening_balance -= $newCost;
+                        $newAcc->save();
+
+                        $expenseHead = AccountHead::firstOrCreate(
+                            ['name' => 'Machinery & Asset Maintenance'],
+                            ['status' => 1]
+                        );
+
+                        $voucher = ExpenseVoucher::create([
+                            'evid'         => ExpenseVoucher::generateInvoiceNo(),
+                            'user_id'      => Auth::id(),
+                            'branch_id'    => $asset->branch_id ?: active_branch_id(),
+                            'entry_date'   => now(),
+                            'date'         => $request->maintenance_date,
+                            'type'         => $expenseHead->id,
+                            'party_id'     => $newAcc->id,
+                            'remarks'      => ["Asset Maintenance: {$asset->name} ({$asset->asset_code}) - {$request->service_type}"],
+                            'amount'       => [(string)$newCost],
+                            'total_amount' => $newCost,
+                        ]);
+
+                        $voucherId = $voucher->id;
+                    }
+                }
+            }
+
+            // Update the maintenance entry
+            $m->update([
+                'maintenance_date'   => $request->maintenance_date,
+                'service_type'       => $request->service_type,
+                'cost'               => $newCost,
+                'account_id'         => $newAccountId,
+                'expense_voucher_id' => $voucherId,
+                'performed_by'       => $request->performed_by,
+                'next_service_date'  => $request->next_service_date,
+                'description'        => $request->description,
+                'parts_replaced'     => $request->parts_replaced,
+                'status'             => $request->status,
+            ]);
+
+            // Auto update asset status
+            if ($request->status === 'in_progress' || $request->status === 'scheduled') {
+                $asset->update(['status' => 'under_maintenance', 'condition' => 'needs_repair']);
+            } elseif ($request->status === 'completed' && $asset->status === 'under_maintenance') {
+                $asset->update(['status' => 'active', 'condition' => 'good']);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Maintenance record updated successfully.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to update maintenance: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete maintenance record and reverse payment if deducted.
      */
     public function destroyMaintenance($id)
     {
         $m = AssetMaintenance::findOrFail($id);
-        $m->delete();
-        return redirect()->back()->with('success', 'Maintenance record deleted.');
+
+        DB::beginTransaction();
+        try {
+            // Reverse account balance if an expense voucher was created
+            if ($m->expense_voucher_id) {
+                $voucher = ExpenseVoucher::find($m->expense_voucher_id);
+                if ($voucher) {
+                    $payingAccount = Account::find($voucher->party_id);
+                    if ($payingAccount) {
+                        $payingAccount->opening_balance += (float)$m->cost;
+                        $payingAccount->save();
+                    }
+                    $voucher->delete();
+                }
+            }
+
+            $m->delete();
+            DB::commit();
+            return redirect()->back()->with('success', 'Maintenance record deleted and payment reversed if applicable.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Error deleting record: ' . $e->getMessage());
+        }
     }
 
     /**

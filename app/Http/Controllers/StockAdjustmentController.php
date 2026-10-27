@@ -167,6 +167,249 @@ Stock::create([
         return view('admin_panel.stock_adjustment.show', compact('adjustment'));
     }
 
+    public function edit($id)
+    {
+        $adjustment = StockAdjustment::with(['user', 'items.product.unit', 'items.product.variants', 'items.variant'])->findOrFail($id);
+        $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        return view('admin_panel.stock_adjustment.edit', compact('adjustment', 'products', 'warehouses'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $adjustment = StockAdjustment::with('items.product.unit')->findOrFail($id);
+
+        $request->validate([
+            'adjustment_date' => 'required|date',
+            'type'            => 'required|in:increase,decrease',
+            'reason'          => 'required|string|max:255',
+            'warehouse_id'    => 'nullable|exists:warehouses,id',
+            'product_id'      => 'required|array|min:1',
+            'qty'             => 'required|array',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $oldBranchId    = $adjustment->branch_id ?? active_branch_id();
+            $oldWarehouseId = $adjustment->warehouse_id;
+            $oldType        = $adjustment->type;
+
+            // 1. Revert previous stock adjustment
+            foreach ($adjustment->items as $oldItem) {
+                $oldProduct = $oldItem->product ?: Product::with('unit')->find($oldItem->product_id);
+
+                $unitName = strtolower($oldProduct->unit->name ?? '');
+                $isKg = $oldProduct && (
+                    $oldProduct->unit_type === 'kg'
+                    || str_contains($unitName, 'gram')
+                    || str_contains($unitName, 'gm')
+                );
+
+                $oldDbVariantId = $isKg ? null : $oldItem->variant_id;
+
+                $stockQuery = Stock::where('product_id', $oldItem->product_id)
+                    ->where('branch_id', $oldBranchId);
+
+                if ($oldWarehouseId) {
+                    $stockQuery->where('warehouse_id', $oldWarehouseId);
+                } else {
+                    $stockQuery->whereNull('warehouse_id');
+                }
+
+                if ($oldDbVariantId) {
+                    $stockQuery->where('variant_id', $oldDbVariantId);
+                } else {
+                    $stockQuery->whereNull('variant_id');
+                }
+
+                $stock = $stockQuery->first();
+
+                if ($stock) {
+                    if ($oldType === 'increase') {
+                        $stock->qty -= $oldItem->qty_stock;
+                    } else {
+                        $stock->qty += $oldItem->qty_stock;
+                    }
+                    $stock->save();
+                } elseif ($oldType === 'decrease') {
+                    Stock::create([
+                        'branch_id'    => $oldBranchId,
+                        'warehouse_id' => $oldWarehouseId ?: null,
+                        'product_id'   => $oldItem->product_id,
+                        'variant_id'   => $oldDbVariantId,
+                        'qty'          => $oldItem->qty_stock,
+                    ]);
+                }
+            }
+
+            // 2. Delete old items
+            $adjustment->items()->delete();
+
+            // 3. Update adjustment master details
+            $adjustment->update([
+                'adjustment_date' => $request->adjustment_date,
+                'type'            => $request->type,
+                'reason'          => $request->reason,
+                'notes'           => $request->notes,
+                'warehouse_id'    => $request->warehouse_id ?: null,
+            ]);
+
+            // 4. Create new items and apply new stock effects
+            $targetBranchId = $adjustment->branch_id ?? active_branch_id();
+            $newWarehouseId = $request->warehouse_id ?: null;
+
+            foreach ($request->product_id as $idx => $productId) {
+                $qty = (float)($request->qty[$idx] ?? 0);
+                if (!$productId || $qty <= 0) continue;
+
+                $product = Product::with('unit')->find($productId);
+                if (!$product) continue;
+
+                $unitName = strtolower($product->unit->name ?? '');
+                $isKg = $product->unit_type === 'kg'
+                    || str_contains($unitName, 'gram')
+                    || str_contains($unitName, 'gm');
+
+                $variantId = $request->variant_id[$idx] ?? null;
+                if ($variantId === '') $variantId = null;
+
+                $dbVariantId = $variantId;
+                $qtyStock = $qty;
+
+                if ($isKg) {
+                    $dbVariantId = null; // Always adjust main product stock for KG items
+                    if ($variantId) {
+                        $vModel = \App\Models\ProductVariant::find($variantId);
+                        if ($vModel) {
+                            $kgSize = floatval($vModel->size_value);
+                            if ($vModel->size_unit === 'kg') {
+                                $qtyStock = ($kgSize * $qty * 1000);
+                            } else {
+                                $qtyStock = ($kgSize * $qty);
+                            }
+                        }
+                    } else {
+                        $qtyStock = $qty * 1000;
+                    }
+                }
+
+                StockAdjustmentItem::create([
+                    'adjustment_id' => $adjustment->id,
+                    'product_id'    => $productId,
+                    'variant_id'    => $variantId,
+                    'unit'          => $product->unit->name ?? 'Pc',
+                    'qty'           => $qty,
+                    'qty_stock'     => $qtyStock,
+                    'notes'         => $request->item_note[$idx] ?? null,
+                ]);
+
+                // Apply stock adjustment
+                $stockQuery = Stock::where('product_id', $productId)
+                    ->where('branch_id', $targetBranchId);
+
+                if ($newWarehouseId) {
+                    $stockQuery->where('warehouse_id', $newWarehouseId);
+                } else {
+                    $stockQuery->whereNull('warehouse_id');
+                }
+
+                if ($dbVariantId) {
+                    $stockQuery->where('variant_id', $dbVariantId);
+                } else {
+                    $stockQuery->whereNull('variant_id');
+                }
+
+                $stock = $stockQuery->first();
+
+                if ($stock) {
+                    if ($request->type === 'increase') {
+                        $stock->qty += $qtyStock;
+                    } else {
+                        $stock->qty -= $qtyStock;
+                    }
+                    $stock->save();
+                } else {
+                    Stock::create([
+                        'branch_id'    => $targetBranchId,
+                        'warehouse_id' => $newWarehouseId,
+                        'product_id'   => $productId,
+                        'variant_id'   => $dbVariantId,
+                        'qty'          => ($request->type === 'increase' ? $qtyStock : -$qtyStock),
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('stock-adjustment.index')
+                ->with('success', 'Stock adjustment updated successfully! Ref: ' . $adjustment->ref_no);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Error: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function destroy($id)
+    {
+        $adjustment = StockAdjustment::with('items.product.unit')->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $oldBranchId    = $adjustment->branch_id ?? active_branch_id();
+            $oldWarehouseId = $adjustment->warehouse_id;
+            $oldType        = $adjustment->type;
+
+            // Revert stock adjustment effects
+            foreach ($adjustment->items as $oldItem) {
+                $oldProduct = $oldItem->product ?: Product::with('unit')->find($oldItem->product_id);
+
+                $unitName = strtolower($oldProduct->unit->name ?? '');
+                $isKg = $oldProduct && (
+                    $oldProduct->unit_type === 'kg'
+                    || str_contains($unitName, 'gram')
+                    || str_contains($unitName, 'gm')
+                );
+
+                $oldDbVariantId = $isKg ? null : $oldItem->variant_id;
+
+                $stockQuery = Stock::where('product_id', $oldItem->product_id)
+                    ->where('branch_id', $oldBranchId);
+
+                if ($oldWarehouseId) {
+                    $stockQuery->where('warehouse_id', $oldWarehouseId);
+                } else {
+                    $stockQuery->whereNull('warehouse_id');
+                }
+
+                if ($oldDbVariantId) {
+                    $stockQuery->where('variant_id', $oldDbVariantId);
+                } else {
+                    $stockQuery->whereNull('variant_id');
+                }
+
+                $stock = $stockQuery->first();
+
+                if ($stock) {
+                    if ($oldType === 'increase') {
+                        $stock->qty -= $oldItem->qty_stock;
+                    } else {
+                        $stock->qty += $oldItem->qty_stock;
+                    }
+                    $stock->save();
+                }
+            }
+
+            $refNo = $adjustment->ref_no;
+            $adjustment->delete();
+
+            DB::commit();
+            return redirect()->route('stock-adjustment.index')
+                ->with('success', 'Stock adjustment deleted! Ref: ' . $refNo);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Error deleting adjustment: ' . $e->getMessage());
+        }
+    }
+
     public function report(Request $request)
     {
         $from = $request->from_date ?? today()->startOfMonth()->format('Y-m-d');
