@@ -17,13 +17,61 @@ class HomeController extends Controller
             return redirect()->route('login');
         }
 
-        $usertype = Auth::user()->usertype;
-        $userId = Auth::id();
+        $user     = Auth::user();
+        $usertype = $user->usertype;
 
         // Redirect Distributor to dedicated portal
-        if ($usertype == 'distributor' || (Auth::user()->distributor && !Auth::user()->hasRole('Super Admin') && Auth::user()->email !== 'admin@admin.com')) {
+        if ($usertype == 'distributor' || ($user->distributor && !$user->hasRole('Super Admin') && $user->email !== 'admin@admin.com')) {
             return redirect()->route('distributor.dashboard');
         }
+
+        // ── Smart Permission-Aware Redirect ───────────────────────────────────
+        // If the user lacks Dashboard permission, forward them to the first
+        // module they ARE allowed to access instead of showing a 403 error.
+        $canDashboard = $user->email === 'admin@admin.com'
+            || $user->hasRole(['Super Admin', 'super-admin'])
+            || $user->can('Dashboard');
+
+        if (!$canDashboard) {
+            // Priority-ordered fallback routes: [permission => route_name]
+            $fallbacks = [
+                'Sales'              => 'sale.screen',
+                'Sales'              => 'sale.index',
+                'Purchase'           => 'Purchase.home',
+                'Products'           => 'product',
+                'Customer'           => 'customers.index',
+                'Vendor'             => 'vendors',
+                'Production'         => 'production.index',
+                'Raw Materials'      => 'raw-materials.index',
+                'Stock Transfer'     => 'stock_transfers.index',
+                'Item Stock Report'  => 'report.item_stock',
+                'Sale Report'        => 'report.sale',
+                'Purchase Report'    => 'report.purchase',
+                'Customer Ledger'    => 'report.customer.ledger',
+                'Vendor Ledger'      => 'report.vendor.ledger',
+                'Char Of Accounts'   => 'view_all',
+                'Payment Voucher'    => 'all-Payment-vochers',
+                'Receipts Voucher'   => 'all-recepit-vochers',
+                'Expense Voucher'    => 'all-expense-vochers',
+                'Cashbook'           => 'cashbook',
+                'Category'           => 'Category.home',
+                'Brands'             => 'Brand.home',
+                'Roles'              => 'roles.index',
+                'Users'              => 'users.index',
+                'Branch'             => 'branch.index',
+                'Settings'           => 'settings.index',
+            ];
+
+            foreach ($fallbacks as $permission => $routeName) {
+                if ($user->can($permission) && \Illuminate\Support\Facades\Route::has($routeName)) {
+                    return redirect()->route($routeName);
+                }
+            }
+
+            // Absolute last resort — show a friendly "no access" page
+            abort(403, 'You do not have access to any module. Please contact your administrator.');
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         $startDate = $request->start_date ?: now()->startOfMonth()->format('Y-m-d');
         $endDate   = $request->end_date   ?: now()->endOfMonth()->format('Y-m-d');
