@@ -556,6 +556,9 @@
           <a href="{{ route('all-recepit-vochers') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 font-weight-bold" style="font-size:0.78rem;">
             <i class="bi bi-receipt me-1"></i> Receipt History
           </a>
+          <a href="{{ route('coa.sync_sales') }}" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 font-weight-bold" style="font-size:0.78rem;" title="Sync any missing card/bank sale payments into accounts">
+            <i class="bi bi-arrow-repeat me-1"></i> Sync Sale Payments
+          </a>
         </div>
       </div>
 

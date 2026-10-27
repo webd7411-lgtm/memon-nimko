@@ -207,6 +207,15 @@ class VendorController extends Controller
             'note'            => $request->note,
         ]);
 
+        // 🔹 Deduct from bank account if paid via Card / Bank
+        if ($cardAmount > 0 && $cardAccountId) {
+            $cardAcc = \App\Models\Account::find($cardAccountId);
+            if ($cardAcc) {
+                $cardAcc->opening_balance = (float)$cardAcc->opening_balance - $cardAmount;
+                $cardAcc->save();
+            }
+        }
+
         // 🔹 Update vendor ledger
         $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->first();
         if ($ledger) {
@@ -310,6 +319,24 @@ class VendorController extends Controller
             ]);
         }
         
+        // Revert old bank deduction and apply new bank deduction
+        $oldCard = (float) $payment->card;
+        $oldCardAccId = $payment->card_account_id;
+        if ($oldCardAccId && $oldCard > 0) {
+            $oldAcc = \App\Models\Account::find($oldCardAccId);
+            if ($oldAcc) {
+                $oldAcc->opening_balance = (float)$oldAcc->opening_balance + $oldCard;
+                $oldAcc->save();
+            }
+        }
+        if ($cardAccountId && $cardAmount > 0) {
+            $newAcc = \App\Models\Account::find($cardAccountId);
+            if ($newAcc) {
+                $newAcc->opening_balance = (float)$newAcc->opening_balance - $cardAmount;
+                $newAcc->save();
+            }
+        }
+
         // 3. Update Payment Record
         $payment->update([
             'vendor_id'       => $validated['vendor_id'],

@@ -503,9 +503,12 @@ class SaleController extends Controller
 
         $branchId = active_branch_id();
         
-        $lastProduct = Product::orderBy('id', 'desc')->first();
-        $nextId = $lastProduct ? ($lastProduct->id + 1) : 1;
-        $nextCode = 'ITEM-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        // Generate next item code (format: ITEM-1, ITEM-2, ...)
+        $maxNum = Product::where('item_code', 'LIKE', 'ITEM-%')
+            ->selectRaw("MAX(CAST(SUBSTRING(item_code, 6) AS UNSIGNED)) as max_num")
+            ->value('max_num');
+        $nextId = $maxNum !== null ? ((int)$maxNum + 1) : (Product::max('id') ? Product::max('id') + 1 : 1);
+        $nextCode = 'ITEM-' . $nextId;
 
         $barcode = trim($request->barcode ?? '');
         if (empty($barcode)) {
@@ -1717,6 +1720,21 @@ class SaleController extends Controller
 
             $model->save();
 
+            // 💳 Bank Account Update: If payment received into Card / Bank account from Chart of Accounts
+            $cardAccount = null;
+            if ($action === 'sale' && !empty($model->card_account_id) && floatval($model->card) > 0) {
+                $cardAccount = \App\Models\Account::find($model->card_account_id);
+                if ($cardAccount) {
+                    $cardAccount->opening_balance = (float)$cardAccount->opening_balance + floatval($model->card);
+                    $cardAccount->save();
+
+                    if ($model instanceof \App\Models\Sale) {
+                        $model->is_account_credited = 1;
+                        $model->save();
+                    }
+                }
+            }
+
             // Ledger update (only for confirmed sales or direct sales)
             if ($action === 'sale') {
                 $customer_id = $request->customer;
@@ -1753,9 +1771,11 @@ class SaleController extends Controller
                                     'distributor_id'        => $distributor->id,
                                     'amount'                => $paidAmount,
                                     'payment_date'          => $request->sale_date ?: now()->toDateString(),
-                                    'payment_method'        => ($request->cash > 0 ? 'Cash' : 'Card'),
+                                    'payment_method'        => ($request->cash > 0 && $request->card > 0 ? 'Split' : ($request->card > 0 ? 'Card' : 'Cash')),
+                                    'account_id'            => $model->card_account_id ?: null,
+                                    'bank_name'             => $cardAccount ? $cardAccount->title : null,
                                     'transaction_reference' => $model->invoice_no,
-                                    'notes'                 => "Payment on Sale Invoice #{$model->invoice_no}",
+                                    'notes'                 => "Payment on Sale Invoice #{$model->invoice_no}" . ($cardAccount ? " (Deposited into: {$cardAccount->title})" : ""),
                                     'status'                => 'approved',
                                     'approved_by'           => auth()->id(),
                                     'approved_at'           => now(),
@@ -1810,18 +1830,25 @@ class SaleController extends Controller
                         if ($paidAmount > 0 && $paidAmount < $net) {
                             $lastCp = DB::table('customer_payments')->latest('id')->first();
                             $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
-                            DB::table('customer_payments')->insert([
-                                'received_no'      => $nextNo,
+                            $payData = [
                                 'customer_id'      => $customer_id,
                                 'admin_or_user_id' => auth()->id(),
                                 'payment_date'     => now()->toDateString(),
                                 'amount'           => $paidAmount,
-                                'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
+                                'cash'             => floatval($request->cash ?? 0),
+                                'card'             => floatval($request->card ?? 0),
+                                'card_account_id'  => $model->card_account_id ?: null,
+                                'payment_method'   => ($request->cash > 0 && $request->card > 0 ? 'Split' : ($request->card > 0 ? 'Card' : 'Cash')),
                                 'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
                                 'branch_id'        => active_branch_id(),
                                 'created_at'       => now(),
                                 'updated_at'       => now(),
-                            ]);
+                            ];
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('customer_payments', 'received_no')) {
+                                $payData['received_no'] = $nextNo;
+                            }
+                            DB::table('customer_payments')->insert($payData);
+
                             // Reduce ledger by what was paid
                             $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
                             if ($ledger2) {
@@ -1833,18 +1860,25 @@ class SaleController extends Controller
                             // Full payment — record in customer_payments too (reduces balance back to 0)
                             $lastCp = DB::table('customer_payments')->latest('id')->first();
                             $nextNo = 'REC-' . str_pad(($lastCp ? $lastCp->id + 1 : 1), 4, '0', STR_PAD_LEFT);
-                            DB::table('customer_payments')->insert([
-                                'received_no'      => $nextNo,
+                            $payData = [
                                 'customer_id'      => $customer_id,
                                 'admin_or_user_id' => auth()->id(),
                                 'payment_date'     => now()->toDateString(),
                                 'amount'           => $net,
-                                'payment_method'   => ($request->cash > 0 ? 'Cash' : 'Card'),
+                                'cash'             => floatval($request->cash ?? 0),
+                                'card'             => floatval($request->card ?? 0),
+                                'card_account_id'  => $model->card_account_id ?: null,
+                                'payment_method'   => ($request->cash > 0 && $request->card > 0 ? 'Split' : ($request->card > 0 ? 'Card' : 'Cash')),
                                 'note'             => 'Paid on Sale (' . ($model->invoice_no ?? '') . ')',
                                 'branch_id'        => active_branch_id(),
                                 'created_at'       => now(),
                                 'updated_at'       => now(),
-                            ]);
+                            ];
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('customer_payments', 'received_no')) {
+                                $payData['received_no'] = $nextNo;
+                            }
+                            DB::table('customer_payments')->insert($payData);
+
                             $ledger2 = \App\Models\CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
                             if ($ledger2) {
                                 $ledger2->previous_balance = $ledger2->closing_balance;
@@ -1892,6 +1926,12 @@ class SaleController extends Controller
             }
         } catch (\Exception $e) {
             DB::rollback();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sale Error: ' . $e->getMessage()
+                ], 422);
+            }
             return back()->with('error', 'Error: ' . $e->getMessage());
         }
     }
@@ -2102,6 +2142,17 @@ class SaleController extends Controller
             $sale->change          = $request->input('change', 0);
             
             if ($action === 'sale') {
+                $cardPaid = floatval($request->input('card', 0));
+                $cardAccountId = $request->input('card_account_id', null);
+                if ($cardPaid > 0 && $cardAccountId && empty($sale->is_account_credited)) {
+                    $cardAcc = \App\Models\Account::find($cardAccountId);
+                    if ($cardAcc) {
+                        $cardAcc->opening_balance = (float)$cardAcc->opening_balance + $cardPaid;
+                        $cardAcc->save();
+                        $sale->is_account_credited = 1;
+                    }
+                }
+
                 if ($request->filled('table_id')) {
                     $sale->table_id = $request->table_id;
                     $table = \App\Models\Table::find($request->table_id);
@@ -3547,6 +3598,39 @@ class SaleController extends Controller
 
             // --- Save updated Sale ---
             $old_total = $sale->total_net;
+            $oldCard = (float) $sale->card;
+            $oldCardAccountId = $sale->card_account_id;
+            $wasCredited = !empty($sale->is_account_credited);
+
+            $newCard = (float) ($request->card ?? 0);
+            $newCardAccountId = !empty($request->card_account_id) ? $request->card_account_id : null;
+
+            // Adjust bank account balance
+            if ($wasCredited) {
+                if ($oldCardAccountId && $oldCard > 0) {
+                    $oldAcc = \App\Models\Account::find($oldCardAccountId);
+                    if ($oldAcc) {
+                        $oldAcc->opening_balance = (float)$oldAcc->opening_balance - $oldCard;
+                        $oldAcc->save();
+                    }
+                }
+                if ($newCardAccountId && $newCard > 0) {
+                    $newAcc = \App\Models\Account::find($newCardAccountId);
+                    if ($newAcc) {
+                        $newAcc->opening_balance = (float)$newAcc->opening_balance + $newCard;
+                        $newAcc->save();
+                    }
+                }
+            } else {
+                if ($newCardAccountId && $newCard > 0) {
+                    $newAcc = \App\Models\Account::find($newCardAccountId);
+                    if ($newAcc) {
+                        $newAcc->opening_balance = (float)$newAcc->opening_balance + $newCard;
+                        $newAcc->save();
+                        $sale->is_account_credited = 1;
+                    }
+                }
+            }
 
             $sale->customer            = $request->customer;
             $sale->reference           = $request->reference ?? '';
@@ -3565,10 +3649,22 @@ class SaleController extends Controller
             $sale->total_extradiscount = $request->total_extra_cost;
             $sale->total_net           = $request->total_net;
             $sale->cash                = $request->cash;
-            $sale->card                = $request->card;
+            $sale->card                = $newCard;
+            $sale->card_account_id     = $newCardAccountId;
             $sale->change              = $request->change;
             $sale->total_items         = $total_items;
             $sale->save();
+
+            // Also sync distributor payment if linked
+            $distPayment = \App\Models\DistributorPayment::where('transaction_reference', $sale->invoice_no)->first();
+            if ($distPayment) {
+                $newPaidAmount = (float)($request->cash ?? 0) + $newCard;
+                $distPayment->update([
+                    'amount'         => $newPaidAmount,
+                    'account_id'     => $newCardAccountId,
+                    'payment_method' => ($request->cash > 0 && $newCard > 0 ? 'Split' : ($newCard > 0 ? 'Card' : 'Cash')),
+                ]);
+            }
 
             // --- Ledger Update ---
             $customer_id = $request->customer;

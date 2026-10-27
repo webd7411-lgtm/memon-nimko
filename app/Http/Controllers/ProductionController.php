@@ -108,6 +108,16 @@ class ProductionController extends Controller
                 foreach ($request->rm_id as $ri => $rmId) {
                     if ($rmId && isset($request->rm_qty[$ri]) && (float)$request->rm_qty[$ri] > 0) {
                         $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
+                        $rmType = $request->rm_type[$ri] ?? 'rm';
+                        if ($costPerUnit <= 0) {
+                            if ($rmType === 'product') {
+                                $pModel = Product::find($rmId);
+                                $costPerUnit = (float)($pModel->price ?? 0);
+                            } else {
+                                $rmModel = RawMaterial::find($rmId);
+                                $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
+                            }
+                        }
                         $qtyUsed = (float)$request->rm_qty[$ri];
                         $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
                         if ($factor <= 0) $factor = 1;
@@ -222,10 +232,19 @@ class ProductionController extends Controller
                     if ($qtyUsed <= 0) continue;
 
                     $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
+                    $rmType = $request->rm_type[$ri] ?? 'rm';
+                    if ($costPerUnit <= 0) {
+                        if ($rmType === 'product') {
+                            $pModel = Product::find($rmId);
+                            $costPerUnit = (float)($pModel->price ?? 0);
+                        } else {
+                            $rmModel = RawMaterial::find($rmId);
+                            $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
+                        }
+                    }
                     $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
                     if ($factor <= 0) $factor = 1;
                     $totalCost = $qtyUsed * ($costPerUnit / $factor);
-                    $rmType = $request->rm_type[$ri] ?? 'rm';
 
                     if ($rmType === 'product') {
                         DB::table('production_raw_material_usage')->insert([
@@ -448,6 +467,16 @@ class ProductionController extends Controller
                 foreach ($request->rm_id as $ri => $rmId) {
                     if ($rmId && isset($request->rm_qty[$ri]) && (float)$request->rm_qty[$ri] > 0) {
                         $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
+                        $rmType = $request->rm_type[$ri] ?? 'rm';
+                        if ($costPerUnit <= 0) {
+                            if ($rmType === 'product') {
+                                $pModel = Product::find($rmId);
+                                $costPerUnit = (float)($pModel->price ?? 0);
+                            } else {
+                                $rmModel = RawMaterial::find($rmId);
+                                $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
+                            }
+                        }
                         $qtyUsed = (float)$request->rm_qty[$ri];
                         $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
                         if ($factor <= 0) $factor = 1;
@@ -553,10 +582,19 @@ class ProductionController extends Controller
                     if ($qtyUsed <= 0) continue;
 
                     $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
+                    $rmType = $request->rm_type[$ri] ?? 'rm';
+                    if ($costPerUnit <= 0) {
+                        if ($rmType === 'product') {
+                            $pModel = Product::find($rmId);
+                            $costPerUnit = (float)($pModel->price ?? 0);
+                        } else {
+                            $rmModel = RawMaterial::find($rmId);
+                            $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
+                        }
+                    }
                     $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
                     if ($factor <= 0) $factor = 1;
                     $totalCost = $qtyUsed * ($costPerUnit / $factor);
-                    $rmType = $request->rm_type[$ri] ?? 'rm';
 
                     if ($rmType === 'product') {
                         DB::table('production_raw_material_usage')->insert([

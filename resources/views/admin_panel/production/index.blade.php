@@ -115,7 +115,7 @@
 /* ══════════ KPI GRID ══════════ */
 .pc-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
@@ -327,6 +327,10 @@
     </div>
 
     <div class="d-flex align-items-center gap-2 pc-header-actions">
+      <a href="{{ route('report.production') }}" class="pc-btn-back">
+        <i class="bi bi-file-earmark-bar-graph me-1"></i> Production Report
+      </a>
+
       <a href="{{ route('raw-materials.index') }}" class="pc-btn-back">
         <i class="bi bi-box-seam me-1"></i> Raw Materials
       </a>
@@ -353,16 +357,6 @@
       </div>
       <div class="pc-kpi-icon blue">
         <i class="bi bi-layers-fill"></i>
-      </div>
-    </div>
-
-    <div class="pc-kpi-card">
-      <div class="pc-kpi-info">
-        <p>Total Production Cost</p>
-        <h3 class="text-success">Rs {{ number_format($entries->sum('production_cost') ?? 0, 0) }}</h3>
-      </div>
-      <div class="pc-kpi-icon green">
-        <i class="bi bi-currency-dollar"></i>
       </div>
     </div>
 
@@ -403,7 +397,6 @@
             <th>Date</th>
             <th>Source</th>
             <th>Items Produced</th>
-            <th>Cost (Rs)</th>
             <th>Notes</th>
             <th>Created By</th>
             <th class="text-center" style="width: 160px;">Action</th>
@@ -432,12 +425,9 @@
             </td>
             <td>
               <div class="fw-semibold text-dark" title="{{ $e->product_details }}">
-                {{ \Illuminate\Support\Str::limit($e->product_details, 45) }}
+                {{ \Illuminate\Support\Str::limit($e->product_details, 55) }}
                 <div class="small text-muted fw-normal"><i class="bi bi-box-seam me-1"></i> {{ $e->items_count }} item(s)</div>
               </div>
-            </td>
-            <td>
-              <span class="fw-bold text-success">Rs {{ number_format($e->production_cost ?? 0, 2) }}</span>
             </td>
             <td><span class="text-muted small">{{ $e->notes ?? '-' }}</span></td>
             <td><span class="fw-semibold text-secondary">{{ $e->user_name ?? 'System' }}</span></td>
@@ -454,7 +444,7 @@
           </tr>
           @empty
           <tr>
-            <td colspan="8" class="text-center py-5 text-muted">
+            <td colspan="7" class="text-center py-5 text-muted">
               <i class="bi bi-inbox fs-1 d-block mb-2"></i>
               No production entries recorded yet.
             </td>
@@ -490,10 +480,6 @@
 
       <div class="mb-2">
         <div class="small fw-bold text-dark mb-1">{{ $e->product_details }}</div>
-        <div class="d-flex justify-content-between align-items-center bg-light rounded px-2 py-1 small">
-          <span class="text-muted">Total Cost:</span>
-          <span class="fw-bold text-success">Rs {{ number_format($e->production_cost ?? 0, 2) }}</span>
-        </div>
       </div>
 
       <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top">

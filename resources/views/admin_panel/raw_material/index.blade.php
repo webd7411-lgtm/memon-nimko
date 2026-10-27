@@ -315,17 +315,20 @@
     </div>
 
     {{-- TABS --}}
+    @php
+      $activeTab = request('tab', request()->has('start_date') ? 'tab-stock' : 'tab-materials');
+    @endphp
     <div class="rm-tabs">
-      <button class="rm-tab active" data-tab="tab-materials"><i class="bi bi-list-ul"></i> Materials List</button>
-      <button class="rm-tab" data-tab="tab-purchase"><i class="bi bi-cart-plus-fill"></i> New Purchase</button>
-      <button class="rm-tab" data-tab="tab-history"><i class="bi bi-clock-history"></i> Purchase History</button>
-      <button class="rm-tab" data-tab="tab-stock"><i class="bi bi-shop"></i> Current Branch Stock</button>
-      <button class="rm-tab" data-tab="tab-warehouse-stock"><i class="bi bi-building"></i> Warehouse Stock</button>
-      <button class="rm-tab" data-tab="tab-recipes"><i class="bi bi-egg-fried"></i> Product Recipes (BOM)</button>
+      <button class="rm-tab {{ $activeTab === 'tab-materials' ? 'active' : '' }}" data-tab="tab-materials"><i class="bi bi-list-ul"></i> Materials List</button>
+      <button class="rm-tab {{ $activeTab === 'tab-purchase' ? 'active' : '' }}" data-tab="tab-purchase"><i class="bi bi-cart-plus-fill"></i> New Purchase</button>
+      <button class="rm-tab {{ $activeTab === 'tab-history' ? 'active' : '' }}" data-tab="tab-history"><i class="bi bi-clock-history"></i> Purchase History</button>
+      <button class="rm-tab {{ $activeTab === 'tab-stock' ? 'active' : '' }}" data-tab="tab-stock"><i class="bi bi-shop"></i> Current Branch Stock</button>
+      <button class="rm-tab {{ $activeTab === 'tab-warehouse-stock' ? 'active' : '' }}" data-tab="tab-warehouse-stock"><i class="bi bi-building"></i> Warehouse Stock</button>
+      <button class="rm-tab {{ $activeTab === 'tab-recipes' ? 'active' : '' }}" data-tab="tab-recipes"><i class="bi bi-egg-fried"></i> Product Recipes (BOM)</button>
     </div>
 
     {{-- TAB: MATERIALS --}}
-    <div id="tab-materials" class="tab-content">
+    <div id="tab-materials" class="tab-content" style="display: {{ $activeTab === 'tab-materials' ? 'block' : 'none' }};">
       <div class="rm-card">
         <div class="rm-card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -389,17 +392,40 @@
                   </td>
                   <td class="text-center" data-label="Actions">
                     <div class="d-flex align-items-center justify-content-center gap-1">
-                      <button class="rm-btn rm-btn-success rm-btn-sm editMaterial"
-                        data-id="{{ $m->id }}" data-name="{{ $m->name }}"
-                        data-urdu="{{ $m->urdu_name }}" data-unit="{{ $m->unit }}"
+                      <button type="button" class="rm-btn rm-btn-sm viewMaterial"
+                        style="background:#eff6ff;color:var(--accent);border:1px solid #bfdbfe;"
+                        data-id="{{ $m->id }}"
+                        data-name="{{ $m->name }}"
+                        data-urdu="{{ $m->urdu_name ?? '' }}"
+                        data-unit="{{ $m->unit }}"
                         data-cunit="{{ $m->consumption_unit ?? $m->unit }}"
-                        data-factor="{{ number_format($m->conversion_factor ?? 1, 4) }}"
-                        data-price="{{ $lastCost }}"
-                        data-opening-stock="{{ number_format($m->currentStock() / (($m->conversion_factor ?? 1) > 0 ? ($m->conversion_factor ?? 1) : 1), 2) }}"
-                        data-alert="{{ $m->alert_qty }}" data-notes="{{ $m->notes }}" title="Edit">
+                        data-factor="{{ (float)($m->conversion_factor ?? 1) }}"
+                        data-price="{{ (float)$lastCost }}"
+                        data-purqty="{{ number_format($purQty, 2) }}"
+                        data-sqty="{{ number_format($sqty, 2) }}"
+                        data-whqty="{{ number_format($whPurQty, 2) }}"
+                        data-alert="{{ (float)($m->alert_qty ?? 0) }}"
+                        data-notes="{{ $m->notes ?? '' }}"
+                        title="View Details">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                      <button type="button" class="rm-btn rm-btn-success rm-btn-sm editMaterial"
+                        data-id="{{ $m->id }}"
+                        data-name="{{ $m->name }}"
+                        data-urdu="{{ $m->urdu_name ?? '' }}"
+                        data-unit="{{ strtolower($m->unit) }}"
+                        data-cunit="{{ strtolower($m->consumption_unit ?? $m->unit) }}"
+                        data-factor="{{ (float)($m->conversion_factor ?? 1) }}"
+                        data-price="{{ (float)$lastCost }}"
+                        data-opening-stock="{{ (float)$purQty }}"
+                        data-alert="{{ (float)($m->alert_qty ?? 0) }}"
+                        data-notes="{{ $m->notes ?? '' }}"
+                        title="Edit">
                         <i class="bi bi-pencil-square"></i>
                       </button>
-                      <button class="rm-btn rm-btn-danger rm-btn-sm" onclick="confirmDelete('{{ route('raw-materials.delete', $m->id) }}')" title="Delete">
+                      <button type="button" class="rm-btn rm-btn-danger rm-btn-sm"
+                        onclick="confirmDelete('{{ route('raw-materials.delete', $m->id) }}')"
+                        title="Delete">
                         <i class="bi bi-trash"></i>
                       </button>
                     </div>
@@ -524,20 +550,58 @@
                   <td class="fw-bold text-dark" data-label="Vendor">{{ $p->vendor_name ?? '-' }}</td>
                   <td data-label="Warehouse"><span class="badge bg-primary-subtle text-primary border fw-semibold">{{ $p->warehouse->warehouse_name ?? $p->warehouse->name ?? 'Main Stock' }}</span></td>
                   <td data-label="Items Breakdown">
-                    @foreach($p->items as $item)
-                    <div style="font-size:.8rem;margin-bottom:2px;" class="text-secondary">
-                      <i class="bi bi-dot me-1"></i><strong>{{ $item->rawMaterial->name ?? '-' }}:</strong> {{ $item->qty }} x Rs {{ number_format($item->price_per_unit, 0) }}
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="badge bg-secondary-subtle text-secondary border fw-semibold">
+                        <i class="bi bi-box-seam me-1"></i>{{ count($p->items) }} {{ count($p->items) == 1 ? 'Item' : 'Items' }}
+                      </span>
+                      <button type="button" class="rm-btn rm-btn-sm viewPurchaseItemsBtn"
+                        style="font-size:.75rem;padding:2px 8px;min-height:26px;background:#eff6ff;color:var(--accent);border:1px solid #bfdbfe;"
+                        data-invoice="{{ $p->invoice_no }}"
+                        data-date="{{ $p->date }}"
+                        data-vendor="{{ $p->vendor_name ?? '-' }}"
+                        data-warehouse="{{ $p->warehouse->warehouse_name ?? $p->warehouse->name ?? 'Main Stock' }}"
+                        data-total="Rs {{ number_format($p->total_cost, 0) }}"
+                        data-items="{{ json_encode($p->items->map(function($item) {
+                          return [
+                            'name' => $item->rawMaterial->name ?? '-',
+                            'qty' => (float)$item->qty,
+                            'unit' => $item->rawMaterial->unit ?? '',
+                            'price' => number_format((float)$item->price_per_unit, 2),
+                            'total' => number_format((float)$item->total, 2)
+                          ];
+                        })) }}"
+                        title="View Items Details">
+                        <i class="bi bi-eye me-1"></i> View
+                      </button>
                     </div>
-                    @endforeach
                   </td>
                   <td style="font-weight:700;" class="text-success" data-label="Total Cost">Rs {{ number_format($p->total_cost, 0) }}</td>
                   <td data-label="Created By"><span class="badge bg-secondary-subtle text-secondary">{{ $p->creator->name ?? '-' }}</span></td>
                   <td class="text-center" data-label="Actions">
                     <div class="d-flex align-items-center justify-content-center gap-1">
+                      <button type="button" class="rm-btn rm-btn-success rm-btn-sm editPurchaseBtn"
+                        data-id="{{ $p->id }}"
+                        data-invoice="{{ $p->invoice_no }}"
+                        data-date="{{ $p->date }}"
+                        data-vendor-id="{{ $p->vendor_id }}"
+                        data-vendor-name="{{ $p->vendor_name }}"
+                        data-warehouse-id="{{ $p->warehouse_id }}"
+                        data-notes="{{ $p->notes ?? '' }}"
+                        data-items="{{ json_encode($p->items->map(function($item) {
+                          return [
+                            'raw_material_id' => $item->raw_material_id,
+                            'qty' => (float)$item->qty,
+                            'price_per_unit' => (float)$item->price_per_unit,
+                            'total' => (float)$item->total,
+                          ];
+                        })) }}"
+                        title="Edit Purchase">
+                        <i class="bi bi-pencil-square"></i>
+                      </button>
                       <a href="{{ route('raw-materials.purchase.print', $p->id) }}" target="_blank" class="rm-btn rm-btn-primary rm-btn-sm" title="Print Invoice">
                         <i class="bi bi-printer"></i>
                       </a>
-                      <button class="rm-btn rm-btn-danger rm-btn-sm" onclick="confirmDelete('{{ route('raw-materials.purchase.delete', $p->id) }}')" title="Delete Purchase">
+                      <button type="button" class="rm-btn rm-btn-danger rm-btn-sm" onclick="confirmDelete('{{ route('raw-materials.purchase.delete', $p->id) }}')" title="Delete Purchase">
                         <i class="bi bi-trash"></i>
                       </button>
                     </div>
@@ -554,23 +618,66 @@
     </div>
 
     {{-- TAB: CURRENT BRANCH STOCK --}}
-    <div id="tab-stock" class="tab-content" style="display:none;">
+    <div id="tab-stock" class="tab-content" style="display: {{ $activeTab === 'tab-stock' ? 'block' : 'none' }};">
       <div class="rm-card">
         <div class="rm-card-body">
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div>
-              <h5 style="font-weight:700;font-size:1.05rem;margin:0;"><i class="bi bi-shop me-2" style="color:var(--accent);"></i>Current Branch Stock</h5>
-              <div class="text-muted small mt-1" style="font-size:.78rem;">Shop floor inventory for active branch (excludes warehouse storage)</div>
+              <h5 style="font-weight:700;font-size:1.05rem;margin:0;"><i class="bi bi-shop me-2" style="color:var(--accent);"></i>Current Branch Stock & Movement Report</h5>
+              <div class="text-muted small mt-1" style="font-size:.78rem;">Shop floor inventory for active branch with opening stock, purchases, recipe usages, and current closing balance</div>
             </div>
             <div class="d-flex align-items-center gap-2">
               <button type="button" class="rm-btn rm-btn-sm" style="background:#eff6ff;color:var(--accent);border:1px solid #bfdbfe;" onclick="switchTab('tab-warehouse-stock')">
                 <i class="bi bi-building me-1"></i> View Warehouse Stock
               </button>
-              <button class="rm-btn rm-btn-primary" onclick="printReportSection('stockTable', 'Raw Material Branch Stock Report')"><i class="bi bi-printer me-1"></i> Print Branch Stock</button>
+              <button class="rm-btn rm-btn-primary" onclick="printReportSection('stockTable', 'Raw Material Branch Stock Report')"><i class="bi bi-printer me-1"></i> Print Stock Report</button>
             </div>
           </div>
 
-          {{-- STOCK FILTERS --}}
+          {{-- DATE & TIME FILTERS --}}
+          <form method="GET" action="{{ route('raw-materials.index') }}" id="stockFilterForm" class="p-3 bg-white rounded-3 border mb-3 shadow-sm">
+            <input type="hidden" name="tab" value="tab-stock">
+            <div class="row g-2 align-items-end">
+              <div class="col-6 col-md-2">
+                <label class="lbl"><i class="bi bi-calendar-date"></i> From Date</label>
+                <input type="date" name="start_date" id="stockStartDate" class="fld" value="{{ $startDate }}" required>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="lbl"><i class="bi bi-clock"></i> From Time</label>
+                <input type="time" name="start_time" id="stockStartTime" class="fld" value="{{ substr($startTime, 0, 5) }}" required>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="lbl"><i class="bi bi-calendar-date"></i> To Date</label>
+                <input type="date" name="end_date" id="stockEndDate" class="fld" value="{{ $endDate }}" required>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="lbl"><i class="bi bi-clock"></i> To Time</label>
+                <input type="time" name="end_time" id="stockEndTime" class="fld" value="{{ substr($endTime, 0, 5) }}" required>
+              </div>
+              <div class="col-12 col-md-4 d-flex gap-2">
+                <button type="submit" class="rm-btn rm-btn-primary flex-grow-1 justify-content-center">
+                  <i class="bi bi-funnel-fill"></i> Filter Stock
+                </button>
+                <a href="{{ route('raw-materials.index', ['tab' => 'tab-stock']) }}" class="rm-btn" style="background:#f1f5f9;color:var(--text-sec);border:1px solid var(--border);" title="Reset to Today">
+                  <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </a>
+              </div>
+            </div>
+
+            {{-- Quick Filter Pills --}}
+            <div class="d-flex align-items-center gap-2 mt-2 pt-2 border-top flex-wrap">
+              <span class="text-muted small fw-bold" style="font-size:.74rem;text-transform:uppercase;">Quick Range:</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-range-btn" data-range="today" style="font-size:.76rem;border-radius:20px;">Today</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-range-btn" data-range="yesterday" style="font-size:.76rem;border-radius:20px;">Yesterday</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-range-btn" data-range="this_week" style="font-size:.76rem;border-radius:20px;">This Week</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-range-btn" data-range="this_month" style="font-size:.76rem;border-radius:20px;">This Month</button>
+              <span class="ms-auto badge bg-light text-secondary border font-monospace" style="font-size:.75rem;">
+                <i class="bi bi-clock-history me-1"></i>Active Period: {{ date('d-M-Y', strtotime($startDate)) }} {{ substr($startTime, 0, 5) }} &rarr; {{ date('d-M-Y', strtotime($endDate)) }} {{ substr($endTime, 0, 5) }}
+              </span>
+            </div>
+          </form>
+
+          {{-- SEARCH & STATUS FILTERS --}}
           <div class="row g-2 mb-3 p-3 bg-light rounded-3 border">
             <div class="col-md-6">
               <label class="lbl"><i class="bi bi-search"></i> Search Material</label>
@@ -594,43 +701,96 @@
                   <th>#</th>
                   <th>Material Name</th>
                   <th>Unit</th>
-                  <th>Branch Stock</th>
-                  <th>Recipe Qty</th>
+                  <th style="color:var(--accent);"><i class="bi bi-sunrise me-1"></i>Opening Stock</th>
+                  <th style="color:var(--success);"><i class="bi bi-cart-plus me-1"></i>Purchase Qty</th>
+                  <th style="color:var(--danger);"><i class="bi bi-egg-fried me-1"></i>Used Qty</th>
+                  <th style="color:#0284c7;"><i class="bi bi-boxes me-1"></i>Current Stock</th>
                   <th>Alert Qty</th>
                   <th>Status</th>
                   <th>Warehouse Stock</th>
+                  <th class="text-center" style="width:105px;">Usage Detail</th>
                 </tr>
               </thead>
               <tbody>
                 @forelse($materials as $m)
                   @php 
-                    $sqty = $m->currentStock(); 
                     $factor = (float)($m->conversion_factor ?? 1);
-                    $purQty = $factor > 0 ? round($sqty / $factor, 2) : $sqty;
-                    $alertInConsumption = (float)($m->alert_qty ?? 0) * ($factor > 0 ? $factor : 1);
-                    $statusStr = $sqty > $alertInConsumption ? 'In Stock' : ($sqty > 0 ? 'Low Stock' : 'Out of Stock');
+                    if ($factor <= 0) $factor = 1;
+                    $cUnit = $m->consumption_unit ?? $m->unit;
+
+                    $openPur = (float)($m->calc_opening_stock_purchase ?? 0);
+                    $openCons = (float)($m->calc_opening_stock_consumption ?? 0);
+
+                    $purPur = (float)($m->calc_purchase_qty_purchase ?? 0);
+                    $purCons = (float)($m->calc_purchase_qty_consumption ?? 0);
+
+                    $usedPur = (float)($m->calc_used_qty_purchase ?? 0);
+                    $usedCons = (float)($m->calc_used_qty_consumption ?? 0);
+
+                    $currPur = (float)($m->calc_current_stock_purchase ?? 0);
+                    $currCons = (float)($m->calc_current_stock_consumption ?? 0);
+
+                    $statusStr = $m->calc_status ?? 'In Stock';
                     $whQty = $m->warehouseStock();
                     $whPurQty = $factor > 0 ? round($whQty / $factor, 2) : $whQty;
                   @endphp
                 <tr class="stock-row" data-status="{{ strtolower($statusStr) }}">
                   <td class="fw-bold" data-label="#">{{ $m->id }}</td>
-                  <td style="font-weight:700;" class="text-dark material-name-cell" data-label="Material">{{ $m->name }}</td>
-                  <td data-label="Unit"><span class="badge bg-light text-dark border">{{ strtoupper($m->unit) }}</span></td>
-                  <td style="font-weight:800;" class="fs-6" data-label="Branch Stock">
-                    <span class="stock-badge {{ $sqty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
-                      {{ number_format($purQty, 2) }} {{ $m->unit }}
-                    </span>
+                  <td style="font-weight:700;" class="text-dark material-name-cell" data-label="Material">
+                    {{ $m->name }}
+                    @if($m->urdu_name)
+                      <span class="d-block small text-muted font-normal">{{ $m->urdu_name }}</span>
+                    @endif
                   </td>
-                  <td data-label="Recipe Qty">
-                    <span class="badge bg-light text-secondary border font-monospace">
-                      {{ number_format($sqty, 2) }} {{ $m->consumption_unit ?? $m->unit }}
+                  <td data-label="Unit">
+                    <span class="badge bg-light text-dark border">{{ strtoupper($m->unit) }}</span>
+                    @if($factor > 1)
+                      <div style="font-size:.7rem;" class="text-muted">1 {{ $m->unit }} = {{ number_format($factor, 0) }} {{ $cUnit }}</div>
+                    @endif
+                  </td>
+                  <td style="font-weight:700;" class="open-stock-cell" data-label="Opening Stock">
+                    <span class="text-dark">{{ number_format($openPur, 2) }} {{ $m->unit }}</span>
+                    @if($factor > 1)
+                      <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ number_format($openCons, 2) }} {{ $cUnit }})</div>
+                    @endif
+                  </td>
+                  <td style="font-weight:700;" class="purchase-qty-cell" data-label="Purchase Qty">
+                    @if($purCons > 0)
+                      <span class="badge bg-success-subtle text-success border fw-bold" style="font-size:.82rem;">
+                        +{{ number_format($purPur, 2) }} {{ $m->unit }}
+                      </span>
+                      @if($factor > 1)
+                        <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ number_format($purCons, 2) }} {{ $cUnit }})</div>
+                      @endif
+                    @else
+                      <span class="text-muted small">0.00</span>
+                    @endif
+                  </td>
+                  <td style="font-weight:700;" class="used-qty-cell" data-label="Used Qty">
+                    @if($usedCons > 0)
+                      <span class="badge bg-danger-subtle text-danger border fw-bold" style="font-size:.82rem;">
+                        -{{ number_format($usedCons, 2) }} {{ $cUnit }}
+                      </span>
+                      @if($factor > 1)
+                        <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ number_format($usedPur, 2) }} {{ $m->unit }})</div>
+                      @endif
+                    @else
+                      <span class="text-muted small">0.00</span>
+                    @endif
+                  </td>
+                  <td style="font-weight:800;" class="fs-6 current-stock-cell" data-label="Current Stock">
+                    <span class="stock-badge {{ $statusStr === 'In Stock' ? 'stock-ok' : 'stock-low' }}">
+                      {{ number_format($currPur, 2) }} {{ $m->unit }}
                     </span>
+                    @if($factor > 1)
+                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ number_format($currCons, 2) }} {{ $cUnit }})</div>
+                    @endif
                   </td>
                   <td data-label="Alert Qty">
                     {{ number_format((float)($m->alert_qty ?? 0), 2) }} {{ $m->unit }}
                   </td>
                   <td data-label="Status">
-                    <span class="stock-badge {{ $sqty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
+                    <span class="stock-badge {{ $statusStr === 'In Stock' ? 'stock-ok' : 'stock-low' }}">
                       {{ $statusStr }}
                     </span>
                   </td>
@@ -643,9 +803,26 @@
                       <span class="text-muted small" style="font-size:.75rem;">None</span>
                     @endif
                   </td>
+                  <td class="text-center" data-label="Usage Detail">
+                    @if($usedCons > 0)
+                      <button type="button" class="rm-btn rm-btn-primary rm-btn-sm btn-view-usage" 
+                        data-id="{{ $m->id }}" 
+                        data-name="{{ $m->name }}" 
+                        data-unit="{{ $m->unit }}" 
+                        data-cunit="{{ $cUnit }}" 
+                        data-used="{{ number_format($usedCons, 2) }}" 
+                        data-used-pur="{{ number_format($usedPur, 2) }}">
+                        <i class="bi bi-info-circle me-1"></i> Detail
+                      </button>
+                    @else
+                      <button type="button" class="rm-btn rm-btn-sm" style="background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed;" title="No recipe usage recorded in selected period" disabled>
+                        <i class="bi bi-dash"></i> Detail
+                      </button>
+                    @endif
+                  </td>
                 </tr>
                 @empty
-                <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">No materials available</td></tr>
+                <tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-muted);">No materials available</td></tr>
                 @endforelse
               </tbody>
             </table>
@@ -829,15 +1006,35 @@
                   <td style="font-weight:700;color:var(--text);" data-label="Product Name">{{ $p->item_name }}</td>
                   <td data-label="Unit Type"><span class="badge bg-secondary-subtle text-secondary" style="font-size:.75rem;">{{ strtoupper($p->unit_type ?? 'Piece') }}</span></td>
                   <td data-label="Recipe Raw Materials">
-                    @foreach($p->bom as $bomItem)
-                    <div style="font-size:.82rem;margin-bottom:3px;">
-                      <i class="bi bi-record-circle-fill text-primary me-1" style="font-size:.7rem;"></i>
-                      <strong>{{ $bomItem->rawMaterial->name ?? 'Material' }}:</strong> {{ (float)$bomItem->qty_per_unit }} {{ $bomItem->rawMaterial->consumption_unit ?? $bomItem->rawMaterial->unit ?? '' }}
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="badge bg-primary-subtle text-primary border fw-semibold">
+                        <i class="bi bi-layers-fill me-1"></i>{{ count($p->bom) }} Ingredients
+                      </span>
+                      <button type="button" class="rm-btn rm-btn-sm viewRecipeBtn"
+                        style="font-size:.78rem;padding:3px 10px;min-height:28px;background:#eff6ff;color:var(--accent);border:1px solid #bfdbfe;"
+                        data-product="{{ json_encode([
+                          'id' => $p->id,
+                          'code' => $p->item_code,
+                          'name' => $p->item_name,
+                          'unit' => strtoupper($p->unit_type ?? 'Piece'),
+                          'edit_url' => route('products.edit', $p->id),
+                          'items' => $p->bom->map(function($b) {
+                            return [
+                              'material' => $b->rawMaterial->name ?? 'Material',
+                              'urdu_name' => $b->rawMaterial->urdu_name ?? '',
+                              'qty' => (float)$b->qty_per_unit,
+                              'unit' => $b->rawMaterial->consumption_unit ?? $b->rawMaterial->unit ?? '',
+                              'purchase_unit' => $b->rawMaterial->unit ?? ''
+                            ];
+                          })
+                        ]) }}"
+                        title="View Recipe Details">
+                        <i class="bi bi-eye me-1"></i> View Details
+                      </button>
                     </div>
-                    @endforeach
                   </td>
                   <td class="text-center" data-label="Action">
-                    <a href="{{ route('products.edit', $p->id) }}" class="rm-btn rm-btn-success rm-btn-sm">
+                    <a href="{{ route('products.edit', $p->id) }}" class="rm-btn rm-btn-success rm-btn-sm" title="Edit Recipe">
                       <i class="bi bi-pencil-square me-1"></i> Edit Recipe
                     </a>
                   </td>
@@ -873,6 +1070,10 @@
               <input type="text" name="name" id="materialName" class="fld" required placeholder="e.g. Dough, Sugar" />
             </div>
             <div class="col-md-6">
+              <label class="lbl"><i class="bi bi-fonts"></i> Urdu Name (Optional)</label>
+              <input type="text" name="urdu_name" id="materialUrduName" class="fld" placeholder="اردو نام" />
+            </div>
+            <div class="col-md-6">
               <label class="lbl"><i class="bi bi-bag-check-fill"></i> Purchase Unit (Vendor)</label>
               <select name="unit" id="materialUnit" class="fld" required>
                 <option value="">Select Unit...</option>
@@ -903,7 +1104,7 @@
               <input type="number" step="0.0001" min="0.0001" name="conversion_factor" id="materialConversionFactor" class="fld" value="1" required placeholder="e.g. 1000" />
             </div>
             <div class="col-md-6">
-              <label class="lbl"><i class="bi bi-box-seam-fill"></i> Opening Stock (Purchase Unit)</label>
+              <label class="lbl"><i class="bi bi-box-seam-fill"></i> Current Stock (Purchase Unit)</label>
               <input type="number" step="0.01" min="0" name="opening_stock" id="materialOpeningStock" class="fld" value="0" placeholder="e.g. 50" />
             </div>
             <div class="col-12 mt-1">
@@ -928,12 +1129,341 @@
         </div>
         <div class="modal-footer bg-light px-4 py-3">
           <button type="button" class="rm-btn" style="background:#fff;color:var(--text-sec);border:1px solid var(--border);" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="rm-btn rm-btn-primary"><i class="bi bi-save me-1"></i> Save Material</button>
+          <button type="submit" id="materialModalSubmitBtn" class="rm-btn rm-btn-primary"><i class="bi bi-save me-1"></i> Save Material</button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+{{-- VIEW RECIPE DETAIL MODAL --}}
+<div class="modal fade" id="viewRecipeModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="border:none;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none;">
+        <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-egg-fried me-2 text-warning"></i> Product Recipe Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="p-3 bg-light rounded-3 border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <span class="text-muted small d-block">Product:</span>
+            <strong id="vrModalProductName" class="fs-5 text-dark"></strong>
+            <span id="vrModalProductCode" class="badge bg-light text-dark border ms-2 font-monospace"></span>
+          </div>
+          <div>
+            <span class="badge bg-primary-subtle text-primary border px-2 py-1" id="vrModalUnit"></span>
+          </div>
+        </div>
+        <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-list-check me-1 text-primary"></i> Required Bill of Materials (BOM)</h6>
+        <div class="table-responsive border rounded-3 overflow-hidden">
+          <table class="table table-sm table-striped mb-0" style="font-size:.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th style="width:45px;">#</th>
+                <th>Raw Material</th>
+                <th>Required Qty</th>
+                <th>Usage Unit</th>
+                <th>Purchase / Base Unit</th>
+              </tr>
+            </thead>
+            <tbody id="vrModalItemsBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-light px-4 py-3 justify-content-between">
+        <span class="text-muted small" id="vrModalItemCount"></span>
+        <div>
+          <button type="button" class="rm-btn" style="background:#fff;color:var(--text-sec);border:1px solid var(--border);" data-bs-dismiss="modal">Close</button>
+          <a href="#" id="vrModalEditLink" class="rm-btn rm-btn-success"><i class="bi bi-pencil-square me-1"></i> Edit Recipe</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- VIEW PURCHASE ITEMS DETAIL MODAL --}}
+<div class="modal fade" id="viewPurchaseModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="border:none;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none;">
+        <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-cart-check me-2 text-info"></i> Purchase Invoice Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-2 p-3 bg-light rounded-3 border mb-3">
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Invoice No:</span>
+            <strong id="vpModalInvoice" class="font-monospace text-primary"></strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Date:</span>
+            <strong id="vpModalDate" class="text-dark"></strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Vendor:</span>
+            <strong id="vpModalVendor" class="text-dark"></strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Warehouse:</span>
+            <strong id="vpModalWarehouse" class="text-dark"></strong>
+          </div>
+        </div>
+        <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-box-seam me-1 text-primary"></i> Purchased Raw Materials</h6>
+        <div class="table-responsive border rounded-3 overflow-hidden">
+          <table class="table table-sm table-striped mb-0" style="font-size:.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th style="width:45px;">#</th>
+                <th>Material</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total Price</th>
+              </tr>
+            </thead>
+            <tbody id="vpModalItemsBody"></tbody>
+            <tfoot class="table-light fw-bold">
+              <tr>
+                <td colspan="4" class="text-end">Grand Total:</td>
+                <td id="vpModalTotal" class="text-success fs-6"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-light px-4 py-3">
+        <button type="button" class="rm-btn" style="background:#fff;color:var(--text-sec);border:1px solid var(--border);" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- VIEW MATERIAL DETAIL MODAL --}}
+<div class="modal fade" id="viewMaterialModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border:none;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none;">
+        <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-info-circle-fill me-2 text-info"></i> Raw Material Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="text-center pb-3 border-bottom mb-3">
+          <h4 id="vmName" class="fw-bold text-dark mb-1"></h4>
+          <span id="vmUrdu" class="text-muted d-block" style="font-size:.9rem;"></span>
+          <span id="vmUnitBadge" class="badge bg-primary-subtle text-primary border mt-2"></span>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <span class="text-muted d-block small">Branch Stock:</span>
+              <strong id="vmBranchStock" class="text-success fs-6"></strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <span class="text-muted d-block small">Warehouse Stock:</span>
+              <strong id="vmWhStock" class="text-primary fs-6"></strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <span class="text-muted d-block small">Recipe Usage Stock:</span>
+              <strong id="vmRecipeStock" class="text-secondary"></strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <span class="text-muted d-block small">Last Purchase Price:</span>
+              <strong id="vmPrice" class="text-success"></strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <span class="text-muted d-block small">Alert Threshold:</span>
+              <strong id="vmAlert" class="text-danger"></strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <span class="text-muted d-block small">Unit Conversion:</span>
+              <strong id="vmConversion" class="text-dark small"></strong>
+            </div>
+          </div>
+          <div class="col-12" id="vmNotesContainer" style="display:none;">
+            <div class="p-2 border rounded bg-light">
+              <span class="text-muted d-block small">Notes:</span>
+              <span id="vmNotes" class="text-dark small"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light px-4 py-3">
+        <button type="button" class="rm-btn" style="background:#fff;color:var(--text-sec);border:1px solid var(--border);" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- RECIPE USAGE DETAIL MODAL --}}
+<div class="modal fade" id="usageDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="border:none;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none;">
+        <div>
+          <h5 class="modal-title fw-bold" id="usageDetailModalLabel">
+            <i class="bi bi-pie-chart-fill me-2 text-primary"></i>Recipe Usage Breakdown
+          </h5>
+          <div class="text-white-50 small mt-1">Product-wise consumption details for selected time period</div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3 p-md-4">
+        {{-- Summary Banner --}}
+        <div class="p-3 rounded-3 border bg-light mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <span class="text-muted d-block small text-uppercase fw-bold" style="font-size:.72rem;">Raw Material</span>
+            <strong class="fs-5 text-dark" id="modalMaterialName">-</strong>
+          </div>
+          <div>
+            <span class="text-muted d-block small text-uppercase fw-bold" style="font-size:.72rem;">Filtered Period</span>
+            <span class="badge bg-white text-dark border px-2 py-1 font-monospace" id="modalFilterPeriod" style="font-size:.8rem;">-</span>
+          </div>
+          <div class="text-md-end">
+            <span class="text-muted d-block small text-uppercase fw-bold" style="font-size:.72rem;">Total Used Qty</span>
+            <strong class="fs-5 text-danger" id="modalTotalUsed">-</strong>
+          </div>
+        </div>
+
+        {{-- Loading Spinner --}}
+        <div id="usageDetailLoading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="text-muted small mt-2">Loading recipe usage breakdown...</p>
+        </div>
+
+        {{-- Table Container --}}
+        <div id="usageDetailContent" style="display:none; overflow-x:auto;">
+          <table class="rm-tbl" id="usageDetailTable">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Batch #</th>
+                <th>Product Used In</th>
+                <th>Batch Output</th>
+                <th style="color:var(--danger);">Material Used</th>
+                <th>Recipe / Unit</th>
+                <th>Created By</th>
+              </tr>
+            </thead>
+            <tbody id="usageDetailTableBody">
+              {{-- Populated via AJAX --}}
+            </tbody>
+            <tfoot>
+              <tr style="background:#f8fafc; font-weight:700;">
+                <td colspan="4" class="text-end">Total Material Used:</td>
+                <td style="color:var(--danger);" id="modalFooterTotalUsed">-</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {{-- Empty State --}}
+        <div id="usageDetailEmpty" class="text-center py-4" style="display:none;">
+          <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+          <p class="text-muted fw-semibold">No product recipe usage found for this material in the selected date & time period.</p>
+        </div>
+      </div>
+      <div class="modal-footer bg-light px-4 py-2 d-flex justify-content-between">
+        <button type="button" class="rm-btn rm-btn-sm" style="background:#fff;border:1px solid var(--border);" onclick="printModalSection('usageDetailContent')">
+          <i class="bi bi-printer me-1"></i> Print Breakdown
+        </button>
+        <button type="button" class="rm-btn rm-btn-primary rm-btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{{-- EDIT PURCHASE MODAL --}}
+<div class="modal fade" id="editPurchaseModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content" style="border:none;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none;">
+        <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-pencil-square me-2 text-warning"></i> Edit Raw Material Purchase (<span id="epModalInvoice" class="font-monospace text-info"></span>)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form class="edit-purchase-form" action="{{ route('raw-materials.purchase.store') }}" method="POST">
+        @csrf
+        <input type="hidden" name="edit_id" id="epEditId" />
+        <input type="hidden" name="vendor_name" id="epVendorName" />
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-calendar-date"></i> Date</label>
+              <input type="date" name="date" id="epDate" class="fld" required />
+            </div>
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-person-fill"></i> Vendor</label>
+              <select name="vendor_id" id="epVendorId" class="fld" required onchange="document.getElementById('epVendorName').value = this.options[this.selectedIndex].getAttribute('data-name') || '';">
+                <option value="">Select Vendor...</option>
+                @foreach($vendors as $v)
+                <option value="{{ $v->id }}" data-name="{{ $v->name }}">{{ $v->name }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-houses-fill"></i> Warehouse</label>
+              <select name="warehouse_id" id="epWarehouseId" class="fld">
+                <option value="">Main Stock (No Warehouse)</option>
+                @foreach($warehouses as $w)
+                <option value="{{ $w->id }}">{{ $w->warehouse_name ?? $w->name }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-sticky-fill"></i> Notes</label>
+              <input type="text" name="notes" id="epNotes" class="fld" placeholder="Optional notes" />
+            </div>
+          </div>
+
+          <div class="table-responsive mb-3 border rounded-3 overflow-hidden">
+            <table class="rm-tbl" id="epItemsTable">
+              <thead>
+                <tr>
+                  <th style="width:38%;">Raw Material</th>
+                  <th style="width:20%;">Qty</th>
+                  <th style="width:20%;">Price/Unit</th>
+                  <th style="width:17%;">Total</th>
+                  <th style="width:5%;"></th>
+                </tr>
+              </thead>
+              <tbody id="epItemsBody">
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 border">
+            <div>
+              <button type="button" class="rm-btn rm-btn-sm rm-btn-primary" id="epAddRowBtn"><i class="bi bi-plus-lg me-1"></i> Add Another Item</button>
+            </div>
+            <div>
+              <strong>Total Cost: </strong><span id="epTotalCost" class="fs-5 fw-bold" style="color:var(--accent);">Rs 0</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-between">
+          <button type="button" class="rm-btn" style="background:#fff;border:1px solid var(--border);" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" id="epSubmitBtn" class="rm-btn rm-btn-success"><i class="bi bi-save me-1"></i> Update Purchase</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<template id="materialOptionsTemplate">
+  <option value="">Select Material...</option>
+  @foreach($materials as $m)
+  <option value="{{ $m->id }}" data-price="{{ $m->lastPurchaseCost() > 0 ? $m->lastPurchaseCost() : ($m->initial_price ?? 0) }}">{{ $m->name }} ({{ $m->unit }})</option>
+  @endforeach
+</template>
 @endsection
 
 @section('scripts')
@@ -981,10 +1511,54 @@ document.querySelectorAll('.rm-tab').forEach(tab => {
 // Material form submit
 $(document).on('submit', '.material-form', function(e) {
   e.preventDefault();
+  var form = $(this);
   var fd = new FormData(this);
-  var url = $(this).attr('action');
-  $(this).find(':submit').attr('disabled', true);
-  myAjax(url, fd, 'post');
+  var url = form.attr('action');
+  var $btn = form.find(':submit');
+  var btnText = $btn.html();
+  $btn.attr('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i> Saving...');
+
+  $.ajax({
+    url: url,
+    type: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    headers: {
+      'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+    },
+    dataType: 'json',
+    success: function(data) {
+      $btn.attr('disabled', false).html(btnText);
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: data.success,
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => {
+          if (data.reload) window.location.reload();
+        });
+      } else if (data.errors) {
+        var errHtml = '';
+        $.each(data.errors, function(k, v) {
+          errHtml += '<div class="text-danger small">' + (Array.isArray(v) ? v.join(', ') : v) + '</div>';
+        });
+        Swal.fire({ icon: 'error', title: 'Validation Errors', html: errHtml });
+      } else if (data.error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: data.error });
+      }
+    },
+    error: function(xhr) {
+      $btn.attr('disabled', false).html(btnText);
+      var msg = 'Failed to save raw material.';
+      if (xhr.responseJSON && xhr.responseJSON.message) {
+        msg = xhr.responseJSON.message;
+      }
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  });
 });
 
 // Auto conversion defaults when purchase unit changes
@@ -1010,16 +1584,39 @@ $(document).on('change', '#materialUnit', function() {
 
 // Edit material
 $(document).on('click', '.editMaterial', function() {
-  $('#materialEditId').val($(this).data('id'));
-  $('#materialName').val($(this).data('name'));
-  $('#materialUnit').val($(this).data('unit'));
-  $('#materialConsumptionUnit').val($(this).data('cunit') || $(this).data('unit'));
-  $('#materialConversionFactor').val($(this).data('factor') || 1);
-  $('#materialPrice').val($(this).data('price') || 0);
-  $('#materialAlert').val($(this).data('alert'));
-  $('#materialOpeningStock').val($(this).data('opening-stock') || 0);
-  $('#materialNotes').val($(this).data('notes'));
+  var id = $(this).data('id');
+  var name = $(this).data('name');
+  var urdu = $(this).data('urdu') || '';
+  var unit = ($(this).data('unit') || '').toString().toLowerCase();
+  var cunit = ($(this).data('cunit') || unit).toString().toLowerCase();
+  var factor = $(this).data('factor') || 1;
+  var price = $(this).data('price') || 0;
+  var alert = $(this).data('alert') || 0;
+  var openingStock = $(this).data('opening-stock') || 0;
+  var notes = $(this).data('notes') || '';
+
+  $('#materialEditId').val(id);
+  $('#materialName').val(name);
+  $('#materialUrduName').val(urdu);
+
+  if (unit && $('#materialUnit option[value="' + unit + '"]').length === 0) {
+    $('#materialUnit').append(new Option(unit, unit, true, true));
+  }
+  $('#materialUnit').val(unit);
+
+  if (cunit && $('#materialConsumptionUnit option[value="' + cunit + '"]').length === 0) {
+    $('#materialConsumptionUnit').append(new Option(cunit, cunit, true, true));
+  }
+  $('#materialConsumptionUnit').val(cunit);
+
+  $('#materialConversionFactor').val(factor);
+  $('#materialPrice').val(price);
+  $('#materialAlert').val(alert);
+  $('#materialOpeningStock').val(openingStock);
+  $('#materialNotes').val(notes);
+
   $('#materialModalLabel').html('<i class="bi bi-pencil-square me-1 text-primary"></i> Edit Raw Material');
+  $('#materialModalSubmitBtn').html('<i class="bi bi-check-circle me-1"></i> Update Material');
   $('#materialModal').modal('show');
 });
 
@@ -1027,13 +1624,16 @@ $(document).on('click', '.editMaterial', function() {
 $(document).on('click', '#resetMaterial', function() {
   $('#materialEditId').val('');
   $('#materialName').val('');
+  $('#materialUrduName').val('');
   $('#materialUnit').val('');
   $('#materialConsumptionUnit').val('');
   $('#materialConversionFactor').val('1');
   $('#materialPrice').val('0');
   $('#materialAlert').val('0');
+  $('#materialOpeningStock').val('0');
   $('#materialNotes').val('');
   $('#materialModalLabel').html('<i class="bi bi-box-seam me-1 text-primary"></i> Add Raw Material');
+  $('#materialModalSubmitBtn').html('<i class="bi bi-save me-1"></i> Save Material');
 });
 
 // Purchase form - add row
@@ -1125,23 +1725,41 @@ function printReportSection(tableId, title) {
   var isPurchase = tableId === 'purchaseTable';
 
   if (isStock) {
-    var headers = '<tr><th style="width:30%;">Material & Unit</th><th style="width:25%;">Branch Stock</th><th style="width:25%;">Recipe Qty / Alert</th><th style="width:20%;">Status</th></tr>';
+    var sD = $('#stockStartDate').val() || '';
+    var sT = $('#stockStartTime').val() || '';
+    var eD = $('#stockEndDate').val() || '';
+    var eT = $('#stockEndTime').val() || '';
+    if (sD && eD) {
+      title += ' (' + sD + ' ' + sT + ' to ' + eD + ' ' + eT + ')';
+    }
+    var headers = '<tr>' +
+      '<th style="width:20%;">Material & Unit</th>' +
+      '<th style="width:16%;">Opening Stock</th>' +
+      '<th style="width:16%;">Purchase Qty</th>' +
+      '<th style="width:16%;">Used Qty</th>' +
+      '<th style="width:16%;">Current Stock</th>' +
+      '<th style="width:16%;">Status / Alert</th>' +
+      '</tr>';
     
     $('#stockTable tbody tr.stock-row').each(function() {
-      if ($(this).css('display') !== 'none' && $(this).find('td').length >= 7) {
+      if ($(this).css('display') !== 'none' && $(this).find('td').length >= 8) {
         var id = $(this).find('td:eq(0)').text().trim();
         var name = $(this).find('.material-name-cell').text().trim();
         var unit = $(this).find('td:eq(2)').text().trim();
-        var stock = $(this).find('td:eq(3)').text().trim();
-        var recipe = $(this).find('td:eq(4)').text().trim();
-        var alert = $(this).find('td:eq(5)').text().trim();
-        var status = $(this).find('.stock-badge').text().trim();
+        var openStock = $(this).find('.open-stock-cell').text().trim();
+        var purQty = $(this).find('.purchase-qty-cell').text().trim();
+        var usedQty = $(this).find('.used-qty-cell').text().trim();
+        var currStock = $(this).find('.current-stock-cell').text().trim();
+        var alert = $(this).find('td:eq(7)').text().trim();
+        var status = $(this).find('td:eq(8)').text().trim();
 
         rowsHtml += '<tr>';
         rowsHtml += '<td><strong>' + name + '</strong><br><span style="font-size:8.5px;color:#444;">ID: ' + id + ' (' + unit + ')</span></td>';
-        rowsHtml += '<td><strong>' + stock + '</strong></td>';
-        rowsHtml += '<td>Usage: ' + recipe + '<br><span style="font-size:8.5px;color:#444;">Alert: ' + alert + '</span></td>';
-        rowsHtml += '<td><strong>' + status + '</strong></td>';
+        rowsHtml += '<td><strong>' + openStock + '</strong></td>';
+        rowsHtml += '<td>' + purQty + '</td>';
+        rowsHtml += '<td><span style="color:#b91c1c;">' + usedQty + '</span></td>';
+        rowsHtml += '<td><strong>' + currStock + '</strong></td>';
+        rowsHtml += '<td>' + status + '<br><span style="font-size:8.5px;color:#444;">Alert: ' + alert + '</span></td>';
         rowsHtml += '</tr>';
       }
     });
@@ -1285,15 +1903,454 @@ function confirmDelete(url) {
     text: 'This action cannot be undone',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Delete',
-    cancelButtonText: 'Cancel',
-    dangerMode: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Yes, Delete',
+    cancelButtonText: 'Cancel'
   }).then((result) => {
     if (result.isConfirmed) {
-      yourFunction(url, 'get');
+      Swal.fire({
+        title: 'Deleting...',
+        text: 'Please wait...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      $.ajax({
+        url: url,
+        type: 'DELETE',
+        headers: {
+          'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        dataType: 'json',
+        success: function(response) {
+          if (response.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Deleted!',
+              text: response.success,
+              timer: 1500,
+              showConfirmButton: false
+            }).then(() => {
+              window.location.reload();
+            });
+          } else if (response.error) {
+            Swal.fire('Error!', response.error, 'error');
+          } else {
+            window.location.reload();
+          }
+        },
+        error: function(xhr) {
+          var msg = 'An error occurred while deleting.';
+          if (xhr.responseJSON && xhr.responseJSON.message) {
+            msg = xhr.responseJSON.message;
+          } else if (xhr.responseJSON && xhr.responseJSON.error) {
+            msg = xhr.responseJSON.error;
+          }
+          Swal.fire('Error!', msg, 'error');
+        }
+      });
     }
   });
 }
+
+// View Recipe Details Modal
+$(document).on('click', '.viewRecipeBtn', function() {
+  var p = $(this).data('product');
+  if (typeof p === 'string') {
+    try { p = JSON.parse(p); } catch (e) { p = {}; }
+  }
+  $('#vrModalProductName').text(p.name || '-');
+  $('#vrModalProductCode').text(p.code || '-');
+  $('#vrModalUnit').text('Unit: ' + (p.unit || 'Piece'));
+  $('#vrModalEditLink').attr('href', p.edit_url || '#');
+
+  var tbody = '';
+  var items = p.items || [];
+  if (items.length > 0) {
+    items.forEach(function(item, idx) {
+      tbody += '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><strong>' + (item.material || '-') + '</strong>' + (item.urdu_name ? ' <span class="text-muted small">(' + item.urdu_name + ')</span>' : '') + '</td>' +
+        '<td class="fw-bold text-primary">' + item.qty + '</td>' +
+        '<td><span class="badge bg-light text-dark border">' + (item.unit || '-') + '</span></td>' +
+        '<td><span class="badge bg-secondary-subtle text-secondary">' + (item.purchase_unit || '-') + '</span></td>' +
+      '</tr>';
+    });
+  } else {
+    tbody = '<tr><td colspan="5" class="text-center text-muted py-3">No BOM recipe items configured</td></tr>';
+  }
+  $('#vrModalItemsBody').html(tbody);
+  $('#vrModalItemCount').text('Total: ' + items.length + ' raw materials in recipe');
+  $('#viewRecipeModal').modal('show');
+});
+
+// View Purchase Items Modal
+$(document).on('click', '.viewPurchaseItemsBtn', function() {
+  var inv = $(this).data('invoice');
+  var dt = $(this).data('date');
+  var ven = $(this).data('vendor');
+  var wh = $(this).data('warehouse');
+  var tot = $(this).data('total');
+  var items = $(this).data('items');
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items); } catch (e) { items = []; }
+  }
+
+  $('#vpModalInvoice').text(inv || '-');
+  $('#vpModalDate').text(dt || '-');
+  $('#vpModalVendor').text(ven || '-');
+  $('#vpModalWarehouse').text(wh || '-');
+  $('#vpModalTotal').text(tot || 'Rs 0');
+
+  var tbody = '';
+  if (items && items.length > 0) {
+    items.forEach(function(item, idx) {
+      tbody += '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><strong>' + item.name + '</strong></td>' +
+        '<td class="fw-bold">' + item.qty + ' ' + (item.unit || '') + '</td>' +
+        '<td>Rs ' + item.price + '</td>' +
+        '<td class="text-success fw-bold">Rs ' + item.total + '</td>' +
+      '</tr>';
+    });
+  } else {
+    tbody = '<tr><td colspan="5" class="text-center text-muted py-3">No items in this purchase</td></tr>';
+  }
+  $('#vpModalItemsBody').html(tbody);
+  $('#viewPurchaseModal').modal('show');
+});
+
+// View Material Details Modal
+$(document).on('click', '.viewMaterial', function() {
+  var name = $(this).data('name');
+  var urdu = $(this).data('urdu') || '';
+  var unit = $(this).data('unit');
+  var cunit = $(this).data('cunit');
+  var factor = $(this).data('factor') || 1;
+  var price = $(this).data('price') || 0;
+  var purqty = $(this).data('purqty') || 0;
+  var sqty = $(this).data('sqty') || 0;
+  var whqty = $(this).data('whqty') || 0;
+  var alert = $(this).data('alert') || 0;
+  var notes = $(this).data('notes') || '';
+
+  $('#vmName').text(name);
+  $('#vmUrdu').text(urdu);
+  $('#vmUnitBadge').text(unit.toUpperCase() + ' (Vendor Unit)');
+  $('#vmBranchStock').text(purqty + ' ' + unit);
+  $('#vmWhStock').text(whqty + ' ' + unit);
+  $('#vmRecipeStock').text(sqty + ' ' + cunit);
+  $('#vmPrice').text('Rs ' + Number(price).toFixed(2) + ' / ' + unit);
+  $('#vmAlert').text(alert + ' ' + unit);
+  $('#vmConversion').text('1 ' + unit + ' = ' + factor + ' ' + cunit);
+
+  if (notes) {
+    $('#vmNotes').text(notes);
+    $('#vmNotesContainer').show();
+  } else {
+    $('#vmNotesContainer').hide();
+  }
+
+  $('#viewMaterialModal').modal('show');
+});
+
+// Quick Range Filter Buttons
+$(document).on('click', '.quick-range-btn', function() {
+  var range = $(this).data('range');
+  var now = new Date();
+  var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+  var formatDate = function(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  };
+
+  var startD = new Date(now);
+  var endD = new Date(now);
+
+  if (range === 'today') {
+    // start today, end today
+  } else if (range === 'yesterday') {
+    startD.setDate(startD.getDate() - 1);
+    endD.setDate(endD.getDate() - 1);
+  } else if (range === 'this_week') {
+    var day = startD.getDay() || 7;
+    startD.setDate(startD.getDate() - day + 1);
+  } else if (range === 'this_month') {
+    startD.setDate(1);
+  }
+
+  $('#stockStartDate').val(formatDate(startD));
+  $('#stockStartTime').val('00:00');
+  $('#stockEndDate').val(formatDate(endD));
+  $('#stockEndTime').val('23:59');
+
+  $('#stockFilterForm').submit();
+});
+
+// AJAX: Recipe Usage Detail Breakdown
+$(document).on('click', '.btn-view-usage', function() {
+  var rmId = $(this).data('id');
+  var rmName = $(this).data('name');
+  var rmUnit = $(this).data('unit');
+  var rmCUnit = $(this).data('cunit');
+  var totalUsedText = $(this).data('used') + ' ' + rmCUnit;
+
+  $('#modalMaterialName').text(rmName);
+  $('#modalTotalUsed').text(totalUsedText);
+  $('#usageDetailLoading').show();
+  $('#usageDetailContent').hide();
+  $('#usageDetailEmpty').hide();
+  $('#usageDetailTableBody').empty();
+
+  var sDate = $('#stockStartDate').val();
+  var sTime = $('#stockStartTime').val();
+  var eDate = $('#stockEndDate').val();
+  var eTime = $('#stockEndTime').val();
+
+  $('#modalFilterPeriod').text(sDate + ' ' + sTime + ' to ' + eDate + ' ' + eTime);
+  $('#usageDetailModal').modal('show');
+
+  $.ajax({
+    url: '{{ url("/raw-materials/usage-detail") }}/' + rmId,
+    type: 'GET',
+    data: {
+      start_date: sDate,
+      start_time: sTime,
+      end_date: eDate,
+      end_time: eTime
+    },
+    success: function(res) {
+      $('#usageDetailLoading').hide();
+      if (!res.success || !res.records || res.records.length === 0) {
+        $('#usageDetailEmpty').show();
+        return;
+      }
+
+      $('#modalTotalUsed').text(res.total_used_consumption_formatted + (res.material.conversion_factor > 1 ? ' (' + res.total_used_purchase_formatted + ')' : ''));
+      $('#modalFooterTotalUsed').text(res.total_used_consumption_formatted);
+
+      var rows = '';
+      res.records.forEach(function(rec) {
+        if (rec.products && rec.products.length > 0) {
+          rec.products.forEach(function(prod, pIdx) {
+            rows += '<tr>';
+            if (pIdx === 0) {
+              rows += '<td rowspan="' + rec.products.length + '" style="vertical-align:middle;font-size:.82rem;">' + rec.datetime + '</td>';
+              rows += '<td rowspan="' + rec.products.length + '" style="vertical-align:middle;"><span class="badge bg-light text-dark border font-monospace">' + rec.entry_no + '</span></td>';
+            }
+            rows += '<td class="fw-bold text-dark" style="font-size:.84rem;"><i class="bi bi-egg-fried text-primary me-1"></i>' + prod.product_name + '</td>';
+            rows += '<td style="font-size:.82rem;"><span class="badge bg-secondary-subtle text-secondary">' + prod.produced_qty + '</span></td>';
+            rows += '<td class="fw-bold text-danger" style="font-size:.86rem;">' + prod.rm_qty_used + (prod.rm_qty_used_purchase !== prod.rm_qty_used ? '<br><small class="text-muted font-normal">(' + prod.rm_qty_used_purchase + ')</small>' : '') + '</td>';
+            rows += '<td style="font-size:.78rem;" class="text-muted">' + prod.recipe_per_unit + '</td>';
+            if (pIdx === 0) {
+              rows += '<td rowspan="' + rec.products.length + '" style="vertical-align:middle;font-size:.8rem;"><span class="badge bg-light text-secondary border">' + rec.creator + '</span></td>';
+            }
+            rows += '</tr>';
+          });
+        }
+      });
+
+      $('#usageDetailTableBody').html(rows);
+      $('#usageDetailContent').show();
+    },
+    error: function() {
+      $('#usageDetailLoading').hide();
+      $('#usageDetailEmpty').html('<p class="text-danger fw-semibold">Failed to fetch usage details. Please try again.</p>').show();
+    }
+  });
+});
+
+// Print Modal Section Helper
+function printModalSection(containerId) {
+  var content = document.getElementById(containerId);
+  if (!content) return;
+  var matName = $('#modalMaterialName').text();
+  var period = $('#modalFilterPeriod').text();
+  var total = $('#modalTotalUsed').text();
+
+  var printWin = window.open('', '', 'width=850,height=700');
+  printWin.document.write('<!DOCTYPE html><html><head><title>Recipe Usage Breakdown - ' + matName + '</title>');
+  printWin.document.write('<style>');
+  printWin.document.write('* { box-sizing: border-box; font-family: "Arial Narrow", Arial, sans-serif; }');
+  printWin.document.write('body { margin: 0; padding: 10px; color: #000; background: #fff; font-size: 10px; line-height: 1.3; }');
+  printWin.document.write('.header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 6px; }');
+  printWin.document.write('.header h2 { margin: 0 0 2px; font-size: 15px; font-weight: 800; text-transform: uppercase; }');
+  printWin.document.write('.header h4 { margin: 0 0 3px; font-size: 12px; font-weight: 700; color: #111; }');
+  printWin.document.write('.header p { margin: 0; font-size: 9px; color: #444; }');
+  printWin.document.write('.summary { margin-bottom: 10px; padding: 6px; border: 1px solid #ccc; font-size: 10px; }');
+  printWin.document.write('table { width: 100% !important; border-collapse: collapse !important; margin-top: 4px; font-size: 9.5px; }');
+  printWin.document.write('th, td { border: 1px solid #000 !important; padding: 5px 6px !important; text-align: left; vertical-align: middle; }');
+  printWin.document.write('th { background: #e2e8f0 !important; font-weight: 700; text-transform: uppercase; font-size: 9px; }');
+  printWin.document.write('.badge { border: none !important; font-weight: 700; font-size: 9px !important; }');
+  printWin.document.write('@media print { @page { size: auto; margin: 5mm; } body { padding: 0; } tr { page-break-inside: avoid; } }');
+  printWin.document.write('</style></head><body>');
+  printWin.document.write('<div class="header"><h2>{{ shop_name() }}</h2><h4>Recipe Usage Breakdown: ' + matName + '</h4><p>Period: ' + period + ' | Total Used: ' + total + '</p></div>');
+  printWin.document.write(content.innerHTML);
+  printWin.document.write('</body></html>');
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(function() {
+    printWin.print();
+    printWin.close();
+  }, 400);
+}
+
+// Calculate row and grand total for Edit Purchase modal
+function calculateEpTotals() {
+  var grandTotal = 0;
+  $('#epItemsBody tr').each(function() {
+    var qty = parseFloat($(this).find('.ep-qty').val()) || 0;
+    var price = parseFloat($(this).find('.ep-price').val()) || 0;
+    var rowTotal = qty * price;
+    $(this).find('.ep-row-total').text(rowTotal.toFixed(2));
+    grandTotal += rowTotal;
+  });
+  $('#epTotalCost').text('Rs ' + grandTotal.toLocaleString());
+}
+
+// Edit Purchase Button Click
+$(document).on('click', '.editPurchaseBtn', function() {
+  var id = $(this).data('id');
+  var inv = $(this).data('invoice');
+  var dt = $(this).data('date');
+  var vendorId = $(this).data('vendor-id');
+  var vendorName = $(this).data('vendor-name') || '';
+  var whId = $(this).data('warehouse-id') || '';
+  var notes = $(this).data('notes') || '';
+  var items = $(this).data('items');
+
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items); } catch(e) { items = []; }
+  }
+
+  $('#epEditId').val(id);
+  $('#epModalInvoice').text(inv || ('#' + id));
+  $('#epDate').val(dt);
+  $('#epVendorId').val(vendorId);
+  $('#epVendorName').val(vendorName);
+  $('#epWarehouseId').val(whId);
+  $('#epNotes').val(notes);
+
+  var optionsHtml = $('#materialOptionsTemplate').html();
+  var tbody = $('#epItemsBody');
+  tbody.empty();
+
+  if (items && items.length > 0) {
+    items.forEach(function(item) {
+      var row = $(
+        '<tr class="ep-row">' +
+          '<td data-label="Raw Material"><select name="raw_material_id[]" class="fld ep-mat-select" required>' + optionsHtml + '</select></td>' +
+          '<td data-label="Qty"><input type="number" step="0.01" name="qty[]" class="fld ep-qty" value="' + item.qty + '" placeholder="0" required /></td>' +
+          '<td data-label="Price/Unit"><input type="number" step="0.01" name="price_per_unit[]" class="fld ep-price" value="' + item.price_per_unit + '" placeholder="0" required /></td>' +
+          '<td data-label="Total"><span class="ep-row-total fw-bold" style="font-size:.9rem;">' + (item.qty * item.price_per_unit).toFixed(2) + '</span></td>' +
+          '<td style="white-space:nowrap;" data-label="Action"><button type="button" class="rm-btn rm-btn-danger rm-btn-sm ep-remove-row"><i class="bi bi-x-lg"></i></button></td>' +
+        '</tr>'
+      );
+      row.find('.ep-mat-select').val(item.raw_material_id);
+      tbody.append(row);
+    });
+  } else {
+    $('#epAddRowBtn').trigger('click');
+  }
+
+  calculateEpTotals();
+  $('#editPurchaseModal').modal('show');
+});
+
+// Add Row in Edit Purchase modal
+$(document).on('click', '#epAddRowBtn', function() {
+  var optionsHtml = $('#materialOptionsTemplate').html();
+  var row = $(
+    '<tr class="ep-row">' +
+      '<td data-label="Raw Material"><select name="raw_material_id[]" class="fld ep-mat-select" required>' + optionsHtml + '</select></td>' +
+      '<td data-label="Qty"><input type="number" step="0.01" name="qty[]" class="fld ep-qty" placeholder="0" required /></td>' +
+      '<td data-label="Price/Unit"><input type="number" step="0.01" name="price_per_unit[]" class="fld ep-price" placeholder="0" required /></td>' +
+      '<td data-label="Total"><span class="ep-row-total fw-bold" style="font-size:.9rem;">0</span></td>' +
+      '<td style="white-space:nowrap;" data-label="Action"><button type="button" class="rm-btn rm-btn-danger rm-btn-sm ep-remove-row"><i class="bi bi-x-lg"></i></button></td>' +
+    '</tr>'
+  );
+  $('#epItemsBody').append(row);
+});
+
+// Remove Row in Edit Purchase modal
+$(document).on('click', '.ep-remove-row', function() {
+  if ($('#epItemsBody tr').length > 1) {
+    $(this).closest('tr').remove();
+    calculateEpTotals();
+  } else {
+    Swal.fire({ icon: 'warning', title: 'Attention', text: 'At least one item is required in a purchase.' });
+  }
+});
+
+// Recalculate on input in Edit Purchase modal
+$(document).on('input', '.ep-qty, .ep-price', function() {
+  calculateEpTotals();
+});
+
+// Auto-fill price on material selection in Edit Purchase modal
+$(document).on('change', '.ep-mat-select', function() {
+  var row = $(this).closest('tr');
+  var price = $(this).find(':selected').data('price');
+  var priceInput = row.find('.ep-price');
+  if (price !== undefined && price !== null && price > 0 && (priceInput.val() === '' || priceInput.val() == 0)) {
+    priceInput.val(price);
+  }
+  calculateEpTotals();
+});
+
+// Submit Edit Purchase form
+$(document).on('submit', '.edit-purchase-form', function(e) {
+  e.preventDefault();
+  var form = $(this);
+  var fd = new FormData(this);
+  var url = form.attr('action');
+  var $btn = $('#epSubmitBtn');
+  var btnText = $btn.html();
+  $btn.attr('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i> Updating...');
+
+  $.ajax({
+    url: url,
+    type: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    headers: {
+      'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+    },
+    dataType: 'json',
+    success: function(data) {
+      $btn.attr('disabled', false).html(btnText);
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: data.success,
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => {
+          if (data.reload) window.location.reload();
+        });
+      } else if (data.errors) {
+        var errHtml = '';
+        $.each(data.errors, function(k, v) {
+          errHtml += '<div class="text-danger small">' + (Array.isArray(v) ? v.join(', ') : v) + '</div>';
+        });
+        Swal.fire({ icon: 'error', title: 'Validation Errors', html: errHtml });
+      } else if (data.error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: data.error });
+      }
+    },
+    error: function(xhr) {
+      $btn.attr('disabled', false).html(btnText);
+      var msg = 'Failed to update purchase.';
+      if (xhr.responseJSON && xhr.responseJSON.message) {
+        msg = xhr.responseJSON.message;
+      }
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  });
+});
 
 // DataTables & Initializations
 $(document).ready(function() {

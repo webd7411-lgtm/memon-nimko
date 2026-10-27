@@ -559,6 +559,9 @@
 
                                 @can('Purchase Report')
                                 <li><a href="{{ route('report.purchase') }}"><i class="fas fa-shopping-basket"></i> Purchase Report</a></li>
+                                @canany(['Production', 'Purchase', 'Sale Report', 'System Reports'])
+                                <li><a href="{{ route('report.production') }}"><i class="fas fa-industry"></i> Production Report</a></li>
+                                @endcanany
                                 @endcan
 
                                 @can('Sale Report')

@@ -329,6 +329,15 @@ class CustomerController extends Controller
             'note'            => $request->note,
         ]);
 
+        // Credit to bank account if received via Card / Bank
+        if ($cardAmount > 0 && $cardAccountId) {
+            $cardAcc = \App\Models\Account::find($cardAccountId);
+            if ($cardAcc) {
+                $cardAcc->opening_balance = (float)$cardAcc->opening_balance + $cardAmount;
+                $cardAcc->save();
+            }
+        }
+
         // Ledger update
         $ledger = CustomerLedger::where('customer_id', $request->customer_id)->latest()->first();
 
@@ -443,6 +452,24 @@ class CustomerController extends Controller
             $ledger->save();
         }
 
+        // Adjust bank account
+        $oldCard = (float) $payment->card;
+        $oldCardAccId = $payment->card_account_id;
+        if ($oldCardAccId && $oldCard > 0) {
+            $oldAcc = \App\Models\Account::find($oldCardAccId);
+            if ($oldAcc) {
+                $oldAcc->opening_balance = (float)$oldAcc->opening_balance - $oldCard;
+                $oldAcc->save();
+            }
+        }
+        if ($cardAccountId && $cardAmount > 0) {
+            $newAcc = \App\Models\Account::find($cardAccountId);
+            if ($newAcc) {
+                $newAcc->opening_balance = (float)$newAcc->opening_balance + $cardAmount;
+                $newAcc->save();
+            }
+        }
+
         // Update payment record
         $payment->update([
             'customer_id'     => $validated['customer_id'],
@@ -472,6 +499,15 @@ class CustomerController extends Controller
         if ($ledger) {
             $ledger->closing_balance += $amount;
             $ledger->save();
+        }
+
+        // Deduct from bank account if it was paid into an account
+        if ($payment->card_account_id && (float)$payment->card > 0) {
+            $acc = \App\Models\Account::find($payment->card_account_id);
+            if ($acc) {
+                $acc->opening_balance = (float)$acc->opening_balance - (float)$payment->card;
+                $acc->save();
+            }
         }
 
         // Delete the payment entry

@@ -3121,4 +3121,199 @@ class ReportingController extends Controller
             'total_rows'  => count($rows),
         ]);
     }
+
+    public function production_report()
+    {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        $warehouses = \App\Models\Warehouse::orderBy('warehouse_name')->get();
+        $products = \App\Models\Product::orderBy('item_name')->get();
+
+        return view('admin_panel.reporting.production_report', compact('branches', 'warehouses', 'products'));
+    }
+
+    public function fetchProductionReport(Request $request)
+    {
+        $startDate = $request->start_date;
+        $endDate   = $request->end_date;
+        $branchId  = $request->branch_id;
+        $warehouseId = $request->warehouse_id;
+        $productId = $request->product_id;
+
+        $query = DB::table('production_entries as pe')
+            ->leftJoin('users as u', 'u.id', '=', 'pe.created_by')
+            ->leftJoin('branches as b', 'b.id', '=', 'pe.branch_id')
+            ->leftJoin('warehouses as w', 'w.id', '=', 'pe.warehouse_id');
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('pe.production_date', [$startDate, $endDate]);
+        } elseif ($startDate) {
+            $query->where('pe.production_date', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->where('pe.production_date', '<=', $endDate);
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('pe.branch_id', $branchId);
+        } elseif (empty($branchId) && !is_all_branches()) {
+            $query->where('pe.branch_id', active_branch_id());
+        }
+
+        if ($warehouseId && $warehouseId !== 'all') {
+            $query->where('pe.warehouse_id', $warehouseId);
+        }
+
+        if ($productId && $productId !== 'all') {
+            $query->whereExists(function($q) use ($productId) {
+                $q->select(DB::raw(1))
+                  ->from('production_entry_items as pei_filter')
+                  ->whereColumn('pei_filter.production_entry_id', 'pe.id')
+                  ->where('pei_filter.product_id', $productId);
+            });
+        }
+
+        $entries = $query->select(
+            'pe.*',
+            'u.name as user_name',
+            'b.name as branch_name',
+            'w.warehouse_name'
+        )
+        ->orderBy('pe.production_date', 'desc')
+        ->orderBy('pe.id', 'desc')
+        ->get();
+
+        $entryIds = $entries->pluck('id');
+
+        // Fetch Finished Products Produced
+        $finishedItems = collect();
+        if ($entryIds->isNotEmpty()) {
+            $finishedItems = DB::table('production_entry_items as pei')
+                ->leftJoin('products as p', 'p.id', '=', 'pei.product_id')
+                ->leftJoin('product_variants as pv', 'pv.id', '=', 'pei.variant_id')
+                ->leftJoin('units as u', 'u.id', '=', 'p.unit_id')
+                ->whereIn('pei.production_entry_id', $entryIds)
+                ->select(
+                    'pei.*',
+                    'p.item_name',
+                    'p.item_code',
+                    'p.unit_type',
+                    'u.name as unit_name',
+                    'pv.size_label',
+                    'pv.variant_name',
+                    'pv.size_value'
+                )
+                ->get()
+                ->groupBy('production_entry_id');
+        }
+
+        // Fetch Raw Materials Consumed
+        $rmUsage = collect();
+        if ($entryIds->isNotEmpty()) {
+            $rmUsage = DB::table('production_raw_material_usage as rmu')
+                ->leftJoin('raw_materials as rm', 'rm.id', '=', 'rmu.raw_material_id')
+                ->leftJoin('products as ip', 'ip.id', '=', 'rmu.ingredient_product_id')
+                ->whereIn('rmu.production_entry_id', $entryIds)
+                ->select(
+                    'rmu.*',
+                    'rm.name as rm_name',
+                    'rm.unit as rm_unit',
+                    'rm.consumption_unit',
+                    'rm.conversion_factor',
+                    'ip.item_name as ingredient_product_name',
+                    'ip.item_code as ingredient_product_code'
+                )
+                ->get()
+                ->groupBy('production_entry_id');
+        }
+
+        $totalBatches = $entries->count();
+        $totalCost = 0;
+        $totalFinishedUnits = 0;
+        $totalRawMaterialsCount = 0;
+
+        $rows = [];
+        foreach ($entries as $e) {
+            $batchCost = (float)($e->production_cost ?? 0);
+
+            $itemsForBatch = $finishedItems->get($e->id, collect());
+            $rmForBatch = $rmUsage->get($e->id, collect());
+
+            $finishedDetails = [];
+            $batchQtyTotal = 0;
+
+            foreach ($itemsForBatch as $fi) {
+                $pName = $fi->item_name ?? 'Unknown';
+                $vName = $fi->size_label ?: $fi->variant_name;
+                $unitName = $fi->unit ?? $fi->unit_name ?? 'Pc';
+                $isKg = ($fi->unit_type === 'kg') || str_contains(strtolower($unitName), 'kg');
+
+                $qtyEntered = (float)$fi->qty_entered;
+                $batchQtyTotal += $qtyEntered;
+                $totalFinishedUnits += $qtyEntered;
+
+                $finishedDetails[] = [
+                    'product_id' => $fi->product_id,
+                    'item_code'  => $fi->item_code,
+                    'item_name'  => $pName,
+                    'variant'    => $vName,
+                    'qty_entered'=> $qtyEntered,
+                    'qty_stock'  => (float)$fi->qty_stock,
+                    'unit'       => $isKg ? 'KG' : $unitName,
+                    'notes'      => $fi->notes,
+                ];
+            }
+
+            $rmDetails = [];
+            $batchRmCost = 0;
+            foreach ($rmForBatch as $ru) {
+                $totalRawMaterialsCount++;
+                $matName = $ru->rm_name ?? ($ru->ingredient_product_name ? $ru->ingredient_product_name . ' [Base Product]' : 'RM #'.$ru->raw_material_id);
+                $matUnit = $ru->consumption_unit ?? ($ru->rm_unit ?? 'Unit');
+                $qtyUsed = (float)$ru->qty_used;
+                $costPerUnit = (float)$ru->cost_per_unit;
+                $lineTotal = (float)$ru->total_cost;
+                $batchRmCost += $lineTotal;
+
+                $rmDetails[] = [
+                    'name'          => $matName,
+                    'unit'          => $matUnit,
+                    'qty_used'      => $qtyUsed,
+                    'cost_per_unit' => $costPerUnit,
+                    'total_cost'    => $lineTotal,
+                ];
+            }
+
+            // If entry production_cost is 0 but raw materials have total cost, use batchRmCost
+            $finalCost = $batchCost > 0 ? $batchCost : $batchRmCost;
+            $totalCost += $finalCost;
+            $unitCost = ($batchQtyTotal > 0) ? ($finalCost / $batchQtyTotal) : 0;
+
+            $rows[] = [
+                'id'              => $e->id,
+                'entry_no'        => $e->entry_no,
+                'production_date' => $e->production_date,
+                'source'          => $e->source,
+                'branch_name'     => $e->branch_name ?? active_branch_name(),
+                'warehouse_name'  => $e->warehouse_name ?? '-',
+                'notes'           => $e->notes ?? '',
+                'user_name'       => $e->user_name ?? 'System',
+                'finished_items'  => $finishedDetails,
+                'total_qty'       => $batchQtyTotal,
+                'raw_materials'   => $rmDetails,
+                'production_cost' => $finalCost,
+                'unit_cost'       => $unitCost,
+                'gatepass_url'    => route('production.gatepass', $e->id),
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'summary' => [
+                'total_batches'         => $totalBatches,
+                'total_finished_qty'    => $totalFinishedUnits,
+                'total_production_cost' => $totalCost,
+                'total_rm_records'      => $totalRawMaterialsCount,
+            ],
+            'rows'    => $rows,
+        ]);
+    }
 }

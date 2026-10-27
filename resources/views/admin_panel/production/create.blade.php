@@ -342,12 +342,11 @@
         <table class="pc-table">
           <thead>
             <tr>
-              <th class="text-start" style="width:30%;">Product</th>
-              <th style="width:12%;">Code</th>
-              <th style="width:10%;">Unit</th>
-              <th style="width:15%;">Entered Qty (KG/Pc)</th>
-              <th style="width:15%;">Cost (Rs)</th>
-              <th style="width:13%;">Note</th>
+              <th class="text-start" style="width:35%;">Product</th>
+              <th style="width:15%;">Code</th>
+              <th style="width:15%;">Unit</th>
+              <th style="width:18%;">Entered Qty (KG/Pc)</th>
+              <th style="width:17%;">Note</th>
               <th style="width:50px;">Action</th>
             </tr>
           </thead>
@@ -384,10 +383,7 @@
                 <span class="mobile-lbl">Entered Qty</span>
                 <input type="number" step="0.001" name="qty[]" class="pc-input qty-input text-center fw-bold" required min="0.001" placeholder="0.000">
                 <small class="text-muted d-block conversion-display" style="font-size:0.75rem;"></small>
-              </td>
-              <td>
-                <span class="mobile-lbl">Cost (Rs)</span>
-                <input type="number" step="0.01" min="0" name="item_cost[]" class="pc-input item-cost text-center fw-bold" value="0" placeholder="0.00">
+                <input type="hidden" name="item_cost[]" class="item-cost" value="0">
               </td>
               <td>
                 <span class="mobile-lbl">Note</span>
@@ -420,10 +416,8 @@
         <table class="pc-table">
           <thead>
             <tr>
-              <th class="text-start" style="width:35%;">Raw Material</th>
-              <th style="width:20%;">Qty Used</th>
-              <th style="width:20%;">Cost/Unit (Rs)</th>
-              <th style="width:20%;">Total Cost</th>
+              <th class="text-start" style="width:65%;">Raw Material</th>
+              <th style="width:30%;">Qty Used</th>
               <th style="width:50px;">Action</th>
             </tr>
           </thead>
@@ -433,6 +427,7 @@
                 <span class="mobile-lbl">Raw Material / Product Ingredient</span>
                 <input type="hidden" name="rm_type[]" class="rm-type" value="rm">
                 <input type="hidden" name="rm_factor[]" class="rm-factor" value="1">
+                <input type="hidden" name="rm_cost[]" class="rm-cost" value="0">
                 <select name="rm_id[]" class="pc-select" style="width:100%;">
                   <option value="">Select Ingredient / Raw Material...</option>
                   <optgroup label="Raw Materials">
@@ -455,14 +450,6 @@
                 <span class="mobile-lbl">Qty Used</span>
                 <input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="0" min="0">
               </td>
-              <td>
-                <span class="mobile-lbl">Cost/Unit</span>
-                <input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="0" placeholder="0">
-              </td>
-              <td class="text-center">
-                <span class="mobile-lbl">Total Cost</span>
-                <span class="rm-total fw-bold text-success" style="font-size:.9rem;">0</span>
-              </td>
               <td class="text-center">
                 <button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove">
                   <i class="bi bi-trash-fill text-white"></i>
@@ -479,7 +466,6 @@
         </button>
 
         <div class="d-flex align-items-center gap-3 ms-auto">
-          <span class="fw-bold fs-6 text-dark">Total Batch Cost: <strong id="totalProdCost" class="text-success fs-5">Rs 0</strong></span>
           <button type="submit" class="btn text-white fw-bold px-4 py-2" style="background-color:#0e8349; border-radius:6px; box-shadow: 0 4px 10px rgba(14, 131, 73, 0.2);">
             <i class="bi bi-floppy-fill me-1"></i> Save Production Batch
           </button>
@@ -539,7 +525,7 @@ $(document).ready(function() {
     newRow.querySelector('select').disabled = false;
     newRow.querySelector('.rm-type').value = 'rm';
     newRow.querySelector('.rm-factor').value = '1';
-    newRow.querySelector('.rm-total').textContent = '0.00';
+    newRow.querySelector('.rm-cost').value = '0';
     document.getElementById('rmUsageBody').appendChild(newRow);
   });
 
@@ -660,11 +646,10 @@ $(document).ready(function() {
             '<input type="hidden" name="rm_type[]" class="rm-type" value="' + itemType + '">' +
             '<input type="hidden" name="rm_id[]" value="' + itemId + '">' +
             '<input type="hidden" name="rm_factor[]" class="rm-factor" value="' + factor + '">' +
+            '<input type="hidden" name="rm_cost[]" class="rm-cost" value="' + itemCost.toFixed(2) + '">' +
             '<input type="text" class="pc-input fw-bold" value="' + itemName + '" readonly style="background:#f1f5f9; color:#0f172a;">' +
             '</td>' +
             '<td><input type="number" step="0.01" name="rm_qty[]" class="pc-input rm-qty text-center" value="' + requiredQty.toFixed(2) + '" min="0" readonly></td>' +
-            '<td><input type="number" step="0.01" min="0" name="rm_cost[]" class="pc-input rm-cost text-center" value="' + itemCost.toFixed(2) + '" placeholder="0"></td>' +
-            '<td class="text-center"><span class="rm-total fw-bold text-success" style="font-size:.9rem;">0.00</span></td>' +
             '<td class="text-center"><button type="button" class="btn btn-danger btn-sm remove-rm-row" style="background:#ef4444; border:none; border-radius:6px; width:30px; height:30px;" title="Remove"><i class="bi bi-trash-fill text-white"></i></button></td>';
 
           tbody.insertBefore(tr, tbody.firstChild);

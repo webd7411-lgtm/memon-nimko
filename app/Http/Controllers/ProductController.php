@@ -104,7 +104,7 @@ class ProductController extends Controller
                         });
                 });
             })
-            ->orderBy('item_code', 'desc')
+            ->orderByRaw("CASE WHEN item_code LIKE 'ITEM-%' THEN CAST(SUBSTRING(item_code, 6) AS UNSIGNED) ELSE id END DESC")
             ->paginate(100);
 
 
@@ -225,12 +225,13 @@ class ProductController extends Controller
         ]);
 
         // Generate next item code
-        $lastProduct = Product::orderBy('id', 'desc')->first();
-        $nextCode = 'ITEM-0001';
-        if ($lastProduct) {
-            $lastId = $lastProduct->id + 1;
-            $nextCode = 'ITEM-' . str_pad($lastId, 4, '0', STR_PAD_LEFT);
-        }
+
+        // Generate next item code (format: ITEM-1, ITEM-2, ...)
+        $maxNum = Product::where('item_code', 'LIKE', 'ITEM-%')
+            ->selectRaw("MAX(CAST(SUBSTRING(item_code, 6) AS UNSIGNED)) as max_num")
+            ->value('max_num');
+        $nextNum = $maxNum !== null ? ((int)$maxNum + 1) : (Product::max('id') ? Product::max('id') + 1 : 1);
+        $nextCode = 'ITEM-' . $nextNum;
 
         // Image upload
         $imagePath = null;
@@ -904,7 +905,7 @@ class ProductController extends Controller
         }
         $products = Product::with([
             'category_relation', 'sub_category_relation', 'unit', 'brand', 'variants'
-        ])->whereIn('id', $ids)->orderBy('item_code')->get();
+        ])->whereIn('id', $ids)->orderByRaw("CASE WHEN item_code LIKE 'ITEM-%' THEN CAST(SUBSTRING(item_code, 6) AS UNSIGNED) ELSE id END ASC")->get();
 
         // Active branch stock (same as Item Stock Report)
         $stockQuery = DB::table('stocks')

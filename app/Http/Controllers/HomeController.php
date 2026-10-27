@@ -527,7 +527,7 @@ class HomeController extends Controller
                 $topProducts[] = [
                     'id' => $pid,
                     'rank' => $rank++,
-                    'code' => $pObj->item_code ?: ('PRD-' . str_pad($pid, 4, '0', STR_PAD_LEFT)),
+                    'code' => $pObj->item_code ?: ('ITEM-' . $pid),
                     'name' => strtoupper($pObj->item_name),
                     'category' => $pObj->category_name ?? 'Nimko',
                     'units_sold' => (int)$data['qty'],
@@ -559,7 +559,7 @@ class HomeController extends Controller
                 $topProducts[] = [
                     'id' => $sp->id,
                     'rank' => $idx + 1,
-                    'code' => $sp->item_code ?: ('PRD-' . str_pad($sp->id, 4, '0', STR_PAD_LEFT)),
+                    'code' => $sp->item_code ?: ('ITEM-' . $sp->id),
                     'name' => strtoupper($sp->item_name),
                     'category' => $sp->category_name ?? 'Nimko',
                     'units_sold' => 0,

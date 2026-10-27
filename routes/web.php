@@ -36,6 +36,8 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\RawMaterialController;
 use App\Http\Controllers\DistributorAdminController;
 use App\Http\Controllers\DistributorPortalController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\AssetCategoryController;
 
 /*
     |--------------------------------------------------------------------------
@@ -215,10 +217,11 @@ Route::middleware('auth')->group(function () {
     // Raw Material Routes (old - to be removed after migration)
     Route::get('/raw-materials', [RawMaterialController::class, 'index'])->name('raw-materials.index')->middleware('permission:Raw Materials|Purchase');
     Route::post('/raw-materials/store', [RawMaterialController::class, 'storeRawMaterial'])->name('raw-materials.store')->middleware('permission:Raw Materials|Purchase');
-    Route::delete('/raw-materials/delete/{id}', [RawMaterialController::class, 'deleteRawMaterial'])->name('raw-materials.delete')->middleware('permission:Raw Materials|Purchase');
+    Route::match(['get', 'delete'], '/raw-materials/delete/{id}', [RawMaterialController::class, 'deleteRawMaterial'])->name('raw-materials.delete')->middleware('permission:Raw Materials|Purchase');
     Route::post('/raw-materials/purchase/store', [RawMaterialController::class, 'storePurchase'])->name('raw-materials.purchase.store')->middleware('permission:Raw Materials|Purchase');
-    Route::delete('/raw-materials/purchase/delete/{id}', [RawMaterialController::class, 'deletePurchase'])->name('raw-materials.purchase.delete')->middleware('permission:Raw Materials|Purchase');
+    Route::match(['get', 'delete'], '/raw-materials/purchase/delete/{id}', [RawMaterialController::class, 'deletePurchase'])->name('raw-materials.purchase.delete')->middleware('permission:Raw Materials|Purchase');
     Route::get('/raw-materials/stock', [RawMaterialController::class, 'getStock'])->name('raw-materials.stock')->middleware('permission:Raw Materials|Purchase');
+    Route::get('/raw-materials/usage-detail/{id}', [RawMaterialController::class, 'getUsageDetail'])->name('raw-materials.usage-detail.direct')->middleware('permission:Raw Materials|Purchase');
 
     // Search Products
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
@@ -329,6 +332,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/report/branch-stock-fetch', [ReportingController::class, 'fetchBranchStockReport'])->name('report.branch_stock.fetch')->middleware('permission:Item Stock Report|Branch Stock Report');
 
     Route::get('report/purchase', [ReportingController::class, 'purchase_report'])->name('report.purchase')->middleware('permission:Purchase Report');
+    Route::get('report/production', [ReportingController::class, 'production_report'])->name('report.production')->middleware('permission:Production|Purchase|Sale Report|System Reports');
+    Route::post('report/production/fetch', [ReportingController::class, 'fetchProductionReport'])->name('report.production.fetch')->middleware('permission:Production|Purchase|Sale Report|System Reports');
     Route::post('report/purchase/fetch', [ReportingController::class, 'fetchPurchaseReport'])->name('report.purchase.fetch')->middleware('permission:Purchase Report');
 
     Route::get('report/sale', [ReportingController::class, 'sale_report'])->name('report.sale')->middleware('permission:Sale Report');
@@ -386,6 +391,7 @@ Route::middleware('auth')->group(function () {
     // COA Prefix Routes
     Route::prefix('coa')->group(function () {
         Route::get('/', [AccountsHeadController::class, 'index'])->name('coa.index');
+        Route::get('/sync-sales', [AccountsHeadController::class, 'syncSalesPayments'])->name('coa.sync_sales');
         Route::post('/head', [AccountsHeadController::class, 'storeHead'])->name('coa.head.store');
         Route::post('/account', [AccountsHeadController::class, 'storeAccount'])->name('coa.account.store');
     });
@@ -407,11 +413,12 @@ Route::middleware('auth')->group(function () {
     Route::prefix('raw-materials')->middleware('permission:Raw Materials|Purchase')->group(function () {
         Route::get('/', [RawMaterialController::class, 'index'])->name('raw-materials.index');
         Route::post('/store', [RawMaterialController::class, 'storeRawMaterial'])->name('raw-materials.store');
-        Route::delete('/delete/{id}', [RawMaterialController::class, 'deleteRawMaterial'])->name('raw-materials.delete');
+        Route::match(['get', 'delete'], '/delete/{id}', [RawMaterialController::class, 'deleteRawMaterial'])->name('raw-materials.delete');
         Route::post('/purchase/store', [RawMaterialController::class, 'storePurchase'])->name('raw-materials.purchase.store');
-        Route::delete('/purchase/delete/{id}', [RawMaterialController::class, 'deletePurchase'])->name('raw-materials.purchase.delete');
+        Route::match(['get', 'delete'], '/purchase/delete/{id}', [RawMaterialController::class, 'deletePurchase'])->name('raw-materials.purchase.delete');
         Route::get('/purchase/print/{id}', [RawMaterialController::class, 'printPurchase'])->name('raw-materials.purchase.print');
         Route::get('/stock/get', [RawMaterialController::class, 'getStock'])->name('raw-materials.stock.get');
+        Route::get('/usage-detail/{id}', [RawMaterialController::class, 'getUsageDetail'])->name('raw-materials.usage-detail');
     });
 
     // ==========================================
@@ -492,6 +499,30 @@ Route::middleware('auth')->group(function () {
         Route::post('/payments/{id}/update', [DistributorPortalController::class, 'updatePayment'])->name('payments.update');
         Route::delete('/payments/{id}/delete', [DistributorPortalController::class, 'destroyPayment'])->name('payments.destroy');
     });
+
+    // ==========================================
+    // ASSETS MANAGEMENT (FURNITURE & MACHINERY)
+    // ==========================================
+    Route::prefix('assets')->name('assets.')->group(function () {
+        Route::get('/', [AssetController::class, 'index'])->name('index');
+        Route::get('/create', [AssetController::class, 'create'])->name('create');
+        Route::post('/store', [AssetController::class, 'store'])->name('store');
+        Route::get('/report', [AssetController::class, 'report'])->name('report');
+        Route::get('/get-next-code', [AssetController::class, 'getNextCode'])->name('get_next_code');
+        Route::get('/categories', [AssetCategoryController::class, 'index'])->name('categories.index');
+        Route::post('/categories/store', [AssetCategoryController::class, 'store'])->name('categories.store');
+        Route::delete('/categories/{id}/delete', [AssetCategoryController::class, 'destroy'])->name('categories.destroy');
+        Route::get('/{id}', [AssetController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [AssetController::class, 'edit'])->name('edit');
+        Route::put('/{id}/update', [AssetController::class, 'update'])->name('update');
+        Route::delete('/{id}/delete', [AssetController::class, 'destroy'])->name('destroy');
+        Route::get('/{id}/barcode', [AssetController::class, 'barcode'])->name('barcode');
+        Route::post('/{id}/maintenance', [AssetController::class, 'storeMaintenance'])->name('maintenance.store');
+        Route::delete('/maintenance/{id}/delete', [AssetController::class, 'destroyMaintenance'])->name('maintenance.destroy');
+        Route::post('/{id}/transfer', [AssetController::class, 'storeTransfer'])->name('transfer.store');
+        Route::post('/{id}/dispose', [AssetController::class, 'dispose'])->name('dispose');
+    });
+
 });
 
 require __DIR__ . '/auth.php';

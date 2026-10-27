@@ -82,4 +82,48 @@ class AccountsHeadController extends Controller
 
         return redirect()->back()->with('success', 'Account deleted successfully.');
     }
+
+    /**
+     * Re-sync / credit any card/bank sales payments into their accounts.
+     */
+    public function syncSalesPayments()
+    {
+        $sales = \App\Models\Sale::whereNotNull('card_account_id')
+            ->where('card', '>', 0)
+            ->where(function($q) {
+                $q->whereNull('is_account_credited')->orWhere('is_account_credited', 0);
+            })
+            ->get();
+
+        $count = 0;
+        $totalAmount = 0;
+
+        foreach ($sales as $sale) {
+            $account = Account::find($sale->card_account_id);
+            if ($account) {
+                $amount = (float) $sale->card;
+                $account->opening_balance = (float) $account->opening_balance + $amount;
+                $account->save();
+
+                $sale->is_account_credited = 1;
+                $sale->save();
+
+                $count++;
+                $totalAmount += $amount;
+
+                // Sync distributor_payments if matched
+                if (!empty($sale->invoice_no)) {
+                    \App\Models\DistributorPayment::where('transaction_reference', $sale->invoice_no)
+                        ->whereNull('account_id')
+                        ->update(['account_id' => $sale->card_account_id]);
+                }
+            }
+        }
+
+        if ($count > 0) {
+            return redirect()->back()->with('success', "Sync complete! Successfully credited {$count} sale invoice(s) totaling PKR " . number_format($totalAmount, 2) . " into their respective Chart of Accounts.");
+        } else {
+            return redirect()->back()->with('info', 'All card / bank sale transactions are already synchronized with your Chart of Accounts.');
+        }
+    }
 }
