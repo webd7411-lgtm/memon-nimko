@@ -322,6 +322,7 @@
       <button class="rm-tab {{ $activeTab === 'tab-materials' ? 'active' : '' }}" data-tab="tab-materials"><i class="bi bi-list-ul"></i> Materials List</button>
       <button class="rm-tab {{ $activeTab === 'tab-purchase' ? 'active' : '' }}" data-tab="tab-purchase"><i class="bi bi-cart-plus-fill"></i> New Purchase</button>
       <button class="rm-tab {{ $activeTab === 'tab-history' ? 'active' : '' }}" data-tab="tab-history"><i class="bi bi-clock-history"></i> Purchase History</button>
+      <button class="rm-tab {{ $activeTab === 'tab-returns' ? 'active' : '' }}" data-tab="tab-returns"><i class="bi bi-arrow-return-left"></i> Purchase Returns</button>
       <button class="rm-tab {{ $activeTab === 'tab-stock' ? 'active' : '' }}" data-tab="tab-stock"><i class="bi bi-shop"></i> Current Branch Stock</button>
       <button class="rm-tab {{ $activeTab === 'tab-warehouse-stock' ? 'active' : '' }}" data-tab="tab-warehouse-stock"><i class="bi bi-building"></i> Warehouse Stock</button>
       <button class="rm-tab {{ $activeTab === 'tab-recipes' ? 'active' : '' }}" data-tab="tab-recipes"><i class="bi bi-egg-fried"></i> Product Recipes (BOM)</button>
@@ -539,13 +540,20 @@
                   <th>Items Breakdown</th>
                   <th>Total Cost</th>
                   <th>Created By</th>
-                  <th style="width:110px;" class="text-center">Actions</th>
+                  <th style="width:145px;" class="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 @forelse($purchases as $p)
                 <tr>
-                  <td style="font-weight:700;" data-label="Invoice"><span class="badge bg-light text-dark border font-monospace">{{ $p->invoice_no }}</span></td>
+                  <td style="font-weight:700;" data-label="Invoice">
+                    <span class="badge bg-light text-dark border font-monospace">{{ $p->invoice_no }}</span>
+                    @if(!empty($p->is_fully_returned))
+                      <span class="badge bg-danger-subtle text-danger border ms-1" style="font-size:.65rem;" title="All items in this purchase returned">Fully Returned</span>
+                    @elseif(!empty($p->is_partially_returned))
+                      <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" style="font-size:.65rem;" title="Refunded Rs {{ number_format($p->total_returned_amount ?? 0, 0) }}">Partially Returned</span>
+                    @endif
+                  </td>
                   <td data-label="Date">{{ $p->date }}</td>
                   <td class="fw-bold text-dark" data-label="Vendor">{{ $p->vendor_name ?? '-' }}</td>
                   <td data-label="Warehouse"><span class="badge bg-primary-subtle text-primary border fw-semibold">{{ $p->warehouse->warehouse_name ?? $p->warehouse->name ?? 'Main Stock' }}</span></td>
@@ -579,6 +587,20 @@
                   <td data-label="Created By"><span class="badge bg-secondary-subtle text-secondary">{{ $p->creator->name ?? '-' }}</span></td>
                   <td class="text-center" data-label="Actions">
                     <div class="d-flex align-items-center justify-content-center gap-1">
+                      {{-- Return Purchase Button --}}
+                      @if(!empty($p->is_fully_returned))
+                        <button type="button" class="rm-btn rm-btn-sm" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;opacity:0.6;cursor:not-allowed;" title="Already Fully Returned" disabled>
+                          <i class="bi bi-arrow-return-left"></i>
+                        </button>
+                      @else
+                        <button type="button" class="rm-btn rm-btn-sm openReturnModalBtn"
+                          style="background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;"
+                          data-id="{{ $p->id }}"
+                          data-invoice="{{ $p->invoice_no }}"
+                          title="Return Raw Material">
+                          <i class="bi bi-arrow-return-left"></i>
+                        </button>
+                      @endif
                       <button type="button" class="rm-btn rm-btn-success rm-btn-sm editPurchaseBtn"
                         data-id="{{ $p->id }}"
                         data-invoice="{{ $p->invoice_no }}"
@@ -610,6 +632,104 @@
                 @empty
                 <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">No purchases recorded yet</td></tr>
                 @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{-- TAB: PURCHASE RETURNS --}}
+    <div id="tab-returns" class="tab-content" style="display: {{ $activeTab === 'tab-returns' ? 'block' : 'none' }};">
+      <div class="rm-card">
+        <div class="rm-card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <h5 style="font-weight:700;font-size:1.05rem;margin:0;"><i class="bi bi-arrow-return-left me-2" style="color:#ea580c;"></i>Raw Material Purchase Returns</h5>
+              <span class="badge bg-warning-subtle text-warning-emphasis border fw-semibold">{{ isset($purchaseReturns) ? count($purchaseReturns) : 0 }} Returns</span>
+            </div>
+            <button class="rm-btn" style="background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;" onclick="printReportSection('returnsTable', 'Raw Material Purchase Returns')"><i class="bi bi-printer me-1"></i> Print Returns History</button>
+          </div>
+          <div style="overflow-x:auto;" id="returnsPrintArea">
+            <table class="rm-tbl" id="returnsTable">
+              <thead>
+                <tr>
+                  <th>Return Invoice</th>
+                  <th>Date</th>
+                  <th>Original Purchase</th>
+                  <th>Vendor</th>
+                  <th>Storage Location</th>
+                  <th>Items Returned</th>
+                  <th>Total Refund</th>
+                  <th>Reason / Notes</th>
+                  <th>Returned By</th>
+                  <th style="width:110px;" class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if(isset($purchaseReturns))
+                @forelse($purchaseReturns as $r)
+                <tr>
+                  <td style="font-weight:700;" data-label="Return Invoice">
+                    <span class="badge bg-light text-danger border font-monospace">{{ $r->return_invoice }}</span>
+                  </td>
+                  <td data-label="Date">{{ $r->return_date }}</td>
+                  <td data-label="Original Purchase">
+                    @if($r->purchase)
+                      <span class="badge bg-primary-subtle text-primary border font-monospace">{{ $r->purchase->invoice_no }}</span>
+                    @else
+                      <span class="text-muted small">-</span>
+                    @endif
+                  </td>
+                  <td class="fw-bold text-dark" data-label="Vendor">{{ $r->vendor_name ?? ($r->vendor->name ?? '-') }}</td>
+                  <td data-label="Storage Location">
+                    <span class="badge bg-secondary-subtle text-secondary border fw-semibold">{{ $r->warehouse->warehouse_name ?? $r->warehouse->name ?? 'Main Stock' }}</span>
+                  </td>
+                  <td data-label="Items Returned">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="badge bg-secondary-subtle text-secondary border fw-semibold">
+                        <i class="bi bi-box-seam me-1"></i>{{ count($r->items) }} {{ count($r->items) == 1 ? 'Item' : 'Items' }}
+                      </span>
+                      <button type="button" class="rm-btn rm-btn-sm viewReturnItemsBtn"
+                        style="font-size:.75rem;padding:2px 8px;min-height:26px;background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;"
+                        data-invoice="{{ $r->return_invoice }}"
+                        data-original="{{ $r->purchase->invoice_no ?? '-' }}"
+                        data-date="{{ $r->return_date }}"
+                        data-vendor="{{ $r->vendor_name ?? ($r->vendor->name ?? '-') }}"
+                        data-warehouse="{{ $r->warehouse->warehouse_name ?? $r->warehouse->name ?? 'Main Stock' }}"
+                        data-total="Rs {{ number_format($r->total_cost, 0) }}"
+                        data-items="{{ json_encode($r->items->map(function($item) {
+                          return [
+                            'name' => $item->rawMaterial->name ?? '-',
+                            'qty' => (float)$item->qty,
+                            'unit' => $item->rawMaterial->unit ?? '',
+                            'price' => number_format((float)$item->price_per_unit, 2),
+                            'total' => number_format((float)$item->total, 2)
+                          ];
+                        })) }}"
+                        title="View Returned Items">
+                        <i class="bi bi-eye me-1"></i> View
+                      </button>
+                    </div>
+                  </td>
+                  <td style="font-weight:700;" class="text-danger" data-label="Total Refund">Rs {{ number_format($r->total_cost, 0) }}</td>
+                  <td data-label="Reason / Notes"><small class="text-muted">{{ $r->remarks ?? '-' }}</small></td>
+                  <td data-label="Returned By"><span class="badge bg-secondary-subtle text-secondary">{{ $r->creator->name ?? '-' }}</span></td>
+                  <td class="text-center" data-label="Actions">
+                    <div class="d-flex align-items-center justify-content-center gap-1">
+                      <a href="{{ route('raw-materials.purchase.return.print', $r->id) }}" target="_blank" class="rm-btn rm-btn-sm" style="background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;" title="Print Return Voucher">
+                        <i class="bi bi-printer"></i>
+                      </a>
+                      <button type="button" class="rm-btn rm-btn-danger rm-btn-sm" onclick="confirmDelete('{{ route('raw-materials.purchase.return.delete', $r->id) }}')" title="Delete Return & Restore Stock">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                @empty
+                <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">No raw material purchase returns recorded yet</td></tr>
+                @endforelse
+                @endif
               </tbody>
             </table>
           </div>
@@ -1458,6 +1578,131 @@
   </div>
 </div>
 
+{{-- RAW MATERIAL PURCHASE RETURN MODAL --}}
+<div class="modal fade" id="returnPurchaseModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content" style="border:none;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;border:none;">
+        <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-arrow-return-left me-2"></i> Raw Material Purchase Return (<span id="retModalInvoice" class="font-monospace text-warning"></span>)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="purchaseReturnForm" action="{{ route('raw-materials.purchase.return.store') }}" method="POST">
+        @csrf
+        <input type="hidden" name="purchase_id" id="retPurchaseId" />
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-3 p-3 bg-light rounded-3 border">
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-calendar-check"></i> Return Date</label>
+              <input type="date" name="return_date" id="retDate" class="fld" value="{{ date('Y-m-d') }}" required />
+            </div>
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-person-fill"></i> Vendor</label>
+              <input type="text" id="retVendorName" class="fld" readonly style="background:#f1f5f9;" />
+            </div>
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-houses-fill"></i> Storage Location</label>
+              <input type="text" id="retWarehouseName" class="fld" readonly style="background:#f1f5f9;" />
+            </div>
+            <div class="col-md-3">
+              <label class="lbl"><i class="bi bi-chat-left-text"></i> Return Reason / Remarks</label>
+              <input type="text" name="notes" id="retNotes" class="fld" placeholder="e.g. Damaged, Excess, Quality Issue..." />
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-box-seam me-1" style="color:#ea580c;"></i> Enter Quantities to Return</h6>
+            <span class="text-muted small">Specify return quantity for each item (leave 0 or empty for items not returning)</span>
+          </div>
+
+          <div class="table-responsive border rounded-3 overflow-hidden mb-3">
+            <table class="table table-sm align-middle mb-0" id="retItemsTable" style="font-size:.88rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>Raw Material</th>
+                  <th class="text-center" style="width:110px;">Purchased</th>
+                  <th class="text-center" style="width:110px;">Already Ret.</th>
+                  <th class="text-center" style="width:110px;">Available</th>
+                  <th class="text-center" style="width:110px;">Current Stock</th>
+                  <th class="text-end" style="width:120px;">Price / Unit</th>
+                  <th style="width:150px;">Return Qty</th>
+                  <th class="text-end" style="width:130px;">Return Total</th>
+                </tr>
+              </thead>
+              <tbody id="retItemsBody"></tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <td colspan="7" class="text-end fw-bold fs-6">Total Return Amount:</td>
+                  <td class="text-end fw-bold fs-6 text-danger" id="retTotalCost">Rs 0.00</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-between">
+          <button type="button" class="rm-btn" style="background:#fff;color:var(--text-sec);border:1px solid var(--border);" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="rm-btn" id="retSubmitBtn" style="background:#ea580c;color:#fff;"><i class="bi bi-check2-circle me-1"></i> Submit Purchase Return</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{{-- VIEW RETURN ITEMS DETAIL MODAL --}}
+<div class="modal fade" id="viewReturnModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="border:none;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;border:none;">
+        <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-arrow-return-left me-2 text-warning"></i> Purchase Return Details (<span id="vrModalInvoice" class="font-monospace text-warning"></span>)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-2 p-3 bg-light rounded-3 border mb-3">
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Return Invoice:</span>
+            <strong id="vrModalInvoice2" class="font-monospace text-danger"></strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Original Purchase:</span>
+            <strong id="vrModalOriginal" class="font-monospace text-primary"></strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Return Date:</span>
+            <strong id="vrModalDate" class="text-dark"></strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Vendor:</span>
+            <strong id="vrModalVendor" class="text-dark"></strong>
+          </div>
+        </div>
+        <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-box-seam me-1 text-danger"></i> Returned Raw Materials</h6>
+        <div class="table-responsive border rounded-3 overflow-hidden">
+          <table class="table table-sm table-striped mb-0" style="font-size:.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th style="width:45px;">#</th>
+                <th>Material</th>
+                <th>Returned Quantity</th>
+                <th>Unit Price</th>
+                <th>Refund Total</th>
+              </tr>
+            </thead>
+            <tbody id="vrModalItemsBody"></tbody>
+            <tfoot class="table-light fw-bold">
+              <tr>
+                <td colspan="4" class="text-end">Total Refund:</td>
+                <td id="vrModalTotal" class="text-danger fs-6"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-light px-4 py-3">
+        <button type="button" class="rm-btn" style="background:#fff;color:var(--text-sec);border:1px solid var(--border);" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <template id="materialOptionsTemplate">
   <option value="">Select Material...</option>
   @foreach($materials as $m)
@@ -1723,6 +1968,7 @@ function printReportSection(tableId, title) {
   var isStock = tableId === 'stockTable';
   var isWarehouseStock = tableId === 'warehouseStockTable';
   var isPurchase = tableId === 'purchaseTable';
+  var isReturns = tableId === 'returnsTable';
 
   if (isStock) {
     var sD = $('#stockStartDate').val() || '';
@@ -1807,6 +2053,29 @@ function printReportSection(tableId, title) {
         rowsHtml += '<td><strong>' + vendor + '</strong><br><span style="font-size:8.5px;color:#444;">' + wh + '</span></td>';
         rowsHtml += '<td>' + itemsHtml + '</td>';
         rowsHtml += '<td><strong>' + total + '</strong><br><span style="font-size:8.5px;color:#444;">' + creator + '</span></td>';
+        rowsHtml += '</tr>';
+      }
+    });
+
+    var tableHtml = '<table><thead>' + headers + '</thead><tbody>' + rowsHtml + '</tbody></table>';
+  } else if (isReturns) {
+    var headers = '<tr><th style="width:24%;">Return Invoice & Date</th><th style="width:24%;">Original & Vendor</th><th style="width:34%;">Items Returned</th><th style="width:18%;">Refund & By</th></tr>';
+
+    $('#returnsTable tbody tr').each(function() {
+      if ($(this).css('display') !== 'none' && $(this).find('td').length >= 8) {
+        var retInv = $(this).find('td:eq(0)').text().trim();
+        var date = $(this).find('td:eq(1)').text().trim();
+        var origInv = $(this).find('td:eq(2)').text().trim();
+        var vendor = $(this).find('td:eq(3)').text().trim();
+        var itemsHtml = $(this).find('td:eq(5)').html().trim();
+        var total = $(this).find('td:eq(6)').text().trim();
+        var creator = $(this).find('td:eq(8)').text().trim();
+
+        rowsHtml += '<tr>';
+        rowsHtml += '<td><strong>' + retInv + '</strong><br><span style="font-size:8.5px;color:#444;">' + date + '</span></td>';
+        rowsHtml += '<td><strong>' + vendor + '</strong><br><span style="font-size:8.5px;color:#444;">Orig: ' + origInv + '</span></td>';
+        rowsHtml += '<td>' + itemsHtml + '</td>';
+        rowsHtml += '<td><strong style="color:#b91c1c;">' + total + '</strong><br><span style="font-size:8.5px;color:#444;">' + creator + '</span></td>';
         rowsHtml += '</tr>';
       }
     });
@@ -2352,15 +2621,225 @@ $(document).on('submit', '.edit-purchase-form', function(e) {
   });
 });
 
+// Calculate Return Totals
+function calculateRetTotals() {
+  var grandTotal = 0;
+  $('#retItemsBody tr').each(function() {
+    var qty = parseFloat($(this).find('.ret-qty').val()) || 0;
+    var price = parseFloat($(this).find('.ret-price').val()) || 0;
+    var rowTotal = qty * price;
+    $(this).find('.ret-row-total').text('Rs ' + rowTotal.toFixed(2));
+    grandTotal += rowTotal;
+  });
+  $('#retTotalCost').text('Rs ' + grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+}
+
+// Open Return Purchase Modal
+$(document).on('click', '.openReturnModalBtn', function() {
+  var purchaseId = $(this).data('id');
+  var btn = $(this);
+  var origHtml = btn.html();
+  btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+  $.ajax({
+    url: '{{ url("/raw-materials/purchase") }}/' + purchaseId + '/return-data',
+    type: 'GET',
+    dataType: 'json',
+    success: function(res) {
+      btn.prop('disabled', false).html(origHtml);
+      if (!res.success) {
+        Swal.fire({ icon: 'error', title: 'Error', text: res.error || 'Failed to fetch purchase details.' });
+        return;
+      }
+      var p = res.purchase;
+      $('#retPurchaseId').val(p.id);
+      $('#retModalInvoice').text(p.invoice_no);
+      $('#retVendorName').val(p.vendor_name || 'N/A');
+      $('#retWarehouseName').val(p.warehouse_name || 'Main Stock');
+      $('#retNotes').val('');
+
+      var tbody = $('#retItemsBody');
+      tbody.empty();
+
+      if (p.items && p.items.length > 0) {
+        p.items.forEach(function(item) {
+          var isFullyRet = item.available_qty <= 0.0001;
+          var row = $(
+            '<tr class="ret-row ' + (isFullyRet ? 'table-light opacity-75' : '') + '">' +
+              '<td>' +
+                '<strong>' + item.name + '</strong>' +
+                '<input type="hidden" name="raw_material_id[]" value="' + item.raw_material_id + '" />' +
+                '<input type="hidden" name="price_per_unit[]" class="ret-price" value="' + item.price_per_unit + '" />' +
+              '</td>' +
+              '<td class="text-center font-monospace">' + item.purchased_qty.toFixed(2) + ' ' + item.unit + '</td>' +
+              '<td class="text-center font-monospace text-muted">' + item.returned_qty.toFixed(2) + ' ' + item.unit + '</td>' +
+              '<td class="text-center"><span class="badge ' + (isFullyRet ? 'bg-secondary' : 'bg-success-subtle text-success border') + ' font-monospace">' + item.available_qty.toFixed(2) + ' ' + item.unit + '</span></td>' +
+              '<td class="text-center font-monospace text-primary">' + item.current_stock.toFixed(2) + ' ' + item.unit + '</td>' +
+              '<td class="text-end font-monospace">Rs ' + item.price_per_unit.toFixed(2) + '</td>' +
+              '<td>' +
+                (isFullyRet
+                  ? '<span class="badge bg-danger-subtle text-danger border">Fully Returned</span><input type="hidden" name="qty[]" value="0" class="ret-qty">'
+                  : '<div class="input-group input-group-sm">' +
+                      '<input type="number" step="0.01" min="0" max="' + item.available_qty + '" name="qty[]" class="fld ret-qty py-1 px-2" placeholder="0" value="0" style="font-weight:700;height:auto;" data-max="' + item.available_qty + '" data-stock="' + item.current_stock + '">' +
+                      '<button type="button" class="btn btn-outline-secondary btn-sm max-ret-btn" title="Return Max Available" style="font-size:.7rem;padding:2px 6px;">MAX</button>' +
+                    '</div>'
+                ) +
+              '</td>' +
+              '<td class="text-end font-monospace fw-bold ret-row-total text-danger">Rs 0.00</td>' +
+            '</tr>'
+          );
+          tbody.append(row);
+        });
+      }
+
+      calculateRetTotals();
+      $('#returnPurchaseModal').modal('show');
+    },
+    error: function(xhr) {
+      btn.prop('disabled', false).html(origHtml);
+      var msg = 'Failed to load purchase return data.';
+      if (xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  });
+});
+
+// Click MAX available quantity
+$(document).on('click', '.max-ret-btn', function() {
+  var input = $(this).closest('.input-group').find('.ret-qty');
+  var max = parseFloat(input.data('max')) || 0;
+  input.val(max.toFixed(2)).trigger('input');
+});
+
+// Recalculate on return qty input
+$(document).on('input', '.ret-qty', function() {
+  var max = parseFloat($(this).data('max')) || 0;
+  var val = parseFloat($(this).val()) || 0;
+  if (val > max) {
+    $(this).val(max);
+    Swal.fire({ icon: 'info', title: 'Max Limit', text: 'You cannot return more than available quantity (' + max + ').', timer: 1500, showConfirmButton: false });
+  }
+  calculateRetTotals();
+});
+
+// Submit Purchase Return Form
+$(document).on('submit', '#purchaseReturnForm', function(e) {
+  e.preventDefault();
+  var form = $(this);
+
+  var totalQty = 0;
+  $('.ret-qty').each(function() {
+    totalQty += parseFloat($(this).val()) || 0;
+  });
+
+  if (totalQty <= 0) {
+    Swal.fire({ icon: 'warning', title: 'No Return Quantity', text: 'Please enter a return quantity greater than 0 for at least one item.' });
+    return;
+  }
+
+  var fd = new FormData(this);
+  var url = form.attr('action');
+  var $btn = $('#retSubmitBtn');
+  var btnText = $btn.html();
+  $btn.attr('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i> Processing Return...');
+
+  $.ajax({
+    url: url,
+    type: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    headers: {
+      'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+    },
+    dataType: 'json',
+    success: function(data) {
+      $btn.attr('disabled', false).html(btnText);
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Return Completed!',
+          text: data.success,
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => {
+          if (data.reload) {
+            window.location.href = data.reload;
+          } else {
+            window.location.reload();
+          }
+        });
+      } else if (data.errors) {
+        var errHtml = '';
+        $.each(data.errors, function(k, v) {
+          errHtml += '<div class="text-danger small">' + (Array.isArray(v) ? v.join(', ') : v) + '</div>';
+        });
+        Swal.fire({ icon: 'error', title: 'Validation Errors', html: errHtml });
+      } else if (data.error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: data.error });
+      }
+    },
+    error: function(xhr) {
+      $btn.attr('disabled', false).html(btnText);
+      var msg = 'Failed to process purchase return.';
+      if (xhr.responseJSON && xhr.responseJSON.error) {
+        msg = xhr.responseJSON.error;
+      } else if (xhr.responseJSON && xhr.responseJSON.message) {
+        msg = xhr.responseJSON.message;
+      }
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  });
+});
+
+// View Return Items Details Modal
+$(document).on('click', '.viewReturnItemsBtn', function() {
+  var inv = $(this).data('invoice');
+  var orig = $(this).data('original');
+  var dt = $(this).data('date');
+  var ven = $(this).data('vendor');
+  var tot = $(this).data('total');
+  var items = $(this).data('items');
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items); } catch (e) { items = []; }
+  }
+
+  $('#vrModalInvoice').text(inv || '-');
+  $('#vrModalInvoice2').text(inv || '-');
+  $('#vrModalOriginal').text(orig || '-');
+  $('#vrModalDate').text(dt || '-');
+  $('#vrModalVendor').text(ven || '-');
+  $('#vrModalTotal').text(tot || 'Rs 0');
+
+  var tbody = '';
+  if (items && items.length > 0) {
+    items.forEach(function(item, idx) {
+      tbody += '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><strong>' + item.name + '</strong></td>' +
+        '<td class="fw-bold text-danger">' + item.qty + ' ' + (item.unit || '') + '</td>' +
+        '<td>Rs ' + item.price + '</td>' +
+        '<td class="text-danger fw-bold">Rs ' + item.total + '</td>' +
+      '</tr>';
+    });
+  } else {
+    tbody = '<tr><td colspan="5" class="text-center text-muted">No items recorded</td></tr>';
+  }
+  $('#vrModalItemsBody').html(tbody);
+  $('#viewReturnModal').modal('show');
+});
+
 // DataTables & Initializations
 $(document).ready(function() {
   initMaterialSelect2();
   if ($.fn.DataTable.isDataTable('#materialTable')) $('#materialTable').DataTable().destroy();
   if ($.fn.DataTable.isDataTable('#purchaseTable')) $('#purchaseTable').DataTable().destroy();
   if ($.fn.DataTable.isDataTable('#recipesTable')) $('#recipesTable').DataTable().destroy();
+  if ($.fn.DataTable.isDataTable('#returnsTable')) $('#returnsTable').DataTable().destroy();
   $('#materialTable').DataTable({ pageLength: 10, order: [[0, 'desc']], language: { search: '_INPUT_', searchPlaceholder: 'Search materials...' } });
   $('#purchaseTable').DataTable({ pageLength: 10, order: [[0, 'desc']], language: { search: '_INPUT_', searchPlaceholder: 'Search purchases...' } });
   $('#recipesTable').DataTable({ pageLength: 10, order: [[0, 'asc']], language: { search: '_INPUT_', searchPlaceholder: 'Search recipes...' } });
+  $('#returnsTable').DataTable({ pageLength: 10, order: [[0, 'desc']], language: { search: '_INPUT_', searchPlaceholder: 'Search returns...' } });
 });
 </script>
 @endsection

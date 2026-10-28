@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialPurchase;
 use App\Models\RawMaterialPurchaseItem;
+use App\Models\RawMaterialPurchaseReturn;
+use App\Models\RawMaterialPurchaseReturnItem;
 use App\Models\RawMaterialStock;
 use App\Models\Vendor;
 use App\Models\VendorLedger;
@@ -70,6 +72,22 @@ class RawMaterialController extends Controller
             ->pluck('total_qty', 'rmpi.raw_material_id')
             ->toArray();
 
+        // 2b. Returns AFTER endDT (for backward balance calculation)
+        $returnAfterQuery = DB::table('raw_material_purchase_return_items as rmri')
+            ->join('raw_material_purchase_returns as rmr', 'rmr.id', '=', 'rmri.purchase_return_id')
+            ->whereIn('rmri.raw_material_id', $materialIds)
+            ->where(function($q) {
+                $q->whereNull('rmr.warehouse_id')->orWhere('rmr.warehouse_id', 0);
+            })
+            ->where(DB::raw("COALESCE(rmr.created_at, CONCAT(rmr.return_date, ' 00:00:00'))"), '>', $endDT);
+        if ($branchId) {
+            $returnAfterQuery->where('rmr.branch_id', $branchId);
+        }
+        $returnAfter = $returnAfterQuery->select('rmri.raw_material_id', DB::raw('SUM(rmri.qty) as total_qty'))
+            ->groupBy('rmri.raw_material_id')
+            ->pluck('total_qty', 'rmri.raw_material_id')
+            ->toArray();
+
         // 3. Usages AFTER endDT (for backward balance calculation)
         $usageAfterQuery = DB::table('production_raw_material_usage as prmu')
             ->join('production_entries as pe', 'pe.id', '=', 'prmu.production_entry_id')
@@ -104,6 +122,22 @@ class RawMaterialController extends Controller
             ->pluck('total_qty', 'rmpi.raw_material_id')
             ->toArray();
 
+        // 4b. Returns IN PERIOD [startDT, endDT]
+        $returnPeriodQuery = DB::table('raw_material_purchase_return_items as rmri')
+            ->join('raw_material_purchase_returns as rmr', 'rmr.id', '=', 'rmri.purchase_return_id')
+            ->whereIn('rmri.raw_material_id', $materialIds)
+            ->where(function($q) {
+                $q->whereNull('rmr.warehouse_id')->orWhere('rmr.warehouse_id', 0);
+            })
+            ->whereBetween(DB::raw("COALESCE(rmr.created_at, CONCAT(rmr.return_date, ' 00:00:00'))"), [$startDT, $endDT]);
+        if ($branchId) {
+            $returnPeriodQuery->where('rmr.branch_id', $branchId);
+        }
+        $returnPeriod = $returnPeriodQuery->select('rmri.raw_material_id', DB::raw('SUM(rmri.qty) as total_qty'))
+            ->groupBy('rmri.raw_material_id')
+            ->pluck('total_qty', 'rmri.raw_material_id')
+            ->toArray();
+
         // 5. Usages IN PERIOD [startDT, endDT]
         $usagePeriodQuery = DB::table('production_raw_material_usage as prmu')
             ->join('production_entries as pe', 'pe.id', '=', 'prmu.production_entry_id')
@@ -130,21 +164,34 @@ class RawMaterialController extends Controller
             $sNow = (float)($liveStocks[$m->id] ?? 0); // live stock in consumption unit
             $pAfterPur = (float)($purchAfter[$m->id] ?? 0); // purchase unit
             $pAfter = $pAfterPur * $factor; // consumption unit
+
+            $rAfterPur = (float)($returnAfter[$m->id] ?? 0); // purchase unit
+            $rAfter = $rAfterPur * $factor; // consumption unit
+
             $uAfter = (float)($usageAfter[$m->id] ?? 0); // consumption unit
 
-            $sEnd = $sNow - $pAfter + $uAfter; // closing / current stock of the period
+            // Live stock minus net purchases after + usage after
+            $sEnd = $sNow - $pAfter + $rAfter + $uAfter; // closing / current stock of the period
 
             $pPeriodPur = (float)($purchPeriod[$m->id] ?? 0); // purchase unit
             $pPeriod = $pPeriodPur * $factor; // consumption unit
+
+            $rPeriodPur = (float)($returnPeriod[$m->id] ?? 0); // purchase unit
+            $rPeriod = $rPeriodPur * $factor; // consumption unit
+
             $uPeriod = (float)($usagePeriod[$m->id] ?? 0); // consumption unit
 
-            $sStart = $sEnd - $pPeriod + $uPeriod; // opening stock of the period
+            $netPPeriod = $pPeriod - $rPeriod;
+            $sStart = $sEnd - $netPPeriod + $uPeriod; // opening stock of the period
 
             $m->calc_opening_stock_consumption = $sStart;
             $m->calc_opening_stock_purchase = $sStart / $factor;
 
             $m->calc_purchase_qty_consumption = $pPeriod;
             $m->calc_purchase_qty_purchase = $pPeriodPur;
+
+            $m->calc_return_qty_consumption = $rPeriod;
+            $m->calc_return_qty_purchase = $rPeriodPur;
 
             $m->calc_used_qty_consumption = $uPeriod;
             $m->calc_used_qty_purchase = $uPeriod / $factor;
@@ -157,11 +204,43 @@ class RawMaterialController extends Controller
             $m->has_usage = ($uPeriod > 0);
         }
 
-        $purchasesQuery = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse', 'branch']);
+        $purchasesQuery = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse', 'branch', 'returns.items'])
+            ->where('invoice_no', 'not like', 'INIT-%')
+            ->where(function($q) {
+                $q->whereNull('vendor_name')->orWhere('vendor_name', '!=', 'Initial Cost Setup');
+            });
         if (!is_all_branches()) {
             $purchasesQuery->where('branch_id', active_branch_id());
         }
-        $purchases = $purchasesQuery->orderBy('date', 'desc')->orderBy('id', 'desc')->take(50)->get();
+        $purchases = $purchasesQuery->orderBy('date', 'desc')->orderBy('id', 'desc')->take(100)->get();
+
+        // Calculate returned quantities for each purchase and item
+        foreach ($purchases as $p) {
+            $allReturnItems = $p->returns->flatMap->items;
+            $totalRetAmount = (float)$p->returns->sum('total_cost');
+            $p->total_returned_amount = $totalRetAmount;
+
+            $allFullyReturned = true;
+            $hasAnyReturn = $totalRetAmount > 0;
+
+            foreach ($p->items as $item) {
+                $retQty = (float)$allReturnItems->where('raw_material_id', $item->raw_material_id)->sum('qty');
+                $item->returned_qty = $retQty;
+                $item->available_qty = max(0, (float)$item->qty - $retQty);
+                if ($item->available_qty > 0.0001) {
+                    $allFullyReturned = false;
+                }
+            }
+            $p->is_fully_returned = ($p->items->count() > 0 && $allFullyReturned);
+            $p->is_partially_returned = ($hasAnyReturn && !$p->is_fully_returned);
+        }
+
+        // Query Raw Material Purchase Returns
+        $returnsQuery = RawMaterialPurchaseReturn::with(['purchase', 'items.rawMaterial', 'creator', 'warehouse', 'branch', 'vendor']);
+        if (!is_all_branches()) {
+            $returnsQuery->where('branch_id', active_branch_id());
+        }
+        $purchaseReturns = $returnsQuery->orderBy('return_date', 'desc')->orderBy('id', 'desc')->take(100)->get();
 
         $vendors = \App\Models\Vendor::orderBy('name')->get(['id', 'name']);
         $warehouses = \App\Models\Warehouse::orderBy('warehouse_name')->get(['id', 'warehouse_name']);
@@ -176,7 +255,7 @@ class RawMaterialController extends Controller
             ->get();
 
         return view('admin_panel.raw_material.index', compact(
-            'materials', 'purchases', 'vendors', 'warehouses', 'productsWithBom', 'warehouseStocks',
+            'materials', 'purchases', 'purchaseReturns', 'vendors', 'warehouses', 'productsWithBom', 'warehouseStocks',
             'startDate', 'startTime', 'endDate', 'endTime'
         ));
     }
@@ -211,37 +290,9 @@ class RawMaterialController extends Controller
         $material->consumption_unit = strtolower(trim($request->consumption_unit ?? $request->unit));
         $material->conversion_factor = (float)($request->conversion_factor ?? 1) > 0 ? (float)$request->conversion_factor : 1;
         $material->alert_qty = (float)($request->alert_qty ?? 0);
+        $material->initial_price = (float)($request->initial_price ?? 0);
         $material->notes = $request->notes;
         $material->save();
-
-        // Save initial / updated purchase price
-        if ($request->has('initial_price')) {
-            $price = (float)$request->initial_price;
-            $latestItem = RawMaterialPurchaseItem::where('raw_material_id', $material->id)->latest('id')->first();
-            if ($latestItem) {
-                $latestItem->price_per_unit = $price;
-                $latestItem->total = $latestItem->qty * $price;
-                $latestItem->save();
-            } elseif ($price > 0) {
-                $purchase = RawMaterialPurchase::create([
-                    'date' => date('Y-m-d'),
-                    'invoice_no' => 'INIT-RM-' . $material->id,
-                    'vendor_name' => 'Initial Cost Setup',
-                    'total_cost' => 0,
-                    'notes' => 'Auto-generated for initial raw material cost setup',
-                    'created_by' => Auth::id(),
-                    'branch_id' => is_all_branches() ? null : active_branch_id(),
-                ]);
-                RawMaterialPurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'raw_material_id' => $material->id,
-                    'qty' => 0,
-                    'price_per_unit' => $price,
-                    'total' => 0,
-                    'branch_id' => is_all_branches() ? null : active_branch_id(),
-                ]);
-            }
-        }
 
         // Ensure stock record exists with opening stock (converted to consumption units)
         $branchId = is_all_branches() ? null : active_branch_id();
@@ -343,6 +394,10 @@ class RawMaterialController extends Controller
                     return response()->json(['error' => 'Unauthorized!']);
                 }
 
+                if ($purchase->returns()->exists()) {
+                    return response()->json(['error' => 'Cannot edit this purchase because return records exist for it. Please delete the return(s) first.']);
+                }
+
                 // 1. Reverse old stock
                 foreach ($purchase->items as $item) {
                     $rawMat = RawMaterial::find($item->raw_material_id);
@@ -362,7 +417,7 @@ class RawMaterialController extends Controller
                         $stock = $stock->first();
                     }
                     if ($stock) {
-                        $stock->qty = max(0, $stock->qty - $deductQty);
+                        $stock->qty = $stock->qty - $deductQty;
                         $stock->save();
                     }
                 }
@@ -481,6 +536,10 @@ class RawMaterialController extends Controller
                 return response()->json(['error' => 'Unauthorized!']);
             }
 
+            if ($purchase->returns()->exists()) {
+                return response()->json(['error' => 'Cannot delete this purchase because return records exist for it. Please delete the return(s) first.']);
+            }
+
             // Reverse stock
             foreach ($purchase->items as $item) {
                 $rawMat = RawMaterial::find($item->raw_material_id);
@@ -500,7 +559,7 @@ class RawMaterialController extends Controller
                     $stock = $stock->first();
                 }
                 if ($stock) {
-                    $stock->qty = max(0, $stock->qty - $deductQty);
+                    $stock->qty = $stock->qty - $deductQty;
                     $stock->save();
                 }
             }
@@ -533,6 +592,320 @@ class RawMaterialController extends Controller
     {
         $purchase = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse', 'branch'])->findOrFail($id);
         return view('admin_panel.raw_material.purchase_print', compact('purchase'));
+    }
+
+    public function getPurchaseReturnData($id)
+    {
+        $purchase = RawMaterialPurchase::with(['items.rawMaterial', 'warehouse', 'branch', 'returns.items'])
+            ->findOrFail($id);
+
+        if (!is_all_branches() && $purchase->branch_id && $purchase->branch_id != active_branch_id()) {
+            return response()->json(['error' => 'Unauthorized access to purchase from another branch.'], 403);
+        }
+
+        $allReturnItems = $purchase->returns->flatMap->items;
+        $itemsData = [];
+
+        foreach ($purchase->items as $item) {
+            $retQty = (float)$allReturnItems->where('raw_material_id', $item->raw_material_id)->sum('qty');
+            $availQty = max(0, (float)$item->qty - $retQty);
+
+            // Check current stock
+            $rawMat = $item->rawMaterial;
+            $factor = ($rawMat && (float)$rawMat->conversion_factor > 0) ? (float)$rawMat->conversion_factor : 1;
+
+            if ($purchase->warehouse_id) {
+                $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)
+                    ->where('warehouse_id', $purchase->warehouse_id)
+                    ->first();
+            } else {
+                $stockQuery = RawMaterialStock::where('raw_material_id', $item->raw_material_id)->whereNull('warehouse_id');
+                if ($purchase->branch_id) {
+                    $stockQuery->where('branch_id', $purchase->branch_id);
+                }
+                $stock = $stockQuery->first();
+            }
+
+            $currentStockInConsumption = (float)($stock ? $stock->qty : 0);
+            $currentStockInPurchaseUnit = $currentStockInConsumption / $factor;
+
+            $itemsData[] = [
+                'raw_material_id' => $item->raw_material_id,
+                'name' => $rawMat->name ?? '-',
+                'unit' => $rawMat->unit ?? 'unit',
+                'purchased_qty' => (float)$item->qty,
+                'returned_qty' => $retQty,
+                'available_qty' => $availQty,
+                'current_stock' => $currentStockInPurchaseUnit,
+                'price_per_unit' => (float)$item->price_per_unit,
+                'total' => (float)$item->total,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'purchase' => [
+                'id' => $purchase->id,
+                'invoice_no' => $purchase->invoice_no,
+                'date' => $purchase->date,
+                'vendor_id' => $purchase->vendor_id,
+                'vendor_name' => $purchase->vendor_name,
+                'warehouse_id' => $purchase->warehouse_id,
+                'warehouse_name' => $purchase->warehouse->warehouse_name ?? $purchase->warehouse->name ?? 'Main Stock',
+                'total_cost' => (float)$purchase->total_cost,
+                'items' => $itemsData,
+            ]
+        ]);
+    }
+
+    public function storePurchaseReturn(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'purchase_id' => 'required|exists:raw_material_purchases,id',
+            'return_date' => 'required|date',
+            'raw_material_id' => 'required|array',
+            'raw_material_id.*' => 'required|exists:raw_materials,id',
+            'qty' => 'required|array',
+            'qty.*' => 'required|numeric|min:0',
+            'price_per_unit' => 'required|array',
+            'price_per_unit.*' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()]);
+        }
+
+        try {
+            $purchase = RawMaterialPurchase::with(['items.rawMaterial', 'returns.items'])->findOrFail($request->purchase_id);
+
+            if (!is_all_branches() && $purchase->branch_id && $purchase->branch_id != active_branch_id()) {
+                return response()->json(['error' => 'Unauthorized access to purchase from another branch.'], 403);
+            }
+
+            // Check that at least one item has qty > 0
+            $hasReturnItem = false;
+            foreach ($request->qty as $q) {
+                if ((float)$q > 0) {
+                    $hasReturnItem = true;
+                    break;
+                }
+            }
+
+            if (!$hasReturnItem) {
+                return response()->json(['error' => 'Please enter a return quantity greater than 0 for at least one item.']);
+            }
+
+            $allReturnItems = $purchase->returns->flatMap->items;
+            $itemsToReturn = [];
+            $totalReturnCost = 0;
+
+            foreach ($request->raw_material_id as $index => $rmId) {
+                $returnQty = (float)($request->qty[$index] ?? 0);
+                if ($returnQty <= 0) continue;
+
+                $purchaseItem = $purchase->items->where('raw_material_id', $rmId)->first();
+                if (!$purchaseItem) {
+                    return response()->json(['error' => "Material #{$rmId} does not belong to this purchase."]);
+                }
+
+                $alreadyReturned = (float)$allReturnItems->where('raw_material_id', $rmId)->sum('qty');
+                $availableToReturn = max(0, (float)$purchaseItem->qty - $alreadyReturned);
+
+                if ($returnQty > ($availableToReturn + 0.0001)) {
+                    $rmName = $purchaseItem->rawMaterial->name ?? 'item';
+                    return response()->json(['error' => "Return quantity ({$returnQty}) exceeds available quantity ({$availableToReturn}) for {$rmName}."]);
+                }
+
+                $price = (float)($request->price_per_unit[$index] ?? $purchaseItem->price_per_unit);
+                $lineTotal = $returnQty * $price;
+                $totalReturnCost += $lineTotal;
+
+                $rawMat = $purchaseItem->rawMaterial;
+                $factor = ($rawMat && (float)$rawMat->conversion_factor > 0) ? (float)$rawMat->conversion_factor : 1;
+                $deductStockQty = $returnQty * $factor;
+
+                // Check physical stock in storage
+                if ($purchase->warehouse_id) {
+                    $stock = RawMaterialStock::where('raw_material_id', $rmId)
+                        ->where('warehouse_id', $purchase->warehouse_id)
+                        ->first();
+                } else {
+                    $stockQuery = RawMaterialStock::where('raw_material_id', $rmId)->whereNull('warehouse_id');
+                    if ($purchase->branch_id) {
+                        $stockQuery->where('branch_id', $purchase->branch_id);
+                    }
+                    $stock = $stockQuery->first();
+                }
+
+                $currentStock = $stock ? (float)$stock->qty : 0;
+                if ($currentStock < ($deductStockQty - 0.0001)) {
+                    $rmName = $rawMat->name ?? 'item';
+                    $availStockPur = number_format($currentStock / $factor, 2);
+                    return response()->json(['error' => "Insufficient stock in storage for {$rmName}. Available in stock: {$availStockPur} {$rawMat->unit}, attempting to return: {$returnQty} {$rawMat->unit}."]);
+                }
+
+                $itemsToReturn[] = [
+                    'raw_material_id' => $rmId,
+                    'qty' => $returnQty,
+                    'price_per_unit' => $price,
+                    'total' => $lineTotal,
+                    'deduct_stock_qty' => $deductStockQty,
+                    'branch_id' => $purchase->branch_id,
+                ];
+            }
+
+            DB::beginTransaction();
+
+            $lastReturn = RawMaterialPurchaseReturn::latest('id')->first();
+            $retInvoice = 'RMR-' . date('Ymd') . '-' . str_pad(($lastReturn->id ?? 0) + 1, 4, '0', STR_PAD_LEFT);
+
+            $purchaseReturn = RawMaterialPurchaseReturn::create([
+                'purchase_id' => $purchase->id,
+                'return_invoice' => $retInvoice,
+                'return_date' => $request->return_date,
+                'vendor_id' => $purchase->vendor_id,
+                'vendor_name' => $purchase->vendor_name,
+                'warehouse_id' => $purchase->warehouse_id,
+                'branch_id' => $purchase->branch_id ?? (is_all_branches() ? null : active_branch_id()),
+                'total_cost' => $totalReturnCost,
+                'remarks' => $request->notes ?? $request->remarks,
+                'created_by' => Auth::id(),
+            ]);
+
+            foreach ($itemsToReturn as $itemData) {
+                $rmId = $itemData['raw_material_id'];
+                RawMaterialPurchaseReturnItem::create([
+                    'purchase_return_id' => $purchaseReturn->id,
+                    'raw_material_id' => $rmId,
+                    'qty' => $itemData['qty'],
+                    'price_per_unit' => $itemData['price_per_unit'],
+                    'total' => $itemData['total'],
+                    'branch_id' => $itemData['branch_id'],
+                ]);
+
+                // Deduct stock
+                if ($purchase->warehouse_id) {
+                    $stock = RawMaterialStock::where('raw_material_id', $rmId)
+                        ->where('warehouse_id', $purchase->warehouse_id)
+                        ->first();
+                } else {
+                    $stockQuery = RawMaterialStock::where('raw_material_id', $rmId)->whereNull('warehouse_id');
+                    if ($purchase->branch_id) {
+                        $stockQuery->where('branch_id', $purchase->branch_id);
+                    }
+                    $stock = $stockQuery->first();
+                }
+
+                if ($stock) {
+                    $stock->qty = max(0, $stock->qty - $itemData['deduct_stock_qty']);
+                    $stock->save();
+                }
+            }
+
+            // Vendor Ledger update (subtract returned amount)
+            $vendorId = $purchase->vendor_id;
+            if (!$vendorId && $purchase->vendor_name) {
+                $v = Vendor::where('name', $purchase->vendor_name)->first();
+                $vendorId = $v ? $v->id : null;
+            }
+            if ($vendorId) {
+                $ledger = VendorLedger::firstOrNew(['vendor_id' => $vendorId]);
+                if (!$ledger->exists) {
+                    $v = Vendor::find($vendorId);
+                    $init = $v ? ($v->opening_balance ?? 0) : 0;
+                    $ledger->opening_balance = $init;
+                    $ledger->closing_balance = $init;
+                    $ledger->previous_balance = 0;
+                    $ledger->admin_or_user_id = Auth::id();
+                }
+                $ledger->previous_balance = $ledger->closing_balance;
+                $ledger->closing_balance -= $totalReturnCost;
+                $ledger->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => "Purchase Return ({$retInvoice}) recorded successfully!",
+                'return_id' => $purchaseReturn->id,
+                'reload' => route('raw-materials.index', ['tab' => 'tab-returns']),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Return failed: ' . $e->getMessage()]);
+        }
+    }
+
+    public function deletePurchaseReturn($id)
+    {
+        try {
+            DB::beginTransaction();
+            $return = RawMaterialPurchaseReturn::with(['items.rawMaterial', 'purchase'])->find($id);
+            if (!$return) {
+                return response()->json(['error' => 'Purchase Return not found!']);
+            }
+
+            if (!is_all_branches() && $return->branch_id && $return->branch_id != active_branch_id()) {
+                return response()->json(['error' => 'Unauthorized!'], 403);
+            }
+
+            // Reverse stock (add back returned qty)
+            foreach ($return->items as $item) {
+                $rawMat = $item->rawMaterial;
+                $factor = ($rawMat && (float)$rawMat->conversion_factor > 0) ? (float)$rawMat->conversion_factor : 1;
+                $restoreQty = $item->qty * $factor;
+
+                if ($return->warehouse_id) {
+                    $stock = RawMaterialStock::where('raw_material_id', $item->raw_material_id)
+                        ->where('warehouse_id', $return->warehouse_id)
+                        ->first();
+                } else {
+                    $stockQuery = RawMaterialStock::where('raw_material_id', $item->raw_material_id)->whereNull('warehouse_id');
+                    if ($return->branch_id) {
+                        $stockQuery->where('branch_id', $return->branch_id);
+                    }
+                    $stock = $stockQuery->first();
+                }
+
+                if ($stock) {
+                    $stock->qty += $restoreQty;
+                    $stock->save();
+                }
+            }
+
+            // Reverse vendor ledger (add back returned cost)
+            $vendorId = $return->vendor_id;
+            if (!$vendorId && $return->vendor_name) {
+                $v = Vendor::where('name', $return->vendor_name)->first();
+                $vendorId = $v ? $v->id : null;
+            }
+            if ($vendorId) {
+                $ledger = VendorLedger::where('vendor_id', $vendorId)->first();
+                if ($ledger) {
+                    $ledger->previous_balance = $ledger->closing_balance;
+                    $ledger->closing_balance += (float)$return->total_cost;
+                    $ledger->save();
+                }
+            }
+
+            $return->delete();
+            DB::commit();
+
+            return response()->json([
+                'success' => 'Purchase Return deleted successfully & stock/vendor balance restored.',
+                'reload' => route('raw-materials.index', ['tab' => 'tab-returns']),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Delete failed: ' . $e->getMessage()]);
+        }
+    }
+
+    public function printPurchaseReturn($id)
+    {
+        $return = RawMaterialPurchaseReturn::with(['purchase', 'items.rawMaterial', 'creator', 'warehouse', 'branch', 'vendor'])->findOrFail($id);
+        return view('admin_panel.raw_material.return_print', compact('return'));
     }
 
     // ==================== STOCK AJAX ====================

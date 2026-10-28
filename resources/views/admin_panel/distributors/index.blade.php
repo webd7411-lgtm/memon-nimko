@@ -179,11 +179,17 @@
                             <span class="text-muted small"><i class="fas fa-envelope me-1"></i> {{ $dist->user->email ?? 'N/A' }}</span>
                         </td>
                         <td class="text-center">
+                            @can('Distributor Customers')
                             <a href="{{ route('admin.distributors.customers', ['distributor_id' => $dist->id]) }}" 
                                class="badge rounded-pill bg-light text-primary border text-decoration-none px-2.5 py-1" 
                                title="Click to view all shops for this distributor">
                                 <i class="fas fa-store me-1 text-primary"></i> {{ $dist->customers_count }} shops
                             </a>
+                            @else
+                            <span class="badge rounded-pill bg-light text-secondary border px-2.5 py-1">
+                                <i class="fas fa-store me-1 text-secondary"></i> {{ $dist->customers_count }} shops
+                            </span>
+                            @endcan
                         </td>
                         <td class="text-end">
                             <span class="fw-bold {{ $dist->current_balance > 0 ? 'text-danger' : 'text-success' }}" style="font-size: 0.95rem;">
@@ -197,16 +203,22 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group btn-group-sm">
+                                @can('Distributor Ledger')
                                 <a href="{{ route('admin.distributors.ledger', $dist->id) }}" class="btn btn-outline-secondary rounded-pill px-2.5" title="View Statement / Ledger">
                                     <i class="fas fa-file-invoice-dollar me-1"></i> Ledger
                                 </a>
+                                @endcan
+                                @can('Distributor Customers')
                                 <a href="{{ route('admin.distributors.customers', ['distributor_id' => $dist->id]) }}" class="btn btn-outline-secondary rounded-pill px-2.5 ms-1" title="View Customers / Retailers">
                                     <i class="fas fa-store me-1"></i> Shops
                                 </a>
+                                @endcan
+                                @can('Edit Distributor')
                                 <button type="button" class="btn btn-outline-secondary rounded-pill px-2.5 ms-1"
                                         data-bs-toggle="modal" data-bs-target="#editDistributorModal{{ $dist->id }}" title="Edit Profile">
                                     <i class="fas fa-edit"></i>
                                 </button>
+                                @endcan
                             </div>
                         </td>
                     </tr>
@@ -295,16 +307,20 @@
                             <i class="fas fa-ellipsis-v" style="font-size: 0.88rem;"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-3 py-1" style="font-size: 0.82rem;">
+                            @can('Distributor Ledger')
                             <li>
                                 <a class="dropdown-item py-2" href="{{ route('admin.distributors.ledger', $dist->id) }}">
                                     <i class="fas fa-file-invoice-dollar me-2 text-primary"></i> View Statement / Ledger
                                 </a>
                             </li>
+                            @endcan
+                            @can('Edit Distributor')
                             <li>
                                 <a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#editDistributorModal{{ $dist->id }}">
                                     <i class="fas fa-edit me-2 text-secondary"></i> Edit Details
                                 </a>
                             </li>
+                            @endcan
                             @if($dist->phone)
                             <li><hr class="dropdown-divider my-1"></li>
                             <li>

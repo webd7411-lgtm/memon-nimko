@@ -84,6 +84,19 @@ class SettingController extends Controller
             }
         }
 
+        // Keep company_name, software_name and shop_name synchronized so any place reading any of them gets the updated business name
+        if ($request->filled('shop_name')) {
+            $compName = trim((string)$request->input('shop_name'));
+            Setting::updateOrCreate(['key' => 'shop_name'], ['value' => $compName]);
+            Setting::updateOrCreate(['key' => 'software_name'], ['value' => $compName]);
+            Setting::updateOrCreate(['key' => 'company_name'], ['value' => $compName]);
+        }
+        if ($request->has('shop_tagline')) {
+            $compTag = trim((string)$request->input('shop_tagline', ''));
+            Setting::updateOrCreate(['key' => 'shop_tagline'], ['value' => $compTag]);
+            Setting::updateOrCreate(['key' => 'tagline'], ['value' => $compTag]);
+        }
+
         // Handle Store / Receipt Logo Upload & Removal
         if ($request->hasFile('shop_logo')) {
             $file = $request->file('shop_logo');

@@ -273,9 +273,9 @@ Route::middleware('auth')->group(function () {
 
     // Sale Routes
     Route::get('sale', [SaleController::class, 'index'])->name('sale.index')->middleware('permission:Sales');
-    Route::get('sale/pos', [SaleController::class, 'posSale'])->name('sale.pos')->middleware('permission:Sales');
-    Route::get('sale-screen', [SaleController::class, 'saleScreen'])->name('sale.screen')->middleware('permission:Sales');
-    Route::get('sale/create', [SaleController::class, 'saleScreen'])->name('sale.add')->middleware('permission:Sales');
+    Route::get('sale/pos', [SaleController::class, 'posSale'])->name('sale.pos')->middleware('permission:Sales|Sale Screen');
+    Route::get('sale-screen', [SaleController::class, 'saleScreen'])->name('sale.screen')->middleware('permission:Sales|Sale Screen');
+    Route::get('sale/create', [SaleController::class, 'saleScreen'])->name('sale.add')->middleware('permission:Sales|Sale Screen');
     Route::post('/sale/quick-product', [SaleController::class, 'quickStoreProduct'])->name('sale.quick_product');
     Route::get('/search-product-name', [SaleController::class, 'searchpname'])->name('search-product-name');
     Route::get('/pos/products', [SaleController::class, 'getPosProducts'])->name('pos.products');
@@ -328,12 +328,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/report/item-stock/closing-print', [ReportingController::class, 'printClosing'])->name('report.item_stock.closing_print');
     Route::post('/report/variant-stock-fetch', [ReportingController::class, 'fetchVariantStock'])->name('report.variant_stock.fetch');
 
-    Route::get('/report/branch-stock', [ReportingController::class, 'branch_stock_report'])->name('report.branch_stock')->middleware('permission:Item Stock Report|Branch Stock Report');
-    Route::get('/report/branch-stock-fetch', [ReportingController::class, 'fetchBranchStockReport'])->name('report.branch_stock.fetch')->middleware('permission:Item Stock Report|Branch Stock Report');
+    Route::get('/report/branch-stock', [ReportingController::class, 'branch_stock_report'])->name('report.branch_stock')->middleware('permission:Branch Stock Report');
+    Route::get('/report/branch-stock-fetch', [ReportingController::class, 'fetchBranchStockReport'])->name('report.branch_stock.fetch')->middleware('permission:Branch Stock Report');
 
     Route::get('report/purchase', [ReportingController::class, 'purchase_report'])->name('report.purchase')->middleware('permission:Purchase Report');
-    Route::get('report/production', [ReportingController::class, 'production_report'])->name('report.production')->middleware('permission:Production|Purchase|Sale Report|System Reports');
-    Route::post('report/production/fetch', [ReportingController::class, 'fetchProductionReport'])->name('report.production.fetch')->middleware('permission:Production|Purchase|Sale Report|System Reports');
+    Route::get('report/production', [ReportingController::class, 'production_report'])->name('report.production')->middleware('permission:Production Report|Production|Purchase|Sale Report|System Reports');
+    Route::post('report/production/fetch', [ReportingController::class, 'fetchProductionReport'])->name('report.production.fetch')->middleware('permission:Production Report|Production|Purchase|Sale Report|System Reports');
     Route::post('report/purchase/fetch', [ReportingController::class, 'fetchPurchaseReport'])->name('report.purchase.fetch')->middleware('permission:Purchase Report');
 
     Route::get('report/sale', [ReportingController::class, 'sale_report'])->name('report.sale')->middleware('permission:Sale Report');
@@ -361,9 +361,9 @@ Route::middleware('auth')->group(function () {
     Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch')->middleware('permission:Sale Report|Profit Loss Report');
 
     // Balance Sheet Report Routes
-    Route::get('report/balance-sheet', [ReportingController::class, 'balance_sheet_report'])->name('report.balance_sheet')->middleware('permission:Sale Report|Profit Loss Report|System Reports');
-    Route::post('report/balance-sheet/fetch', [ReportingController::class, 'fetchBalanceSheetReport'])->name('report.balance_sheet.fetch')->middleware('permission:Sale Report|Profit Loss Report|System Reports');
-    Route::get('report/balance-sheet/print', [ReportingController::class, 'printBalanceSheetReport'])->name('report.balance_sheet.print')->middleware('permission:Sale Report|Profit Loss Report|System Reports');
+    Route::get('report/balance-sheet', [ReportingController::class, 'balance_sheet_report'])->name('report.balance_sheet')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');
+    Route::post('report/balance-sheet/fetch', [ReportingController::class, 'fetchBalanceSheetReport'])->name('report.balance_sheet.fetch')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');
+    Route::get('report/balance-sheet/print', [ReportingController::class, 'printBalanceSheetReport'])->name('report.balance_sheet.print')->middleware('permission:Print Balance Sheet|Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');
 
     // Chart of Accounts
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all')->middleware('permission:Char Of Accounts');
@@ -391,7 +391,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/all-expense-vochers', [VoucherController::class, 'all_expense_vochers'])->name('all-expense-vochers')->middleware('permission:Expense Voucher');
     Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expenseprint'])->name('expenseVoucher.print')->middleware('permission:Expense Voucher|Print Expense Voucher');
 
-    Route::get('cashbook', [ReportingController::class, 'cashbook'])->name('cashbook')->middleware('permission:Cashbook');
+    Route::get('cashbook', [ReportingController::class, 'cashbook'])->name('cashbook')->middleware('permission:Cashbook|View All Cashbook|View Own Cashbook');
 
     // COA Prefix Routes
     Route::prefix('coa')->group(function () {
@@ -412,8 +412,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock-adjustment/create', [StockAdjustmentController::class, 'create'])->name('stock-adjustment.create')->middleware('permission:Stock Adjustment');
     Route::post('/stock-adjustment/store', [StockAdjustmentController::class, 'store'])->name('stock-adjustment.store')->middleware('permission:Stock Adjustment');
     Route::get('/stock-adjustment/{id}', [StockAdjustmentController::class, 'show'])->name('stock-adjustment.show')->middleware('permission:Stock Adjustment');
-    Route::get('/stock-adjustment/{id}/edit', [StockAdjustmentController::class, 'edit'])->name('stock-adjustment.edit')->middleware('permission:Stock Adjustment');
-    Route::match(['put', 'post'], '/stock-adjustment/{id}', [StockAdjustmentController::class, 'update'])->name('stock-adjustment.update')->middleware('permission:Stock Adjustment');
+    Route::get('/stock-adjustment/{id}/edit', [StockAdjustmentController::class, 'edit'])->name('stock-adjustment.edit')->middleware('permission:Stock Adjustment|Edit Stock Adjustment');
+    Route::match(['put', 'post'], '/stock-adjustment/{id}', [StockAdjustmentController::class, 'update'])->name('stock-adjustment.update')->middleware('permission:Stock Adjustment|Edit Stock Adjustment');
     Route::delete('/stock-adjustment/{id}', [StockAdjustmentController::class, 'destroy'])->name('stock-adjustment.destroy')->middleware('permission:Stock Adjustment');
     Route::get('/stock-adjustment-report', [StockAdjustmentController::class, 'report'])->name('stock-adjustment.report')->middleware('permission:Stock Adjustment');
 
@@ -425,6 +425,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/purchase/store', [RawMaterialController::class, 'storePurchase'])->name('raw-materials.purchase.store');
         Route::match(['get', 'delete'], '/purchase/delete/{id}', [RawMaterialController::class, 'deletePurchase'])->name('raw-materials.purchase.delete');
         Route::get('/purchase/print/{id}', [RawMaterialController::class, 'printPurchase'])->name('raw-materials.purchase.print');
+        Route::post('/purchase/return/store', [RawMaterialController::class, 'storePurchaseReturn'])->name('raw-materials.purchase.return.store');
+        Route::match(['get', 'delete'], '/purchase/return/delete/{id}', [RawMaterialController::class, 'deletePurchaseReturn'])->name('raw-materials.purchase.return.delete');
+        Route::get('/purchase/return/print/{id}', [RawMaterialController::class, 'printPurchaseReturn'])->name('raw-materials.purchase.return.print');
+        Route::get('/purchase/{id}/return-data', [RawMaterialController::class, 'getPurchaseReturnData'])->name('raw-materials.purchase.return-data');
         Route::get('/stock/get', [RawMaterialController::class, 'getStock'])->name('raw-materials.stock.get');
         Route::get('/usage-detail/{id}', [RawMaterialController::class, 'getUsageDetail'])->name('raw-materials.usage-detail');
     });
@@ -432,43 +436,43 @@ Route::middleware('auth')->group(function () {
     // ==========================================
     // SUPER ADMIN / COMPANY DISTRIBUTOR ROUTES
     // ==========================================
-    Route::prefix('admin/distributors')->name('admin.distributors.')->group(function () {
-        Route::get('/', [DistributorAdminController::class, 'index'])->name('index');
-        Route::post('/store', [DistributorAdminController::class, 'store'])->name('store');
-        Route::post('/update/{id}', [DistributorAdminController::class, 'update'])->name('update');
-        Route::get('/orders', [DistributorAdminController::class, 'orders'])->name('orders');
-        Route::get('/sales', [DistributorAdminController::class, 'salesList'])->name('sales');
+    Route::prefix('admin/distributors')->name('admin.distributors.')->middleware('permission:Distributors|Distributor Management|Distributor Orders|Distributor Sales|Distributor Custody Stocks|Distributor Ledger|Distributor Secondary Sales|Distributor Customers|Distributor Payments')->group(function () {
+        Route::get('/', [DistributorAdminController::class, 'index'])->name('index')->middleware('permission:Distributors|Distributor Management');
+        Route::post('/store', [DistributorAdminController::class, 'store'])->name('store')->middleware('permission:Create Distributor');
+        Route::post('/update/{id}', [DistributorAdminController::class, 'update'])->name('update')->middleware('permission:Edit Distributor');
+        Route::get('/orders', [DistributorAdminController::class, 'orders'])->name('orders')->middleware('permission:Distributor Orders');
+        Route::get('/sales', [DistributorAdminController::class, 'salesList'])->name('sales')->middleware('permission:Distributor Sales');
         Route::get('/sales/{id}', [DistributorAdminController::class, 'saleInvoice'])->name('sales.invoice');
-        Route::get('/direct-sale', [DistributorAdminController::class, 'createDirectSale'])->name('direct_sale');
-        Route::post('/direct-sale/store', [DistributorAdminController::class, 'storeDirectSale'])->name('direct_sale.store');
-        Route::get('/orders/{id}', [DistributorAdminController::class, 'showOrder'])->name('orders.show');
-        Route::post('/orders/{id}/dispatch', [DistributorAdminController::class, 'dispatchOrder'])->name('orders.dispatch');
-        Route::get('/stocks', [DistributorAdminController::class, 'stocks'])->name('stocks');
-        Route::get('/ledger/{id}', [DistributorAdminController::class, 'ledger'])->name('ledger');
+        Route::get('/direct-sale', [DistributorAdminController::class, 'createDirectSale'])->name('direct_sale')->middleware('permission:Create Distributor Direct Sale');
+        Route::post('/direct-sale/store', [DistributorAdminController::class, 'storeDirectSale'])->name('direct_sale.store')->middleware('permission:Create Distributor Direct Sale');
+        Route::get('/orders/{id}', [DistributorAdminController::class, 'showOrder'])->name('orders.show')->middleware('permission:Distributor Orders');
+        Route::post('/orders/{id}/dispatch', [DistributorAdminController::class, 'dispatchOrder'])->name('orders.dispatch')->middleware('permission:Dispatch Distributor Order');
+        Route::get('/stocks', [DistributorAdminController::class, 'stocks'])->name('stocks')->middleware('permission:Distributor Custody Stocks');
+        Route::get('/ledger/{id}', [DistributorAdminController::class, 'ledger'])->name('ledger')->middleware('permission:Distributor Ledger');
         Route::post('/payment/{id}', [DistributorAdminController::class, 'storePayment'])->name('payment.store');
-        Route::get('/secondary-sales', [DistributorAdminController::class, 'secondarySales'])->name('secondary_sales');
+        Route::get('/secondary-sales', [DistributorAdminController::class, 'secondarySales'])->name('secondary_sales')->middleware('permission:Distributor Secondary Sales');
         
         // Distributor Customers (Retailers) & Ledgers
-        Route::get('/customers', [DistributorAdminController::class, 'customers'])->name('customers');
-        Route::post('/customers/store', [DistributorAdminController::class, 'storeCustomer'])->name('customers.store');
-        Route::post('/customers/{id}/update', [DistributorAdminController::class, 'updateCustomer'])->name('customers.update');
-        Route::delete('/customers/{id}/delete', [DistributorAdminController::class, 'destroyCustomer'])->name('customers.destroy');
-        Route::get('/customers/{id}/ledger', [DistributorAdminController::class, 'customerLedger'])->name('customers.ledger');
+        Route::get('/customers', [DistributorAdminController::class, 'customers'])->name('customers')->middleware('permission:Distributor Customers');
+        Route::post('/customers/store', [DistributorAdminController::class, 'storeCustomer'])->name('customers.store')->middleware('permission:Create Distributor Customer');
+        Route::post('/customers/{id}/update', [DistributorAdminController::class, 'updateCustomer'])->name('customers.update')->middleware('permission:Edit Distributor Customer');
+        Route::delete('/customers/{id}/delete', [DistributorAdminController::class, 'destroyCustomer'])->name('customers.destroy')->middleware('permission:Delete Distributor Customer');
+        Route::get('/customers/{id}/ledger', [DistributorAdminController::class, 'customerLedger'])->name('customers.ledger')->middleware('permission:Distributor Customer Ledger');
         Route::post('/customers/{id}/payment', [DistributorAdminController::class, 'storeCustomerPayment'])->name('customers.payment.store');
 
         // Payments / Collections & Approvals
-        Route::get('/payments', [DistributorAdminController::class, 'payments'])->name('payments');
-        Route::post('/payments/store', [DistributorAdminController::class, 'storeAdminPayment'])->name('payments.store');
-        Route::post('/payments/{id}/update', [DistributorAdminController::class, 'updatePayment'])->name('payments.update');
-        Route::delete('/payments/{id}/delete', [DistributorAdminController::class, 'destroyPayment'])->name('payments.destroy');
-        Route::post('/payments/{id}/approve', [DistributorAdminController::class, 'approvePayment'])->name('payments.approve');
-        Route::post('/payments/{id}/reject', [DistributorAdminController::class, 'rejectPayment'])->name('payments.reject');
+        Route::get('/payments', [DistributorAdminController::class, 'payments'])->name('payments')->middleware('permission:Distributor Payments');
+        Route::post('/payments/store', [DistributorAdminController::class, 'storeAdminPayment'])->name('payments.store')->middleware('permission:Create Distributor Payment');
+        Route::post('/payments/{id}/update', [DistributorAdminController::class, 'updatePayment'])->name('payments.update')->middleware('permission:Edit Distributor Payment');
+        Route::delete('/payments/{id}/delete', [DistributorAdminController::class, 'destroyPayment'])->name('payments.destroy')->middleware('permission:Delete Distributor Payment');
+        Route::post('/payments/{id}/approve', [DistributorAdminController::class, 'approvePayment'])->name('payments.approve')->middleware('permission:Approve Distributor Payment');
+        Route::post('/payments/{id}/reject', [DistributorAdminController::class, 'rejectPayment'])->name('payments.reject')->middleware('permission:Reject Distributor Payment');
     });
 
     // ==========================================
     // DISTRIBUTOR / ORDER BOOKER DEDICATED PORTAL
     // ==========================================
-    Route::prefix('distributor-portal')->name('distributor.')->group(function () {
+    Route::prefix('distributor-portal')->name('distributor.')->middleware('permission:Distributor Portal')->group(function () {
         Route::get('/dashboard', [DistributorPortalController::class, 'dashboard'])->name('dashboard');
         
         // Stock
@@ -511,25 +515,25 @@ Route::middleware('auth')->group(function () {
     // ==========================================
     // ASSETS MANAGEMENT (FURNITURE & MACHINERY)
     // ==========================================
-    Route::prefix('fixed-assets')->name('assets.')->group(function () {
-        Route::get('/', [AssetController::class, 'index'])->name('index');
-        Route::get('/create', [AssetController::class, 'create'])->name('create');
-        Route::post('/store', [AssetController::class, 'store'])->name('store');
-        Route::get('/report', [AssetController::class, 'report'])->name('report');
+    Route::prefix('fixed-assets')->name('assets.')->middleware('permission:Assets|View Assets|Create Asset|Edit Asset|Delete Asset|Asset Maintenance|Asset Transfer|Dispose Asset|Print Asset Barcode|Asset Report|Asset Categories')->group(function () {
+        Route::get('/', [AssetController::class, 'index'])->name('index')->middleware('permission:Assets|View Assets');
+        Route::get('/create', [AssetController::class, 'create'])->name('create')->middleware('permission:Create Asset');
+        Route::post('/store', [AssetController::class, 'store'])->name('store')->middleware('permission:Create Asset');
+        Route::get('/report', [AssetController::class, 'report'])->name('report')->middleware('permission:Asset Report');
         Route::get('/get-next-code', [AssetController::class, 'getNextCode'])->name('get_next_code');
-        Route::get('/categories', [AssetCategoryController::class, 'index'])->name('categories.index');
-        Route::post('/categories/store', [AssetCategoryController::class, 'store'])->name('categories.store');
-        Route::delete('/categories/{id}/delete', [AssetCategoryController::class, 'destroy'])->name('categories.destroy');
+        Route::get('/categories', [AssetCategoryController::class, 'index'])->name('categories.index')->middleware('permission:Asset Categories');
+        Route::post('/categories/store', [AssetCategoryController::class, 'store'])->name('categories.store')->middleware('permission:Create Asset Category');
+        Route::delete('/categories/{id}/delete', [AssetCategoryController::class, 'destroy'])->name('categories.destroy')->middleware('permission:Delete Asset Category');
         Route::get('/{id}', [AssetController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [AssetController::class, 'edit'])->name('edit');
-        Route::put('/{id}/update', [AssetController::class, 'update'])->name('update');
-        Route::delete('/{id}/delete', [AssetController::class, 'destroy'])->name('destroy');
-        Route::get('/{id}/barcode', [AssetController::class, 'barcode'])->name('barcode');
-        Route::post('/{id}/maintenance', [AssetController::class, 'storeMaintenance'])->name('maintenance.store');
-        Route::put('/maintenance/{id}/update', [AssetController::class, 'updateMaintenance'])->name('maintenance.update');
-        Route::delete('/maintenance/{id}/delete', [AssetController::class, 'destroyMaintenance'])->name('maintenance.destroy');
-        Route::post('/{id}/transfer', [AssetController::class, 'storeTransfer'])->name('transfer.store');
-        Route::post('/{id}/dispose', [AssetController::class, 'dispose'])->name('dispose');
+        Route::get('/{id}/edit', [AssetController::class, 'edit'])->name('edit')->middleware('permission:Edit Asset');
+        Route::put('/{id}/update', [AssetController::class, 'update'])->name('update')->middleware('permission:Edit Asset');
+        Route::delete('/{id}/delete', [AssetController::class, 'destroy'])->name('destroy')->middleware('permission:Delete Asset');
+        Route::get('/{id}/barcode', [AssetController::class, 'barcode'])->name('barcode')->middleware('permission:Print Asset Barcode');
+        Route::post('/{id}/maintenance', [AssetController::class, 'storeMaintenance'])->name('maintenance.store')->middleware('permission:Asset Maintenance');
+        Route::put('/maintenance/{id}/update', [AssetController::class, 'updateMaintenance'])->name('maintenance.update')->middleware('permission:Asset Maintenance');
+        Route::delete('/maintenance/{id}/delete', [AssetController::class, 'destroyMaintenance'])->name('maintenance.destroy')->middleware('permission:Asset Maintenance');
+        Route::post('/{id}/transfer', [AssetController::class, 'storeTransfer'])->name('transfer.store')->middleware('permission:Asset Transfer');
+        Route::post('/{id}/dispose', [AssetController::class, 'dispose'])->name('dispose')->middleware('permission:Dispose Asset');
     });
 
 });

@@ -72,6 +72,9 @@ return [
             'Delete Customer',
             'Toggle Customer Status',
             'Customer Payments',
+            'Create Customer Payment',
+            'Edit Customer Payment',
+            'Delete Customer Payment',
             'Print Customer Receipt',
         ],
 
@@ -143,6 +146,7 @@ return [
             'Create Raw Material Purchase',
             'Delete Raw Material Purchase',
             'Print Raw Material Purchase',
+            'View Raw Material Usage',
         ],
 
         'List Inwards' => [
@@ -166,6 +170,7 @@ return [
             'Create Sale',
             'Edit Sale',
             'Delete Sale',
+            'Sale Screen',
             'Sale Exchange',
             'Print Sale Invoice',
             'Print Sale DC',
@@ -210,10 +215,54 @@ return [
         'Stock Adjustment' => [
             'Stock Adjustment',
             'Create Stock Adjustment',
+            'Edit Stock Adjustment',
             'View Stock Adjustment',
             'Delete Stock Adjustment',
             'Print Stock Adjustment Report',
             'Stock Adjustment Audit Report',
+        ],
+
+        'Fixed Assets' => [
+            'Assets',
+            'View Assets',
+            'Create Asset',
+            'Edit Asset',
+            'Delete Asset',
+            'Asset Maintenance',
+            'Asset Transfer',
+            'Dispose Asset',
+            'Print Asset Barcode',
+            'Asset Report',
+            'Asset Categories',
+            'Create Asset Category',
+            'Delete Asset Category',
+        ],
+
+        'Distributors' => [
+            'Distributors',
+            'Distributor Management',
+            'Create Distributor',
+            'Edit Distributor',
+            'Distributor Orders',
+            'Dispatch Distributor Order',
+            'Distributor Sales',
+            'Create Distributor Direct Sale',
+            'Print Distributor Invoice',
+            'Distributor Custody Stocks',
+            'Distributor Ledger',
+            'Distributor Secondary Sales',
+            'Distributor Customers',
+            'Create Distributor Customer',
+            'Edit Distributor Customer',
+            'Delete Distributor Customer',
+            'Distributor Customer Ledger',
+            'Distributor Payments',
+            'Create Distributor Payment',
+            'Edit Distributor Payment',
+            'Delete Distributor Payment',
+            'Approve Distributor Payment',
+            'Reject Distributor Payment',
+            'Distributor Portal',
         ],
 
         'Item Stock Report' => [
@@ -225,12 +274,21 @@ return [
             'Purchase Report',
         ],
 
+        'Production Report' => [
+            'Production Report',
+        ],
+
         'Sale Report' => [
             'Sale Report',
             'Category Sale Report',
             'Daily Sale Closing Report',
             'Print Sale Closing',
             'Profit Loss Report',
+        ],
+
+        'Balance Sheet Report' => [
+            'Balance Sheet Report',
+            'Print Balance Sheet',
         ],
 
         'Customer Ledger' => [
@@ -252,6 +310,8 @@ return [
 
         'Cashbook' => [
             'Cashbook',
+            'View All Cashbook',
+            'View Own Cashbook',
         ],
 
         'Char Of Accounts' => [

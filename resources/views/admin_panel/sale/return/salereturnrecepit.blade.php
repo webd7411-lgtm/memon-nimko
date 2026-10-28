@@ -211,14 +211,22 @@
     @endphp
     <!-- Header -->
     <div class="center" style="margin-top:0;padding-top:0;">
-      <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 60px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
-      <div class="store-name">{{ sys_setting('software_name', 'Memon Nimko') }}</div>
-      <div class="store-info">{{ sys_setting('tagline', 'Sweets & Bakers') }}</div>
-      @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))
+      <img src="{{ receipt_logo_url() ?: asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 60px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
+      <div class="store-name">{{ shop_name() }}</div>
+      @if(!empty(shop_tagline()))
+      <div class="store-info">{{ shop_tagline() }}</div>
+      @elseif(!empty(sys_setting('tagline')) && strtolower(sys_setting('tagline')) !== 'sweets & bakers')
+      <div class="store-info">{{ sys_setting('tagline') }}</div>
+      @endif
+      @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default', 'main branch', strtolower(shop_name())]))
       <div class="store-info" style="font-weight: 700; text-transform: uppercase;">{{ $receiptBranch->name }}</div>
       @endif
+      @if(!empty($branchAddress) && strtolower(trim($branchAddress)) !== 'head office')
       <div class="store-info">{{ $branchAddress }}</div>
+      @endif
+      @if(!empty($branchPhone) && !in_array(trim($branchPhone), ['00000000000', '0', '-']))
       <div class="store-info">Phone: {{ $branchPhone }}</div>
+      @endif
       
       <div class="receipt-title">Return Receipt</div>
     </div>
@@ -235,7 +243,7 @@
       </tr>
       <tr>
         <th>Customer</th>
-        <td>: {{ $return->sale->customer_relation->customer_name ?? 'Walk-in Customer' }}</td>
+        <td>: {{ $customerName ?? ($return->sale->customer_relation->customer_name ?? 'Walk-in Customer') }}@if(!empty($customerType) && $customerType !== 'Walk-in') <span style="font-size:11px;font-weight:700;">({{ $customerType }})</span>@endif</td>
       </tr>
     </table>
 
@@ -255,6 +263,7 @@
         @php
           $categoryGroups = collect($returnItems)->groupBy('category');
           $totalQty = 0;
+          $totalTO = 0;
           $totalItemsCount = count($returnItems);
         @endphp
 
@@ -262,6 +271,7 @@
           @foreach($groupItems as $item)
             @php 
                 $totalQty += (float)$item['qty']; 
+                $totalTO += (float)($item['trade_offer'] ?? 0); 
                 $isKg = strtolower($item['unit']) === 'kg';
                 $displayQty = (float)$item['qty'];
                 $displayUnit = $item['unit'];
@@ -292,7 +302,12 @@
             <tr class="item-row">
               <td style="width: 40%;" class="bold">{{ $cleanItemName }}{{ $customLabel }}</td>
               <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
-              <td class="col-qty" style="width: 20%;">{{ (float)$displayQty }} {{ $displayUnit }}</td>
+              <td class="col-qty" style="width: 20%;">
+                {{ (float)$displayQty }} {{ $displayUnit }}
+                @if(!empty($item['trade_offer']) && (float)$item['trade_offer'] > 0)
+                  <br><span style="font-size: 11px; font-weight: 900; color: #1e40af;">(+{{ (float)$item['trade_offer'] }} T.O Return)</span>
+                @endif
+              </td>
               <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
             </tr>
           @endforeach
@@ -305,9 +320,9 @@
     <table class="totals-table">
       <tr>
         <th>Total Item</th>
-        <td style="text-align: left; width: 30%;">: {{ $totalItemsCount }}</td>
+        <td style="text-align: left; width: 25%;">: {{ $totalItemsCount }}</td>
         <th>Total Qty</th>
-        <td style="text-align: right;">: {{ $totalQty }}</td>
+        <td style="text-align: right;">: {{ $totalQty }}@if($totalTO > 0) <span style="font-size: 11px; font-weight: 900;">(+{{ $totalTO }} T.O)</span>@endif</td>
       </tr>
     </table>
 

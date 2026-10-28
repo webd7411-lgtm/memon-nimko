@@ -67,6 +67,7 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-2.5 px-md-3 pt-1">
         <!-- Horizontal Tabs as per design -->
         <nav class="dist-nav-tabs-scroller">
+            @canany(['Distributors', 'Distributor Management'])
             <!-- 1. Distributors -->
             <a href="{{ route('admin.distributors.index') }}" 
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.index' && empty($currentType) ? 'active' : '' }}">
@@ -78,19 +79,26 @@
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.index' && $currentType === 'booker' ? 'active' : '' }}">
                 Order Bookers
             </a>
+            @endcanany
+
+            @can('Distributor Customers')
             <!-- 3. Distributor Customers -->
             <a href="{{ route('admin.distributors.customers') }}" 
                class="dist-nav-tab {{ in_array($currentRoute, ['admin.distributors.customers', 'admin.distributors.customers.ledger']) ? 'active' : '' }}">
                 Distributor Customers
             </a>
+            @endcan
 
-            <!-- 3. Sales Register -->
+            @can('Distributor Sales')
+            <!-- 4. Sales Register -->
             <a href="{{ route('admin.distributors.sales') }}" 
                class="dist-nav-tab {{ in_array($currentRoute, ['admin.distributors.sales', 'admin.distributors.sale_invoice']) ? 'active' : '' }}">
                 Sales Register
             </a>
+            @endcan
 
-            <!-- 4. Demand Requests -->
+            @can('Distributor Orders')
+            <!-- 5. Demand Requests -->
             <a href="{{ route('admin.distributors.orders') }}" 
                class="dist-nav-tab {{ in_array($currentRoute, ['admin.distributors.orders', 'admin.distributors.orders.show']) ? 'active' : '' }}">
                 Demand Requests
@@ -98,20 +106,26 @@
                     <span class="badge bg-danger badge-count">{{ $pendingCount }}</span>
                 @endif
             </a>
+            @endcan
 
-            <!-- 5. Stock Transfers (Custody) -->
+            @can('Distributor Custody Stocks')
+            <!-- 6. Stock Transfers (Custody) -->
             <a href="{{ route('admin.distributors.stocks') }}" 
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.stocks' ? 'active' : '' }}">
                 Stock Transfers
             </a>
+            @endcan
 
-            <!-- 6. Reports (Market Sales Audit) -->
+            @can('Distributor Secondary Sales')
+            <!-- 7. Reports (Market Sales Audit) -->
             <a href="{{ route('admin.distributors.secondary_sales') }}" 
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.secondary_sales' ? 'active' : '' }}">
                 Reports
             </a>
+            @endcan
 
-            <!-- 7. Payments & Approvals -->
+            @can('Distributor Payments')
+            <!-- 8. Payments & Approvals -->
             <a href="{{ route('admin.distributors.payments') }}" 
                class="dist-nav-tab {{ $currentRoute === 'admin.distributors.payments' ? 'active' : '' }}">
                 Payments
@@ -119,21 +133,26 @@
                     <span class="badge rounded-pill badge-count shadow-sm" style="background: #ef4444 !important; color: #ffffff !important; font-weight: 700; box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);">{{ $pendingPaymentsCount }}</span>
                 @endif
             </a>
+            @endcan
         </nav>
 
         <!-- Right Side Quick Actions (Small, Compact Buttons) -->
         <div class="d-flex align-items-center gap-1.5 py-1">
             @if($currentRoute === 'admin.distributors.index')
+            @can('Create Distributor')
             <button type="button" class="btn btn-outline-dark dist-btn-action shadow-sm"
                     data-bs-toggle="modal" data-bs-target="#addDistributorModal">
                 <i class="fas fa-user-plus" style="font-size: 0.65rem;"></i> Add {{ request('type') === 'booker' ? 'Booker' : 'Distributor' }}
             </button>
+            @endcan
             @endif
             @if($currentRoute === 'admin.distributors.customers')
+            @can('Create Distributor Customer')
             <button type="button" class="btn btn-outline-dark dist-btn-action shadow-sm"
                     data-bs-toggle="modal" data-bs-target="#addRetailCustomerModal">
                 <i class="fas fa-store" style="font-size: 0.65rem;"></i> + Add Retailer
             </button>
+            @endcan
             @endif
         </div>
     </div>

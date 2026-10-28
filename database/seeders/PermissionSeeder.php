@@ -65,6 +65,7 @@ class PermissionSeeder extends Seeder
             'Create Sale',
             'Edit Sale',
             'Delete Sale',
+            'Sale Screen',
             'Sale Exchange',
             'Print Sale Invoice',
             'Print Sale DC',
@@ -92,6 +93,9 @@ class PermissionSeeder extends Seeder
             'Delete Customer',
             'Toggle Customer Status',
             'Customer Payments',
+            'Create Customer Payment',
+            'Edit Customer Payment',
+            'Delete Customer Payment',
             'Print Customer Receipt',
 
             // ===================== VENDOR =====================
@@ -137,6 +141,7 @@ class PermissionSeeder extends Seeder
             'Create Raw Material Purchase',
             'Delete Raw Material Purchase',
             'Print Raw Material Purchase',
+            'View Raw Material Usage',
 
             // ===================== INWARD GATEPASS =====================
             'List Inwards',
@@ -171,10 +176,52 @@ class PermissionSeeder extends Seeder
             // ===================== STOCK ADJUSTMENT =====================
             'Stock Adjustment',
             'Create Stock Adjustment',
+            'Edit Stock Adjustment',
             'View Stock Adjustment',
             'Delete Stock Adjustment',
             'Print Stock Adjustment Report',
             'Stock Adjustment Audit Report',
+
+            // ===================== FIXED ASSETS =====================
+            'Assets',
+            'View Assets',
+            'Create Asset',
+            'Edit Asset',
+            'Delete Asset',
+            'Asset Maintenance',
+            'Asset Transfer',
+            'Dispose Asset',
+            'Print Asset Barcode',
+            'Asset Report',
+            'Asset Categories',
+            'Create Asset Category',
+            'Delete Asset Category',
+
+            // ===================== DISTRIBUTORS =====================
+            'Distributors',
+            'Distributor Management',
+            'Create Distributor',
+            'Edit Distributor',
+            'Distributor Orders',
+            'Dispatch Distributor Order',
+            'Distributor Sales',
+            'Create Distributor Direct Sale',
+            'Print Distributor Invoice',
+            'Distributor Custody Stocks',
+            'Distributor Ledger',
+            'Distributor Secondary Sales',
+            'Distributor Customers',
+            'Create Distributor Customer',
+            'Edit Distributor Customer',
+            'Delete Distributor Customer',
+            'Distributor Customer Ledger',
+            'Distributor Payments',
+            'Create Distributor Payment',
+            'Edit Distributor Payment',
+            'Delete Distributor Payment',
+            'Approve Distributor Payment',
+            'Reject Distributor Payment',
+            'Distributor Portal',
 
             // ===================== CHAR OF ACCOUNTS =====================
             'Char Of Accounts',
@@ -205,17 +252,22 @@ class PermissionSeeder extends Seeder
             'Item Stock Report',
             'Branch Stock Report',
             'Purchase Report',
+            'Production Report',
             'Sale Report',
             'Category Sale Report',
             'Daily Sale Closing Report',
             'Print Sale Closing',
             'Profit Loss Report',
+            'Balance Sheet Report',
+            'Print Balance Sheet',
             'Customer Ledger',
             'Vendor Ledger',
             'Expense Report',
             'Expense Audit Report',
             'System Reports',
             'Cashbook',
+            'View All Cashbook',
+            'View Own Cashbook',
 
             // ===================== USERS =====================
             'Users',
@@ -282,5 +334,10 @@ class PermissionSeeder extends Seeder
 
         $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
         $adminRole->syncPermissions($allPermissions);
+
+        $adminRoleLower = Role::where('name', 'admin')->first();
+        if ($adminRoleLower) {
+            $adminRoleLower->syncPermissions($allPermissions);
+        }
     }
 }

@@ -345,66 +345,83 @@
   display: block;
 }
 
-/* ═══════ MAIN DATA TABLE CARD (100% FIT — NO SCROLLBAR) ═══════ */
+/* ═══════ MAIN DATA TABLE CARD (FULL RESPONSIVE) ═══════ */
 .sl-table-card {
   background: var(--sl-surface);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius);
   box-shadow: var(--sl-shadow-lg);
-  overflow: hidden !important;
+  overflow: visible;
   width: 100% !important;
 }
 
 .sl-table-wrapper {
-  overflow-x: hidden !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
   padding: 0.35rem 0.55rem 0.55rem;
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+  position: relative;
 }
 
-/* Eliminate Bootstrap grid row negative margins in DataTables wrapper that trigger scrollbar */
+/* Custom smooth scrollbar for table */
+.sl-table-wrapper::-webkit-scrollbar {
+  height: 7px;
+}
+.sl-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.sl-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.sl-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* DataTables wrapper spacing so controls (Length, Filter search) breathe without clipping */
 .sl-table-card .dataTables_wrapper {
   width: 100% !important;
   max-width: 100% !important;
-  overflow-x: hidden !important;
+  overflow: visible !important;
   box-sizing: border-box !important;
+  padding: 0.25rem 0.25rem 0.45rem;
 }
 
 .sl-table-card .dataTables_wrapper .row {
   margin-left: 0 !important;
   margin-right: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  padding: 0.25rem 0.25rem;
   max-width: 100% !important;
   box-sizing: border-box !important;
+  align-items: center;
 }
 
 .sl-table-card .dataTables_wrapper .col-sm-12,
-.sl-table-card .dataTables_wrapper .col-md-12,
+.sl-table-card .dataTables_wrapper .col-md-6,
 .sl-table-card .dataTables_wrapper .col-12 {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  max-width: 100% !important;
+  padding-left: 0.35rem !important;
+  padding-right: 0.35rem !important;
   box-sizing: border-box !important;
 }
 
-/* Fixed table layout: columns strictly fit 100% and never overflow */
+/* Responsive Table Layout */
 .sl-table {
   width: 100% !important;
-  max-width: 100% !important;
+  min-width: 1060px;
   margin: 0 !important;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: fixed !important;
+  table-layout: auto !important;
   box-sizing: border-box !important;
 }
 
 .sl-table th,
 .sl-table td {
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
   box-sizing: border-box !important;
+  vertical-align: middle;
 }
 
 .sl-table thead th {
@@ -414,7 +431,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--sl-text-muted);
-  padding: 0.55rem 0.45rem;
+  padding: 0.65rem 0.55rem;
   border-bottom: 1.5px solid var(--sl-border);
   border-top: none;
   white-space: nowrap;
@@ -422,16 +439,105 @@
 }
 
 .sl-table tbody td {
-  padding: 0.45rem 0.45rem;
+  padding: 0.5rem 0.55rem;
   vertical-align: middle;
   border-bottom: 1px solid var(--sl-border-lt);
   font-size: 0.82rem;
   color: var(--sl-text-sec);
   line-height: 1.3;
+  background: #ffffff;
 }
 
 .sl-table tbody tr:hover td {
   background-color: #f8fafc;
+}
+
+/* Specific Column Classes */
+.sl-table .col-sno {
+  width: 50px;
+  min-width: 50px;
+  text-align: center;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.sl-table .col-invoice {
+  min-width: 95px;
+  white-space: nowrap;
+}
+
+.sl-table .col-datetime {
+  min-width: 115px;
+  white-space: nowrap;
+}
+
+.sl-table .col-customer {
+  min-width: 135px;
+}
+
+.sl-table .col-cashier {
+  min-width: 100px;
+  white-space: nowrap;
+}
+
+.sl-table .col-items {
+  min-width: 105px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sl-table .col-amount {
+  min-width: 120px;
+  white-space: nowrap;
+}
+
+.sl-table .col-status {
+  min-width: 110px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ═══════ PINNED / STICKY ACTION COLUMN (NEVER HIDDEN) ═══════ */
+.sl-table th.col-action {
+  position: sticky;
+  right: 0;
+  background: #f8fafc;
+  z-index: 5;
+  min-width: 220px;
+  width: 220px;
+  text-align: center;
+  box-shadow: -4px 0 8px -2px rgba(15, 23, 42, 0.06);
+}
+
+.sl-table td.col-action {
+  position: sticky;
+  right: 0;
+  background: #ffffff;
+  z-index: 4;
+  min-width: 220px;
+  width: 220px;
+  text-align: center;
+  box-shadow: -4px 0 8px -2px rgba(15, 23, 42, 0.06);
+  overflow: visible !important;
+}
+
+.sl-table tbody tr:hover td.col-action {
+  background: #f8fafc;
+}
+
+/* Ensure opened dropdown always floats on top of subsequent table rows */
+.sl-table tbody tr.sl-row-active-dropdown,
+.sl-table tbody tr:has(.sl-dropdown.show),
+.sl-table tbody tr:has([aria-expanded="true"]) {
+  position: relative !important;
+  z-index: 1050 !important;
+}
+
+.sl-table tbody tr.sl-row-active-dropdown td.col-action,
+.sl-table tbody tr:has(.sl-dropdown.show) td.col-action,
+.sl-table tbody tr:has([aria-expanded="true"]) td.col-action,
+.sl-table tbody td.sl-cell-active-dropdown {
+  z-index: 1055 !important;
 }
 
 /* ═══════ DATE & TIME CELL ═══════ */
@@ -497,9 +603,9 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 0.22rem 0.55rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 20px;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -521,34 +627,37 @@
   border: 1px solid #ddd6fe;
 }
 
-/* ═══════ COMPACT ACTION BUTTONS (FIT 100% WITHOUT SCROLL) ═══════ */
+/* ═══════ FULL RESPONSIVE ACTION BUTTONS ═══════ */
 .sl-actions-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 2.5px;
-  width: 100%;
+  gap: 4px;
   white-space: nowrap;
+  flex-wrap: nowrap;
 }
 
 .sl-act {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  height: 24px;
-  padding: 0 5px;
-  border-radius: 5px;
-  font-size: 0.71rem;
+  gap: 3px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 0.72rem;
   font-weight: 700;
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none !important;
   line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 .sl-act i {
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   line-height: 1;
 }
 .sl-act:hover {
@@ -568,7 +677,7 @@
 }
 
 .sl-act-print {
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #0f172a !important;
   border-color: #cbd5e1;
 }
@@ -576,67 +685,92 @@
   background: #0f172a;
   color: #ffffff !important;
   border-color: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
 }
 
 .sl-act-inv {
-  background: #f0f9ff;
-  color: #0284c7 !important;
-  border-color: #bae6fd;
+  background: #f0fdf4;
+  color: #15803d !important;
+  border-color: #bbf7d0;
 }
 .sl-act-inv:hover {
-  background: #0284c7;
+  background: #16a34a;
   color: #ffffff !important;
-  border-color: #0284c7;
+  border-color: #16a34a;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
 }
 
 .sl-act-edit {
-  background: #f8fafc;
-  color: #475569 !important;
-  border-color: #cbd5e1;
-  padding: 0 4px;
+  background: #f5f3ff;
+  color: #6d28d9 !important;
+  border-color: #ddd6fe;
+  width: 26px;
+  height: 26px;
+  padding: 0;
 }
 .sl-act-edit:hover {
-  background: #4f46e5;
+  background: #7c3aed;
   color: #ffffff !important;
-  border-color: #4f46e5;
+  border-color: #7c3aed;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
 }
 
 .sl-dropdown {
   position: relative;
   display: inline-block;
 }
+
 .sl-act-more {
   background: #f8fafc;
-  color: #64748b !important;
+  color: #475569 !important;
   border-color: #cbd5e1;
-  padding: 0 3px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
 }
-.sl-act-more:hover {
+.sl-act-more:hover, .sl-act-more[aria-expanded="true"] {
   background: #e2e8f0;
   color: #0f172a !important;
+  border-color: #94a3b8;
 }
 
 .sl-dropdown-menu {
+  position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  left: auto !important;
+  margin-top: 4px !important;
+  z-index: 1060 !important;
   border-radius: 10px !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.22) !important;
+  border: 1.5px solid #cbd5e1 !important;
   padding: 0.35rem !important;
-  min-width: 170px;
+  min-width: 185px;
+  background: #ffffff !important;
+}
+
+.dropup .sl-dropdown-menu {
+  top: auto !important;
+  bottom: 100% !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
 }
 .sl-dropdown-menu .dropdown-item {
   border-radius: 6px;
   font-size: 0.78rem;
   font-weight: 600;
-  padding: 0.4rem 0.65rem;
+  padding: 0.45rem 0.7rem;
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  color: #1e293b;
 }
 .sl-dropdown-menu .dropdown-item:hover {
   background-color: #f1f5f9;
+  color: #0f172a;
 }
 
-/* ═══════ MOBILE / TABLET CARDS ═══════ */
+/* ═══════ MOBILE CARDS ═══════ */
 .sl-cards { display: none; }
 
 .slc-card {
@@ -645,13 +779,15 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
   margin-bottom: 0.65rem;
-  overflow: hidden;
+  overflow: visible;
 }
 .slc-head {
   display: flex; align-items: center; justify-content: space-between; gap: .5rem;
   padding: .65rem .85rem;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid #e9edf2;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
 }
 .slc-head-l { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
 .slc-inv { font-size: .95rem; font-weight: 800; color: #0f172a; }
@@ -672,19 +808,44 @@
 .slc-total .val { font-size: 1rem; font-weight: 900; color: #1d4ed8; }
 
 .slc-actions {
-  padding: 0 .85rem .75rem;
+  padding: 0.65rem 0.85rem 0.75rem;
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 .slc-actions .sl-actions-wrap {
-  display: flex;
-  width: 100%;
-  gap: 0.35rem;
+  display: flex !important;
+  width: 100% !important;
+  gap: 0.35rem !important;
+  flex-wrap: wrap !important;
+  justify-content: stretch !important;
 }
 .slc-actions .sl-act {
-  flex: 1 1 auto;
-  height: 32px;
-  font-size: 0.78rem;
+  height: 32px !important;
+  font-size: 0.78rem !important;
+  padding: 0 10px !important;
 }
-
+.slc-actions .sl-act-view,
+.slc-actions .sl-act-print,
+.slc-actions .sl-act-inv {
+  flex: 1 1 calc(33.333% - 0.35rem) !important;
+  min-width: 60px !important;
+}
+.slc-actions .sl-act-edit {
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+}
+.slc-actions .sl-dropdown {
+  flex: 0 0 32px !important;
+}
+.slc-actions .sl-act-more {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+}
 /* ═══════ INVOICE DETAILS MODAL (FULL PRODUCTS DETAIL) ═══════ */
 .erp-modal .modal-content {
   border-radius: 16px;
@@ -846,12 +1007,20 @@
   gap: 0.5rem;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 767.98px) {
   .sl-hero { padding: 0.65rem 0.85rem; flex-direction: column; align-items: stretch; }
+  .sl-hero-actions { width: 100%; justify-content: stretch; }
+  .sl-hero-actions .sl-btn { flex: 1 1 auto; justify-content: center; }
   .sl-kpi-grid { grid-template-columns: 1fr 1fr; }
-  #productTable { display: none !important; }
+  .sl-table-wrapper { display: none !important; }
   .sl-cards { display: block; padding: 0.35rem 0.35rem 0.85rem; }
-  .sl-table-wrapper { overflow: visible !important; padding: 0; }
+}
+@media (max-width: 480px) {
+  .sl-kpi-grid { grid-template-columns: 1fr; }
+}
+@media (min-width: 768px) {
+  .sl-table-wrapper { display: block !important; }
+  .sl-cards { display: none !important; }
 }
 </style>
 
@@ -1009,15 +1178,15 @@
         <table id="productTable" class="table sl-table align-middle" style="width:100%">
           <thead>
             <tr>
-              <th style="width: 3.5%;" class="text-center">S.No</th>
-              <th style="width: 9.5%;">Invoice No</th>
-              <th style="width: 11%;">Date | Time</th>
-              <th style="width: 18.5%;">Customer</th>
-              <th style="width: 10.5%;">Cashier</th>
-              <th style="width: 10.5%;" class="text-center">Total Items</th>
-              <th style="width: 14%;">Amount (Net)</th>
-              <th style="width: 8%;" class="text-center">Status</th>
-              <th style="width: 14.5%;" class="text-center">Action</th>
+              <th class="col-sno text-center">S.No</th>
+              <th class="col-invoice">Invoice No</th>
+              <th class="col-datetime">Date | Time</th>
+              <th class="col-customer">Customer</th>
+              <th class="col-cashier">Cashier</th>
+              <th class="col-items text-center">Total Items</th>
+              <th class="col-amount">Amount (Net)</th>
+              <th class="col-status text-center">Status</th>
+              <th class="col-action text-center">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -1125,13 +1294,14 @@
                 <thead>
                   <tr>
                     <th style="width: 5%;">#</th>
-                    <th style="width: 35%;">Item Name & Variant</th>
-                    <th style="width: 15%;">Barcode / SKU</th>
+                    <th style="width: 32%;">Item Name & Variant</th>
+                    <th style="width: 14%;">Barcode / SKU</th>
                     <th style="width: 8%;">Unit</th>
                     <th style="width: 8%; text-align: center;">Qty</th>
                     <th style="width: 11%; text-align: right;">Unit Price</th>
-                    <th style="width: 9%; text-align: right;">Discount</th>
-                    <th style="width: 12%; text-align: right;">Total</th>
+                    <th style="width: 8%; text-align: center;" title="Trade Offer (Free / Scheme Qty)">T.O</th>
+                    <th style="width: 8%; text-align: right;">Discount</th>
+                    <th style="width: 10%; text-align: right;">Total</th>
                   </tr>
                 </thead>
                 <tbody id="mdlItemsBody">
@@ -1249,15 +1419,15 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 0, orderable: false, searchable: false }, // S.No
-            { data: 1 }, // Invoice No
-            { data: 2 }, // Date | Time
-            { data: 3 }, // Customer
-            { data: 4 }, // Cashier / User
-            { data: 5, orderable: false, searchable: false }, // Total Items
-            { data: 6 }, // Amount (Net)
-            { data: 7 }, // Status
-            { data: 8, orderable: false, searchable: false }  // Action
+            { data: 0, orderable: false, searchable: false, className: 'col-sno text-center' },
+            { data: 1, className: 'col-invoice' },
+            { data: 2, className: 'col-datetime' },
+            { data: 3, className: 'col-customer' },
+            { data: 4, className: 'col-cashier' },
+            { data: 5, orderable: false, searchable: false, className: 'col-items text-center' },
+            { data: 6, className: 'col-amount' },
+            { data: 7, className: 'col-status text-center' },
+            { data: 8, orderable: false, searchable: false, className: 'col-action text-center' }
         ],
         pageLength: 10,
         lengthMenu: [
@@ -1273,8 +1443,35 @@ $(document).ready(function() {
             processing: '<div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;"></div><div class="fw-bold">Loading Sales...</div>'
         },
         drawCallback: function () {
-            if (window.matchMedia('(max-width: 991.98px)').matches) renderSaleCards();
+            if (window.matchMedia('(max-width: 767.98px)').matches) renderSaleCards();
         }
+    });
+
+    // ═══════ FIX TABLE DROPDOWN STACKING ORDER ON OPEN ═══════
+    $(document).on('show.bs.dropdown', '.sl-dropdown', function () {
+        var $dropdown = $(this);
+        var $tr = $dropdown.closest('tr');
+        var $td = $dropdown.closest('td');
+        $tr.addClass('sl-row-active-dropdown');
+        $td.addClass('sl-cell-active-dropdown');
+
+        // Check if near bottom of table wrapper or viewport, auto dropup
+        var $wrapper = $dropdown.closest('.sl-table-wrapper');
+        if ($wrapper.length) {
+            var wrapperBottom = $wrapper.offset().top + $wrapper.outerHeight();
+            var dropdownTop = $dropdown.offset().top;
+            if ((wrapperBottom - dropdownTop) < 170) {
+                $dropdown.addClass('dropup');
+            } else {
+                $dropdown.removeClass('dropup');
+            }
+        }
+    });
+
+    $(document).on('hidden.bs.dropdown', '.sl-dropdown', function () {
+        $(this).removeClass('dropup');
+        $('.sl-row-active-dropdown').removeClass('sl-row-active-dropdown');
+        $('.sl-cell-active-dropdown').removeClass('sl-cell-active-dropdown');
     });
 
     function esc(str) {
@@ -1456,12 +1653,13 @@ $(document).ready(function() {
                                 + '<td>' + esc(item.unit || 'PC') + '</td>'
                                 + '<td style="text-align: center;"><strong>' + formatNumber(item.qty) + '</strong></td>'
                                 + '<td style="text-align: right;">PKR ' + formatNumber(item.price) + '</td>'
+                                + '<td style="text-align: center;">' + (item.trade_offer > 0 ? ('<span class="badge bg-success-subtle text-success border border-success fw-bold">+' + formatNumber(item.trade_offer) + ' Free</span>') : '<span class="text-muted">-</span>') + '</td>'
                                 + '<td style="text-align: right;" class="text-danger">' + (item.discount > 0 ? ('- PKR ' + formatNumber(item.discount)) : '-') + '</td>'
                                 + '<td style="text-align: right;" class="fw-bold">PKR ' + formatNumber(item.total) + '</td>'
                                 + '</tr>';
                         });
                     } else {
-                        rowsHtml = '<tr><td colspan="8" class="text-center py-3 text-muted">No items recorded.</td></tr>';
+                        rowsHtml = '<tr><td colspan="9" class="text-center py-3 text-muted">No items recorded.</td></tr>';
                     }
                     $('#mdlItemsBody').html(rowsHtml);
 
@@ -1498,7 +1696,7 @@ $(document).ready(function() {
     });
 
     $(window).on('resize.slc', function () {
-        if (window.matchMedia('(max-width: 991.98px)').matches) renderSaleCards();
+        if (window.matchMedia('(max-width: 767.98px)').matches) renderSaleCards();
     });
 });
 </script>

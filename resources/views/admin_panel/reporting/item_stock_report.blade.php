@@ -517,8 +517,8 @@
   .pc-page .pc-tbl tfoot td:nth-child(4)::before { content: "Used in Prod"; }
   .pc-page .pc-tbl tfoot td:nth-child(5)::before { content: "Purchased"; }
   .pc-page .pc-tbl tfoot td:nth-child(6)::before { content: "P. Return"; }
-  .pc-page .pc-tbl tfoot td:nth-child(7)::before { content: "Transfer Out"; }
-  .pc-page .pc-tbl tfoot td:nth-child(8)::before { content: "Transfer In"; }
+  .pc-page .pc-tbl tfoot td:nth-child(7)::before { content: "Trade Offer"; }
+  .pc-page .pc-tbl tfoot td:nth-child(8)::before { content: "T.O Return"; }
   .pc-page .pc-tbl tfoot td:nth-child(9)::before { content: "Adj +"; }
   .pc-page .pc-tbl tfoot td:nth-child(10)::before { content: "Adj −"; }
   .pc-page .pc-tbl tfoot td:nth-child(11)::before { content: "Sold"; }
@@ -634,8 +634,8 @@
                   <th class="num">Initial</th><th class="num">Produced</th>
                   <th class="num" style="color:#d35400">Used in Prod</th>
                   <th class="num">Purchased</th><th class="num">Purch. Return</th>
-                  <th class="num" style="color:#8e44ad">Transfer Out</th>
-                  <th class="num" style="color:#2980b9">Transfer In</th>
+                  <th class="num" style="color:#d97706">Trade Offer</th>
+                  <th class="num" style="color:#2563eb">T.O Return</th>
                   <th class="num" style="color:var(--pc-success)">Adj ➕</th>
                   <th class="num" style="color:var(--pc-danger)">Adj ➖</th>
                   <th class="num">Sold</th><th class="num">Sale Return</th>
@@ -651,8 +651,8 @@
                   <td class="num" id="ftInitial">–</td><td class="num" id="ftProduced">–</td>
                   <td class="num" id="ftProdUsage" style="color:#d35400;font-weight:700">–</td>
                   <td class="num" id="ftPurch">–</td><td class="num" id="ftPReturn">–</td>
-                  <td class="num" id="ftTransfer" style="color:#8e44ad;font-weight:700">–</td>
-                  <td class="num" id="ftTransferIn" style="color:#2980b9;font-weight:700">–</td>
+                  <td class="num" id="ftTradeOffer" style="color:#d97706;font-weight:700">–</td>
+                  <td class="num" id="ftTradeOfferReturn" style="color:#2563eb;font-weight:700">–</td>
                   <td class="num" id="ftAdjInc" style="color:var(--pc-success)">–</td>
                   <td class="num" id="ftAdjDec" style="color:var(--pc-danger)">–</td>
                   <td class="num" id="ftSold">–</td><td class="num" id="ftSReturn">–</td>
@@ -787,8 +787,8 @@ function hasRowMovement(r) {
         || (parseFloat(r.prod_usage) || 0) !== 0
         || (parseFloat(r.purchased) || 0) !== 0
         || (parseFloat(r.purchase_return) || 0) !== 0
-        || (parseFloat(r.transfer) || 0) !== 0
-        || (parseFloat(r.transfer_in) || 0) !== 0
+        || (parseFloat(r.trade_offer) || 0) !== 0
+        || (parseFloat(r.trade_offer_return) || 0) !== 0
         || (parseFloat(r.adj_increase) || 0) !== 0
         || (parseFloat(r.adj_decrease) || 0) !== 0
         || (parseFloat(r.sold) || 0) !== 0
@@ -855,8 +855,8 @@ function renderRows(rows) {
         h += '<td class="num" style="color:#d35400;font-weight:700">' + (parseFloat(r.prod_usage) > 0 ? '-' + formatVal(r.prod_usage, r.is_kg, r.unit) : '–') + '</td>';
         h += '<td class="num">' + formatVal(r.purchased, r.is_kg, r.unit) + '</td>';
         h += '<td class="num" style="color:var(--pc-danger)">' + formatVal(r.purchase_return, r.is_kg, r.unit) + '</td>';
-        h += '<td class="num" style="color:#8e44ad;font-weight:700">' + formatVal(r.transfer || 0, r.is_kg, r.unit) + '</td>';
-        h += '<td class="num" style="color:#2980b9;font-weight:700">' + formatVal(r.transfer_in || 0, r.is_kg, r.unit) + '</td>';
+        h += '<td class="num" style="color:#d97706;font-weight:700">' + (parseFloat(r.trade_offer) > 0 ? formatVal(r.trade_offer, r.is_kg, r.unit) : '–') + '</td>';
+        h += '<td class="num" style="color:#2563eb;font-weight:700">' + (parseFloat(r.trade_offer_return) > 0 ? formatVal(r.trade_offer_return, r.is_kg, r.unit) : '–') + '</td>';
         h += '<td class="num" style="color:var(--pc-success);font-weight:700">' + (adjInc > 0 ? '+' + formatVal(adjInc, r.is_kg, r.unit) : '–') + '</td>';
         h += '<td class="num" style="color:var(--pc-danger);font-weight:700">' + (adjDec > 0 ? '-' + formatVal(adjDec, r.is_kg, r.unit) : '–') + '</td>';
         h += '<td class="num" style="color:#8e44ad">' + formatVal(r.sold, r.is_kg, r.unit) + '</td>';
@@ -918,8 +918,8 @@ function updateFooter(rows) {
     setText('ftProdUsage', fmt(sm('prod_usage')));
     setText('ftPurch', fmt(sm('purchased')));
     setText('ftPReturn', fmt(sm('purchase_return')));
-    setText('ftTransfer', fmt(sm('transfer')));
-    setText('ftTransferIn', fmt(sm('transfer_in')));
+    setText('ftTradeOffer', fmt(sm('trade_offer')));
+    setText('ftTradeOfferReturn', fmt(sm('trade_offer_return')));
     setText('ftAdjInc', fmt(sm('adj_increase')));
     setText('ftAdjDec', fmt(sm('adj_decrease')));
     setText('ftSold', fmt(sm('sold')));
@@ -928,7 +928,7 @@ function updateFooter(rows) {
 }
 
 function clearFooter() {
-    ['ftInitial','ftProduced','ftProdUsage','ftPurch','ftPReturn','ftTransfer','ftTransferIn','ftAdjInc','ftAdjDec','ftSold','ftSReturn','ftBal'].forEach(function(id) {
+    ['ftInitial','ftProduced','ftProdUsage','ftPurch','ftPReturn','ftTradeOffer','ftTradeOfferReturn','ftAdjInc','ftAdjDec','ftSold','ftSReturn','ftBal'].forEach(function(id) {
         var el = document.getElementById(id); if (el) el.textContent = '–';
     });
 }

@@ -274,33 +274,41 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group btn-group-sm">
+                                @can('Distributor Customer Ledger')
                                 <!-- View Customer Ledger -->
                                 <a href="{{ route('admin.distributors.customers.ledger', $c->id) }}" 
                                    class="btn btn-outline-primary rounded-pill px-2.5 py-1" 
                                    title="View Customer Ledger & Statement">
                                     <i class="fas fa-file-invoice-dollar me-1"></i> Ledger
                                 </a>
+                                @endcan
 
+                                @can('Create Distributor Payment')
                                 <!-- Collect Payment Modal Trigger -->
                                 <button type="button" class="btn btn-outline-success rounded-pill px-2 py-1 ms-1"
                                         data-bs-toggle="modal" data-bs-target="#receivePaymentModal{{ $c->id }}"
                                         title="Record Payment Collection">
                                     <i class="fas fa-hand-holding-usd"></i>
                                 </button>
+                                @endcan
 
+                                @can('Edit Distributor Customer')
                                 <!-- Edit Customer Modal Trigger -->
                                 <button type="button" class="btn btn-outline-secondary rounded-pill px-2 py-1 ms-1"
                                         data-bs-toggle="modal" data-bs-target="#editCustomerModal{{ $c->id }}"
                                         title="Edit Shop Details">
                                     <i class="fas fa-edit"></i>
                                 </button>
+                                @endcan
 
+                                @can('Delete Distributor Customer')
                                 <!-- Delete Customer Modal Trigger -->
                                 <button type="button" class="btn btn-outline-danger rounded-pill px-2 py-1 ms-1"
                                         data-bs-toggle="modal" data-bs-target="#deleteCustomerModal{{ $c->id }}"
                                         title="Delete Customer">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
+                                @endcan
                             </div>
                         </td>
                     </tr>
@@ -350,17 +358,23 @@
                     {{ $c->ledgers_count }} records
                 </span>
                 <div class="btn-group btn-group-sm">
+                    @can('Distributor Customer Ledger')
                     <a href="{{ route('admin.distributors.customers.ledger', $c->id) }}" class="btn btn-outline-primary rounded-pill px-3 py-1">
                         <i class="fas fa-file-invoice-dollar me-1"></i> Ledger
                     </a>
+                    @endcan
+                    @can('Create Distributor Payment')
                     <button type="button" class="btn btn-outline-success rounded-pill px-2.5 py-1 ms-1"
                             data-bs-toggle="modal" data-bs-target="#receivePaymentModal{{ $c->id }}">
                         <i class="fas fa-hand-holding-usd"></i>
                     </button>
+                    @endcan
+                    @can('Edit Distributor Customer')
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-2.5 py-1 ms-1"
                             data-bs-toggle="modal" data-bs-target="#editCustomerModal{{ $c->id }}">
                         <i class="fas fa-edit"></i>
                     </button>
+                    @endcan
                 </div>
             </div>
         </div>

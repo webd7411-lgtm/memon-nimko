@@ -61,8 +61,17 @@ class RawMaterial extends Model
     public function lastPurchaseCost()
     {
         $cost = (float)(\App\Models\RawMaterialPurchaseItem::where('raw_material_id', $this->id)
+            ->whereHas('purchase', function($q) {
+                $q->where('invoice_no', 'not like', 'INIT-%')
+                  ->where('vendor_name', '!=', 'Initial Cost Setup');
+            })
             ->latest('id')
             ->value('price_per_unit') ?? 0);
+
+        if ($cost <= 0) {
+            $cost = (float)($this->initial_price ?? 0);
+        }
+
         return $cost;
     }
 }

@@ -84,11 +84,18 @@ if (!function_exists('sys_setting')) {
 
 if (!function_exists('shop_name')) {
     /**
-     * Get the customer-facing Store / Shop name for receipts, invoices, and vouchers.
+     * Get the customer-facing Store / Shop / Company name for receipts, invoices, and vouchers.
      */
     function shop_name(): string
     {
-        return sys_setting('shop_name') ?: 'ProWave';
+        $name = sys_setting('shop_name');
+        if (empty($name)) {
+            $name = sys_setting('company_name');
+        }
+        if (empty($name)) {
+            $name = sys_setting('software_name');
+        }
+        return !empty($name) ? $name : 'Proteinzo';
     }
 }
 

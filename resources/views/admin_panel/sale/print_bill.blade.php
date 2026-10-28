@@ -67,7 +67,7 @@
     @foreach($items as $item)
     <div class="item-row">
         <span class="col-name">{{ $item['name'] }}</span>
-        <span class="col-qty">{{ number_format($item['qty'], 2) }}</span>
+        <span class="col-qty">{{ number_format($item['qty'], 2) }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="font-size:9px;">(+{{ $item['trade_offer'] }} Free)</small>@endif</span>
         <span class="col-price">{{ number_format($item['price'], 0) }}</span>
         <span class="col-total">{{ number_format($item['total'], 0) }}</span>
     </div>

@@ -547,7 +547,25 @@
                                 <i class="fa fa-book-open"></i>
                             </div>
                             <div>
-                                <h4>Daily Cash Book</h4>
+                                <h4 class="d-flex align-items-center flex-wrap gap-2">
+                                    Daily Cash Book
+                                    @if(!($canViewAllCashbook ?? false))
+                                        <span class="badge rounded-pill bg-info-subtle text-info border border-info px-2 py-0.5" style="font-size: 0.72rem; font-weight: 700;">
+                                            <i class="fa fa-user me-1"></i> Personal Register ({{ auth()->user()->name }})
+                                        </span>
+                                    @elseif(($selectedUserId ?? 'all') !== 'all')
+                                        @php
+                                            $filteredUser = $users->firstWhere('id', $selectedUserId);
+                                        @endphp
+                                        <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning px-2 py-0.5" style="font-size: 0.72rem; font-weight: 700;">
+                                            <i class="fa fa-filter me-1"></i> Cashier: {{ $filteredUser->name ?? 'User #' . $selectedUserId }}
+                                        </span>
+                                    @else
+                                        <span class="badge rounded-pill bg-success-subtle text-success border border-success px-2 py-0.5" style="font-size: 0.72rem; font-weight: 700;">
+                                            <i class="fa fa-users me-1"></i> All Users
+                                        </span>
+                                    @endif
+                                </h4>
                             </div>
                         </div>
                     </div>
@@ -564,6 +582,28 @@
                                 @endif
                             </select>
                         </div>
+                        @if($canViewAllCashbook ?? false)
+                        <div class="cb-fgroup user-col">
+                            <label><i class="fa fa-users-cog me-1"></i>Cashier / User</label>
+                            <select name="user_id" class="cb-input" onchange="document.getElementById('dateFilterForm').submit()">
+                                <option value="all" {{ ($selectedUserId ?? 'all') === 'all' ? 'selected' : '' }}>👥 All Users</option>
+                                @if(isset($users))
+                                    @foreach($users as $u)
+                                        <option value="{{ $u->id }}" {{ (string)($selectedUserId ?? '') === (string)$u->id ? 'selected' : '' }}>
+                                            👤 {{ $u->name }}
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+                        @else
+                        <div class="cb-fgroup user-col">
+                            <label><i class="fa fa-user-check me-1"></i>Cash Register</label>
+                            <div class="cb-input d-flex align-items-center" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.18); color: #38bdf8; font-weight: 700; font-size: 11.5px; height: 36px; cursor: default;">
+                                <i class="fa fa-user me-1.5 text-info"></i> {{ auth()->user()->name }} (Own Register)
+                            </div>
+                        </div>
+                        @endif
                         <div class="cb-fgroup">
                             <label><i class="fa fa-calendar-alt me-1"></i>From Date</label>
                             <input type="date" name="start_date" class="cb-input"

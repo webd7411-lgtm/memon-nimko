@@ -125,7 +125,7 @@
         <td>{{ $item['item_code'] }}</td>
         <td>{{ $item['brand'] }}</td>
         <td>{{ $item['unit'] }}</td>
-        <td style="text-align: right;">{{ $item['qty'] }}</td>
+        <td style="text-align: right;">{{ $item['qty'] }} @if(!empty($item['trade_offer']) && (float)$item['trade_offer'] > 0)<br><small>(+{{ (float)$item['trade_offer'] }} Free)</small>@endif</td>
     </tr>
     @endforeach
 </tbody>

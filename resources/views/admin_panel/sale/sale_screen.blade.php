@@ -1175,7 +1175,8 @@
                                     <th style="width: 75px;">STOCK</th>
                                     <th style="width: 80px;">QTY</th>
                                     <th style="width: 90px;">SIZE</th>
-                                    <th style="width: 105px;">PRICE</th>
+                                    <th style="width: 95px;">PRICE</th>
+                                    <th style="width: 75px;" class="text-center" title="Trade Offer (Free / Scheme Qty)">T.O</th>
                                     <th style="width: 130px;">DISCOUNT</th>
                                     <th style="width: 115px;">AMOUNT</th>
                                     <th style="width: 36px;">✕</th>
@@ -1499,6 +1500,7 @@ $(document).ready(function() {
         const pcs        = item ? (item.pcs || item.unit_type || 'piece') : 'piece';
         const price      = item ? (parseFloat(item.price || 0)) : 0;
         const origPrice  = item ? (parseFloat(item.original_price || item.price || 0)) : price;
+        const tradeOffer = item ? (parseFloat(item.trade_offer || 0)) : 0;
 
         // Default discount is 0 with percent (%) mode
         const discVal    = item ? (parseFloat(item.disc_val || item.disc || 0)) : 0;
@@ -1544,6 +1546,9 @@ $(document).ready(function() {
                 <td class="excel-cell text-center text-muted small fw-semibold row-size-col">${size}</td>
                 <td class="excel-cell">
                     <input type="number" step="any" min="0" name="price[]" class="ss-excel-input text-end row-price" value="${price.toFixed(2)}" data-orig-price="${origPrice}">
+                </td>
+                <td class="excel-cell">
+                    <input type="number" step="any" min="0" name="trade_offer[]" class="ss-excel-input text-center row-trade-offer" value="${tradeOffer > 0 ? tradeOffer : ''}" placeholder="0" title="Trade Offer (Free Qty)">
                 </td>
                 <td class="excel-cell excel-disc-cell">
                     <div class="ss-disc-wrap">
@@ -1626,6 +1631,7 @@ $(document).ready(function() {
         $row.find('.row-qty').val('1');
         $row.find('.row-size-col').text('-');
         $row.find('.row-price').val('0.00').data('orig-price', 0);
+        $row.find('.row-trade-offer').val('');
         $row.find('.row-disc-val').val('0');
         $row.find('.row-disc-type').val('percent');
         $row.find('.row-disc-amount').val('0.00');
@@ -1651,6 +1657,7 @@ $(document).ready(function() {
         const pcs        = item ? (item.pcs || item.unit_type || 'piece') : 'piece';
         const price      = item ? (parseFloat(item.price || 0)) : 0;
         const origPrice  = item ? (parseFloat(item.original_price || item.price || 0)) : price;
+        const tradeOffer = item ? (parseFloat(item.trade_offer || 0)) : 0;
         const discVal    = item ? (parseFloat(item.disc_val || item.disc || 0)) : 0;
         const discType   = item ? (item.disc_type || 'percent') : 'percent';
 
@@ -1669,6 +1676,7 @@ $(document).ready(function() {
         stockBadge.text(stock).removeClass('text-success text-danger text-muted').addClass(stock > 0 ? 'text-success' : 'text-danger');
 
         $row.find('.row-price').val(price.toFixed(2)).data('orig-price', origPrice);
+        $row.find('.row-trade-offer').val(tradeOffer > 0 ? tradeOffer : '');
         $row.find('.row-disc-val').val(discVal);
         $row.find('.row-disc-type').val(discType);
 
@@ -1737,7 +1745,7 @@ $(document).ready(function() {
     });
 
     // --- ROW INPUT CHANGES ---
-    $(document).on('input change', '.row-qty, .row-price, .row-disc-val', function() {
+    $(document).on('input change', '.row-qty, .row-price, .row-trade-offer, .row-disc-val', function() {
         const $row = $(this).closest('tr.ss-grid-row');
         recalculateRow($row);
     });
@@ -1775,6 +1783,7 @@ $(document).ready(function() {
         $('#saleGridBody tr.ss-grid-row').each(function() {
             const pid = $(this).find('.row-product-id').val();
             const qty = parseFloat($(this).find('.row-qty').val()) || 0;
+            const tradeOffer = parseFloat($(this).find('.row-trade-offer').val()) || 0;
             const price = parseFloat($(this).find('.row-price').val()) || 0;
             const discAmount = parseFloat($(this).find('.row-disc-amount').val()) || 0;
             const amount = parseFloat($(this).find('.row-amount').val()) || 0;
@@ -2615,6 +2624,15 @@ $(document).ready(function() {
             e.preventDefault();
             const $row = $(this).closest('tr.ss-grid-row');
             recalculateRow($row);
+            $row.find('.row-trade-offer').focus().select();
+        }
+    });
+
+    $(document).on('keydown', '.row-trade-offer', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const $row = $(this).closest('tr.ss-grid-row');
+            recalculateRow($row);
             $row.find('.row-disc-val').focus().select();
         }
     });
@@ -2641,6 +2659,7 @@ $(document).ready(function() {
         $('#saleGridBody tr.ss-grid-row').each(function() {
             const pid = $(this).find('.row-product-id').val();
             const qty = parseFloat($(this).find('.row-qty').val()) || 0;
+            const tradeOffer = parseFloat($(this).find('.row-trade-offer').val()) || 0;
             const price = parseFloat($(this).find('.row-price').val()) || 0;
             if (pid && qty > 0 && price > 0) {
                 validRows++;

@@ -27,4 +27,14 @@ class RawMaterialPurchase extends Model
     {
         return $this->belongsTo(\App\Models\Branch::class, 'branch_id');
     }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class, 'vendor_id');
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(RawMaterialPurchaseReturn::class, 'purchase_id');
+    }
 }

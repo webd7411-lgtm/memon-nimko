@@ -190,11 +190,17 @@
                         </div>
 
                         @if(!in_array($order->status, ['dispatched', 'delivered']))
+                        @can('Dispatch Distributor Order')
                         <button type="submit" class="btn text-white w-100 py-2.5 rounded-pill shadow-sm fw-bold"
                                 style="background: linear-gradient(135deg, #0f766e, #0d9488); border: 1px solid #14b8a6;"
                                 onclick="return confirm('Confirm dispatch of this stock to distributor? Stock will be deducted from warehouse and added to distributor custody.');">
                             <i class="fas fa-check-circle me-1"></i> Approve & Dispatch Stock
                         </button>
+                        @else
+                        <button type="button" class="btn btn-secondary w-100 py-2.5 rounded-pill shadow-sm fw-bold disabled" disabled>
+                            <i class="fas fa-ban me-1"></i> Dispatch Not Permitted
+                        </button>
+                        @endcan
                         @else
                         <div class="text-center text-muted small py-2">
                             <i class="fas fa-lock me-1"></i> Order Dispatched on {{ \Carbon\Carbon::parse($order->approved_at)->format('d M, Y h:i A') }}

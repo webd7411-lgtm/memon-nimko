@@ -11,7 +11,7 @@ class SalesReturn extends Model
     protected $fillable = [
         'sale_id',
         'customer', 'reference', 'product', 'product_code', 'brand',
-        'unit', 'per_price', 'per_discount', 'qty', 'per_total',
+        'unit', 'per_price', 'per_discount', 'trade_offer', 'qty', 'per_total',
         'total_amount_Words', 'total_bill_amount', 'total_extradiscount',
         'total_net', 'cash', 'card', 'change', 'color', 'total_items',
         'return_note', 'branch_id',

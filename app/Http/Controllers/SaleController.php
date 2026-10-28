@@ -246,10 +246,10 @@ class SaleController extends Controller
                         <i class="bi bi-pencil-square"></i>
                     </a>
                     <div class="dropdown sl-dropdown">
-                        <button type="button" class="sl-act sl-act-more" data-bs-toggle="dropdown" aria-expanded="false" title="More Operations">
+                        <button type="button" class="sl-act sl-act-more" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" title="More Operations">
                             <i class="bi bi-three-dots-vertical"></i>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 sl-dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 sl-dropdown-menu">
                             <li><a class="dropdown-item" href="'.route('sales.dc', $sale->id).'" target="_blank"><i class="bi bi-truck text-emerald me-2"></i>Delivery Challan (DC)</a></li>
                             <li><a class="dropdown-item" href="'.route('sale.add', ['exchange_invoice' => $sale->invoice_no]).'"><i class="bi bi-arrow-repeat text-purple me-2"></i>Exchange Items</a></li>
                             <li><hr class="dropdown-divider my-1"></li>
@@ -748,6 +748,7 @@ class SaleController extends Controller
         $units = explode(',', $sale->unit);
         $prices = explode(',', $sale->per_price);
         $discounts = explode(',', $sale->per_discount);
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
         $qtys = explode(',', $sale->qty);
         $totals = explode(',', $sale->per_total);
         $variant_ids = explode(',', $sale->variant_id ?? '');
@@ -1263,6 +1264,7 @@ class SaleController extends Controller
         $units = explode(',', $sale->unit);
         $prices = explode(',', $sale->per_price);
         $discounts = explode(',', $sale->per_discount);
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
         $qtys = explode(',', $sale->qty);
         $variant_ids = explode(',', $sale->variant_id ?? '');
         $colors = json_decode($sale->color, true) ?: [];
@@ -1343,6 +1345,7 @@ class SaleController extends Controller
         $products = explode(',', $sale->product);
         $prices = explode(',', $sale->per_price);
         $discounts = explode(',', $sale->per_discount);
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
         $qtys = explode(',', $sale->qty);
         $totals = explode(',', $sale->per_total);
         $variant_ids = explode(',', $sale->variant_id ?? '');
@@ -1387,6 +1390,7 @@ class SaleController extends Controller
             $items[] = [
                 'name'   => $label ?: $name,
                 'price'  => $price,
+                'trade_offer' => (float)($tradeOffers[$index] ?? 0),
                 'qty'    => $qty,
                 'disc'   => $disc,
                 'total'  => $total,
@@ -1471,6 +1475,7 @@ class SaleController extends Controller
             $prices          = is_array($request->price) ? $request->price : [];
             $discounts       = is_array($request->item_disc) ? $request->item_disc : [];
             $quantities      = is_array($request->qty) ? $request->qty : [];
+            $trade_offers    = is_array($request->trade_offer) ? $request->trade_offer : [];
             $totals          = is_array($request->total) ? $request->total : [];
             $colors          = is_array($request->color) ? $request->color : [];
 
@@ -1482,6 +1487,7 @@ class SaleController extends Controller
             $combined_units         = [];
             $combined_prices        = [];
             $combined_discounts     = [];
+            $combined_trade_offers  = [];
             $combined_qtys          = [];
             $combined_totals        = [];
             $combined_colors        = [];
@@ -1561,6 +1567,8 @@ class SaleController extends Controller
                 $combined_units[]      = $units[$index] ?? '';
                 $combined_prices[]     = $prices[$index] ?? 0;
                 $combined_discounts[]  = $discounts[$index] ?? 0;
+                $toQty = isset($trade_offers[$index]) ? floatval($trade_offers[$index]) : 0;
+                $combined_trade_offers[] = $toQty;
                 $combined_qtys[]       = $quantities[$index] ?? 0;
                 $combined_totals[]     = $totals[$index] ?? 0;
                 $combined_colors[]     = $colors[$index] ?? '';
@@ -1576,7 +1584,8 @@ class SaleController extends Controller
                 $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
                 
                 $dbVariantId = $isGram ? null : ($vId ?: null);
-                $deductQty = $qty;
+                $totalPhysicalQty = $qty + ($qty > 0 ? $toQty : -$toQty);
+                $deductQty = $totalPhysicalQty;
 
                 if ($isGram) {
                     if (!empty($vId)) {
@@ -1584,15 +1593,15 @@ class SaleController extends Controller
                         if ($vModel) {
                             $kgSize = floatval($vModel->size_value);
                             if (strtolower($vModel->size_unit ?? '') === 'kg') {
-                                $deductQty = ($kgSize * $qty * 1000);
+                                $deductQty = ($kgSize * $totalPhysicalQty * 1000);
                             } else {
-                                $deductQty = ($kgSize * $qty);
+                                $deductQty = ($kgSize * $totalPhysicalQty);
                             }
                         } else {
-                            $deductQty = $qty * 1000;
+                            $deductQty = $totalPhysicalQty * 1000;
                         }
                     } else {
-                        $deductQty = $qty * 1000;
+                        $deductQty = $totalPhysicalQty * 1000;
                     }
                 }
 
@@ -1627,12 +1636,12 @@ class SaleController extends Controller
                     if ($vId && !$isGram) {
                         $vModel = \App\Models\ProductVariant::find($vId);
                         if ($vModel) {
-                            $vModel->stock_qty -= $qty; // Qty here is the primary unit quantity
+                            $vModel->stock_qty -= $totalPhysicalQty; // Qty here is the primary unit quantity
                             $vModel->save();
                         }
                     }
                 }
-                $total_items += $qty;
+                $total_items += $totalPhysicalQty;
             }
 
             // --- Choose model ---
@@ -1652,6 +1661,7 @@ class SaleController extends Controller
             $model->unit                 = implode(',', $combined_units);
             $model->per_price            = implode(',', $combined_prices);
             $model->per_discount         = implode(',', $combined_discounts);
+            $model->trade_offer          = implode(',', $combined_trade_offers);
             $model->qty                  = implode(',', $combined_qtys);
             $model->per_total            = implode(',', $combined_totals);
             $model->color                = json_encode($combined_colors);
@@ -1963,6 +1973,7 @@ class SaleController extends Controller
             $units          = $request->unit ?? [];
             $prices         = $request->price ?? [];
             $discounts      = $request->item_disc ?? [];
+            $trade_offers   = $request->trade_offer ?? [];
             $quantities     = $request->qty ?? [];
             $totals         = $request->total ?? [];
             $colors         = $request->color ?? [];
@@ -1973,6 +1984,7 @@ class SaleController extends Controller
             $combined_units       = [];
             $combined_prices      = [];
             $combined_discounts   = [];
+            $combined_trade_offers = [];
             $combined_qtys        = [];
             $combined_totals      = [];
             $combined_colors      = [];
@@ -1996,6 +2008,8 @@ class SaleController extends Controller
                 $combined_units[]       = $units[$index] ?? '';
                 $combined_prices[]      = $prices[$index];
                 $combined_discounts[]   = $discounts[$index] ?? 0;
+                $toQty = isset($trade_offers[$index]) ? floatval($trade_offers[$index]) : 0;
+                $combined_trade_offers[] = $toQty;
                 $combined_qtys[]        = $qty;
                 $combined_totals[]      = $totals[$index] ?? 0;
                 $combined_colors[]      = $colors[$index] ?? '';
@@ -2128,6 +2142,7 @@ class SaleController extends Controller
             $sale->unit            = implode(',', $combined_units);
             $sale->per_price       = implode(',', $combined_prices);
             $sale->per_discount    = implode(',', $combined_discounts);
+            $sale->trade_offer     = implode(',', $combined_trade_offers);
             $sale->qty             = implode(',', $combined_qtys);
             $sale->per_total       = implode(',', $combined_totals);
             $sale->color           = json_encode($combined_colors);
@@ -2319,6 +2334,67 @@ class SaleController extends Controller
         }
         $customers = $customerQuery->get();
 
+        // Resolve customer / distributor / order booker / retail shop info
+        $customerInfo = [
+            'name'  => 'Walk-in Customer',
+            'type'  => 'Walk-in',
+            'phone' => '-',
+            'code'  => '-',
+            'raw_id' => (string)($sale->customer ?? ''),
+        ];
+
+        $rawCust = (string)($sale->customer ?? '');
+        if (str_starts_with($rawCust, 'dist_')) {
+            $distId = (int) str_replace('dist_', '', $rawCust);
+            $dist = \App\Models\Distributor::find($distId);
+            if ($dist) {
+                $customerInfo['name']  = $dist->name;
+                $customerInfo['type']  = 'Distributor';
+                $customerInfo['phone'] = $dist->phone ?: '-';
+                $customerInfo['code']  = $dist->code ?: 'DIST-' . $dist->id;
+            }
+        } elseif (str_starts_with($rawCust, 'booker_')) {
+            $distId = (int) str_replace('booker_', '', $rawCust);
+            $dist = \App\Models\Distributor::find($distId);
+            if ($dist) {
+                $customerInfo['name']  = $dist->name;
+                $customerInfo['type']  = 'Order Booker';
+                $customerInfo['phone'] = $dist->phone ?: '-';
+                $customerInfo['code']  = $dist->code ?: 'OB-' . $dist->id;
+            }
+        } elseif (str_starts_with($rawCust, 'officer_')) {
+            $soId = (int) str_replace('officer_', '', $rawCust);
+            $so = \App\Models\SalesOfficer::find($soId);
+            if ($so) {
+                $customerInfo['name']  = $so->name;
+                $customerInfo['type']  = 'Sales Officer';
+                $customerInfo['phone'] = $so->phone ?: '-';
+                $customerInfo['code']  = $so->code ?: '-';
+            }
+        } elseif (str_starts_with($rawCust, 'dc_')) {
+            $dcId = (int) str_replace('dc_', '', $rawCust);
+            $dc = \App\Models\DistributorCustomer::find($dcId);
+            if ($dc) {
+                $customerInfo['name']  = $dc->name;
+                $customerInfo['type']  = 'Retail Outlet';
+                $customerInfo['phone'] = $dc->phone_no ?: '-';
+                $customerInfo['code']  = $dc->code ?: '-';
+            }
+        } elseif ($sale->customer_relation) {
+            $customerInfo['name']  = $sale->customer_relation->customer_name;
+            $customerInfo['type']  = $sale->customer_relation->customer_type ?: 'Customer';
+            $customerInfo['phone'] = $sale->customer_relation->mobile_no ?: ($sale->customer_relation->phone ?: '-');
+            $customerInfo['code']  = $sale->customer_relation->customer_code ?: '-';
+        } elseif (!empty($rawCust) && is_numeric($rawCust)) {
+            $foundC = \App\Models\Customer::find($rawCust);
+            if ($foundC) {
+                $customerInfo['name']  = $foundC->customer_name;
+                $customerInfo['type']  = $foundC->customer_type ?: 'Customer';
+                $customerInfo['phone'] = $foundC->mobile_no ?: ($foundC->phone ?: '-');
+                $customerInfo['code']  = $foundC->customer_code ?: '-';
+            }
+        }
+
         // Split comma-based fields from the sale row
         $products  = array_map('trim', explode(',', $sale->product ?? ''));
         $codes     = array_map('trim', explode(',', $sale->product_code ?? ''));
@@ -2326,6 +2402,7 @@ class SaleController extends Controller
         $units     = array_map('trim', explode(',', $sale->unit ?? ''));
         $prices    = array_map('trim', explode(',', $sale->per_price ?? ''));
         $discounts = array_map('trim', explode(',', $sale->per_discount ?? ''));
+        $tradeOffers = array_map('trim', explode(',', $sale->trade_offer ?? ''));
         $qtys      = array_map('trim', explode(',', $sale->qty ?? ''));
         $totals    = array_map('trim', explode(',', $sale->per_total ?? ''));
         $vIds      = array_map('trim', explode(',', $sale->variant_id ?? ''));
@@ -2378,6 +2455,14 @@ class SaleController extends Controller
                 }
             }
 
+            // Also try by item name directly if $p is a string name
+            if (!$product && !empty($p) && !is_numeric($p)) {
+                $product = \App\Models\Product::where('item_name', trim($p))->first();
+                if ($product) {
+                    $productIdCandidate = $product->id;
+                }
+            }
+
             // ---------- NOTE parsing (previously color) ----------
             $note_value = '';
             if (isset($colors_json[$index])) {
@@ -2399,10 +2484,25 @@ class SaleController extends Controller
                     $note_value = (string)$maybe;
                 }
             }
+            $note_value = trim($note_value);
+            if ($note_value === '-' || $note_value === '[]' || $note_value === '""') {
+                $note_value = '';
+            }
             // ---------- end note parsing ----------
 
             $soldQty = isset($qtys[$index]) && is_numeric($qtys[$index]) ? floatval($qtys[$index]) : 0;
-            $productNameCandidate = $product->item_name ?? (string)$p;
+
+            // DETERMINE PROPER ITEM NAME (NEVER overwrite with '-' or note!)
+            $finalItemName = '';
+            if ($product && !empty($product->item_name)) {
+                $finalItemName = $product->item_name;
+            } elseif (!empty($p) && !is_numeric($p)) {
+                $finalItemName = $p;
+            } elseif (!empty($itemCodeCandidate)) {
+                $finalItemName = $itemCodeCandidate;
+            } else {
+                $finalItemName = 'Item #' . ($index + 1);
+            }
 
             // compute returned qty matching against $returnedRows
             $returnedQty = 0;
@@ -2411,9 +2511,9 @@ class SaleController extends Controller
                 $match = false;
                 if (!empty($itemCodeCandidate) && !empty($rRow['code']) && $itemCodeCandidate === $rRow['code']) {
                     $match = true;
-                } elseif (!empty($productIdCandidate) && !empty($rRow['product']) && ($rRow['product'] == $productIdCandidate || $rRow['product'] === $productNameCandidate)) {
+                } elseif (!empty($productIdCandidate) && !empty($rRow['product']) && ($rRow['product'] == $productIdCandidate || $rRow['product'] === $finalItemName)) {
                     $match = true;
-                } elseif (!empty($p) && !empty($rRow['product']) && ($rRow['product'] === $p || $rRow['product'] === $productNameCandidate)) {
+                } elseif (!empty($p) && !empty($rRow['product']) && ($rRow['product'] === $p || $rRow['product'] === $finalItemName)) {
                     $match = true;
                 }
 
@@ -2430,130 +2530,31 @@ class SaleController extends Controller
             $items[] = [
                 'product_id'    => $product->id ?? ($productIdCandidate ?? ''),
                 'variant_id'    => $vIds[$index] ?? null,
-                'item_name'     => !empty($note_value) ? $note_value : $productNameCandidate,
+                'item_name'     => $finalItemName,
                 'item_code'     => $product->item_code ?? ($itemCodeCandidate ?? ''),
                 'brand'         => $product->brand->name ?? ($brands[$index] ?? ''),
                 'unit'          => $product->unit ?? ($units[$index] ?? ''),
                 'price'         => floatval($prices[$index] ?? 0),
                 'discount'      => floatval($discounts[$index] ?? 0),
+                'trade_offer'   => floatval($tradeOffers[$index] ?? 0),
                 'qty'           => $soldQty,
                 'total'         => floatval($totals[$index] ?? 0),
-                // send note (plain text) so blade can show it
                 'note'          => $note_value,
                 'available_qty' => (float)$available == (int)$available ? (int)$available : number_format($available, 3, '.', ''),
             ];
         }
 
+        $bankAccounts = \App\Models\Account::where('status', 1)->orderBy('title')->get();
+
         return view('admin_panel.sale.return.create', [
             'sale' => $sale,
             'Customer' => $customers,
+            'customerInfo' => $customerInfo,
             'saleItems' => $items,
+            'bankAccounts' => $bankAccounts,
         ]);
     }
 
-
-
-    // public function storeSaleReturn(Request $request)
-    // {
-    //     // dd($request->all());
-    //     DB::beginTransaction();
-
-    //     try {
-    //         $product_ids     = $request->product_id;
-    //         $product_names   = $request->product;
-    //         $product_codes   = $request->item_code;
-    //         $brands          = $request->uom;
-    //         $units           = $request->unit;
-    //         $prices          = $request->price;
-    //         $discounts       = $request->item_disc;
-    //         $quantities      = $request->qty;
-    //         $totals          = $request->total;
-    //         $colors          = $request->color;
-
-    //         $combined_products   = [];
-    //         $combined_codes      = [];
-    //         $combined_brands     = [];
-    //         $combined_units      = [];
-    //         $combined_prices     = [];
-    //         $combined_discounts  = [];
-    //         $combined_qtys       = [];
-    //         $combined_totals     = [];
-    //         $combined_colors     = [];
-
-    //         $total_items = 0;
-
-    //         foreach ($product_ids as $index => $product_id) {
-    //             $qty   = $quantities[$index] ?? 0;
-    //             $price = $prices[$index] ?? 0;
-
-    //             if (!$product_id || !$qty || !$price) continue;
-
-    //             $combined_products[]   = $product_names[$index] ?? '';
-    //             $combined_codes[]      = $product_codes[$index] ?? '';
-    //             $combined_brands[]     = $brands[$index] ?? '';
-    //             $combined_units[]      = $units[$index] ?? '';
-    //             $combined_prices[]     = $price;
-    //             $combined_discounts[]  = $discounts[$index] ?? 0;
-    //             $combined_qtys[]       = $qty;
-    //             $combined_totals[]     = $totals[$index] ?? 0;
-
-    //             // Convert color to valid JSON array
-    //             $decodedColor = $colors[$index] ?? [];
-    //             if (is_array($decodedColor)) {
-    //                 $combined_colors[] = json_encode($decodedColor);
-    //             } else {
-    //                 $decoded = json_decode($decodedColor, true);
-    //                 $combined_colors[] = json_encode(is_array($decoded) ? $decoded : []);
-    //             }
-
-    //             // ➕ Restore stock
-    //             $stock = \App\Models\Stock::where('product_id', $product_id)->first();
-    //             if ($stock) {
-    //                 $stock->qty += $qty;
-    //                 $stock->save();
-    //             }
-
-    //             $total_items += $qty;
-    //         }
-
-    //         // ➕ Create Sale Return
-    //         $saleReturn = new \App\Models\SalesReturn();
-    //         $saleReturn->sale_id              = $request->sale_id;
-    //         $saleReturn->customer             = $request->customer;
-    //         $saleReturn->reference            = $request->reference;
-
-    //         $saleReturn->product              = implode(',', $combined_products);
-    //         $saleReturn->product_code         = implode(',', $combined_codes);
-    //         $saleReturn->brand                = implode(',', $combined_brands);
-    //         $saleReturn->unit                 = implode(',', $combined_units);
-    //         $saleReturn->per_price            = implode(',', $combined_prices);
-    //         $saleReturn->per_discount         = implode(',', $combined_discounts);
-    //         $saleReturn->qty                  = implode(',', $combined_qtys);
-    //         $saleReturn->per_total            = implode(',', $combined_totals);
-    //         $saleReturn->color                = json_encode($combined_colors);
-
-    //         $saleReturn->total_amount_Words   = $request->total_amount_Words;
-    //         $saleReturn->total_bill_amount    = $request->total_subtotal;
-    //         $saleReturn->total_extradiscount  = $request->total_extra_cost;
-    //         $saleReturn->total_net            = $request->total_net;
-
-    //         $saleReturn->cash                 = $request->cash;
-    //         $saleReturn->card                 = $request->card;
-    //         $saleReturn->change               = $request->change;
-
-    //         $saleReturn->total_items          = $total_items;
-    //         $saleReturn->return_note          = $request->return_note;
-
-    //         $saleReturn->save();
-
-    //         DB::commit();
-
-    //         return redirect()->route('sale.index')->with('success', 'Sale return saved successfully.');
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         return back()->with('error', 'Sale return failed: ' . $e->getMessage());
-    //     }
-    // }
     public function storeSaleReturn(Request $request)
     {
         $request->validate([
@@ -2642,6 +2643,7 @@ class SaleController extends Controller
             $units         = $request->input('unit', []);
             $prices        = $request->input('price', []);
             $discounts     = $request->input('item_disc', []);
+            $return_trade_offers = $request->input('trade_offer', []);
             $quantities    = $request->input('qty', []);
             $totals        = $request->input('total', []);
             $colors        = $request->input('color', []); // may be array of single selected color value or json
@@ -2653,9 +2655,11 @@ class SaleController extends Controller
             $combined_units      = [];
             $combined_prices     = [];
             $combined_discounts  = [];
+            $combined_trade_offers = [];
             $combined_qtys       = [];
             $combined_totals     = [];
             $combined_colors     = [];
+            $combined_variant_ids = [];
 
             $total_items = 0;
 
@@ -2680,8 +2684,10 @@ class SaleController extends Controller
                 $vId   = isset($variant_ids[$i]) ? trim($variant_ids[$i]) : '';
                 $colorRaw = $colors[$i] ?? null;
 
-                // Skip rows with zero qty (not selected)
-                if ($qty <= 0) continue;
+                $toQty = isset($return_trade_offers[$i]) ? floatval($return_trade_offers[$i]) : 0;
+
+                // Skip rows with zero qty and zero trade offer
+                if ($qty <= 0 && $toQty <= 0) continue;
 
                 // 🛑 Strict Server-Side Validation: Ensure requested return qty doesn't exceed available returnable qty
                 $maxAvailable = null;
@@ -2706,8 +2712,11 @@ class SaleController extends Controller
                 $combined_units[]     = $unit;
                 $combined_prices[]    = (string)$price;
                 $combined_discounts[] = (string)$disc;
+                $toQty = isset($return_trade_offers[$i]) ? floatval($return_trade_offers[$i]) : 0;
+                $combined_trade_offers[] = (string)$toQty;
                 $combined_qtys[]      = (string)$qty;
                 $combined_totals[]    = (string)$total;
+                $combined_variant_ids[] = (string)$vId;
 
                 // Normalize color: if array => json_encode; if string that's JSON => try decode
                 if (is_array($colorRaw)) {
@@ -2760,7 +2769,8 @@ class SaleController extends Controller
                     }
 
                     $isKg = strtolower($foundProduct->unit_type ?? '') === 'kg';
-                    $returnQtyInDb = $qty;
+                    $totalPhysicalReturn = $qty + $toQty;
+                    $returnQtyInDb = $totalPhysicalReturn;
                     $dbVariantId = $isKg ? null : (!empty($vId) ? $vId : null);
 
                     if ($isKg) {
@@ -2769,15 +2779,15 @@ class SaleController extends Controller
                             if ($vModel) {
                                 $kgSize = floatval($vModel->size_value);
                                 if (strtolower($vModel->size_unit ?? '') === 'kg') {
-                                    $returnQtyInDb = ($kgSize * $qty * 1000);
+                                    $returnQtyInDb = ($kgSize * $totalPhysicalReturn * 1000);
                                 } else {
-                                    $returnQtyInDb = ($kgSize * $qty);
+                                    $returnQtyInDb = ($kgSize * $totalPhysicalReturn);
                                 }
                             } else {
-                                $returnQtyInDb = $qty * 1000;
+                                $returnQtyInDb = $totalPhysicalReturn * 1000;
                             }
                         } else {
-                            $returnQtyInDb = $qty * 1000;
+                            $returnQtyInDb = $totalPhysicalReturn * 1000;
                         }
                     }
 
@@ -2826,11 +2836,13 @@ class SaleController extends Controller
             $saleReturn->customer = $sale->customer ?? $request->customer;
             $saleReturn->reference = $request->reference;
             $saleReturn->product = implode(',', $combined_products);
+            $saleReturn->variant_id = implode(',', $combined_variant_ids);
             $saleReturn->product_code = implode(',', $combined_codes);
             $saleReturn->brand = implode(',', $combined_brands);
             $saleReturn->unit = implode(',', $combined_units);
             $saleReturn->per_price = implode(',', $combined_prices);
             $saleReturn->per_discount = implode(',', $combined_discounts);
+            $saleReturn->trade_offer = implode(',', $combined_trade_offers);
             $saleReturn->qty = implode(',', $combined_qtys);
             $saleReturn->per_total = implode(',', $combined_totals);
             // colors as JSON array of json-encoded color-arrays (to keep compatible with your existing format)
@@ -2874,6 +2886,53 @@ class SaleController extends Controller
                         'closing_balance' => 0 - $netAmount,
                     ]);
                 }
+            } elseif (str_starts_with((string)$customer_id, 'dist_') || str_starts_with((string)$customer_id, 'booker_')) {
+                // 🚚 DISTRIBUTOR / ORDER BOOKER RETURN LEDGER
+                $distId = (int) str_replace(['dist_', 'booker_'], '', (string)$customer_id);
+                $distributor = \App\Models\Distributor::find($distId);
+                if ($distributor) {
+                    $oldBalance = (float) $distributor->current_balance;
+                    $refundCash = floatval($request->cash ?? 0) + floatval($request->card ?? 0);
+                    $newBalance = $oldBalance - $netAmount + $refundCash;
+
+                    \App\Models\DistributorLedger::create([
+                        'distributor_id' => $distributor->id,
+                        'date'           => $request->return_date ?: now()->toDateString(),
+                        'type'           => 'return',
+                        'reference_no'   => $sale->invoice_no,
+                        'description'    => "Sale Return #{$saleReturn->id} against Invoice #{$sale->invoice_no}" . ($refundCash > 0 ? " (Refund Paid: Rs. " . number_format($refundCash, 2) . ")" : ""),
+                        'debit'          => $refundCash,
+                        'credit'         => $netAmount,
+                        'balance'        => $newBalance,
+                        'created_by'     => auth()->id(),
+                    ]);
+
+                    $distributor->update(['current_balance' => $newBalance]);
+                }
+            } elseif (str_starts_with((string)$customer_id, 'dc_')) {
+                // 🏪 DISTRIBUTOR CUSTOMER (RETAIL OUTLET) RETURN LEDGER
+                $dcId = (int) str_replace('dc_', '', (string)$customer_id);
+                $dc = \App\Models\DistributorCustomer::find($dcId);
+                if ($dc) {
+                    $oldBalance = (float) $dc->current_balance;
+                    $refundCash = floatval($request->cash ?? 0) + floatval($request->card ?? 0);
+                    $newBalance = $oldBalance - $netAmount + $refundCash;
+
+                    \App\Models\DistributorCustomerLedger::create([
+                        'distributor_id'          => $dc->distributor_id ?? 1,
+                        'distributor_customer_id' => $dc->id,
+                        'date'                    => $request->return_date ?: now()->toDateString(),
+                        'type'                    => 'return',
+                        'reference_no'            => $sale->invoice_no,
+                        'description'             => "Sale Return #{$saleReturn->id} against Invoice #{$sale->invoice_no}",
+                        'debit'                   => $refundCash,
+                        'credit'                  => $netAmount,
+                        'balance'                 => $newBalance,
+                        'created_by'              => auth()->id(),
+                    ]);
+
+                    $dc->update(['current_balance' => $newBalance]);
+                }
             } else {
                 // Walk-in Customer: do nothing in ledger
             }
@@ -2913,6 +2972,7 @@ class SaleController extends Controller
         $units     = explode(',', $sale->unit ?? '');
         $prices    = explode(',', $sale->per_price ?? '');
         $discounts = explode(',', $sale->per_discount ?? '');
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
         $qtys      = explode(',', $sale->qty ?? '');
         $totals    = explode(',', $sale->per_total ?? '');
         $rawVariants = explode(',', $sale->variant_id ?? '');
@@ -2945,6 +3005,7 @@ class SaleController extends Controller
                 'unit' => strtoupper($unit),
                 'qty' => $qty,
                 'price' => $price,
+                'trade_offer' => (float)($tradeOffers[$i] ?? 0),
                 'discount' => $disc,
                 'total' => $lineTot,
             ];
@@ -3056,6 +3117,7 @@ class SaleController extends Controller
         $units     = explode(',', $sale->unit);
         $prices    = explode(',', $sale->per_price);
         $discounts = explode(',', $sale->per_discount);
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
         $qtys      = explode(',', $sale->qty);
         $totals    = explode(',', $sale->per_total);
         $variant_ids = explode(',', $sale->variant_id ?? '');
@@ -3130,6 +3192,7 @@ class SaleController extends Controller
                 'unit'      => $unit,
                 'price'     => $price,
                 'discount'  => (float) ($discounts[$index] ?? 0),
+                'trade_offer' => (float) ($tradeOffers[$index] ?? 0),
                 'qty'       => $qty,
                 'total'     => (float) ($totals[$index] ?? 0),
             ];
@@ -3313,8 +3376,9 @@ class SaleController extends Controller
         $brands     = explode(',', $sale->brand);
         $units      = explode(',', $sale->unit);
         $prices     = explode(',', $sale->per_price);
-        $discounts  = explode(',', $sale->per_discount);
-        $qtys       = explode(',', $sale->qty);
+        $discounts   = explode(',', $sale->per_discount);
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
+        $qtys        = explode(',', $sale->qty);
         $totals     = explode(',', $sale->per_total);
         $vIds       = explode(',', $sale->variant_id ?? '');
 
@@ -3371,6 +3435,7 @@ class SaleController extends Controller
                 'pcs'            => $units[$index] ?? ($product->unit_type ?? 'piece'),
                 'price'          => $price,
                 'original_price' => $price,
+                'trade_offer'    => floatval($tradeOffers[$index] ?? 0),
                 'disc_val'       => $discVal,
                 'disc_type'      => $discType,
                 'total'          => floatval($totals[$index] ?? ($lineSubtotal - $disc)),
@@ -3409,6 +3474,7 @@ class SaleController extends Controller
             $units          = $request->unit ?? [];
             $prices         = $request->price ?? [];
             $discounts      = $request->item_disc ?? [];
+            $trade_offers   = $request->trade_offer ?? [];
             $quantities     = $request->qty ?? [];
             $totals         = $request->total ?? [];
             $colors         = $request->color ?? [];
@@ -3419,6 +3485,7 @@ class SaleController extends Controller
             $combined_units       = [];
             $combined_prices      = [];
             $combined_discounts   = [];
+            $combined_trade_offers = [];
             $combined_qtys        = [];
             $combined_totals      = [];
             $combined_colors      = [];
@@ -3478,6 +3545,8 @@ class SaleController extends Controller
                 $combined_units[]       = $units[$index] ?? '';
                 $combined_prices[]      = $prices[$index];
                 $combined_discounts[]   = $discounts[$index] ?? 0;
+                $toQty = isset($trade_offers[$index]) ? floatval($trade_offers[$index]) : 0;
+                $combined_trade_offers[] = $toQty;
                 $combined_qtys[]        = $qty;
                 $combined_totals[]      = $totals[$index] ?? 0;
                 $combined_colors[]      = $colors[$index] ?? '';
@@ -3771,6 +3840,7 @@ class SaleController extends Controller
         $units    = explode(',', $sale->unit);
         $prices   = explode(',', $sale->per_price);
         $discounts = explode(',', $sale->per_discount);
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
         $qtys     = explode(',', $sale->qty);
         $totals   = explode(',', $sale->per_total);
         $colors_json = json_decode($sale->color, true);
@@ -3791,6 +3861,7 @@ class SaleController extends Controller
                 'price'      => floatval($prices[$index] ?? 0),
                 'discount'   => floatval($discounts[$index] ?? 0),
                 'qty'        => intval($qtys[$index] ?? 1),
+                'trade_offer' => floatval($tradeOffers[$index] ?? 0),
                 'total'      => floatval($totals[$index] ?? 0),
                 'color'      => isset($colors_json[$index]) ? json_decode($colors_json[$index], true) : [],
             ];
@@ -3813,6 +3884,7 @@ class SaleController extends Controller
         $units    = explode(',', $sale->unit);
         $prices   = explode(',', $sale->per_price);
         $discounts = explode(',', $sale->per_discount);
+        $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
         $qtys     = explode(',', $sale->qty);
         $totals   = explode(',', $sale->per_total);
         $vids     = explode(',', $sale->variant_id ?? '');
@@ -3882,6 +3954,7 @@ class SaleController extends Controller
                 'unit'       => $unit ?: 'PIECE',
                 'price'      => $price,
                 'discount'   => floatval($discounts[$index] ?? 0),
+                'trade_offer' => floatval($tradeOffers[$index] ?? 0),
                 'qty'        => $qty,
                 'total'      => floatval($totals[$index] ?? 0),
                 'color'      => isset($colors_json[$index]) ? json_decode($colors_json[$index], true) : [],
@@ -3905,15 +3978,59 @@ class SaleController extends Controller
     {
         $return = \App\Models\SalesReturn::with('sale.customer_relation')->findOrFail($id);
 
-        $products   = explode(',', $return->product);
-        $codes      = explode(',', $return->product_code);
-        $brands     = explode(',', $return->brand);
-        $units      = explode(',', $return->unit);
-        $prices     = explode(',', $return->per_price);
-        $discounts  = explode(',', $return->per_discount);
-        $qtys       = explode(',', $return->qty);
-        $totals     = explode(',', $return->per_total);
+        $products    = array_map('trim', explode(',', $return->product ?? ''));
+        $codes       = array_map('trim', explode(',', $return->product_code ?? ''));
+        $brands      = array_map('trim', explode(',', $return->brand ?? ''));
+        $units       = array_map('trim', explode(',', $return->unit ?? ''));
+        $prices      = array_map('trim', explode(',', $return->per_price ?? ''));
+        $discounts   = array_map('trim', explode(',', $return->per_discount ?? ''));
+        $tradeOffers = array_map('trim', explode(',', $return->trade_offer ?? ''));
+        $qtys        = array_map('trim', explode(',', $return->qty ?? ''));
+        $totals      = array_map('trim', explode(',', $return->per_total ?? ''));
         $colors_json = json_decode($return->color, true);
+
+        // Resolve customer / distributor information
+        $customerName = 'Walk-in Customer';
+        $customerType = 'Walk-in';
+        $customerPhone = '-';
+
+        $rawCust = (string)($return->customer ?? ($return->sale->customer ?? ''));
+        if (str_starts_with($rawCust, 'dist_')) {
+            $distId = (int)str_replace('dist_', '', $rawCust);
+            $dist = \App\Models\Distributor::find($distId);
+            if ($dist) {
+                $customerName = $dist->name;
+                $customerType = 'Distributor';
+                $customerPhone = $dist->phone ?: '-';
+            }
+        } elseif (str_starts_with($rawCust, 'booker_')) {
+            $distId = (int)str_replace('booker_', '', $rawCust);
+            $dist = \App\Models\Distributor::find($distId);
+            if ($dist) {
+                $customerName = $dist->name;
+                $customerType = 'Order Booker';
+                $customerPhone = $dist->phone ?: '-';
+            }
+        } elseif (str_starts_with($rawCust, 'dc_')) {
+            $dcId = (int)str_replace('dc_', '', $rawCust);
+            $dc = \App\Models\DistributorCustomer::find($dcId);
+            if ($dc) {
+                $customerName = $dc->name;
+                $customerType = 'Retail Outlet';
+                $customerPhone = $dc->phone_no ?: '-';
+            }
+        } elseif ($return->sale && $return->sale->customer_relation) {
+            $customerName = $return->sale->customer_relation->customer_name;
+            $customerType = $return->sale->customer_relation->customer_type ?: 'Customer';
+            $customerPhone = $return->sale->customer_relation->mobile_no ?: ($return->sale->customer_relation->phone ?: '-');
+        } elseif (!empty($rawCust) && is_numeric($rawCust)) {
+            $foundC = \App\Models\Customer::find($rawCust);
+            if ($foundC) {
+                $customerName = $foundC->customer_name;
+                $customerType = $foundC->customer_type ?: 'Customer';
+                $customerPhone = $foundC->mobile_no ?: ($foundC->phone ?: '-');
+            }
+        }
 
         // Map variant_id from parent sale
         $parentSale = $return->sale;
@@ -3927,11 +4044,11 @@ class SaleController extends Controller
         $items = [];
 
         foreach ($products as $index => $p) {
-
             $qty = floatval($qtys[$index] ?? 0);
+            $toQty = floatval($tradeOffers[$index] ?? 0);
 
-            // ❌ qty 0 ya empty ho to skip
-            if ($qty <= 0) {
+            // Skip only if both regular quantity and trade offer quantity are 0
+            if ($qty <= 0 && $toQty <= 0) {
                 continue;
             }
 
@@ -3987,6 +4104,7 @@ class SaleController extends Controller
                 'unit'       => $unit,
                 'price'      => $price,
                 'discount'   => floatval($discounts[$index] ?? 0),
+                'trade_offer' => $toQty,
                 'qty'        => $qty,
                 'total'      => floatval($totals[$index] ?? 0),
                 'color'      => isset($colors_json[$index])
@@ -4018,9 +4136,12 @@ class SaleController extends Controller
         }
 
         return view('admin_panel.sale.return.salereturnrecepit', [
-            'return' => $return,
-            'returnItems' => $items,
+            'return'       => $return,
+            'returnItems'  => $items,
             'unitTotals'   => $unitTotals,
+            'customerName' => $customerName,
+            'customerType' => $customerType,
+            'customerPhone' => $customerPhone,
         ]);
     }
 }

@@ -1,4 +1,15 @@
 <style>
+.rt_logo img {
+    max-height: 54px !important;
+    width: auto !important;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.22));
+    transition: transform 0.2s ease;
+}
+.rt_logo:hover img {
+    transform: scale(1.04);
+}
+
 /* ══════════ RESPONSIVE HEADER STYLING ══════════ */
 @media (max-width: 991.98px) {
     .top_nav .container, .top_nav .container-fluid {
@@ -7,7 +18,7 @@
         flex-wrap: nowrap !important;
     }
     .rt_logo img {
-        max-height: 28px !important;
+        max-height: 38px !important;
         width: auto !important;
     }
     .navbar-nav-right {
@@ -303,7 +314,7 @@
                     </li>
                     @endcan
 
-                    @canany(['Sales'])
+                    @canany(['Sales', 'Sale Screen'])
                     <li class="nav-item {{ (request()->is('sale/create*') || request()->is('sale-screen*')) ? 'active' : '' }}">
                         <a href="{{ route('sale.screen') }}" class="nav-link">
                             <i class="menu_icon fas fa-cash-register"></i>
@@ -312,7 +323,7 @@
                     </li>
                     @endcanany
 
-                    @canany(['Products','Category','Sub Category','Brands','Purchase','Purchase Return','Vendor','List Warehouse','Warehouse Stock','Stock Transfer','Sales','Sale Return','Bookings','Customer','Production','Raw Materials','Stock Adjustment'])
+                    @canany(['Products','Category','Sub Category','Brands','Purchase','Purchase Return','Vendor','List Warehouse','Warehouse Stock','Stock Transfer','Sales','Sale Screen','Sale Return','Bookings','Customer','Production','Raw Materials','Stock Adjustment'])
                     @php
                         $isMgmtActive = request()->is('product*') || request()->is('category*') || request()->is('subcategory*') || request()->is('Brand*') || request()->is('Purchase*') || request()->is('add/Purchase*') || request()->is('production*') || request()->is('raw-materials*') || request()->is('stock-adjustment*') || request()->is('vendors*') || request()->is('warehouse*') || request()->is('stock_transfers*') || request()->is('sale') || request()->is('sale-returns*') || request()->is('bookings*') || request()->is('customers*') || request()->is('table*') || request()->is('sale/pos*');
                     @endphp
@@ -391,13 +402,16 @@
                                 </div>
                                 @endcanany
 
-                                @canany(['Sales','Sale Return','Bookings','Customer'])
+                                @canany(['Sales','Sale Screen','Sale Return','Bookings','Customer'])
                                 <!-- Sales & Customers -->
                                 <div class="col-group col-md-3">
                                     <p class="category-heading"><i class="fas fa-chart-line me-1"></i> Sales & Customers</p>
                                     <ul class="submenu-item">
-                                        @can('Sales')
+                                        @canany(['Sales', 'Sale Screen'])
+                                        <li><a href="{{ route('sale.screen') }}"><i class="fas fa-cash-register"></i> Sale Screen</a></li>
                                         <li><a href="{{ route('sale.pos') }}"><i class="fas fa-desktop"></i> Sale (POS)</a></li>
+                                        @endcanany
+                                        @can('Sales')
                                         <li><a href="{{ url('sale') }}"><i class="fas fa-file-invoice-dollar"></i> Sales Register</a></li>
                                         @endcan
                                         @can('Sale Return')
@@ -485,6 +499,7 @@
                                         @php
                         $isAssetsActive = request()->is('fixed-assets*');
                     @endphp
+                    @canany(['Assets', 'View Assets', 'Create Asset', 'Asset Categories', 'Asset Report'])
                     <!-- Assets Menu (Machinery & Furniture) -->
                     <li class="nav-item {{ $isAssetsActive ? 'active' : '' }}">
                         <a href="#" class="nav-link">
@@ -494,34 +509,44 @@
                         </a>
                         <div class="submenu">
                             <ul class="submenu-item">
+                                @canany(['Assets', 'View Assets'])
                                 <li>
                                     <a href="{{ route('assets.index') }}">
                                         <i class="fas fa-list"></i>
                                         <span>Assets Directory</span>
                                     </a>
                                 </li>
+                                @endcanany
+                                @can('Create Asset')
                                 <li>
                                     <a href="{{ route('assets.create') }}">
                                         <i class="fas fa-plus-circle"></i>
                                         <span>Register Asset</span>
                                     </a>
                                 </li>
+                                @endcan
+                                @can('Asset Categories')
                                 <li>
                                     <a href="{{ route('assets.categories.index') }}">
                                         <i class="fas fa-tags"></i>
                                         <span>Asset Categories</span>
                                     </a>
                                 </li>
+                                @endcan
+                                @can('Asset Report')
                                 <li>
                                     <a href="{{ route('assets.report') }}">
                                         <i class="fas fa-file-invoice-dollar"></i>
                                         <span>Valuation Report</span>
                                     </a>
                                 </li>
+                                @endcan
                             </ul>
                         </div>
                     </li>
+                    @endcanany
 
+                    @canany(['Distributors', 'Distributor Management', 'Distributor Customers', 'Distributor Sales', 'Distributor Orders', 'Distributor Custody Stocks', 'Distributor Secondary Sales'])
                     <!-- Distributors Menu -->
                     <li class="nav-item {{ $isDistActive ? 'active' : '' }}">
                         <a href="#" class="nav-link">
@@ -534,24 +559,31 @@
                         </a>
                         <div class="submenu">
                             <ul class="submenu-item">
+                                @canany(['Distributors', 'Distributor Management'])
                                 <li>
                                     <a href="{{ route('admin.distributors.index') }}">
                                         <i class="fas fa-users-cog"></i>
                                         <span>Distributors Directory</span>
                                     </a>
                                 </li>
+                                @endcanany
+                                @can('Distributor Customers')
                                 <li>
                                     <a href="{{ route('admin.distributors.customers') }}">
                                         <i class="fas fa-store"></i>
                                         <span>Distributor Customers</span>
                                     </a>
                                 </li>
+                                @endcan
+                                @can('Distributor Sales')
                                 <li>
                                     <a href="{{ route('admin.distributors.sales') }}">
                                         <i class="fas fa-file-invoice-dollar"></i>
                                         <span>Distributor Sales Register</span>
                                     </a>
                                 </li>
+                                @endcan
+                                @can('Distributor Orders')
                                 <li>
                                     <a href="{{ route('admin.distributors.orders') }}">
                                         <i class="fas fa-clipboard-list"></i>
@@ -561,23 +593,29 @@
                                         @endif
                                     </a>
                                 </li>
+                                @endcan
+                                @can('Distributor Custody Stocks')
                                 <li>
                                     <a href="{{ route('admin.distributors.stocks') }}">
                                         <i class="fas fa-boxes"></i>
                                         <span>Custody Stocks</span>
                                     </a>
                                 </li>
+                                @endcan
+                                @can('Distributor Secondary Sales')
                                 <li>
                                     <a href="{{ route('admin.distributors.secondary_sales') }}">
                                         <i class="fas fa-chart-line"></i>
                                         <span>Secondary Market Sales</span>
                                     </a>
                                 </li>
+                                @endcan
                             </ul>
                         </div>
                     </li>
+                    @endcanany
 
-                    @canany(['Item Stock Report','Branch Stock Report','Purchase Report','Sale Report','Category Sale Report','Daily Sale Closing Report','Profit Loss Report','Customer Ledger','Vendor Ledger','Expense Report','Expense Audit Report','Stock Adjustment Audit Report','System Reports'])
+                    @canany(['Item Stock Report','Branch Stock Report','Purchase Report','Production Report','Sale Report','Category Sale Report','Daily Sale Closing Report','Profit Loss Report','Balance Sheet Report','Customer Ledger','Vendor Ledger','Expense Report','Expense Audit Report','Stock Adjustment Audit Report','Stock Adjustment','Expense Voucher','System Reports'])
                     @php
                         $isReportsActive = request()->is('report*') || request()->is('System/Reports*') || request()->is('expense-vocher*') || request()->is('stock-adjustment-report*');
                     @endphp
@@ -590,35 +628,40 @@
 
                         <div class="submenu">
                             <ul class="submenu-item">
-                                @canany(['Item Stock Report'])
+                                @can('Item Stock Report')
                                 <li><a href="{{ route('report.item_stock') }}"><i class="fas fa-boxes"></i> Item Stock Report</a></li>
-                                @endcanany
-                                @canany(['Branch Stock Report', 'Item Stock Report'])
+                                @endcan
+                                @can('Branch Stock Report')
                                 <li><a href="{{ route('report.branch_stock') }}"><i class="fas fa-store"></i> Branch Stock Matrix</a></li>
-                                @endcanany
+                                @endcan
 
                                 @can('Purchase Report')
                                 <li><a href="{{ route('report.purchase') }}"><i class="fas fa-shopping-basket"></i> Purchase Report</a></li>
-                                @canany(['Production', 'Purchase', 'Sale Report', 'System Reports'])
+                                @endcan
+
+                                @can('Production Report')
                                 <li><a href="{{ route('report.production') }}"><i class="fas fa-industry"></i> Production Report</a></li>
-                                @endcanany
                                 @endcan
 
                                 @can('Sale Report')
                                 <li><a href="{{ route('report.sale') }}"><i class="fas fa-chart-bar"></i> Sale Report</a></li>
                                 @endcan
-                                @canany(['Category Sale Report', 'Sale Report'])
+
+                                @can('Category Sale Report')
                                 <li><a href="{{ route('report.sale.category') }}"><i class="fas fa-chart-pie"></i> Category-wise Sales</a></li>
-                                @endcanany
-                                @canany(['Daily Sale Closing Report', 'Sale Report'])
+                                @endcan
+
+                                @can('Daily Sale Closing Report')
                                 <li><a href="{{ route('report.sale_closing') }}"><i class="fas fa-file-invoice-dollar"></i> Daily Sale Closing</a></li>
-                                @endcanany
-                                @canany(['Profit Loss Report', 'Sale Report'])
+                                @endcan
+
+                                @can('Profit Loss Report')
                                 <li><a href="{{ route('report.profit_loss') }}"><i class="fas fa-balance-scale"></i> Profit & Loss Report</a></li>
-                                @canany(['Profit Loss Report', 'Sale Report', 'System Reports'])
+                                @endcan
+
+                                @can('Balance Sheet Report')
                                 <li><a href="{{ route('report.balance_sheet') }}"><i class="fas fa-file-invoice-dollar"></i> Balance Sheet</a></li>
-                                @endcanany
-                                @endcanany
+                                @endcan
 
                                 @can('Customer Ledger')
                                 <li><a href="{{ route('report.customer.ledger') }}"><i class="fas fa-user-check"></i> Customer Ledgers</a></li>
@@ -674,14 +717,14 @@
                     </li>
                     @endcanany
 
-                    @can('Cashbook')
+                    @canany(['Cashbook', 'View All Cashbook', 'View Own Cashbook'])
                     <li class="nav-item {{ request()->is('cashbook*') ? 'active' : '' }}">
                         <a href="{{ route('cashbook') }}" class="nav-link">
                             <i class="menu_icon fas fa-book-open"></i>
                             <span class="menu-title">CashBook</span>
                         </a>
                     </li>
-                    @endcan
+                    @endcanany
 
                 </ul>
             </div>

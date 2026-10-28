@@ -98,10 +98,12 @@
             <a href="{{ route('recepit-vochers') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1.5" style="font-size: 0.78rem;">
                 <i class="fas fa-receipt me-1"></i> Receipts Voucher
             </a>
+            @can('Create Distributor Payment')
             <button type="button" class="btn btn-teal btn-sm rounded-pill px-3 py-1.5 shadow-sm" style="font-size: 0.78rem;"
                     data-bs-toggle="modal" data-bs-target="#receiveDirectPaymentModal">
                 <i class="fas fa-plus-circle me-1"></i> + Receive Direct Payment
             </button>
+            @endcan
         </div>
     </div>
 
@@ -371,17 +373,21 @@
                             @endphp
                             @if($p->status === 'pending')
                             <div class="d-inline-flex align-items-center gap-1.5">
+                                @can('Approve Distributor Payment')
                                 <!-- Approve Button -->
                                 <button type="button" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;"
                                         onclick='openApproveModal(@json($pData))'>
                                     <i class="fas fa-check me-1"></i> Approve
                                 </button>
+                                @endcan
 
+                                @can('Reject Distributor Payment')
                                 <!-- Reject Button -->
                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 text-nowrap fw-semibold" style="font-size: 0.75rem;"
                                         onclick='openRejectModal(@json($pData))'>
                                     <i class="fas fa-times me-1"></i> Reject
                                 </button>
+                                @endcan
                             </div>
                             @else
                             <div class="d-inline-flex align-items-center gap-1">
@@ -491,14 +497,18 @@
                             ];
                         @endphp
                         @if($p->status === 'pending')
+                        @can('Approve Distributor Payment')
                         <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-semibold shadow-sm" style="font-size: 0.75rem;"
                                 onclick='openApproveModal(@json($pDataMobile))'>
                             <i class="fas fa-check me-1"></i> Approve
                         </button>
+                        @endcan
+                        @can('Reject Distributor Payment')
                         <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" style="font-size: 0.75rem;"
                                 onclick='openRejectModal(@json($pDataMobile))'>
                             Reject
                         </button>
+                        @endcan
                         @elseif($p->distributor)
                         <a href="{{ route('admin.distributors.ledger', $p->distributor->id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1" style="font-size: 0.75rem;">
                             View Ledger

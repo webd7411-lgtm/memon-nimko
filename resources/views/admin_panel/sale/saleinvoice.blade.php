@@ -476,7 +476,7 @@
               <tr class="item-row">
                 <td style="width: 40%;" class="bold">{{ $item['item_name'] }}</td>
                 <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
-                <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}</td>
+                <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif</td>
                 <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
               </tr>
             @endforeach
@@ -512,7 +512,7 @@
             <tr class="item-row">
               <td style="width: 40%;" class="bold">{{ $item['item_name'] }}</td>
               <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
-              <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}</td>
+              <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif</td>
               <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
             </tr>
           @endforeach

@@ -282,7 +282,7 @@
                     <tr>
                         <td>{{ $item['item_name'] }}</td>
                         <td>{{ number_format($item['price'], 0) }}</td>
-                        <td>{{ $displayQty }} {{ $displayUnit }}</td>
+                        <td>{{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif</td>
                         <td style="text-align:right;">{{ number_format($item['total'], 0) }}</td>
                     </tr>
                     @endforeach
@@ -325,7 +325,7 @@
                         @endif
                     </td>
                     <td>{{ number_format($item['price'], 0) }}</td>
-                    <td>{{ $displayQty }} {{ $displayUnit }}</td>
+                    <td>{{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif</td>
                     <td style="text-align:right;">{{ number_format($item['total'], 0) }}</td>
                 </tr>
                 @endforeach

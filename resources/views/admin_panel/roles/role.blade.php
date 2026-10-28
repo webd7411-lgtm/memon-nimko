@@ -176,7 +176,7 @@
                                                  @endforelse
                                              </td>
                                              <td>
-                                                 <button class="btn btn-info btn-sm edit-permission-btn p-1">
+                                                 <button class="btn btn-info btn-sm edit-permission-btn p-1" data-permissions='@json($role->getPermissionNames())'>
                                                      Edit Permissions
                                                  </button>
                                                  <button class="btn btn-primary btn-sm edit-btn p-1"
@@ -219,7 +219,7 @@
                                      <input type="hidden" class="edit-id" value="{{ $role->id }}">
                                  </div>
                                  <div class="rp-uc-acts">
-                                     <button class="btn btn-info btn-sm edit-permission-btn">Edit Permissions</button>
+                                     <button class="btn btn-info btn-sm edit-permission-btn" data-permissions='@json($role->getPermissionNames())'>Edit Permissions</button>
                                      <button class="btn btn-primary btn-sm edit-btn">Edit</button>
                                      <a href="{{ route('roles.delete', $role->id) }}" class="btn btn-danger btn-sm delete-btn"
                                          data-url="{{ route('roles.delete', $role->id) }}"
@@ -418,10 +418,16 @@
          var id = box.find(".edit-id").val();
          var name = box.find(".name").text();
 
-         let assignedPermissions = [];
-         box.find('.rp-uc-roles .badge').each(function() {
-             assignedPermissions.push($(this).text().trim());
-         });
+         let assignedPermissions = $(this).data("permissions") || [];
+        if (typeof assignedPermissions === "string") {
+            try { assignedPermissions = JSON.parse(assignedPermissions); } catch(e) { assignedPermissions = []; }
+        }
+        if (!Array.isArray(assignedPermissions) || assignedPermissions.length === 0) {
+            assignedPermissions = [];
+            box.find(".rp-uc-roles .badge.bg-success").each(function() {
+                assignedPermissions.push($(this).text().trim());
+            });
+        }
 
          $('#permission-modal-name').val(name.trim());
          $('#edit-role-id').val(id);
