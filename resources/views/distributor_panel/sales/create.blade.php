@@ -734,35 +734,26 @@
                                 <i class="fas fa-user-check me-1 text-success"></i> Customer / Booker / Dist. <span class="text-danger">*</span>
                             </label>
                             <span id="customerTypeBadge" class="badge bg-light text-secondary border" style="font-size: 10px; padding: 2px 6px;">
-                                <i class="fas fa-user me-1"></i> Walk-in
+                                <i class="fas fa-store me-1"></i> Retail Shop
                             </span>
                         </div>
                         <div class="d-flex gap-1 align-items-center">
                             <div class="flex-grow-1" style="min-width: 0;">
                                 <select name="distributor_customer_id" id="customerSelect" class="ss-select-control w-100" required>
-                                    @if(isset($walkin))
-                                    <option value="{{ $walkin->id }}" data-type="walkin" data-balance="0" selected>👤 Walk-in Customer</option>
-                                    @else
-                                    <option value="" data-type="walkin" data-balance="0">👤 Walk-in Customer</option>
-                                    @endif
-
                                     @if(isset($customers) && $customers->count() > 0)
-                                        <optgroup label="🏪 RETAIL SHOPS / CUSTOMERS">
-                                            @foreach($customers as $c)
-                                                @if(isset($walkin) && $c->id === $walkin->id) @continue @endif
-                                                <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}">
-                                                    🏪 {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
-                                                </option>
-                                            @endforeach
-                                        </optgroup>
+                                        <option value="" disabled selected>-- Select Retail Shop / Customer --</option>
+                                        @foreach($customers as $c)
+                                            <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}">
+                                                🏪 {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
+                                            </option>
+                                        @endforeach
+                                    @else
+                                        <option value="" disabled selected>No Retailers Registered &bull; Click + New</option>
                                     @endif
                                 </select>
                             </div>
                             <button type="button" class="ss-top-btn ss-btn-new-cust px-2" data-bs-toggle="modal" data-bs-target="#newCustomerModal" title="Create New Retailer">
                                 <i class="fas fa-plus"></i> New
-                            </button>
-                            <button type="button" class="ss-top-btn ss-btn-walkin px-2" id="btnSetWalkin" title="Reset to Walk-in">
-                                <i class="fas fa-undo"></i>
                             </button>
                         </div>
                     </div>
@@ -937,7 +928,7 @@
                         <div class="ss-pm-row" data-index="0">
                             <select class="ss-pm-select pm-account-select" name="payment_account[]" id="pmAccountSelect">
                                 <option value="cash" selected>Cash in hand</option>
-                                <option value="credit">Credit (Udhaar / Due)</option>
+                                <option value="credit">Credit (Due)</option>
                                 @if(isset($bankAccounts) && $bankAccounts->count() > 0)
                                     <optgroup label="My Bank & Online Accounts">
                                         @foreach($bankAccounts as $acc)
@@ -1183,30 +1174,22 @@ $(document).ready(function() {
 
     function updateCustomerBadge() {
         const $selected = $('#customerSelect').find(':selected');
-        const type = $selected.data('type') || 'walkin';
+        const val = $selected.val();
         const $badge = $('#customerTypeBadge');
-        const bal = parseFloat($selected.data('balance') || 0);
 
-        if (type === 'walkin') {
-            $badge.attr('class', 'badge bg-light text-secondary border').html('<i class="fas fa-user me-1"></i> Walk-in');
+        if (!val) {
+            $badge.attr('class', 'badge bg-light text-secondary border').html('<i class="fas fa-store me-1"></i> Select Shop');
+            return;
+        }
+
+        const bal = parseFloat($selected.data('balance') || 0);
+        if (bal > 0) {
+            $badge.attr('class', 'badge bg-danger text-white border-0 fw-bold').html('<i class="fas fa-store me-1"></i> Due: Rs ' + bal.toLocaleString());
         } else {
-            if (bal > 0) {
-                $badge.attr('class', 'badge bg-danger text-white border-0 fw-bold').html('<i class="fas fa-store me-1"></i> Due: Rs ' + bal.toLocaleString());
-            } else {
-                $badge.attr('class', 'badge bg-success text-white border-0 fw-bold').html('<i class="fas fa-store me-1"></i> Clear Balance');
-            }
+            $badge.attr('class', 'badge bg-success text-white border-0 fw-bold').html('<i class="fas fa-store me-1"></i> Clear Balance');
         }
     }
     updateCustomerBadge();
-
-    // Reset to Walk-in
-    $('#btnSetWalkin').on('click', function() {
-        const walkinVal = $('#customerSelect option[data-type="walkin"]').val();
-        if (walkinVal) {
-            $('#customerSelect').val(walkinVal).trigger('change');
-            updateCustomerBadge();
-        }
-    });
 
     // --- 2. CREATE ROW HTML (8 BLANK ROWS DEFAULT) ---
     function createRowHtml(item) {

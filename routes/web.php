@@ -50,7 +50,7 @@ use App\Http\Controllers\AssetCategoryController;
     |
     */
 
-Route::get('/home', [HomeController::class, 'index'])->middleware(['auth', 'permission:Dashboard'])->name('home');
+Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
 
 Route::get('System/Reports', [HomeController::class, 'System_Reports'])->name('System.Reports')->middleware('permission:System Reports');
 Route::get('System/Reports/PDF', [HomeController::class, 'System_Reports_PDF'])->name('System.Reports.PDF')->middleware('permission:System Reports');
@@ -436,7 +436,7 @@ Route::middleware('auth')->group(function () {
     // ==========================================
     // SUPER ADMIN / COMPANY DISTRIBUTOR ROUTES
     // ==========================================
-    Route::prefix('admin/distributors')->name('admin.distributors.')->middleware('permission:Distributors|Distributor Management|Distributor Orders|Distributor Sales|Distributor Custody Stocks|Distributor Ledger|Distributor Secondary Sales|Distributor Customers|Distributor Payments')->group(function () {
+    Route::prefix('admin/distributors')->name('admin.distributors.')->middleware('permission:Distributors|Distributor Management|Distributor Orders|Distributor Sales|Distributor Custody Stocks|Distributor Ledger|Distributor Secondary Sales|Distributor Customers|Distributor Payments|Distributor Claims')->group(function () {
         Route::get('/', [DistributorAdminController::class, 'index'])->name('index')->middleware('permission:Distributors|Distributor Management');
         Route::post('/store', [DistributorAdminController::class, 'store'])->name('store')->middleware('permission:Create Distributor');
         Route::post('/update/{id}', [DistributorAdminController::class, 'update'])->name('update')->middleware('permission:Edit Distributor');
@@ -467,6 +467,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/payments/{id}/delete', [DistributorAdminController::class, 'destroyPayment'])->name('payments.destroy')->middleware('permission:Delete Distributor Payment');
         Route::post('/payments/{id}/approve', [DistributorAdminController::class, 'approvePayment'])->name('payments.approve')->middleware('permission:Approve Distributor Payment');
         Route::post('/payments/{id}/reject', [DistributorAdminController::class, 'rejectPayment'])->name('payments.reject')->middleware('permission:Reject Distributor Payment');
+
+        // Claims / Secondary Discounts / Damage Stock / Freight
+        Route::get('/claims', [DistributorAdminController::class, 'claims'])->name('claims')->middleware('permission:Distributor Claims');
+        Route::post('/claims/store', [DistributorAdminController::class, 'storeClaim'])->name('claims.store')->middleware('permission:Create Distributor Claim');
+        Route::post('/claims/{id}/approve', [DistributorAdminController::class, 'approveClaim'])->name('claims.approve')->middleware('permission:Approve Distributor Claim');
+        Route::post('/claims/{id}/reject', [DistributorAdminController::class, 'rejectClaim'])->name('claims.reject')->middleware('permission:Reject Distributor Claim');
+        Route::delete('/claims/{id}/delete', [DistributorAdminController::class, 'destroyClaim'])->name('claims.destroy')->middleware('permission:Delete Distributor Claim');
     });
 
     // ==========================================
@@ -510,6 +517,28 @@ Route::middleware('auth')->group(function () {
         Route::post('/payments/store', [DistributorPortalController::class, 'storePayment'])->name('payments.store');
         Route::post('/payments/{id}/update', [DistributorPortalController::class, 'updatePayment'])->name('payments.update');
         Route::delete('/payments/{id}/delete', [DistributorPortalController::class, 'destroyPayment'])->name('payments.destroy');
+
+        // Claims to Company (Trade Schemes, Damage Stock, Freight)
+        Route::get('/claims', [DistributorPortalController::class, 'claims'])->name('claims.index');
+        Route::post('/claims/store', [DistributorPortalController::class, 'storeClaim'])->name('claims.store');
+
+        // Order Bookers Management (Distributor manages his bookers)
+        Route::get('/bookers', [DistributorPortalController::class, 'bookersList'])->name('bookers.index');
+        Route::post('/bookers/store', [DistributorPortalController::class, 'storeBooker'])->name('bookers.store');
+        Route::delete('/bookers/{id}/delete', [DistributorPortalController::class, 'destroyBooker'])->name('bookers.destroy');
+
+        // Order Booker Interface (Booking shop orders with live previous balance)
+        Route::get('/booker/create', [DistributorPortalController::class, 'createShopBooking'])->name('booker.create');
+        Route::get('/booker/shop-info/{id}', [DistributorPortalController::class, 'getShopCreditInfo'])->name('booker.shop_info');
+        Route::post('/booker/store', [DistributorPortalController::class, 'storeShopBooking'])->name('booker.store');
+        Route::get('/booker/my-bookings', [DistributorPortalController::class, 'myShopBookings'])->name('booker.my_bookings');
+        Route::get('/booker/booking/{id}', [DistributorPortalController::class, 'showShopBookingReceipt'])->name('booker.receipt');
+
+        // Distributor View & Deliver of Shop Bookings
+        Route::get('/shop-bookings', [DistributorPortalController::class, 'shopBookingsList'])->name('shop_bookings.index');
+        Route::get('/shop-bookings/{id}', [DistributorPortalController::class, 'showShopBookingDetails'])->name('shop_bookings.show');
+        Route::post('/shop-bookings/{id}/deliver', [DistributorPortalController::class, 'deliverShopBooking'])->name('shop_bookings.deliver');
+        Route::post('/shop-bookings/{id}/cancel', [DistributorPortalController::class, 'cancelShopBooking'])->name('shop_bookings.cancel');
     });
 
     // ==========================================

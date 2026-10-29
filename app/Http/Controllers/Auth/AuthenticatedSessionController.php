@@ -29,6 +29,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+        if ($user->usertype === 'order_booker' || ($user->distributor_id && !$user->distributor && !$user->hasRole('Super Admin') && $user->email !== 'admin@admin.com')) {
+            return redirect()->route('distributor.booker.create');
+        }
+        if ($user->usertype === 'distributor' || ($user->distributor && !$user->hasRole('Super Admin') && $user->email !== 'admin@admin.com')) {
+            return redirect()->route('distributor.dashboard');
+        }
+
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 

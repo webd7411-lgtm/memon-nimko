@@ -48,4 +48,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(Distributor::class);
     }
+
+    public function assignedDistributor()
+    {
+        return $this->belongsTo(Distributor::class, 'distributor_id');
+    }
 }

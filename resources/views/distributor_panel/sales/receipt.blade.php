@@ -170,7 +170,7 @@
         </div>
         @if($sale->due_amount > 0)
         <div class="d-flex justify-content-between py-1 text-danger fw-bold">
-            <span>Remaining Due (Udhaar):</span>
+            <span>Remaining Due:</span>
             <span>Rs {{ number_format($sale->due_amount, 2) }}</span>
         </div>
         @endif

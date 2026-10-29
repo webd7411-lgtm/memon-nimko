@@ -96,10 +96,12 @@
                             <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-0.5">🚚 Dispatch</span>
                             @elseif($entry->type === 'payment_received')
                             <span class="badge bg-success-subtle text-success border border-success px-2 py-0.5">💰 Payment</span>
+                            @elseif($entry->type === 'claim_adjustment')
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info px-2 py-0.5">🏷️ Claim Credit</span>
                             @elseif($entry->type === 'opening')
                             <span class="badge bg-light text-secondary border px-2 py-0.5">🏁 Opening</span>
                             @else
-                            <span class="badge bg-secondary text-white px-2 py-0.5">{{ ucfirst($entry->type) }}</span>
+                            <span class="badge bg-secondary text-white px-2 py-0.5">{{ ucfirst(str_replace('_', ' ', $entry->type)) }}</span>
                             @endif
                         </td>
                         <td>

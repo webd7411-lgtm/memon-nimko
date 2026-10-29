@@ -82,7 +82,7 @@
                     </a>
                     <div class="d-none d-md-block text-start">
                         <div class="d-flex align-items-center gap-2">
-                            <h6 class="mb-0 text-white fw-bold" style="font-size: 0.95rem; letter-spacing: -0.2px;">{{ shop_name() }} ERP</h6>
+                            <h6 class="mb-0 text-white fw-bold" style="font-size: 0.95rem; letter-spacing: -0.2px;">{{ shop_name() }}</h6>
                             <span class="badge rounded-pill d-none d-lg-inline-flex align-items-center gap-1" style="background: rgba(59, 130, 246, 0.18); border: 1px solid rgba(147, 197, 253, 0.38); color: #93c5fd; font-size: 0.68rem; font-weight: 600; padding: 2px 8px; letter-spacing: 0.2px;">
                                 <i class="fas fa-code text-info" style="font-size: 0.65rem;"></i> By {{ developer_name() }}
                             </span>
@@ -610,6 +610,41 @@
                                     </a>
                                 </li>
                                 @endcan
+                                @can('Distributor Claims')
+                                <li>
+                                    <a href="{{ route('admin.distributors.claims') }}">
+                                        <i class="fas fa-receipt text-danger"></i>
+                                        <span>Claims & Reimbursements</span>
+                                    </a>
+                                </li>
+                                @endcan
+                                <li>
+                                    <hr class="dropdown-divider my-1 border-secondary opacity-25">
+                                </li>
+                                <li>
+                                    <a href="{{ route('distributor.shop_bookings.index') }}">
+                                        <i class="fas fa-boxes-packing text-warning"></i>
+                                        <span class="fw-bold text-warning">Shop Bookings (Market Orders)</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('distributor.booker.create') }}">
+                                        <i class="fas fa-plus-circle text-success"></i>
+                                        <span class="fw-bold text-success">Take Order (Book Order)</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('distributor.bookers.index') }}">
+                                        <i class="fas fa-users-gear text-teal" style="color: #0f766e;"></i>
+                                        <span>Order Bookers Team</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('distributor.dashboard') }}" style="background: rgba(15, 118, 110, 0.12); border-radius: 6px; margin: 4px 6px; padding: 6px 10px;">
+                                        <i class="fas fa-truck-moving text-teal" style="color: #0f766e;"></i>
+                                        <span class="fw-bold text-dark">Open Distributor & Booker Portal</span>
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                     </li>

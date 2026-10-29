@@ -1792,6 +1792,29 @@ class SaleController extends Controller
                                     'created_by'            => auth()->id(),
                                 ]);
                             }
+
+                            // 🚚 ADD / ADJUST DISTRIBUTOR CUSTODY STOCK
+                            foreach ($combined_product_ids as $idx => $pId) {
+                                $lineQty = isset($combined_qtys[$idx]) ? floatval($combined_qtys[$idx]) : 0;
+                                $lineTo = isset($combined_trade_offers[$idx]) ? floatval($combined_trade_offers[$idx]) : 0;
+                                $lineTotalQty = $lineQty + ($lineQty > 0 ? $lineTo : -$lineTo);
+                                $linePrice = isset($combined_prices[$idx]) ? floatval($combined_prices[$idx]) : 0;
+                                $lineVarId = !empty($combined_variant_ids[$idx]) ? $combined_variant_ids[$idx] : null;
+
+                                if ($lineTotalQty == 0) continue;
+
+                                $distStock = \App\Models\DistributorStock::firstOrCreate([
+                                    'distributor_id' => $distributor->id,
+                                    'product_id'     => $pId,
+                                    'variant_id'     => $lineVarId,
+                                ], ['qty' => 0, 'avg_price' => $linePrice]);
+
+                                $distStock->qty = max(0, (float)$distStock->qty + $lineTotalQty);
+                                if ($linePrice > 0) {
+                                    $distStock->avg_price = $linePrice;
+                                }
+                                $distStock->save();
+                            }
                         }
                     } elseif (str_starts_with($customer_id, 'dc_')) {
                         // 🏪 DISTRIBUTOR CUSTOMER (RETAIL SHOP) LEDGER
@@ -2662,6 +2685,7 @@ class SaleController extends Controller
             $combined_variant_ids = [];
 
             $total_items = 0;
+            $returnedDistributorItems = [];
 
             // Use length of product_names (should match other arrays); be defensive
             $rows = max(
@@ -2772,6 +2796,12 @@ class SaleController extends Controller
                     $totalPhysicalReturn = $qty + $toQty;
                     $returnQtyInDb = $totalPhysicalReturn;
                     $dbVariantId = $isKg ? null : (!empty($vId) ? $vId : null);
+
+                    $returnedDistributorItems[] = [
+                        'product_id' => $foundProduct->id,
+                        'variant_id' => !empty($vId) ? $vId : null,
+                        'qty'        => $totalPhysicalReturn,
+                    ];
 
                     if ($isKg) {
                         if (!empty($vId)) {
@@ -2908,6 +2938,24 @@ class SaleController extends Controller
                     ]);
 
                     $distributor->update(['current_balance' => $newBalance]);
+
+                    // 🚚 DEDUCT RETURNED ITEMS FROM DISTRIBUTOR CUSTODY STOCK
+                    foreach ($returnedDistributorItems as $rItem) {
+                        $distStock = \App\Models\DistributorStock::where('distributor_id', $distributor->id)
+                            ->where('product_id', $rItem['product_id'])
+                            ->where(function ($q) use ($rItem) {
+                                if (!empty($rItem['variant_id'])) {
+                                    $q->where('variant_id', $rItem['variant_id']);
+                                } else {
+                                    $q->whereNull('variant_id');
+                                }
+                            })->first();
+
+                        if ($distStock) {
+                            $distStock->qty = max(0, (float)$distStock->qty - (float)$rItem['qty']);
+                            $distStock->save();
+                        }
+                    }
                 }
             } elseif (str_starts_with((string)$customer_id, 'dc_')) {
                 // 🏪 DISTRIBUTOR CUSTOMER (RETAIL OUTLET) RETURN LEDGER
@@ -3502,6 +3550,7 @@ class SaleController extends Controller
 
             // Create a map of existing items for easy diff: key = pid_vid
             $oldMap = [];
+            $distStockDiffs = [];
             foreach ($old_product_ids as $idx => $pid) {
                 $pid = trim($pid);
                 if (empty($pid)) continue;
@@ -3556,6 +3605,7 @@ class SaleController extends Controller
                 // --- Update stock ---
                 $old_qty = $oldMap[$key] ?? 0;
                 $qty_diff = $qty - $old_qty;
+                $distStockDiffs[] = ['product_id' => $product_id, 'variant_id' => $vId ?: null, 'diff' => $qty_diff, 'price' => $prices[$index] ?? 0];
                 
                 // Clear from map so we know it's handled
                 unset($oldMap[$key]);
@@ -3617,6 +3667,7 @@ class SaleController extends Controller
                 $parts = explode('_', $key);
                 $pid = $parts[0];
                 $vid = $parts[1] === '0' ? null : $parts[1];
+                $distStockDiffs[] = ['product_id' => $pid, 'variant_id' => $vid, 'diff' => -$old_qty, 'price' => 0];
 
                 $prodModel = \App\Models\Product::find($pid);
                 $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
@@ -3758,6 +3809,22 @@ class SaleController extends Controller
                             'created_by'     => auth()->id(),
                         ]);
                         $distributor->update(['current_balance' => $newBalance]);
+
+                        // 🚚 SYNC DISTRIBUTOR CUSTODY STOCK ON SALE EDIT
+                        foreach ($distStockDiffs as $dDiff) {
+                            if ($dDiff['diff'] == 0) continue;
+                            $dStock = \App\Models\DistributorStock::firstOrCreate([
+                                'distributor_id' => $distributor->id,
+                                'product_id'     => $dDiff['product_id'],
+                                'variant_id'     => $dDiff['variant_id'],
+                            ], ['qty' => 0, 'avg_price' => $dDiff['price']]);
+
+                            $dStock->qty = max(0, (float)$dStock->qty + $dDiff['diff']);
+                            if ($dDiff['price'] > 0) {
+                                $dStock->avg_price = $dDiff['price'];
+                            }
+                            $dStock->save();
+                        }
                     }
                 } elseif (str_starts_with($customer_id, 'dc_')) {
                     $dcId = (int) str_replace('dc_', '', $customer_id);

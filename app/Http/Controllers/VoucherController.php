@@ -834,7 +834,16 @@ class VoucherController extends Controller
 
         // ✅ Remarks & amounts are already arrays due to model casts
         $remarks = $voucher->remarks ?? [];
+        if (!is_array($remarks)) {
+            $decoded = json_decode($remarks, true);
+            $remarks = is_array($decoded) ? $decoded : (!empty($remarks) ? [$remarks] : []);
+        }
+
         $amounts = $voucher->amount ?? [];
+        if (!is_array($amounts)) {
+            $decoded = json_decode($amounts, true);
+            $amounts = is_array($decoded) ? $decoded : (!empty($amounts) ? [$amounts] : []);
+        }
 
         // ✅ Build rows (Remarks + Amount only)
         $rows = [];

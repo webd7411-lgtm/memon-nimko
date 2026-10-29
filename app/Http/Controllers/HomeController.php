@@ -20,6 +20,11 @@ class HomeController extends Controller
         $user     = Auth::user();
         $usertype = $user->usertype;
 
+        // Redirect Order Booker directly to dedicated booking screen
+        if ($usertype == 'order_booker' || ($user->distributor_id && !$user->distributor && !$user->hasRole('Super Admin') && $user->email !== 'admin@admin.com')) {
+            return redirect()->route('distributor.booker.create');
+        }
+
         // Redirect Distributor to dedicated portal
         if ($usertype == 'distributor' || ($user->distributor && !$user->hasRole('Super Admin') && $user->email !== 'admin@admin.com')) {
             return redirect()->route('distributor.dashboard');
@@ -653,17 +658,34 @@ class HomeController extends Controller
         }
         $customerReceivables = $custRecQ->sum('customer_ledgers.closing_balance');
 
+        $vendorLedgerQ = DB::table('vendor_ledgers')
+            ->whereIn('id', function($q) {
+                $q->select(DB::raw('MAX(id)'))->from('vendor_ledgers')->groupBy('vendor_id');
+            });
+
         if (!is_all_branches()) {
-            $vendorPayables = (float) DB::table('purchases')
-                ->where('branch_id', active_branch_id())
-                ->sum('due_amount');
-        } else {
-            $vendorPayables = (float) DB::table('vendor_ledgers')
-                ->whereIn('id', function($q) {
-                    $q->select(DB::raw('MAX(id)'))->from('vendor_ledgers')->groupBy('vendor_id');
+            $branchVendorIds = DB::table('purchases')->where('branch_id', active_branch_id())->pluck('vendor_id')
+                ->merge(DB::table('raw_material_purchases')->where('branch_id', active_branch_id())->pluck('vendor_id'))
+                ->merge(DB::table('vendor_payments')->where('branch_id', active_branch_id())->pluck('vendor_id'))
+                ->merge(DB::table('raw_material_purchase_returns')->where('branch_id', active_branch_id())->pluck('vendor_id'))
+                ->filter()->unique();
+
+            $otherBranchVendorIds = DB::table('purchases')->where('branch_id', '!=', active_branch_id())->pluck('vendor_id')
+                ->merge(DB::table('raw_material_purchases')->where('branch_id', '!=', active_branch_id())->pluck('vendor_id'))
+                ->merge(DB::table('vendor_payments')->where('branch_id', '!=', active_branch_id())->pluck('vendor_id'))
+                ->filter()->unique();
+
+            $applicableVendorIds = DB::table('vendors')
+                ->where(function($q) use ($branchVendorIds, $otherBranchVendorIds) {
+                    $q->whereIn('id', $branchVendorIds)
+                      ->orWhereNotIn('id', $otherBranchVendorIds);
                 })
-                ->sum('closing_balance');
+                ->pluck('id');
+
+            $vendorLedgerQ->whereIn('vendor_id', $applicableVendorIds);
         }
+
+        $vendorPayables = (float) $vendorLedgerQ->sum('closing_balance');
 
         $stockValQ = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')

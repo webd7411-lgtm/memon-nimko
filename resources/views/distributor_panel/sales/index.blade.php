@@ -64,7 +64,7 @@
                         <th class="text-center">Mode</th>
                         <th class="text-end">Total Amount</th>
                         <th class="text-end">Cash Paid</th>
-                        <th class="text-end">Due (Udhaar)</th>
+                        <th class="text-end">Due Balance</th>
                         <th class="text-end pe-4">Receipt</th>
                     </tr>
                 </thead>

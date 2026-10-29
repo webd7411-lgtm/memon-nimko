@@ -3,6 +3,7 @@
     $currentType = request('type');
     $pendingCount = isset($pendingOrdersCount) ? $pendingOrdersCount : \App\Models\DistributorOrder::where('status', 'pending')->count();
     $pendingPaymentsCount = \App\Models\DistributorPayment::where('status', 'pending')->count();
+    $pendingClaimsCount = \App\Models\DistributorClaim::where('status', 'pending')->count();
 @endphp
 
 <style>
@@ -134,10 +135,32 @@
                 @endif
             </a>
             @endcan
+
+            @can('Distributor Claims')
+            <!-- 9. Claims (Trade Discounts, Damage, Freight) -->
+            <a href="{{ route('admin.distributors.claims') }}" 
+               class="dist-nav-tab {{ $currentRoute === 'admin.distributors.claims' ? 'active' : '' }}">
+                Claims & Discounts
+                @if($pendingClaimsCount > 0)
+                    <span class="badge rounded-pill badge-count shadow-sm" style="background: #ef4444 !important; color: #ffffff !important; font-weight: 700; box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);">{{ $pendingClaimsCount }}</span>
+                @endif
+            </a>
+            @endcan
+            <!-- 9. Shop Bookings (Order Booker Market Demands) -->
+            <a href="{{ route('distributor.shop_bookings.index') }}" 
+               class="dist-nav-tab" style="color: #d97706 !important; font-weight: 700;">
+                <i class="fas fa-boxes-packing text-warning me-1"></i> Shop Bookings
+            </a>
         </nav>
 
         <!-- Right Side Quick Actions (Small, Compact Buttons) -->
-        <div class="d-flex align-items-center gap-1.5 py-1">
+        <div class="d-flex align-items-center gap-2 py-1">
+            <a href="{{ route('distributor.booker.create') }}" class="btn btn-outline-success dist-btn-action shadow-sm" title="Book Order for Shop">
+                <i class="fas fa-plus-circle" style="font-size: 0.7rem;"></i> + Book Order
+            </a>
+            <a href="{{ route('distributor.dashboard') }}" class="btn text-white dist-btn-action shadow-sm" style="background: linear-gradient(135deg, #0f766e, #0d9488); border: 1px solid #14b8a6;" title="Open Distributor & Booker Portal">
+                <i class="fas fa-truck-moving" style="font-size: 0.7rem;"></i> Distributor Portal
+            </a>
             @if($currentRoute === 'admin.distributors.index')
             @can('Create Distributor')
             <button type="button" class="btn btn-outline-dark dist-btn-action shadow-sm"

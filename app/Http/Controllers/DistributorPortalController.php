@@ -18,6 +18,14 @@ use App\Models\AccountHead;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Models\DistributorShopBooking;
+use App\Models\DistributorShopBookingItem;
+use App\Models\User;
+use App\Models\ProductVariant;
+use App\Models\DistributorClaim;
+use App\Models\DistributorClaimItem;
+use Illuminate\Support\Facades\Hash;
+
 
 class DistributorPortalController extends Controller
 {
@@ -30,6 +38,17 @@ class DistributorPortalController extends Controller
         if (!$user) {
             abort(403, 'Unauthorized');
         }
+        // Order Booker direct distributor lookup
+        if ($user->usertype === 'order_booker') {
+            if ($user->distributor_id) {
+                $bookerDist = Distributor::find($user->distributor_id);
+                if ($bookerDist) {
+                    return $bookerDist;
+                }
+            }
+            abort(403, 'Order Booker account is not linked to any active distributor.');
+        }
+
 
         $isAdmin = false;
         try {
@@ -95,10 +114,26 @@ class DistributorPortalController extends Controller
     }
 
     /**
+     * Enforce strict role boundary: Order Bookers can ONLY access booking pages.
+     */
+    protected function enforceBookerRestriction()
+    {
+        $user = Auth::user();
+        if ($user && $user->usertype === 'order_booker') {
+            $rName = request()->route() ? request()->route()->getName() : '';
+            if (!str_starts_with($rName, 'distributor.booker.') && $rName !== 'logout') {
+                return redirect()->route('distributor.booker.create')->send();
+            }
+        }
+    }
+
+
+    /**
      * Distributor Portal Dashboard.
      */
     public function dashboard(Request $request)
     {
+        $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
         $user = Auth::user();
@@ -275,6 +310,7 @@ class DistributorPortalController extends Controller
      */
     public function myStock(Request $request)
     {
+        $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
         $query = DistributorStock::with(['product.unit', 'variant'])
@@ -299,6 +335,7 @@ class DistributorPortalController extends Controller
      */
     public function myOrders(Request $request)
     {
+        $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
         $query = DistributorOrder::with(['items.product'])
@@ -414,6 +451,7 @@ class DistributorPortalController extends Controller
      */
     public function myCustomers(Request $request)
     {
+        $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
         $query = DistributorCustomer::where('distributor_id', $distributor->id);
@@ -513,13 +551,7 @@ class DistributorPortalController extends Controller
     {
         $distributor = $this->getDistributor();
 
-        // Ensure a default walk-in customer exists for this distributor
-        $walkin = DistributorCustomer::firstOrCreate(
-            ['distributor_id' => $distributor->id, 'shop_name' => 'Walk-in Customer'],
-            ['owner_name' => 'Walk-in', 'phone' => '', 'area' => 'Counter', 'status' => 'active', 'current_balance' => 0]
-        );
-
-        // Get customers belonging to distributor
+        // Get registered retail customers belonging to distributor
         $customers = DistributorCustomer::where('distributor_id', $distributor->id)
             ->where('status', 'active')
             ->orderBy('shop_name')
@@ -542,7 +574,7 @@ class DistributorPortalController extends Controller
             ->get();
         $accountHeads = \App\Models\AccountHead::where('status', 1)->get();
 
-        return view('distributor_panel.sales.create', compact('distributor', 'customers', 'stocks', 'invoiceNo', 'categories', 'bankAccounts', 'walkin', 'accountHeads'));
+        return view('distributor_panel.sales.create', compact('distributor', 'customers', 'stocks', 'invoiceNo', 'categories', 'bankAccounts', 'accountHeads'));
     }
 
     /**
@@ -731,6 +763,7 @@ class DistributorPortalController extends Controller
      */
     public function salesList(Request $request)
     {
+        $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
         $query = DistributorSale::with('customer')
@@ -820,6 +853,7 @@ class DistributorPortalController extends Controller
      */
     public function companyLedger(Request $request)
     {
+        $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
         $query = DistributorLedger::where('distributor_id', $distributor->id);
@@ -842,6 +876,7 @@ class DistributorPortalController extends Controller
      */
     public function payments(Request $request)
     {
+        $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
         $query = DistributorPayment::where('distributor_id', $distributor->id)
@@ -1190,6 +1225,607 @@ class DistributorPortalController extends Controller
 
         $account->delete();
         return redirect()->route('distributor.accounts.index')->with('success', 'Account deleted successfully.');
+    }
+
+
+
+    // ==========================================
+    // ORDER BOOKER MANAGEMENT (Under Distributor)
+    // ==========================================
+    public function bookersList(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $query = User::where('distributor_id', $distributor->id)
+            ->where('usertype', 'order_booker');
+
+        if ($request->search) {
+            $s = $request->search;
+            $query->where(function($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                  ->orWhere('email', 'like', "%{$s}%");
+            });
+        }
+
+        $bookers = $query->latest()->paginate(15);
+
+        // Stats
+        $todayBookingsCount = DistributorShopBooking::where('distributor_id', $distributor->id)
+            ->whereDate('booking_date', now()->format('Y-m-d'))
+            ->count();
+        $todayBookingsTotal = (float) DistributorShopBooking::where('distributor_id', $distributor->id)
+            ->whereDate('booking_date', now()->format('Y-m-d'))
+            ->sum('grand_total');
+
+        return view('distributor_panel.bookers.index', compact('distributor', 'bookers', 'todayBookingsCount', 'todayBookingsTotal'));
+    }
+
+    public function storeBooker(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $user = User::create([
+            'name'           => $request->name,
+            'email'          => $request->email,
+            'password'       => Hash::make($request->password),
+            'usertype'       => 'order_booker',
+            'distributor_id' => $distributor->id,
+            'branch_id'      => $distributor->user ? $distributor->user->branch_id : null,
+        ]);
+
+        try {
+            $user->assignRole('Distributor');
+        } catch (\Throwable $e) {}
+
+        return redirect()->route('distributor.bookers.index')->with('success', "Order Booker '{$request->name}' registered successfully! They can now log in.");
+    }
+
+    public function destroyBooker($id)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+        $booker = User::where('distributor_id', $distributor->id)
+            ->where('usertype', 'order_booker')
+            ->findOrFail($id);
+
+        $hasBookings = DistributorShopBooking::where('booker_user_id', $booker->id)->exists();
+        if ($hasBookings) {
+            $booker->usertype = 'inactive_booker';
+            $booker->save();
+            return redirect()->route('distributor.bookers.index')->with('success', 'Order Booker marked inactive (bookings history preserved).');
+        }
+
+        $booker->delete();
+        return redirect()->route('distributor.bookers.index')->with('success', 'Order Booker removed successfully.');
+    }
+
+    // ==========================================
+    // ORDER BOOKING INTERFACE (Booker takes order)
+    // ==========================================
+    public function createShopBooking(Request $request)
+    {
+        $distributor = $this->getDistributor();
+        $user = Auth::user();
+
+        // Retail shops assigned to this distributor
+        $customers = DistributorCustomer::where('distributor_id', $distributor->id)
+            ->where('status', 'active')
+            ->orderBy('shop_name')
+            ->get();
+
+        // Products catalog
+        $products = Product::with(['unit', 'variants', 'category_relation'])
+            ->orderBy('item_name')
+            ->get();
+
+        // Stock availability map for indicators
+        $stockMap = DistributorStock::where('distributor_id', $distributor->id)
+            ->get()
+            ->keyBy(function($st) {
+                return $st->product_id . '_' . ($st->variant_id ?? 0);
+            });
+
+        $bookingNo = DistributorShopBooking::generateBookingNo();
+        $isBookerUser = ($user->usertype === 'order_booker');
+
+        return view('distributor_panel.booker.create', compact('distributor', 'customers', 'products', 'stockMap', 'bookingNo', 'isBookerUser'));
+    }
+
+    public function getShopCreditInfo($id)
+    {
+        $distributor = $this->getDistributor();
+        $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        $balance = (float) $customer->current_balance;
+
+        return response()->json([
+            'success'         => true,
+            'id'              => $customer->id,
+            'shop_name'       => $customer->shop_name,
+            'owner_name'      => $customer->owner_name ?: 'N/A',
+            'phone'           => $customer->phone ?: 'N/A',
+            'area'            => $customer->area ?: 'N/A',
+            'address'         => $customer->address ?: 'N/A',
+            'current_balance' => $balance,
+            'formatted_due'   => 'Rs ' . number_format(abs($balance), 2),
+            'has_due'         => $balance > 0,
+            'due_status'      => $balance > 0 ? 'Outstanding Balance Due' : ($balance < 0 ? 'Advance Balance Available' : 'Account Clear / Zero Balance'),
+            'badge_class'     => $balance > 0 ? 'bg-danger' : ($balance < 0 ? 'bg-info' : 'bg-success'),
+        ]);
+    }
+
+    public function storeShopBooking(Request $request)
+    {
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'distributor_customer_id' => 'required|exists:distributor_customers,id',
+            'product_id'              => 'required|array|min:1',
+            'qty'                     => 'required|array|min:1',
+            'unit_price'              => 'required|array|min:1',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $customer = DistributorCustomer::where('distributor_id', $distributor->id)
+                ->findOrFail($request->distributor_customer_id);
+
+            $subtotal = 0;
+            $totalQty = 0;
+            $itemsData = [];
+
+            foreach ($request->product_id as $index => $pId) {
+                if (empty($pId)) continue;
+                $qty = (float) ($request->qty[$index] ?? 0);
+                $price = (float) ($request->unit_price[$index] ?? 0);
+                $variantId = $request->variant_id[$index] ?? null;
+
+                if ($qty <= 0) continue;
+
+                $lineSubtotal = $qty * $price;
+                $subtotal += $lineSubtotal;
+                $totalQty += $qty;
+
+                $itemsData[] = [
+                    'product_id' => $pId,
+                    'variant_id' => $variantId,
+                    'qty'        => $qty,
+                    'unit_price' => $price,
+                    'subtotal'   => $lineSubtotal,
+                ];
+            }
+
+            if (empty($itemsData)) {
+                throw new \Exception('Please add at least one product with quantity to book order.');
+            }
+
+            $discount = (float) ($request->discount ?? 0);
+            $grandTotal = max(0, $subtotal - $discount);
+
+            $booking = DistributorShopBooking::create([
+                'booking_no'              => DistributorShopBooking::generateBookingNo(),
+                'distributor_id'          => $distributor->id,
+                'booker_user_id'          => Auth::id(),
+                'distributor_customer_id' => $customer->id,
+                'booking_date'            => $request->booking_date ?? now()->toDateString(),
+                'total_items'             => count($itemsData),
+                'total_qty'               => $totalQty,
+                'subtotal'                => $subtotal,
+                'discount'                => $discount,
+                'grand_total'             => $grandTotal,
+                'status'                  => 'booked',
+                'notes'                   => $request->notes,
+            ]);
+
+            foreach ($itemsData as $it) {
+                DistributorShopBookingItem::create([
+                    'booking_id' => $booking->id,
+                    'product_id' => $it['product_id'],
+                    'variant_id' => $it['variant_id'],
+                    'qty'        => $it['qty'],
+                    'unit_price' => $it['unit_price'],
+                    'subtotal'   => $it['subtotal'],
+                ]);
+            }
+
+            // NOTE: Stock is NOT deducted!
+            // Customer Ledger is NOT debited!
+            DB::commit();
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success'    => true,
+                    'message'    => "Booking {$booking->booking_no} recorded successfully for {$customer->shop_name}!",
+                    'booking_id' => $booking->id,
+                    'booking_no' => $booking->booking_no,
+                ]);
+            }
+
+            return redirect()->route('distributor.booker.my_bookings')->with('success', "Order #{$booking->booking_no} successfully booked for {$customer->shop_name}! It is now sent to Distributor for dispatch.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+            return back()->withInput()->with('error', 'Error recording booking: ' . $e->getMessage());
+        }
+    }
+
+    public function myShopBookings(Request $request)
+    {
+        $distributor = $this->getDistributor();
+        $user = Auth::user();
+
+        $query = DistributorShopBooking::with(['customer', 'items.product', 'items.variant'])
+            ->where('distributor_id', $distributor->id);
+
+        if ($user->usertype === 'order_booker') {
+            $query->where('booker_user_id', $user->id);
+        }
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->date) {
+            $query->whereDate('booking_date', $request->date);
+        }
+
+        $bookings = $query->latest('id')->paginate(15);
+        $isBookerUser = ($user->usertype === 'order_booker');
+
+        return view('distributor_panel.booker.my_bookings', compact('distributor', 'bookings', 'isBookerUser'));
+    }
+
+    public function showShopBookingReceipt($id)
+    {
+        $distributor = $this->getDistributor();
+        $booking = DistributorShopBooking::with(['customer', 'booker', 'items.product.unit', 'items.variant'])
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        return view('distributor_panel.booker.receipt', compact('distributor', 'booking'));
+    }
+
+    // ==========================================
+    // DISTRIBUTOR VIEW & EXECUTION OF BOOKINGS
+    // ==========================================
+    public function shopBookingsList(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $query = DistributorShopBooking::with(['customer', 'booker', 'sale', 'items.product.unit', 'items.variant'])
+            ->where('distributor_id', $distributor->id);
+
+        if ($request->status && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->booker_id) {
+            $query->where('booker_user_id', $request->booker_id);
+        }
+
+        if ($request->customer_id) {
+            $query->where('distributor_customer_id', $request->customer_id);
+        }
+
+        if ($request->start_date && $request->end_date) {
+            $query->whereBetween('booking_date', [$request->start_date, $request->end_date]);
+        }
+
+        $bookings = $query->latest('id')->paginate(15);
+
+        // Stats
+        $pendingBookingsCount = DistributorShopBooking::where('distributor_id', $distributor->id)->where('status', 'booked')->count();
+        $pendingBookingsAmount = (float) DistributorShopBooking::where('distributor_id', $distributor->id)->where('status', 'booked')->sum('grand_total');
+        $deliveredTodayCount = DistributorShopBooking::where('distributor_id', $distributor->id)->where('status', 'delivered')->whereDate('converted_at', now()->format('Y-m-d'))->count();
+        $deliveredTodayAmount = (float) DistributorShopBooking::where('distributor_id', $distributor->id)->where('status', 'delivered')->whereDate('converted_at', now()->format('Y-m-d'))->sum('grand_total');
+
+        $bookers = User::where('distributor_id', $distributor->id)->where('usertype', 'order_booker')->get();
+        $customers = DistributorCustomer::where('distributor_id', $distributor->id)->orderBy('shop_name')->get();
+
+        return view('distributor_panel.shop_bookings.index', compact('distributor', 'bookings', 'bookers', 'customers', 'pendingBookingsCount', 'pendingBookingsAmount', 'deliveredTodayCount', 'deliveredTodayAmount'));
+    }
+
+    public function showShopBookingDetails($id)
+    {
+        $distributor = $this->getDistributor();
+        $booking = DistributorShopBooking::with(['customer', 'booker', 'items.product.unit', 'items.variant', 'sale'])
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        // Check stock availability for each item
+        $stockCheck = [];
+        $canDeliver = true;
+        foreach ($booking->items as $item) {
+            $st = DistributorStock::where('distributor_id', $distributor->id)
+                ->where('product_id', $item->product_id)
+                ->when($item->variant_id, fn($q) => $q->where('variant_id', $item->variant_id))
+                ->first();
+            $avail = $st ? (float)$st->qty : 0;
+            $stockCheck[$item->id] = [
+                'available' => $avail,
+                'is_ok'     => $avail >= (float)$item->qty,
+            ];
+            if ($avail < (float)$item->qty) {
+                $canDeliver = false;
+            }
+        }
+
+        return response()->json([
+            'success'     => true,
+            'booking'     => $booking,
+            'stock_check' => $stockCheck,
+            'can_deliver' => $canDeliver,
+        ]);
+    }
+
+    public function deliverShopBooking(Request $request, $id)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $booking = DistributorShopBooking::with(['items', 'customer'])
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        if ($booking->status === 'delivered') {
+            return back()->with('error', 'This booking has already been delivered and converted to sale.');
+        }
+
+        if ($booking->status === 'cancelled') {
+            return back()->with('error', 'Cannot deliver a cancelled booking.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $customer = $booking->customer;
+
+            // 1. Verify and deduct stock for all items
+            foreach ($booking->items as $item) {
+                $distStock = DistributorStock::where('distributor_id', $distributor->id)
+                    ->where('product_id', $item->product_id)
+                    ->when($item->variant_id, fn($q) => $q->where('variant_id', $item->variant_id))
+                    ->first();
+
+                if (!$distStock || (float)$distStock->qty < (float)$item->qty) {
+                    $prodName = Product::find($item->product_id)->item_name ?? 'Item';
+                    $avail = $distStock ? (float)$distStock->qty : 0;
+                    throw new \Exception("Insufficient stock in your custody for '{$prodName}'. Available: {$avail}, Booked: {$item->qty}. Please replenish stock first.");
+                }
+
+                $distStock->qty = (float)$distStock->qty - (float)$item->qty;
+                $distStock->save();
+            }
+
+            // 2. Create DistributorSale (Invoice)
+            $paidAmount = (float) ($request->paid_amount ?? 0);
+            $grandTotal = (float) $booking->grand_total;
+            $dueAmount = max(0, $grandTotal - $paidAmount);
+            $paymentType = $paidAmount >= $grandTotal ? 'cash' : ($paidAmount > 0 ? 'partial' : 'credit');
+
+            $invoiceNo = DistributorSale::generateInvoiceNo();
+            $bookerName = $booking->booker ? $booking->booker->name : 'Order Booker';
+
+            $sale = DistributorSale::create([
+                'invoice_no'              => $invoiceNo,
+                'distributor_id'          => $distributor->id,
+                'distributor_customer_id' => $customer->id,
+                'sale_date'               => now()->toDateString(),
+                'subtotal'                => $booking->subtotal,
+                'discount'                => $booking->discount,
+                'grand_total'             => $grandTotal,
+                'paid_amount'             => $paidAmount,
+                'due_amount'              => $dueAmount,
+                'payment_type'            => $paymentType,
+                'notes'                   => "Delivered from Booking #{$booking->booking_no} (Booked by: {$bookerName})",
+            ]);
+
+            // 3. Create Sale Items
+            foreach ($booking->items as $item) {
+                DistributorSaleItem::create([
+                    'distributor_sale_id' => $sale->id,
+                    'product_id'          => $item->product_id,
+                    'variant_id'          => $item->variant_id,
+                    'qty'                 => $item->qty,
+                    'unit_price'          => $item->unit_price,
+                    'subtotal'            => $item->subtotal,
+                ]);
+            }
+
+            // 4. Update Customer Balance & Post to Retailer Ledger
+            $newBalance = (float)$customer->current_balance + $dueAmount;
+            $customer->current_balance = $newBalance;
+            $customer->save();
+
+            // Ledger Entry: Sale (Debit)
+            DistributorCustomerLedger::create([
+                'distributor_customer_id' => $customer->id,
+                'distributor_id'          => $distributor->id,
+                'date'                    => now()->toDateString(),
+                'type'                    => 'sale',
+                'reference_no'            => $invoiceNo,
+                'description'             => "Delivered goods (Booking #{$booking->booking_no})",
+                'debit'                   => $grandTotal,
+                'credit'                  => 0,
+                'balance'                 => (float)$customer->current_balance - $dueAmount + $grandTotal,
+            ]);
+
+            // If cash paid on delivery, Ledger Entry: Payment Received (Credit)
+            if ($paidAmount > 0) {
+                DistributorCustomerLedger::create([
+                    'distributor_customer_id' => $customer->id,
+                    'distributor_id'          => $distributor->id,
+                    'date'                    => now()->toDateString(),
+                    'type'                    => 'payment_received',
+                    'reference_no'            => 'REC-' . $invoiceNo,
+                    'description'             => "Cash received on delivery ({$invoiceNo})",
+                    'debit'                   => 0,
+                    'credit'                  => $paidAmount,
+                    'balance'                 => $newBalance,
+                ]);
+            }
+
+            // 5. Update Booking status to delivered
+            $booking->update([
+                'status'            => 'delivered',
+                'converted_sale_id' => $sale->id,
+                'converted_at'      => now(),
+                'converted_by'      => Auth::id(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('distributor.shop_bookings.index')->with('success', "Booking #{$booking->booking_no} successfully delivered! Invoice #{$invoiceNo} generated, stock deducted, and shop ledger updated.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Delivery failed: ' . $e->getMessage());
+        }
+    }
+
+    public function cancelShopBooking(Request $request, $id)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $booking = DistributorShopBooking::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        if ($booking->status === 'delivered') {
+            return back()->with('error', 'Cannot cancel a booking that has already been delivered.');
+        }
+
+        $booking->update([
+            'status' => 'cancelled',
+            'notes'  => $booking->notes . ' [Cancelled on ' . now()->toDateTimeString() . ']',
+        ]);
+
+        return back()->with('success', "Booking #{$booking->booking_no} has been cancelled.");
+    }
+
+    // =========================================================================
+    // DISTRIBUTOR CLAIMS & REIMBURSEMENTS (Portal)
+    // =========================================================================
+
+    /**
+     * Display distributor's submitted claims and their status.
+     */
+    public function claims(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $query = DistributorClaim::where('distributor_id', $distributor->id)
+            ->with(['items.product', 'approver'])
+            ->latest('id');
+
+        if ($request->filled('claim_type')) {
+            $query->where('claim_type', $request->claim_type);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('claim_date', [$request->start_date, $request->end_date]);
+        }
+
+        $claims = $query->paginate(20)->withQueryString();
+
+        // Statistics
+        $totalClaimsCount = DistributorClaim::where('distributor_id', $distributor->id)->count();
+        $pendingCount = DistributorClaim::where('distributor_id', $distributor->id)->where('status', 'pending')->count();
+        $pendingAmount = DistributorClaim::where('distributor_id', $distributor->id)->where('status', 'pending')->sum('total_amount');
+        $approvedAmount = DistributorClaim::where('distributor_id', $distributor->id)->where('status', 'approved')->sum('approved_amount');
+
+        // Products for itemized damage / scheme picker
+        $products = Product::select('id', 'item_name', 'price', 'wholesale_price')->orderBy('item_name')->get();
+
+        return view('distributor_panel.claims.index', compact(
+            'distributor', 'claims', 'totalClaimsCount', 'pendingCount', 'pendingAmount', 'approvedAmount', 'products'
+        ));
+    }
+
+    /**
+     * Submit a new claim to Company / Head Office.
+     */
+    public function storeClaim(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'claim_type'      => 'required|string|in:trade_discount,damage_stock,freight,target_incentive,other',
+            'claim_date'      => 'required|date',
+            'total_amount'    => 'required|numeric|min:0.01',
+            'settlement_type' => 'required|in:credit_note,stock_replacement',
+            'attachment'      => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'description'     => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $uploadDir = public_path('uploads/claims');
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                $fileName = 'claim_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
+                $file->move($uploadDir, $fileName);
+                $attachmentPath = 'uploads/claims/' . $fileName;
+            }
+
+            $claimNo = DistributorClaim::generateClaimNo();
+
+            $claim = DistributorClaim::create([
+                'claim_no'        => $claimNo,
+                'distributor_id'  => $distributor->id,
+                'claim_type'      => $request->claim_type,
+                'claim_date'      => $request->claim_date,
+                'total_amount'    => (float) $request->total_amount,
+                'approved_amount' => 0.00,
+                'settlement_type' => $request->settlement_type,
+                'status'          => 'pending',
+                'attachment'      => $attachmentPath,
+                'description'     => $request->description,
+                'submitted_by'    => Auth::id(),
+            ]);
+
+            // Save line items if provided
+            if ($request->has('items') && is_array($request->items)) {
+                foreach ($request->items as $item) {
+                    if (!empty($item['product_id']) || !empty($item['qty'])) {
+                        $qty = (float)($item['qty'] ?? 1);
+                        $rate = (float)($item['unit_rate'] ?? 0);
+                        DistributorClaimItem::create([
+                            'distributor_claim_id' => $claim->id,
+                            'product_id'           => !empty($item['product_id']) ? $item['product_id'] : null,
+                            'variant_id'           => !empty($item['variant_id']) ? $item['variant_id'] : null,
+                            'batch_no'             => $item['batch_no'] ?? null,
+                            'qty'                  => $qty,
+                            'unit_rate'            => $rate,
+                            'subtotal'             => (float)($item['subtotal'] ?? ($qty * $rate)),
+                            'reason'               => $item['reason'] ?? null,
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+            return back()->with('success', "Claim #{$claimNo} of Rs. " . number_format($request->total_amount, 2) . " submitted successfully to Head Office for verification!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error submitting claim: ' . $e->getMessage());
+        }
     }
 
 }

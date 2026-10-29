@@ -276,13 +276,14 @@
         .portal-nav-list {
             display: flex;
             align-items: center;
-            gap: 3px;
+            gap: 2px;
             margin: 0;
-            padding: 5px 0;
+            padding: 4px 0;
             list-style: none;
             overflow-x: auto;
             scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
+            width: 100%;
         }
         .portal-nav-list::-webkit-scrollbar {
             display: none;
@@ -295,12 +296,12 @@
         .portal-nav-link {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 7px 12px;
-            font-size: 0.83rem;
+            gap: 5px;
+            padding: 6px 9px;
+            font-size: 0.80rem;
             font-weight: 600;
             color: #475569;
-            border-radius: 8px;
+            border-radius: 7px;
             text-decoration: none;
             transition: all 0.15s ease;
             white-space: nowrap;
@@ -400,8 +401,10 @@
     @php
         $navDistributor = $distributor ?? null;
         $isSuperAdmin = false;
+        $isBookerUser = false;
         if (Auth::check()) {
             $u = Auth::user();
+            $isBookerUser = ($u->usertype === 'order_booker');
             $isSuperAdmin = ($u->email === 'admin@admin.com') || ($u->usertype === 'admin') || (method_exists($u, 'hasRole') && $u->hasRole(['Super Admin', 'super-admin']));
             if (!$navDistributor) {
                 if ($isSuperAdmin) {
@@ -412,6 +415,8 @@
                     if (!$navDistributor) {
                         $navDistributor = \App\Models\Distributor::where('id', '!=', 1)->first() ?? \App\Models\Distributor::first();
                     }
+                } elseif ($isBookerUser) {
+                    $navDistributor = \App\Models\Distributor::find($u->distributor_id);
                 } else {
                     $navDistributor = \App\Models\Distributor::where('user_id', $u->id)->first();
                 }
@@ -429,15 +434,18 @@
                     <!-- Left: Brand Logo & Title -->
                     <a href="{{ route('distributor.dashboard') }}" class="portal-brand">
                         @if(file_exists(public_path('assets/images/logo.png')))
-                            <img src="{{ asset('assets/images/logo.png') }}" alt="{{ sys_setting('software_name', 'Memon Nimko') }}" class="portal-brand-img d-none d-sm-inline-block">
+                            <img src="{{ asset('assets/images/logo.png') }}" alt="{{ shop_name() }}" class="portal-brand-img d-none d-sm-inline-block">
                         @endif
                         <div class="portal-brand-icon d-inline-flex d-sm-none">
                             <i class="fas fa-boxes-stacked"></i>
                         </div>
                         <div class="portal-brand-text">
-                            <div class="portal-brand-title">{{ sys_setting('software_name', 'Memon Nimko') }}</div>
+                            <div class="portal-brand-title">{{ shop_name() }}</div>
                             <div class="portal-brand-badge">
                                 <i class="fas fa-truck-moving text-info"></i> Distributor Portal
+                                <span class="badge rounded-pill ms-2 px-2 py-0.5 d-none d-sm-inline-flex align-items-center" style="background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); font-size: 0.60rem; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;">
+                                    <i class="fas fa-circle text-success me-1" style="font-size: 0.38rem;"></i> Portal Active
+                                </span>
                             </div>
                         </div>
                     </a>
@@ -481,12 +489,21 @@
                         </a>
                         @endif
 
+                        @if($isBookerUser)
+                        <!-- Quick Book Order Button for Booker -->
+                        <a href="{{ route('distributor.booker.create') }}" class="btn btn-teal text-nowrap">
+                            <i class="fas fa-plus-circle"></i>
+                            <span class="d-none d-sm-inline">+ Take Order</span>
+                            <span class="d-inline d-sm-none">+ Order</span>
+                        </a>
+                        @else
                         <!-- Make Sale Quick Button -->
                         <a href="{{ route('distributor.sales.create') }}" class="btn btn-teal text-nowrap">
                             <i class="fas fa-cart-plus"></i>
                             <span class="d-none d-sm-inline">+ Make Sale</span>
                             <span class="d-inline d-sm-none">+ Sale</span>
                         </a>
+                        @endif
 
                         <!-- User Profile Dropdown -->
                         <div class="dropdown">
@@ -546,8 +563,21 @@
         <!-- TIER 2: SLEEK SECONDARY NAVBAR (Desktop & Laptop >= 992px) -->
         <div class="portal-nav-bottom d-none d-lg-block">
             <div class="container-fluid px-3 px-md-4">
-                <div class="d-flex align-items-center justify-content-between">
-                    <ul class="portal-nav-list">
+                <ul class="portal-nav-list">
+                    @if($isBookerUser)
+                        <li class="portal-nav-item">
+                            <a href="{{ route('distributor.booker.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.booker.create') ? 'active' : '' }}">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>Take Order</span>
+                            </a>
+                        </li>
+                        <li class="portal-nav-item">
+                            <a href="{{ route('distributor.booker.my_bookings') }}" class="portal-nav-link {{ request()->routeIs('distributor.booker.my_bookings') ? 'active' : '' }}">
+                                <i class="fas fa-clipboard-list"></i>
+                                <span>My Bookings</span>
+                            </a>
+                        </li>
+                    @else
                         <li class="portal-nav-item">
                             <a href="{{ route('distributor.dashboard') }}" class="portal-nav-link {{ request()->routeIs('distributor.dashboard') ? 'active' : '' }}">
                                 <i class="fas fa-chart-pie"></i>
@@ -579,6 +609,24 @@
                             </a>
                         </li>
                         <li class="portal-nav-item">
+                            <a href="{{ route('distributor.shop_bookings.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.shop_bookings.*') ? 'active' : '' }}">
+                                <i class="fas fa-boxes-packing text-warning"></i>
+                                <span>Shop Bookings</span>
+                            </a>
+                        </li>
+                        <li class="portal-nav-item">
+                            <a href="{{ route('distributor.booker.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.booker.create') ? 'active' : '' }}">
+                                <i class="fas fa-plus-circle text-success"></i>
+                                <span>Take Order</span>
+                            </a>
+                        </li>
+                        <li class="portal-nav-item">
+                            <a href="{{ route('distributor.bookers.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.bookers.*') ? 'active' : '' }}">
+                                <i class="fas fa-users-gear"></i>
+                                <span>Order Bookers</span>
+                            </a>
+                        </li>
+                        <li class="portal-nav-item">
                             <a href="{{ route('distributor.sales.index') }}" class="portal-nav-link {{ (request()->routeIs('distributor.sales.index') || request()->routeIs('distributor.sales.receipt')) ? 'active' : '' }}">
                                 <i class="fas fa-cash-register"></i>
                                 <span>Sales Register</span>
@@ -597,19 +645,21 @@
                             </a>
                         </li>
                         <li class="portal-nav-item">
+                            <a href="{{ route('distributor.claims.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.claims.*') ? 'active' : '' }}" title="Claims & Schemes">
+                                <i class="fas fa-hand-holding-dollar"></i>
+                                <span>Claims</span>
+                            </a>
+                        </li>
+                        <li class="portal-nav-item">
                             <a href="{{ route('distributor.accounts.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.accounts.*') ? 'active' : '' }}">
                                 <i class="fas fa-landmark"></i>
                                 <span>My Accounts</span>
                             </a>
                         </li>
-                    </ul>
-
-                    <div class="d-none d-xl-flex align-items-center gap-2 text-muted small py-1">
-                        <span class="badge rounded-pill bg-light text-secondary border px-2.5 py-1" style="font-size: 0.72rem; font-weight: 600;">
-                            <i class="fas fa-circle text-success me-1" style="font-size: 0.45rem;"></i> Portal Active
-                        </span>
-                    </div>
-                </div>
+                    @endif
+                </ul>
+            </div>
+        </div>
             </div>
         </div>
     </header>
@@ -659,51 +709,84 @@
             @endif
 
             <ul class="nav flex-column gap-1">
-                <li class="nav-item">
-                    <a href="{{ route('distributor.dashboard') }}" class="portal-nav-link {{ request()->routeIs('distributor.dashboard') ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-chart-pie me-2"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.sales.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.sales.create') ? 'active' : '' }} text-white w-100 py-2" style="background: rgba(20, 184, 166, 0.15); border: 1px solid rgba(20, 184, 166, 0.3);">
-                        <i class="fas fa-cart-plus me-2 text-info"></i> + Make Sale (POS)
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.stock.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.stock.*') ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-boxes-stacked me-2"></i> Stock
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.orders.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.orders.*') ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-clipboard-list me-2"></i> Demand Orders
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.customers.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.customers.*') ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-store me-2"></i> Retail Customers
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.sales.index') }}" class="portal-nav-link {{ (request()->routeIs('distributor.sales.index') || request()->routeIs('distributor.sales.receipt')) ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-cash-register me-2"></i> Sales Register
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.company_ledger.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.company_ledger.*') ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-file-invoice-dollar me-2"></i> Company Ledger
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.payments.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.payments.*') ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-money-bill-wave me-2"></i> Payment Vouchers
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('distributor.accounts.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.accounts.*') ? 'active' : '' }} text-white w-100 py-2">
-                        <i class="fas fa-landmark me-2"></i> My Accounts (COA)
-                    </a>
-                </li>
+                @if($isBookerUser)
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.booker.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.booker.create') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-plus-circle me-2 text-success"></i> Take Order
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.booker.my_bookings') }}" class="portal-nav-link {{ request()->routeIs('distributor.booker.my_bookings') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-clipboard-list me-2 text-info"></i> My Bookings
+                        </a>
+                    </li>
+                @else
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.dashboard') }}" class="portal-nav-link {{ request()->routeIs('distributor.dashboard') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-chart-pie me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.sales.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.sales.create') ? 'active' : '' }} text-white w-100 py-2" style="background: rgba(20, 184, 166, 0.15); border: 1px solid rgba(20, 184, 166, 0.3);">
+                            <i class="fas fa-cart-plus me-2 text-info"></i> + Make Sale (POS)
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.stock.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.stock.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-boxes-stacked me-2"></i> Stock
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.orders.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.orders.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-clipboard-list me-2"></i> Demand Orders
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.customers.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.customers.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-store me-2"></i> Retail Customers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.shop_bookings.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.shop_bookings.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-boxes-packing me-2 text-warning"></i> Shop Bookings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.booker.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.booker.create') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-plus-circle me-2 text-success"></i> Take Order
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.bookers.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.bookers.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-users-gear me-2 text-teal" style="color: #5eead4;"></i> Order Bookers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.sales.index') }}" class="portal-nav-link {{ (request()->routeIs('distributor.sales.index') || request()->routeIs('distributor.sales.receipt')) ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-cash-register me-2"></i> Sales Register
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.company_ledger.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.company_ledger.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-file-invoice-dollar me-2"></i> Company Ledger
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.payments.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.payments.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-money-bill-wave me-2"></i> Payment Vouchers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.claims.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.claims.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-hand-holding-dollar me-2 text-warning"></i> Claims & Schemes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.accounts.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.accounts.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-landmark me-2"></i> My Accounts (COA)
+                        </a>
+                    </li>
+                @endif
                 @if($isSuperAdmin)
                 <li class="nav-item mt-2 pt-2 border-top border-secondary-subtle">
                     <a href="{{ route('home') }}" class="btn btn-sm btn-outline-info rounded-pill w-100 py-1.5 text-white">

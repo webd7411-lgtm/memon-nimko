@@ -51,6 +51,21 @@ class Distributor extends Model
         return $this->hasMany(Account::class);
     }
 
+    public function bookers()
+    {
+        return $this->hasMany(User::class, 'distributor_id')->where('usertype', 'order_booker');
+    }
+
+    public function shopBookings()
+    {
+        return $this->hasMany(DistributorShopBooking::class);
+    }
+
+    public function claims()
+    {
+        return $this->hasMany(DistributorClaim::class);
+    }
+
     public static function generateCode()
     {
         $last = self::latest('id')->first();

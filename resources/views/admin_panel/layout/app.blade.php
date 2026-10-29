@@ -11,7 +11,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ sys_setting('software_name', 'Memon Nimko ERP') }}</title>
+    <title>{{ shop_name() }}</title>
     @include('admin_panel.layout.head')
 </head>
 <style>

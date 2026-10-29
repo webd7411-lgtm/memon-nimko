@@ -162,7 +162,7 @@
                         <textarea name="address" rows="2" class="form-control" placeholder="Optional complete shop address..."></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Initial Opening Balance (Previous Udhaar)</label>
+                        <label class="form-label fw-semibold">Initial Opening Balance (Previous Balance)</label>
                         <div class="input-group">
                             <span class="input-group-text">Rs.</span>
                             <input type="number" step="0.01" min="0" name="opening_balance" class="form-control" value="0.00">

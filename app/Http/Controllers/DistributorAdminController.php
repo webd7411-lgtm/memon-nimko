@@ -19,6 +19,9 @@ use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Models\Stock;
 use App\Models\Product;
+use App\Models\DistributorClaim;
+use App\Models\DistributorClaimItem;
+use App\Models\ExpenseVoucher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -1460,5 +1463,297 @@ class DistributorAdminController extends Controller
             DB::rollBack();
             return back()->with('error', 'Error recording payment: ' . $e->getMessage());
         }
+    }
+
+    // =========================================================================
+    // DISTRIBUTOR CLAIMS & REIMBURSEMENTS (Trade Discounts, Damage, Freight)
+    // =========================================================================
+
+    /**
+     * Display listing of all distributor claims with statistics and filter options.
+     */
+    public function claims(Request $request)
+    {
+        $distributors = Distributor::where('status', 'active')->orderBy('name')->get();
+        $expenseHeads = AccountHead::where('status', 1)->orderBy('name')->get();
+        $expenseAccounts = Account::where('status', 1)->orderBy('title')->get();
+        $products = Product::select('id', 'item_name', 'price', 'wholesale_price')->orderBy('item_name')->get();
+
+        $query = DistributorClaim::with(['distributor', 'items.product', 'expenseHead', 'expenseAccount', 'approver', 'submitter'])
+            ->latest('id');
+
+        if ($request->filled('distributor_id')) {
+            $query->where('distributor_id', $request->distributor_id);
+        }
+        if ($request->filled('claim_type')) {
+            $query->where('claim_type', $request->claim_type);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('claim_date', [$request->start_date, $request->end_date]);
+        }
+
+        $claims = $query->paginate(25)->withQueryString();
+
+        // Statistics
+        $totalClaimsCount = DistributorClaim::count();
+        $pendingClaimsCount = DistributorClaim::where('status', 'pending')->count();
+        $pendingAmount = DistributorClaim::where('status', 'pending')->sum('total_amount');
+        $approvedAmount = DistributorClaim::where('status', 'approved')->sum('approved_amount');
+
+        return view('admin_panel.distributors.claims', compact(
+            'claims', 'distributors', 'expenseHeads', 'expenseAccounts', 'products',
+            'totalClaimsCount', 'pendingClaimsCount', 'pendingAmount', 'approvedAmount'
+        ));
+    }
+
+    /**
+     * Record a new claim directly from Admin Panel on behalf of a distributor.
+     */
+    public function storeClaim(Request $request)
+    {
+        $request->validate([
+            'distributor_id'  => 'required|exists:distributors,id',
+            'claim_type'      => 'required|string',
+            'claim_date'      => 'required|date',
+            'total_amount'    => 'required|numeric|min:0.01',
+            'settlement_type' => 'required|in:credit_note,stock_replacement',
+            'attachment'      => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'description'     => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $uploadDir = public_path('uploads/claims');
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                $fileName = 'claim_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
+                $file->move($uploadDir, $fileName);
+                $attachmentPath = 'uploads/claims/' . $fileName;
+            }
+
+            $claimNo = DistributorClaim::generateClaimNo();
+
+            $claim = DistributorClaim::create([
+                'claim_no'        => $claimNo,
+                'distributor_id'  => $request->distributor_id,
+                'claim_type'      => $request->claim_type,
+                'claim_date'      => $request->claim_date,
+                'total_amount'    => (float) $request->total_amount,
+                'approved_amount' => 0.00,
+                'settlement_type' => $request->settlement_type,
+                'status'          => 'pending',
+                'attachment'      => $attachmentPath,
+                'description'     => $request->description,
+                'submitted_by'    => Auth::id(),
+            ]);
+
+            // Save items if any
+            if ($request->has('items') && is_array($request->items)) {
+                foreach ($request->items as $item) {
+                    if (!empty($item['product_id']) || !empty($item['qty'])) {
+                        $qty = (float)($item['qty'] ?? 1);
+                        $rate = (float)($item['unit_rate'] ?? 0);
+                        DistributorClaimItem::create([
+                            'distributor_claim_id' => $claim->id,
+                            'product_id'           => !empty($item['product_id']) ? $item['product_id'] : null,
+                            'variant_id'           => !empty($item['variant_id']) ? $item['variant_id'] : null,
+                            'batch_no'             => $item['batch_no'] ?? null,
+                            'qty'                  => $qty,
+                            'unit_rate'            => $rate,
+                            'subtotal'             => (float)($item['subtotal'] ?? ($qty * $rate)),
+                            'reason'               => $item['reason'] ?? null,
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+            return back()->with('success', "Claim #{$claimNo} filed successfully!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error saving claim: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Approve and settle a distributor claim.
+     * Credits Distributor Ledger & Books Company Expense.
+     */
+    public function approveClaim(Request $request, $id)
+    {
+        $claim = DistributorClaim::with(['distributor', 'items'])->findOrFail($id);
+
+        if ($claim->status === 'approved') {
+            return back()->with('info', "Claim #{$claim->claim_no} is already approved.");
+        }
+
+        $request->validate([
+            'approved_amount'    => 'required|numeric|min:0.01',
+            'settlement_type'    => 'required|in:credit_note,stock_replacement',
+            'expense_account_id' => 'nullable|exists:accounts,id',
+            'admin_notes'        => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $distributor = $claim->distributor;
+            $approvedAmount = (float) $request->approved_amount;
+            $settlementType = $request->settlement_type;
+
+            // Target Expense Account
+            $expenseAccount = null;
+            if ($request->expense_account_id) {
+                $expenseAccount = Account::with('head')->find($request->expense_account_id);
+            }
+
+            // 1. Record Company Expense Voucher
+            $voucher = null;
+            if ($approvedAmount > 0 && class_exists(ExpenseVoucher::class)) {
+                try {
+                    $evid = method_exists(ExpenseVoucher::class, 'generateInvoiceNo') 
+                        ? ExpenseVoucher::generateInvoiceNo() 
+                        : 'EV-' . date('Ymd') . '-' . rand(1000, 9999);
+
+                    $voucher = ExpenseVoucher::create([
+                        'evid'         => $evid,
+                        'user_id'      => Auth::id(),
+                        'branch_id'    => function_exists('active_branch_id') ? active_branch_id() : null,
+                        'entry_date'   => now(),
+                        'date'         => $claim->claim_date ? $claim->claim_date->format('Y-m-d') : now()->format('Y-m-d'),
+                        'type'         => $expenseAccount ? $expenseAccount->head_id : 'Claim Expense',
+                        'party_id'     => $expenseAccount ? $expenseAccount->id : null,
+                        'remarks'      => ["Claim #{$claim->claim_no} ({$claim->type_label}) approved for {$distributor->name}. Settlement: " . ucfirst(str_replace('_', ' ', $settlementType))],
+                        'amount'       => [(string)$approvedAmount],
+                        'total_amount' => $approvedAmount,
+                    ]);
+
+                    if ($expenseAccount) {
+                        $expenseAccount->opening_balance = (float)$expenseAccount->opening_balance + $approvedAmount;
+                        $expenseAccount->save();
+                    }
+                } catch (\Throwable $ex) {
+                    \Illuminate\Support\Facades\Log::warning('Claim expense voucher creation notice: ' . $ex->getMessage());
+                }
+            }
+
+            // 2. Settlement Method
+            if ($settlementType === 'credit_note') {
+                // Post Credit entry to Distributor Ledger (Reduces their payable balance)
+                $newBalance = (float) $distributor->current_balance - $approvedAmount;
+
+                $desc = "Claim #{$claim->claim_no} Approved ({$claim->type_label}). Settled via Credit Note.";
+                if ($expenseAccount) {
+                    $desc .= " Expense booked under: {$expenseAccount->title}";
+                }
+                if ($request->admin_notes) {
+                    $desc .= " | Note: {$request->admin_notes}";
+                }
+
+                DistributorLedger::create([
+                    'distributor_id' => $distributor->id,
+                    'date'           => now()->format('Y-m-d'),
+                    'type'           => 'claim_adjustment',
+                    'reference_no'   => $claim->claim_no,
+                    'description'    => $desc,
+                    'debit'          => 0,
+                    'credit'         => $approvedAmount,
+                    'balance'        => $newBalance,
+                    'created_by'     => Auth::id(),
+                ]);
+
+                $distributor->update(['current_balance' => $newBalance]);
+            } elseif ($settlementType === 'stock_replacement') {
+                // Settle via Free Replacement stock in Distributor custody
+                if ($claim->items && $claim->items->count() > 0) {
+                    foreach ($claim->items as $item) {
+                        if ($item->product_id && $item->qty > 0) {
+                            $distStock = DistributorStock::firstOrCreate([
+                                'distributor_id' => $distributor->id,
+                                'product_id'     => $item->product_id,
+                                'variant_id'     => $item->variant_id,
+                            ], [
+                                'qty'       => 0,
+                                'avg_price' => $item->unit_rate ?: 0,
+                            ]);
+                            $distStock->qty += (float)$item->qty;
+                            $distStock->save();
+                        }
+                    }
+                }
+            }
+
+            // 3. Mark Claim as Approved
+            $claim->update([
+                'status'             => 'approved',
+                'approved_amount'    => $approvedAmount,
+                'settlement_type'    => $settlementType,
+                'expense_head_id'    => $expenseAccount ? $expenseAccount->head_id : null,
+                'expense_account_id' => $expenseAccount ? $expenseAccount->id : null,
+                'expense_voucher_id' => $voucher ? $voucher->id : null,
+                'admin_notes'        => $request->admin_notes,
+                'approved_by'        => Auth::id(),
+                'approved_at'        => now(),
+            ]);
+
+            DB::commit();
+
+            $settleDesc = ($settlementType === 'credit_note')
+                ? "Rs. " . number_format($approvedAmount, 2) . " credited to '{$distributor->name}' ledger & recorded in Company Expense"
+                : "approved as Free Replacement Stock issued to custody";
+
+            return back()->with('success', "Claim #{$claim->claim_no} successfully {$settleDesc}!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error approving claim: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Reject a distributor claim with reason.
+     */
+    public function rejectClaim(Request $request, $id)
+    {
+        $claim = DistributorClaim::findOrFail($id);
+
+        if ($claim->status === 'approved') {
+            return back()->with('error', 'Cannot reject an already approved claim.');
+        }
+
+        $claim->update([
+            'status'      => 'rejected',
+            'admin_notes' => $request->admin_notes ?: 'Claim rejected by administrator.',
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+        ]);
+
+        return back()->with('success', "Claim #{$claim->claim_no} marked as rejected.");
+    }
+
+    /**
+     * Delete an unapproved claim.
+     */
+    public function destroyClaim($id)
+    {
+        $claim = DistributorClaim::findOrFail($id);
+
+        if ($claim->status === 'approved') {
+            return back()->with('error', 'Approved claims cannot be deleted directly to maintain ledger integrity.');
+        }
+
+        if ($claim->attachment && file_exists(public_path($claim->attachment))) {
+            @unlink(public_path($claim->attachment));
+        }
+
+        $claim->items()->delete();
+        $claim->delete();
+
+        return back()->with('success', "Claim deleted successfully.");
     }
 }

@@ -1960,6 +1960,17 @@ class ReportingController extends Controller
             ->where('return_date', '<', $start)
             ->sum('net_amount');
 
+        // 3b. Prior Raw Material Returns (Credit: We owe less)
+        $prevRawMaterialReturns = DB::table('raw_material_purchase_returns')
+            ->where(function ($q) use ($vendorId, $vendor) {
+                $q->where('vendor_id', $vendorId);
+                if ($vendor && !empty($vendor->name)) {
+                    $q->orWhere('vendor_name', $vendor->name);
+                }
+            })
+            ->where('return_date', '<', $start)
+            ->sum('total_cost');
+
         // 4. Prior Payments (Credit: We owe less)
         $prevPayments = DB::table('vendor_payments')
             ->where('vendor_id', $vendorId)
@@ -1972,7 +1983,7 @@ class ReportingController extends Controller
             ->where('delivery_date', '<', $start)
             ->sum('amount');
 
-        $opening = $initial + $prevPurchases + $prevInwards + $prevRawMaterialPurchases + $prevBilties - $prevReturns - $prevPayments;
+        $opening = $initial + $prevPurchases + $prevInwards + $prevRawMaterialPurchases + $prevBilties - $prevReturns - $prevRawMaterialReturns - $prevPayments;
 
         // 🔹 1. Purchases → Debit (we owe vendor)
         $purchases = DB::table('purchases')
@@ -2045,6 +2056,27 @@ class ReportingController extends Controller
                 ];
             });
 
+        // 🔹 2b. Raw Material Purchase Returns → Credit (reduces vendor balance)
+        $rmReturns = DB::table('raw_material_purchase_returns')
+            ->where(function ($q) use ($vendorId, $vendor) {
+                $q->where('vendor_id', $vendorId);
+                if ($vendor && !empty($vendor->name)) {
+                    $q->orWhere('vendor_name', $vendor->name);
+                }
+            })
+            ->whereBetween('return_date', [$start, $end])
+            ->get()
+            ->map(function ($rmr) {
+                return [
+                    'date' => $rmr->return_date,
+                    'invoice' => $rmr->return_invoice,
+                    'description' => 'Raw Material Return' . ($rmr->remarks ? ' - ' . $rmr->remarks : ''),
+                    'debit' => 0,
+                    'credit' => (float)$rmr->total_cost,
+                    'sort_date' => $rmr->return_date
+                ];
+            });
+
         // 🔹 3. Vendor Payments → Credit (we paid vendor)
         $payments = DB::table('vendor_payments')
             ->where('vendor_id', $vendorId)
@@ -2083,6 +2115,7 @@ class ReportingController extends Controller
             ->merge($inwards)
             ->merge($rmPurchases)
             ->merge($returns)
+            ->merge($rmReturns)
             ->merge($payments)
             ->merge($bilties)
             ->sortBy('sort_date')
@@ -3834,8 +3867,11 @@ class ReportingController extends Controller
             } else {
                 $init = (float)($vnd->opening_balance ?? 0);
                 $vPur = (float)DB::table('purchases')->where('vendor_id', $vnd->id)->where('purchase_date', '<=', $asOfDate)->sum('net_amount');
+                $vRmPur = (float)DB::table('raw_material_purchases')->where('vendor_id', $vnd->id)->where('date', '<=', $asOfDate)->sum('total_cost');
+                $vRet = (float)DB::table('purchase_returns')->where('vendor_id', $vnd->id)->where('return_date', '<=', $asOfDate)->sum('net_amount');
+                $vRmRet = (float)DB::table('raw_material_purchase_returns')->where('vendor_id', $vnd->id)->where('return_date', '<=', $asOfDate)->sum('total_cost');
                 $vPay = (float)DB::table('vendor_payments')->where('vendor_id', $vnd->id)->where('payment_date', '<=', $asOfDate)->sum('amount');
-                $bal = $init + $vPur - $vPay;
+                $bal = $init + $vPur + $vRmPur - $vRet - $vRmRet - $vPay;
             }
 
             if ($bal > 0) {
