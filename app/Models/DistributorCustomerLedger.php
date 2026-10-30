@@ -20,4 +20,9 @@ class DistributorCustomerLedger extends Model
     {
         return $this->belongsTo(Distributor::class);
     }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
 }

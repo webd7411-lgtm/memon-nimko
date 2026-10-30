@@ -494,6 +494,7 @@ Route::middleware('auth')->group(function () {
         // Customers (Retail Shops)
         Route::get('/customers', [DistributorPortalController::class, 'myCustomers'])->name('customers.index');
         Route::post('/customers/store', [DistributorPortalController::class, 'storeCustomer'])->name('customers.store');
+        Route::post('/customers/{id}/update', [DistributorPortalController::class, 'updateCustomer'])->name('customers.update');
         Route::get('/customers/{id}/ledger', [DistributorPortalController::class, 'customerLedger'])->name('customers.ledger');
         Route::post('/customers/{id}/payment', [DistributorPortalController::class, 'storeCustomerPayment'])->name('customers.payment.store');
 

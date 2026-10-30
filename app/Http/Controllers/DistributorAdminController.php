@@ -1225,29 +1225,32 @@ class DistributorAdminController extends Controller
     public function storeCustomer(Request $request)
     {
         $request->validate([
-            'distributor_id'  => 'required|exists:distributors,id',
-            'shop_name'       => 'required|string|max:255',
-            'owner_name'      => 'nullable|string|max:255',
-            'phone'           => 'nullable|string|max:20',
-            'area'            => 'nullable|string|max:100',
-            'address'         => 'nullable|string',
-            'opening_balance' => 'nullable|numeric|min:0',
+            'distributor_id'    => 'required|exists:distributors,id',
+            'shop_name'         => 'required|string|max:255',
+            'owner_name'        => 'nullable|string|max:255',
+            'phone'             => 'nullable|string|max:20',
+            'area'              => 'nullable|string|max:100',
+            'address'           => 'nullable|string',
+            'opening_balance'   => 'nullable|numeric|min:0',
+            'approved_discount' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $openingBalance = (float) ($request->opening_balance ?? 0);
+        $approvedDiscount = (float) ($request->approved_discount ?? 0);
 
         DB::beginTransaction();
         try {
             $customer = DistributorCustomer::create([
-                'distributor_id'  => $request->distributor_id,
-                'shop_name'       => $request->shop_name,
-                'owner_name'      => $request->owner_name,
-                'phone'           => $request->phone,
-                'area'            => $request->area,
-                'address'         => $request->address,
-                'opening_balance' => $openingBalance,
-                'current_balance' => $openingBalance,
-                'status'          => 'active',
+                'distributor_id'    => $request->distributor_id,
+                'shop_name'         => $request->shop_name,
+                'owner_name'        => $request->owner_name,
+                'phone'             => $request->phone,
+                'area'              => $request->area,
+                'address'           => $request->address,
+                'approved_discount' => $approvedDiscount,
+                'opening_balance'   => $openingBalance,
+                'current_balance'   => $openingBalance,
+                'status'            => 'active',
             ]);
 
             if ($openingBalance > 0) {
@@ -1280,23 +1283,25 @@ class DistributorAdminController extends Controller
         $customer = DistributorCustomer::findOrFail($id);
 
         $request->validate([
-            'distributor_id' => 'required|exists:distributors,id',
-            'shop_name'      => 'required|string|max:255',
-            'owner_name'     => 'nullable|string|max:255',
-            'phone'          => 'nullable|string|max:20',
-            'area'           => 'nullable|string|max:100',
-            'address'        => 'nullable|string',
-            'status'         => 'nullable|string|in:active,inactive',
+            'distributor_id'    => 'required|exists:distributors,id',
+            'shop_name'         => 'required|string|max:255',
+            'owner_name'        => 'nullable|string|max:255',
+            'phone'             => 'nullable|string|max:20',
+            'area'              => 'nullable|string|max:100',
+            'address'           => 'nullable|string',
+            'approved_discount' => 'nullable|numeric|min:0|max:100',
+            'status'            => 'nullable|string|in:active,inactive',
         ]);
 
         $customer->update([
-            'distributor_id' => $request->distributor_id,
-            'shop_name'      => $request->shop_name,
-            'owner_name'     => $request->owner_name,
-            'phone'          => $request->phone,
-            'area'           => $request->area,
-            'address'        => $request->address,
-            'status'         => $request->status ?? 'active',
+            'distributor_id'    => $request->distributor_id,
+            'shop_name'         => $request->shop_name,
+            'owner_name'        => $request->owner_name,
+            'phone'             => $request->phone,
+            'area'              => $request->area,
+            'address'           => $request->address,
+            'approved_discount' => (float) ($request->approved_discount ?? 0),
+            'status'            => $request->status ?? 'active',
         ]);
 
         return back()->with('success', "Customer '{$customer->shop_name}' details updated successfully!");
@@ -1365,7 +1370,9 @@ class DistributorAdminController extends Controller
             $file->move(public_path('uploads/distributor_payments'), $slipFileName);
         }
 
-        $receiptNo = 'REC-' . date('ymd') . '-' . rand(100, 999);
+        $lastRec = DistributorCustomerLedger::where('type', 'payment_received')->latest('id')->first();
+        $nextRecId = $lastRec ? ($lastRec->id + 1) : 1;
+        $receiptNo = 'REC-' . str_pad($nextRecId, 4, '0', STR_PAD_LEFT);
         $methodLabel = ucwords(str_replace('_', ' ', $paymentMethod));
 
         DB::beginTransaction();

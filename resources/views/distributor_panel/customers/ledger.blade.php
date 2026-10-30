@@ -62,6 +62,14 @@
     </div>
     @endif
 
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>{{ session('error') }}</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     <!-- Ledger Table -->
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
         <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
@@ -103,6 +111,13 @@
                         </td>
                         <td>
                             <div class="text-dark">{{ $entry->description }}</div>
+                            @if($entry->account)
+                            <div class="mt-1">
+                                <span class="badge rounded-pill bg-light text-dark border" style="font-size: 0.72rem;">
+                                    <i class="fas fa-wallet me-1" style="color: #0f766e;"></i> {{ $entry->account->title }}
+                                </span>
+                            </div>
+                            @endif
                         </td>
                         <td class="text-end">
                             @if($entry->debit > 0)
@@ -146,7 +161,7 @@
             <form action="{{ route('distributor.customers.payment.store', $customer->id) }}" method="POST">
                 @csrf
                 <div class="modal-header text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-hand-holding-usd me-2"></i> Receive Cash from Retailer</h5>
+                    <h5 class="modal-title fw-bold"><i class="fas fa-hand-holding-usd me-2"></i> Receive Payment from Retailer</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -161,8 +176,33 @@
                         </div>
                     </div>
 
+                    <!-- Deposit To Distributor Account -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Cash Collected Amount (Rs) *</label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-semibold mb-0">Deposit To Account (Distributor Account) <span class="text-danger">*</span></label>
+                            <a href="{{ route('distributor.accounts.index') }}" target="_blank" class="small text-teal text-decoration-none fw-semibold" style="color: #0f766e; font-size: 0.75rem;">
+                                <i class="fas fa-plus-circle me-1"></i>Manage Accounts
+                            </a>
+                        </div>
+                        <select name="account_id" class="form-select" required>
+                            @if(isset($accounts) && $accounts->count() > 1)
+                                <option value="">-- Select Receiving Account --</option>
+                            @endif
+                            @if(isset($accounts))
+                                @foreach($accounts as $acc)
+                                    <option value="{{ $acc->id }}" {{ ($loop->first && $accounts->count() === 1) ? 'selected' : '' }}>
+                                        {{ $acc->title }}
+                                        @if($acc->account_number) (A/C: {{ $acc->account_number }}) @endif
+                                        — [Bal: Rs. {{ number_format($acc->opening_balance, 2) }}]
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <small class="text-muted d-block mt-1">Collected payment will be credited into your selected Cash/Bank account.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Collected Amount (Rs) *</label>
                         <input type="number" step="0.01" min="0.01" name="amount" class="form-control form-control-lg fw-bold" placeholder="0.00" required>
                     </div>
 

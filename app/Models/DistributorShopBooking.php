@@ -43,13 +43,8 @@ class DistributorShopBooking extends Model
 
     public static function generateBookingNo()
     {
-        $prefix = 'BK-' . date('Ymd') . '-';
-        $last = self::where('booking_no', 'like', $prefix . '%')->latest('id')->first();
-        if ($last) {
-            $num = (int) substr($last->booking_no, strlen($prefix)) + 1;
-        } else {
-            $num = 1;
-        }
-        return $prefix . str_pad($num, 4, '0', STR_PAD_LEFT);
+        $last = self::latest('id')->first();
+        $num = $last ? ($last->id + 1) : 1;
+        return 'BK-' . str_pad($num, 4, '0', STR_PAD_LEFT);
     }
 }

@@ -743,8 +743,8 @@
                                     @if(isset($customers) && $customers->count() > 0)
                                         <option value="" disabled selected>-- Select Retail Shop / Customer --</option>
                                         @foreach($customers as $c)
-                                            <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}">
-                                                🏪 {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
+                                            <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}" data-approved-discount="{{ (float)($c->approved_discount ?? 0) }}">
+                                                ðŸª {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
                                             </option>
                                         @endforeach
                                     @else
@@ -802,7 +802,7 @@
                     <div class="ss-barcode-box flex-grow-1">
                         <i class="fas fa-barcode"></i>
                         <input type="text" id="barcodeScanner" class="ss-barcode-input" placeholder="Scan Barcode (Variant / SKU)..." autocomplete="off" autofocus>
-                        <button type="button" id="btnClearBarcode" class="ss-btn-clear-barcode">✕</button>
+                        <button type="button" id="btnClearBarcode" class="ss-btn-clear-barcode">âœ•</button>
                     </div>
                     <button type="button" class="ss-btn-add-row" id="btnAddGridRow" title="Add New Row (F4)" style="height: 32px; white-space: nowrap;">
                         <i class="fas fa-plus"></i> Add Row (F4)
@@ -862,7 +862,7 @@
                                     <th style="width: 100px;">PRICE</th>
                                     <th style="width: 125px;">DISCOUNT</th>
                                     <th style="width: 110px;">AMOUNT</th>
-                                    <th style="width: 36px;">✕</th>
+                                    <th style="width: 36px;">âœ•</th>
                                 </tr>
                             </thead>
                             <tbody id="saleGridBody">
@@ -1054,9 +1054,15 @@
                             <input type="number" step="any" name="opening_balance" class="form-control" placeholder="0.00" value="0">
                         </div>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label fw-bold small">Address</label>
-                        <input type="text" name="address" class="form-control" placeholder="Shop #, Street / Market">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Address</label>
+                            <input type="text" name="address" class="form-control" placeholder="Shop #, Street / Market">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Approved Discount Limit (%)</label>
+                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" placeholder="0.00" value="0">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light" style="border-radius: 0 0 12px 12px;">
@@ -1256,7 +1262,7 @@ $(document).ready(function() {
                     <input type="number" step="any" readonly name="total[]" class="ss-excel-input text-end fw-bold row-amount" value="${amount.toFixed(2)}" style="background: #f8fafc; color: #0f172a;">
                 </td>
                 <td class="excel-cell text-center">
-                    <button type="button" class="ss-btn-del-row" title="Delete / Clear Row">✕</button>
+                    <button type="button" class="ss-btn-del-row" title="Delete / Clear Row">âœ•</button>
                 </td>
             </tr>
         `;
@@ -1323,7 +1329,7 @@ $(document).ready(function() {
                 <div class="ss-drop-item ${idx === 0 ? 'selected' : ''}" data-idx="${idx}">
                     <div>
                         <div class="fw-bold" style="font-size:12px;">${p.name}${sizeLabel}</div>
-                        <div class="text-muted" style="font-size:10px;">${p.code ? p.code + ' • ' : ''}${p.barcode ? p.barcode : ''}</div>
+                        <div class="text-muted" style="font-size:10px;">${p.code ? p.code + ' â€¢ ' : ''}${p.barcode ? p.barcode : ''}</div>
                     </div>
                     <div class="text-end">
                         <div class="fw-bold text-dark" style="font-size:12px;">Rs. ${Number(p.price).toFixed(2)}</div>
@@ -1812,7 +1818,7 @@ $(document).ready(function() {
 
                 if (res.customer) {
                     const c = res.customer;
-                    const optText = '🏪 ' + c.shop_name + (c.owner_name ? ' (' + c.owner_name + ')' : '') + (c.area ? ' - ' + c.area : '');
+                    const optText = 'ðŸª ' + c.shop_name + (c.owner_name ? ' (' + c.owner_name + ')' : '') + (c.area ? ' - ' + c.area : '');
                     const newOpt = new Option(optText, c.id, true, true);
                     $(newOpt).attr('data-type', 'retailer');
                     $(newOpt).attr('data-balance', c.current_balance || 0);

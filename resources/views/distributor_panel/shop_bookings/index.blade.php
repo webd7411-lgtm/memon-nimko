@@ -231,7 +231,7 @@
 
 </div>
 
-{{-- ════════════ MODAL: VIEW BOOKING ITEMS DETAILS ════════════ --}}
+{{-- â•â•â•â•â•â•â•â•â•â•â•â• MODAL: VIEW BOOKING ITEMS DETAILS â•â•â•â•â•â•â•â•â•â•â•â• --}}
 <div class="modal fade" id="modalBookingDetails" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
@@ -290,7 +290,7 @@
     </div>
 </div>
 
-{{-- ════════════ MODAL: CONFIRM DELIVERY & CONVERT TO SALE ════════════ --}}
+{{-- â•â•â•â•â•â•â•â•â•â•â•â• MODAL: CONFIRM DELIVERY & CONVERT TO SALE â•â•â•â•â•â•â•â•â•â•â•â• --}}
 <div class="modal fade" id="modalDeliverBooking" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
@@ -365,7 +365,8 @@ $(document).ready(function() {
                     $('#dtlBookingNo').text(b.booking_no);
                     $('#dtlShopName').text(b.customer ? b.customer.shop_name : 'N/A');
                     $('#dtlBookerName').text(b.booker ? b.booker.name : 'N/A');
-                    $('#dtlDate').text(b.booking_date);
+                    const cleanDate = res.formatted_date || (b.booking_date ? (b.booking_date.includes('T') ? b.booking_date.split('T')[0] : b.booking_date) : '-');
+                    $('#dtlDate').text(cleanDate);
                     $('#dtlTotal').text('Rs ' + parseFloat(b.grand_total).toLocaleString('en-US', {minimumFractionDigits: 2}));
 
                     if (b.notes) {

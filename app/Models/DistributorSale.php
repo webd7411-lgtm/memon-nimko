@@ -31,10 +31,15 @@ class DistributorSale extends Model
         return $this->belongsTo(Account::class, 'account_id');
     }
 
+    public function booker()
+    {
+        return $this->belongsTo(User::class, 'booker_user_id');
+    }
+
     public static function generateInvoiceNo()
     {
         $last = self::latest('id')->first();
         $num = $last ? ($last->id + 1) : 1;
-        return 'DSAL-' . date('ymd') . '-' . str_pad($num, 4, '0', STR_PAD_LEFT);
+        return 'DSAL-' . str_pad($num, 4, '0', STR_PAD_LEFT);
     }
 }

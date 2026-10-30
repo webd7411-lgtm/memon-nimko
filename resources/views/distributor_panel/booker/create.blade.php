@@ -163,7 +163,7 @@
     <form action="{{ route('distributor.booker.store') }}" method="POST" id="bookingOrderForm">
         @csrf
 
-        {{-- ════════════ STEP 1: SHOP SELECTION & PREVIOUS BALANCE ════════════ --}}
+        {{-- â•â•â•â•â•â•â•â•â•â•â•â• STEP 1: SHOP SELECTION & PREVIOUS BALANCE â•â•â•â•â•â•â•â•â•â•â•â• --}}
         <div class="bk-card">
             <div class="bk-card-title">
                 <i class="fas fa-store text-teal" style="color: #0f766e;"></i>
@@ -180,11 +180,12 @@
                         @foreach($customers as $c)
                             <option value="{{ $c->id }}" 
                                     data-balance="{{ (float)$c->current_balance }}"
+                                    data-approved-discount="{{ (float)($c->approved_discount ?? 0) }}"
                                     data-phone="{{ $c->phone ?: 'N/A' }}"
                                     data-owner="{{ $c->owner_name ?: 'N/A' }}"
                                     data-area="{{ $c->area ?: 'N/A' }}"
                                     data-address="{{ $c->address ?: 'N/A' }}">
-                                {{ $c->shop_name }} &bull; {{ $c->area ?: 'General' }} ({{ $c->owner_name ?: $c->phone }})
+                                {{ $c->shop_name }} &bull; {{ $c->area ?: 'General' }} ({{ $c->owner_name ?: $c->phone }}) [Disc: {{ (float)($c->approved_discount ?? 0) }}%]
                             </option>
                         @endforeach
                     </select>
@@ -201,7 +202,7 @@
                 </div>
             </div>
 
-            {{-- 🎯 LIVE PREVIOUS BALANCE BANNER (AUTO-UPDATES ON SHOP SELECT) --}}
+            {{-- ðŸŽ¯ LIVE PREVIOUS BALANCE BANNER (AUTO-UPDATES ON SHOP SELECT) --}}
             <div id="shopBalanceBanner" class="shop-balance-banner">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div>
@@ -212,6 +213,11 @@
                         <div class="small text-muted">
                             <i class="fas fa-user me-1"></i> <span id="lblShopOwner">-</span> &bull; 
                             <i class="fas fa-phone me-1"></i> <span id="lblShopPhone">-</span>
+                        </div>
+                        <div class="mt-1">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" id="badgeApprovedDiscount">
+                                <i class="fas fa-percentage me-1"></i> Approved Discount Limit: <strong id="lblApprovedDiscount">0</strong>%
+                            </span>
                         </div>
                     </div>
 
@@ -224,7 +230,7 @@
             </div>
         </div>
 
-        {{-- ════════════ STEP 2: PRODUCT SELECTION & BOOKING ITEMS ════════════ --}}
+        {{-- â•â•â•â•â•â•â•â•â•â•â•â• STEP 2: PRODUCT SELECTION & BOOKING ITEMS â•â•â•â•â•â•â•â•â•â•â•â• --}}
         <div class="bk-card">
             <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
                 <div class="bk-card-title mb-0 border-0 p-0">
@@ -239,22 +245,23 @@
             @php
                 $productOptionsHtml = '<option value="">-- Choose Product / Variant --</option>';
                 foreach ($products as $p) {
+                    $unitName = $p->unit->name ?? 'pc';
                     if ($p->variants && $p->variants->count() > 0) {
                         foreach ($p->variants as $v) {
                             $stockKey = $p->id . '_' . $v->id;
                             $vStock = isset($stockMap[$stockKey]) ? (float)$stockMap[$stockKey]->qty : 0;
                             $vPrice = (float)($v->price ?: $p->price);
                             $vName = $v->size_label ?: $v->variant_name;
-                            $unitName = $p->unit->name ?? 'Pcs';
-                            $label = $p->item_name . ' - ' . $vName . ' (Rs ' . number_format($vPrice, 0) . ')';
+                            $formattedStock = ($vStock == (int)$vStock) ? (int)$vStock : $vStock;
+                            $label = $p->item_name . ' - ' . $vName . ' (Rs ' . number_format($vPrice, 0) . ') [' . $formattedStock . ' ' . $unitName . ']';
                             $productOptionsHtml .= '<option value="' . $p->id . '" data-variant-id="' . $v->id . '" data-price="' . $vPrice . '" data-stock="' . $vStock . '" data-unit="' . e($unitName) . '">' . e($label) . '</option>';
                         }
                     } else {
                         $stockKey = $p->id . '_0';
                         $pStock = isset($stockMap[$stockKey]) ? (float)$stockMap[$stockKey]->qty : 0;
                         $pPrice = (float)$p->price;
-                        $unitName = $p->unit->name ?? 'Pcs';
-                        $label = $p->item_name . ' (Rs ' . number_format($pPrice, 0) . ')';
+                        $formattedStock = ($pStock == (int)$pStock) ? (int)$pStock : $pStock;
+                        $label = $p->item_name . ' (Rs ' . number_format($pPrice, 0) . ') [' . $formattedStock . ' ' . $unitName . ']';
                         $productOptionsHtml .= '<option value="' . $p->id . '" data-variant-id="" data-price="' . $pPrice . '" data-stock="' . $pStock . '" data-unit="' . e($unitName) . '">' . e($label) . '</option>';
                     }
                 }
@@ -309,7 +316,7 @@
             </div>
         </div>
 
-        {{-- ════════════ STEP 3: BILL SUMMARY & CONFIRMATION ════════════ --}}
+        {{-- â•â•â•â•â•â•â•â•â•â•â•â• STEP 3: BILL SUMMARY & CONFIRMATION â•â•â•â•â•â•â•â•â•â•â•â• --}}
         <div class="row g-3">
             <div class="col-12 col-md-7">
                 <div class="bk-card h-100">
@@ -350,9 +357,20 @@
                         <strong id="lblSubtotal">Rs 0.00</strong>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <span class="text-secondary">Special Discount:</span>
-                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold w-50" id="txtDiscount" name="discount" value="0">
+                    <div class="py-2 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-secondary fw-semibold">Special Discount:</span>
+                                <small class="text-danger d-block" id="lblDiscountCapNote" style="font-size: 0.72rem;">Max Allowed: 0% (Rs 0.00)</small>
+                            </div>
+                            <div class="w-50">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Rs</span>
+                                    <input type="number" step="any" min="0" class="form-control text-end fw-bold" id="txtDiscount" name="discount" value="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="discountLimitAlert" class="alert alert-warning py-1 px-2 my-2 small" style="display: none; font-size: 0.75rem;"></div>
                     </div>
 
                     <div class="d-flex justify-content-between py-3 border-bottom mt-2">
@@ -392,35 +410,60 @@ $(document).ready(function() {
     });
 
     // 2. Initialize Product Select2
+    function formatProductOption(state) {
+        if (!state.id) return state.text;
+        const text = state.text;
+        const lastBracketIndex = text.lastIndexOf(' [');
+        if (lastBracketIndex !== -1 && text.endsWith(']')) {
+            const mainText = text.substring(0, lastBracketIndex);
+            const stockPart = text.substring(lastBracketIndex + 1); // e.g. "[8 pc]"
+            return $(`
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <span class="fw-semibold text-dark">${mainText}</span>
+                    <span class="badge rounded-pill bg-light text-primary border border-primary-subtle px-2 py-1 ms-2 font-monospace" style="font-size: 0.78rem;">${stockPart}</span>
+                </div>
+            `);
+        }
+        return state.text;
+    }
+
     function initProductSelect2(element) {
         element.select2({
             placeholder: "-- Choose Product / Variant --",
             allowClear: true,
-            width: '100%'
+            width: '100%',
+            templateResult: formatProductOption
         });
     }
     initProductSelect2($('.select2-product'));
 
-    // 🎯 LIVE PREVIOUS BALANCE UPDATE ON SHOP SELECTION
+    let currentShopApprovedDiscountPct = 0;
+
+    // LIVE PREVIOUS BALANCE & APPROVED DISCOUNT ON SHOP SELECTION
     $('#distributor_customer_id').on('change', function() {
         const customerId = $(this).val();
         const banner = $('#shopBalanceBanner');
 
         if (!customerId) {
+            currentShopApprovedDiscountPct = 0;
             banner.slideUp();
+            calculateGrandTotal();
             return;
         }
 
         const selectedOpt = $(this).find('option:selected');
-        const shopName  = selectedOpt.text().split('•')[0].trim();
+        const rawText = selectedOpt.text();
+        const shopName = rawText.includes('•') ? rawText.split('•')[0].trim() : (rawText.split('[')[0].trim());
         const shopOwner = selectedOpt.data('owner') || '-';
         const shopPhone = selectedOpt.data('phone') || '-';
         const shopArea  = selectedOpt.data('area')  || 'General';
+        currentShopApprovedDiscountPct = parseFloat(selectedOpt.data('approved-discount')) || 0;
 
         $('#lblShopName').text(shopName);
         $('#lblShopOwner').text(shopOwner);
         $('#lblShopPhone').text(shopPhone);
         $('#lblShopArea').text(shopArea);
+        $('#lblApprovedDiscount').text(currentShopApprovedDiscountPct);
 
         // Fetch Live Credit / Previous Balance from backend
         $.ajax({
@@ -439,6 +482,11 @@ $(document).ready(function() {
                                        .removeClass('bg-danger bg-success bg-info')
                                        .addClass(res.badge_class);
 
+                    if (res.approved_discount !== undefined) {
+                        currentShopApprovedDiscountPct = parseFloat(res.approved_discount) || 0;
+                    }
+                    $('#lblApprovedDiscount').text(currentShopApprovedDiscountPct);
+
                     if (res.current_balance > 0) {
                         banner.addClass('has-due');
                         $('#valPreviousBalance').css('color', '#dc2626');
@@ -454,12 +502,15 @@ $(document).ready(function() {
                     }
 
                     banner.slideDown();
+                    calculateGrandTotal();
                 }
             },
             error: function() {
                 const bal = parseFloat(selectedOpt.data('balance') || 0);
                 $('#valPreviousBalance').text('Rs ' + Math.abs(bal).toLocaleString('en-US', {minimumFractionDigits: 2}));
+                $('#lblApprovedDiscount').text(currentShopApprovedDiscountPct);
                 banner.slideDown();
+                calculateGrandTotal();
             }
         });
     });
@@ -526,7 +577,22 @@ $(document).ready(function() {
             }
         });
 
-        const discount = parseFloat($('#txtDiscount').val()) || 0;
+        const approvedPct = currentShopApprovedDiscountPct || 0;
+        const maxDiscountAllowed = Math.round((subtotal * (approvedPct / 100)) * 100) / 100;
+
+        $('#lblDiscountCapNote').text('Max Allowed: ' + approvedPct + '% (Rs ' + maxDiscountAllowed.toFixed(2) + ')');
+
+        let discount = parseFloat($('#txtDiscount').val()) || 0;
+        if (discount > (maxDiscountAllowed + 0.001)) {
+            discount = maxDiscountAllowed;
+            $('#txtDiscount').val(maxDiscountAllowed > 0 ? maxDiscountAllowed.toFixed(2) : 0);
+            $('#discountLimitAlert')
+                .html('<i class="fas fa-exclamation-triangle me-1"></i> <strong>Discount Limit:</strong> Ye shop sirf ' + approvedPct + '% discount ke liye approved hai (Max Rs ' + maxDiscountAllowed.toFixed(2) + '). Order Booker is se zyada discount nahi de sakta.')
+                .slideDown();
+        } else {
+            $('#discountLimitAlert').slideUp();
+        }
+
         const grandTotal = Math.max(0, subtotal - discount);
 
         $('#lblTotalItems').text(totalItems);
@@ -610,6 +676,25 @@ $(document).ready(function() {
         if (!hasValidItems) {
             e.preventDefault();
             alert('Please select at least one product to book the order.');
+            return false;
+        }
+
+        let totalSubtotal = 0;
+        $('#bookingTableBody tr').each(function() {
+            const q = parseFloat($(this).find('.row-qty').val()) || 0;
+            const p = parseFloat($(this).find('.row-price').val()) || 0;
+            totalSubtotal += (q * p);
+        });
+
+        const approvedPct = currentShopApprovedDiscountPct || 0;
+        const maxDiscountAllowed = Math.round((totalSubtotal * (approvedPct / 100)) * 100) / 100;
+        const enteredDiscount = parseFloat($('#txtDiscount').val()) || 0;
+
+        if (enteredDiscount > (maxDiscountAllowed + 0.05)) {
+            e.preventDefault();
+            alert('Discount Error: Is shop ke liye maximum ' + approvedPct + '% discount (Rs ' + maxDiscountAllowed.toFixed(2) + ') allowed hai. Booker is se zyada discount nahi de sakta.');
+            $('#txtDiscount').val(maxDiscountAllowed.toFixed(2)).focus();
+            calculateGrandTotal();
             return false;
         }
 

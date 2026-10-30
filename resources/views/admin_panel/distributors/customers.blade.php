@@ -236,6 +236,11 @@
                                         {{ $c->shop_name }}
                                     </a>
                                     <div class="text-muted small">Prop: {{ $c->owner_name ?: 'N/A' }}</div>
+                                    <div class="mt-1">
+                                        <span class="badge rounded-pill {{ ($c->approved_discount ?? 0) > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border' }} px-2 py-0.5" style="font-size: 0.7rem;">
+                                            <i class="fas fa-percentage me-1"></i> Discount Limit: {{ (float)($c->approved_discount ?? 0) }}%
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -244,7 +249,7 @@
                             <a href="{{ route('admin.distributors.customers', ['distributor_id' => $c->distributor->id]) }}" class="text-decoration-none">
                                 <div class="fw-bold text-dark">{{ $c->distributor->name }}</div>
                                 <span class="badge bg-light text-secondary border px-2 py-0.5" style="font-size: 0.7rem;">
-                                    {{ $c->distributor->code }} • {{ ucfirst($c->distributor->type ?? 'distributor') }}
+                                    {{ $c->distributor->code }} â€¢ {{ ucfirst($c->distributor->type ?? 'distributor') }}
                                 </span>
                             </a>
                             @else
@@ -254,7 +259,7 @@
                         <td>
                             <div class="text-dark">
                                 <i class="fas fa-phone-alt me-1 text-muted" style="font-size: 0.72rem;"></i>
-                                {{ $c->phone ?: '—' }}
+                                {{ $c->phone ?: 'â€”' }}
                             </div>
                         </td>
                         <td>
@@ -349,7 +354,7 @@
 
             <div class="small mb-2">
                 <div class="text-muted"><i class="fas fa-truck-loading me-1"></i> Distributor: <strong class="text-dark">{{ $c->distributor->name ?? 'N/A' }}</strong></div>
-                <div class="text-muted"><i class="fas fa-phone-alt me-1"></i> Phone: <span class="text-dark">{{ $c->phone ?: '—' }}</span></div>
+                <div class="text-muted"><i class="fas fa-phone-alt me-1"></i> Phone: <span class="text-dark">{{ $c->phone ?: 'â€”' }}</span></div>
                 <div class="text-muted"><i class="fas fa-map-marker-alt me-1"></i> Area: <span class="text-dark">{{ $c->area ?: 'General' }}</span></div>
             </div>
 
@@ -446,6 +451,15 @@
                         <textarea name="address" rows="2" class="form-control form-control-sm" placeholder="Optional physical address..."></textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark">Approved Discount Limit (%) for Order Booker</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
+                            <span class="input-group-text fw-bold">%</span>
+                        </div>
+                        <span class="text-muted" style="font-size: 0.72rem;">Order Booker cannot exceed this discount percentage when booking orders for this shop.</span>
+                    </div>
+
                     <div class="mb-2">
                         <label class="form-label fw-semibold small text-dark">Initial Opening Balance (Previous Credit / Udhaar)</label>
                         <div class="input-group input-group-sm">
@@ -518,6 +532,15 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold small text-dark">Full Address</label>
                         <textarea name="address" rows="2" class="form-control form-control-sm">{{ $c->address }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark">Approved Discount Limit (%) for Order Booker</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($c->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
+                            <span class="input-group-text fw-bold">%</span>
+                        </div>
+                        <span class="text-muted" style="font-size: 0.72rem;">Order Booker cannot exceed this discount percentage when booking orders for this shop.</span>
                     </div>
 
                     <div class="mb-2">

@@ -10,7 +10,7 @@
                 <a href="{{ route('distributor.dashboard') }}" class="text-white-50 text-decoration-none small">
                     <i class="fas fa-arrow-left me-1"></i> Dashboard
                 </a>
-                <span class="text-white-50">•</span>
+                <span class="text-white-50">â€¢</span>
                 <span class="badge rounded-pill px-3 py-1.5" style="background: rgba(15, 118, 110, 0.4); border: 1px solid rgba(20, 184, 166, 0.4); color: #5eead4;">
                     Retail Network
                 </span>
@@ -82,9 +82,14 @@
                         <td class="ps-4">
                             <div class="fw-bold text-dark fs-6">{{ $cust->shop_name }}</div>
                             <span class="text-muted small">Prop: {{ $cust->owner_name ?: 'N/A' }}</span>
+                            <div class="mt-1">
+                                <span class="badge rounded-pill {{ ($cust->approved_discount ?? 0) > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border' }} px-2 py-0.5" style="font-size: 0.7rem;">
+                                    <i class="fas fa-percentage me-1"></i> Discount Limit: {{ (float)($cust->approved_discount ?? 0) }}%
+                                </span>
+                            </div>
                         </td>
                         <td>
-                            <span class="text-dark"><i class="fas fa-phone-alt me-1 text-muted" style="font-size: 0.75rem;"></i> {{ $cust->phone ?: '—' }}</span>
+                            <span class="text-dark"><i class="fas fa-phone-alt me-1 text-muted" style="font-size: 0.75rem;"></i> {{ $cust->phone ?: 'â€”' }}</span>
                         </td>
                         <td>
                             <span class="badge bg-light text-secondary border px-2.5 py-1">
@@ -104,6 +109,9 @@
                                 <a href="{{ route('distributor.customers.ledger', $cust->id) }}" class="btn btn-outline-secondary rounded-pill px-2.5 py-1 ms-1" title="View Shop Ledger">
                                     <i class="fas fa-file-invoice-dollar me-1"></i> Ledger
                                 </a>
+                                <button type="button" class="btn btn-outline-dark rounded-pill px-2.5 py-1 ms-1" data-bs-toggle="modal" data-bs-target="#editCustomerModal{{ $cust->id }}" title="Edit Shop Details & Discount Limit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -162,6 +170,14 @@
                         <textarea name="address" rows="2" class="form-control" placeholder="Optional complete shop address..."></textarea>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Approved Discount Limit (%) for Order Booker</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
+                            <span class="input-group-text fw-bold">%</span>
+                        </div>
+                        <span class="text-muted small" style="font-size: 0.75rem;">Order Booker cannot exceed this discount when booking orders for this shop.</span>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Initial Opening Balance (Previous Balance)</label>
                         <div class="input-group">
                             <span class="input-group-text">Rs.</span>
@@ -179,4 +195,59 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Customer Modals -->
+@foreach($customers as $cust)
+<div class="modal fade" id="editCustomerModal{{ $cust->id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{{ route('distributor.customers.update', $cust->id) }}" method="POST">
+                @csrf
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i> Edit Retailer: {{ $cust->shop_name }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Shop / Store Name *</label>
+                        <input type="text" name="shop_name" class="form-control" value="{{ $cust->shop_name }}" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Owner / Proprietor</label>
+                            <input type="text" name="owner_name" class="form-control" value="{{ $cust->owner_name }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Mobile Number</label>
+                            <input type="text" name="phone" class="form-control" value="{{ $cust->phone }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Area / Market Route</label>
+                        <input type="text" name="area" class="form-control" value="{{ $cust->area }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Full Address</label>
+                        <textarea name="address" rows="2" class="form-control">{{ $cust->address }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Approved Discount Limit (%) for Order Booker</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($cust->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
+                            <span class="input-group-text fw-bold">%</span>
+                        </div>
+                        <span class="text-muted small" style="font-size: 0.75rem;">Order Booker cannot exceed this discount percentage for this shop.</span>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn text-white rounded-pill px-4" style="background: #0f766e; border: 1px solid #14b8a6;">
+                        <i class="fas fa-save me-1"></i> Update Shop Details
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endforeach
 @endsection

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Receipt #{{ $sale->invoice_no }} — {{ sys_setting('software_name', 'Memon Nimko') }}</title>
+    <title>Receipt #{{ $sale->invoice_no }} — {{ $distributor->name }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -105,11 +105,26 @@
 
 <div class="receipt-card">
     <div class="receipt-header">
-        <h4 class="receipt-title">{{ sys_setting('software_name', 'Memon Nimko') }}</h4>
-        <div class="receipt-subtitle">Distributor: {{ $distributor->name }}</div>
+        <h4 class="receipt-title">{{ $distributor->name }}</h4>
+        @if($distributor->area || $distributor->city)
+        <div class="receipt-subtitle">{{ $distributor->area ? $distributor->area . ', ' : '' }}{{ $distributor->city ?? '' }}</div>
+        @endif
+        @if($distributor->phone)
         <div class="receipt-subtitle">Mobile: {{ $distributor->phone }}</div>
+        @endif
         <div class="receipt-subtitle font-monospace mt-1">Invoice: <strong>{{ $sale->invoice_no }}</strong></div>
         <div class="receipt-subtitle">Date: {{ \Carbon\Carbon::parse($sale->sale_date)->format('d-m-Y h:i A') }}</div>
+        @php
+            $bookerDisplayName = null;
+            if ($sale->booker) {
+                $bookerDisplayName = $sale->booker->name;
+            } elseif ($sale->notes && str_contains($sale->notes, 'Booked by:')) {
+                $bookerDisplayName = trim(rtrim(\Illuminate\Support\Str::after($sale->notes, 'Booked by: '), ')'));
+            }
+        @endphp
+        @if($bookerDisplayName)
+        <div class="receipt-subtitle mt-1" style="font-weight: 700; color: #0f766e;">Order Booker: {{ $bookerDisplayName }}</div>
+        @endif
     </div>
 
     <!-- Customer Details -->
@@ -120,6 +135,9 @@
         @endif
         @if($sale->customer->phone)
         <div><strong>Phone:</strong> {{ $sale->customer->phone }}</div>
+        @endif
+        @if($bookerDisplayName)
+        <div><strong>Order Booker:</strong> {{ $bookerDisplayName }}</div>
         @endif
     </div>
 
@@ -182,7 +200,7 @@
 
     <div class="receipt-footer">
         <div>Thank you for your business!</div>
-        <div class="text-muted" style="font-size: 0.65rem;">Software by Memon Nimko ERP</div>
+        <div class="text-muted" style="font-size: 0.65rem;">Issued by {{ $distributor->name }}</div>
     </div>
 </div>
 

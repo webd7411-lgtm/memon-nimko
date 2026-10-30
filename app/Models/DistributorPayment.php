@@ -63,6 +63,6 @@ class DistributorPayment extends Model
     {
         $last = self::latest('id')->first();
         $nextId = $last ? ($last->id + 1) : 1;
-        return 'DPAY-' . date('ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        return 'DPAY-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
     }
 }

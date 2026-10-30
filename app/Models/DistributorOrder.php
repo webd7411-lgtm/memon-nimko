@@ -40,6 +40,6 @@ class DistributorOrder extends Model
     {
         $last = self::latest('id')->first();
         $num = $last ? ($last->id + 1) : 1;
-        return 'DO-' . date('ymd') . '-' . str_pad($num, 4, '0', STR_PAD_LEFT);
+        return 'DO-' . str_pad($num, 4, '0', STR_PAD_LEFT);
     }
 }

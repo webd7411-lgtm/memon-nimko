@@ -79,16 +79,9 @@ class DistributorClaim extends Model
      */
     public static function generateClaimNo()
     {
-        $prefix = 'CLM-' . date('Ymd') . '-';
-        $latest = self::where('claim_no', 'like', $prefix . '%')->latest('id')->first();
-
-        if ($latest) {
-            $num = (int) substr($latest->claim_no, -4) + 1;
-        } else {
-            $num = 1;
-        }
-
-        return $prefix . str_pad($num, 4, '0', STR_PAD_LEFT);
+        $last = self::latest('id')->first();
+        $nextId = $last ? ($last->id + 1) : 1;
+        return 'CLM-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
     }
 
     /**

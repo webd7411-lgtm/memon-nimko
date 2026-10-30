@@ -481,28 +481,31 @@ class DistributorPortalController extends Controller
         $distributor = $this->getDistributor();
 
         $request->validate([
-            'shop_name'       => 'required|string|max:255',
-            'owner_name'      => 'nullable|string|max:255',
-            'phone'           => 'nullable|string|max:20',
-            'area'            => 'nullable|string|max:100',
-            'address'         => 'nullable|string',
-            'opening_balance' => 'nullable|numeric|min:0',
+            'shop_name'         => 'required|string|max:255',
+            'owner_name'        => 'nullable|string|max:255',
+            'phone'             => 'nullable|string|max:20',
+            'area'              => 'nullable|string|max:100',
+            'address'           => 'nullable|string',
+            'opening_balance'   => 'nullable|numeric|min:0',
+            'approved_discount' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $openingBalance = (float) ($request->opening_balance ?? 0);
+        $approvedDiscount = (float) ($request->approved_discount ?? 0);
 
         DB::beginTransaction();
         try {
             $customer = DistributorCustomer::create([
-                'distributor_id'  => $distributor->id,
-                'shop_name'       => $request->shop_name,
-                'owner_name'      => $request->owner_name,
-                'phone'           => $request->phone,
-                'area'            => $request->area,
-                'address'         => $request->address,
-                'opening_balance' => $openingBalance,
-                'current_balance' => $openingBalance,
-                'status'          => 'active',
+                'distributor_id'    => $distributor->id,
+                'shop_name'         => $request->shop_name,
+                'owner_name'        => $request->owner_name,
+                'phone'             => $request->phone,
+                'area'              => $request->area,
+                'address'           => $request->address,
+                'approved_discount' => $approvedDiscount,
+                'opening_balance'   => $openingBalance,
+                'current_balance'   => $openingBalance,
+                'status'            => 'active',
             ]);
 
             if ($openingBalance > 0) {
@@ -542,6 +545,35 @@ class DistributorPortalController extends Controller
 
             return back()->withInput()->with('error', 'Error adding customer: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Update retail customer details (including approved discount).
+     */
+    public function updateCustomer(Request $request, $id)
+    {
+        $distributor = $this->getDistributor();
+        $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        $request->validate([
+            'shop_name'         => 'required|string|max:255',
+            'owner_name'        => 'nullable|string|max:255',
+            'phone'             => 'nullable|string|max:20',
+            'area'              => 'nullable|string|max:100',
+            'address'           => 'nullable|string',
+            'approved_discount' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $customer->update([
+            'shop_name'         => $request->shop_name,
+            'owner_name'        => $request->owner_name,
+            'phone'             => $request->phone,
+            'area'              => $request->area,
+            'address'           => $request->address,
+            'approved_discount' => (float) ($request->approved_discount ?? 0),
+        ]);
+
+        return back()->with('success', "Customer '{$customer->shop_name}' details updated successfully!");
     }
 
     /**
@@ -643,6 +675,13 @@ class DistributorPortalController extends Controller
             }
 
             $discount = (float) ($request->discount ?? 0);
+            $approvedPct = (float) ($customer->approved_discount ?? 0);
+            if (Auth::user()->usertype === 'order_booker' || $request->filled('booker_user_id')) {
+                $maxAllowedDiscount = round(($subtotal * $approvedPct) / 100, 2);
+                if ($discount > ($maxAllowedDiscount + 0.05)) {
+                    throw new \Exception("Discount exceeds the approved limit for this shop! Maximum approved discount is {$approvedPct}% (Rs. " . number_format($maxAllowedDiscount, 2) . "). You entered Rs. " . number_format($discount, 2) . ".");
+                }
+            }
             $grandTotal = max(0, $subtotal - $discount);
             $paidAmount = min($grandTotal, (float) ($request->paid_amount ?? 0));
             $dueAmount = max(0, $grandTotal - $paidAmount);
@@ -674,9 +713,11 @@ class DistributorPortalController extends Controller
             }
 
             // 1. Create Sale
+            $bookerUserId = Auth::user()->usertype === 'order_booker' ? Auth::id() : ($request->booker_user_id ?: null);
             $sale = DistributorSale::create([
                 'invoice_no'              => DistributorSale::generateInvoiceNo(),
                 'distributor_id'          => $distributor->id,
+                'booker_user_id'          => $bookerUserId,
                 'distributor_customer_id' => $customer->id,
                 'sale_date'               => now()->format('Y-m-d'),
                 'subtotal'                => $subtotal,
@@ -751,7 +792,7 @@ class DistributorPortalController extends Controller
     public function saleReceipt($id)
     {
         $distributor = $this->getDistributor();
-        $sale = DistributorSale::with(['customer', 'items.product.unit', 'items.variant'])
+        $sale = DistributorSale::with(['customer', 'items.product.unit', 'items.variant', 'booker'])
             ->where('distributor_id', $distributor->id)
             ->findOrFail($id);
 
@@ -791,7 +832,8 @@ class DistributorPortalController extends Controller
         $distributor = $this->getDistributor();
         $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($id);
 
-        $query = DistributorCustomerLedger::where('distributor_customer_id', $customer->id)
+        $query = DistributorCustomerLedger::with('account')
+            ->where('distributor_customer_id', $customer->id)
             ->where('distributor_id', $distributor->id);
 
         if ($request->start_date && $request->end_date) {
@@ -803,7 +845,29 @@ class DistributorPortalController extends Controller
         $totalDebit = $entries->sum('debit');
         $totalCredit = $entries->sum('credit');
 
-        return view('distributor_panel.customers.ledger', compact('distributor', 'customer', 'entries', 'totalDebit', 'totalCredit'));
+        // Accounts owned by this distributor
+        $accounts = Account::where('status', 1)
+            ->where('distributor_id', $distributor->id)
+            ->with('head')
+            ->orderBy('title')
+            ->get();
+
+        if ($accounts->isEmpty()) {
+            $cashHead = AccountHead::where('name', 'like', '%Cash%')->first();
+            $headId = $cashHead ? $cashHead->id : (AccountHead::first()->id ?? 1);
+            $defaultAcc = Account::create([
+                'distributor_id'  => $distributor->id,
+                'head_id'         => $headId,
+                'account_code'    => 'D' . $distributor->id . '-CASH-' . rand(100, 999),
+                'title'           => 'Cash in Hand',
+                'type'            => 'Debit',
+                'opening_balance' => 0,
+                'status'          => 1,
+            ]);
+            $accounts = collect([$defaultAcc]);
+        }
+
+        return view('distributor_panel.customers.ledger', compact('distributor', 'customer', 'entries', 'totalDebit', 'totalCredit', 'accounts'));
     }
 
     /**
@@ -815,10 +879,16 @@ class DistributorPortalController extends Controller
         $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($id);
 
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
-            'date'   => 'required|date',
-            'notes'  => 'nullable|string',
+            'amount'     => 'required|numeric|min:0.01',
+            'date'       => 'required|date',
+            'account_id' => 'required|exists:accounts,id',
+            'notes'      => 'nullable|string',
         ]);
+
+        // Security check: ensure account belongs strictly to this distributor
+        $account = Account::where('distributor_id', $distributor->id)
+            ->where('id', $request->account_id)
+            ->firstOrFail();
 
         $amount = (float) $request->amount;
 
@@ -826,13 +896,23 @@ class DistributorPortalController extends Controller
         try {
             $newBalance = (float) $customer->current_balance - $amount;
 
+            $desc = "Payment collection (Deposited into: {$account->title})";
+            if ($request->notes) {
+                $desc .= ". Notes: {$request->notes}";
+            }
+
+            $lastRec = DistributorCustomerLedger::where('type', 'payment_received')->latest('id')->first();
+            $nextRecId = $lastRec ? ($lastRec->id + 1) : 1;
+            $recNo = 'REC-' . str_pad($nextRecId, 4, '0', STR_PAD_LEFT);
+
             DistributorCustomerLedger::create([
                 'distributor_customer_id' => $customer->id,
                 'distributor_id'          => $distributor->id,
+                'account_id'              => $account->id,
                 'date'                    => $request->date,
                 'type'                    => 'payment_received',
-                'reference_no'            => 'REC-' . date('ymd') . '-' . rand(100, 999),
-                'description'             => "Payment collection. " . ($request->notes ? "Notes: {$request->notes}" : ''),
+                'reference_no'            => $recNo,
+                'description'             => $desc,
                 'debit'                   => 0,
                 'credit'                  => $amount,
                 'balance'                 => $newBalance,
@@ -840,8 +920,12 @@ class DistributorPortalController extends Controller
 
             $customer->update(['current_balance' => $newBalance]);
 
+            // Update Distributor Account Balance
+            $account->opening_balance = (float)$account->opening_balance + $amount;
+            $account->save();
+
             DB::commit();
-            return back()->with('success', "Payment of Rs. " . number_format($amount, 2) . " received from '{$customer->shop_name}'!");
+            return back()->with('success', "Payment of Rs. " . number_format($amount, 2) . " received and deposited into '{$account->title}'!");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error recording payment: ' . $e->getMessage());
@@ -1347,18 +1431,19 @@ class DistributorPortalController extends Controller
         $balance = (float) $customer->current_balance;
 
         return response()->json([
-            'success'         => true,
-            'id'              => $customer->id,
-            'shop_name'       => $customer->shop_name,
-            'owner_name'      => $customer->owner_name ?: 'N/A',
-            'phone'           => $customer->phone ?: 'N/A',
-            'area'            => $customer->area ?: 'N/A',
-            'address'         => $customer->address ?: 'N/A',
-            'current_balance' => $balance,
-            'formatted_due'   => 'Rs ' . number_format(abs($balance), 2),
-            'has_due'         => $balance > 0,
-            'due_status'      => $balance > 0 ? 'Outstanding Balance Due' : ($balance < 0 ? 'Advance Balance Available' : 'Account Clear / Zero Balance'),
-            'badge_class'     => $balance > 0 ? 'bg-danger' : ($balance < 0 ? 'bg-info' : 'bg-success'),
+            'success'           => true,
+            'id'                => $customer->id,
+            'shop_name'         => $customer->shop_name,
+            'owner_name'        => $customer->owner_name ?: 'N/A',
+            'phone'             => $customer->phone ?: 'N/A',
+            'area'              => $customer->area ?: 'N/A',
+            'address'           => $customer->address ?: 'N/A',
+            'current_balance'   => $balance,
+            'approved_discount' => (float) ($customer->approved_discount ?? 0),
+            'formatted_due'     => 'Rs ' . number_format(abs($balance), 2),
+            'has_due'           => $balance > 0,
+            'due_status'        => $balance > 0 ? 'Outstanding Balance Due' : ($balance < 0 ? 'Advance Balance Available' : 'Account Clear / Zero Balance'),
+            'badge_class'       => $balance > 0 ? 'bg-danger' : ($balance < 0 ? 'bg-info' : 'bg-success'),
         ]);
     }
 
@@ -1408,6 +1493,13 @@ class DistributorPortalController extends Controller
             }
 
             $discount = (float) ($request->discount ?? 0);
+            $approvedPct = (float) ($customer->approved_discount ?? 0);
+            $maxAllowedDiscount = round(($subtotal * $approvedPct) / 100, 2);
+
+            if ($discount > ($maxAllowedDiscount + 0.05)) {
+                throw new \Exception("Discount exceeds the approved limit for this shop! This shop is approved for maximum {$approvedPct}% discount (Max: Rs. " . number_format($maxAllowedDiscount, 2) . "). You entered Rs. " . number_format($discount, 2) . ".");
+            }
+
             $grandTotal = max(0, $subtotal - $discount);
 
             $booking = DistributorShopBooking::create([
@@ -1562,10 +1654,11 @@ class DistributorPortalController extends Controller
         }
 
         return response()->json([
-            'success'     => true,
-            'booking'     => $booking,
-            'stock_check' => $stockCheck,
-            'can_deliver' => $canDeliver,
+            'success'        => true,
+            'booking'        => $booking,
+            'formatted_date' => \Carbon\Carbon::parse($booking->booking_date)->format('d-M-Y'),
+            'stock_check'    => $stockCheck,
+            'can_deliver'    => $canDeliver,
         ]);
     }
 
@@ -1619,6 +1712,7 @@ class DistributorPortalController extends Controller
             $sale = DistributorSale::create([
                 'invoice_no'              => $invoiceNo,
                 'distributor_id'          => $distributor->id,
+                'booker_user_id'          => $booking->booker_user_id,
                 'distributor_customer_id' => $customer->id,
                 'sale_date'               => now()->toDateString(),
                 'subtotal'                => $booking->subtotal,

@@ -18,8 +18,6 @@ class Account extends Model
         'bank_name',      // bank name
         'branch_name',    // branch name
         'type',           // Debit / Credit
-        'total_debit',
-        'total_credit',
         'status',         // active/inactive
         'opening_balance',
     ];

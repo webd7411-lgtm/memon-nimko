@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Slip - {{ $booking->booking_no }}</title>
+    <title>Booking Slip - {{ $booking->booking_no }} — {{ $distributor->name ?? '' }}</title>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace, sans-serif;
@@ -107,9 +107,11 @@
 
     <div class="ticket">
         <div class="header">
-            <h2>{{ sys_setting('software_name', 'Memon Nimko') }}</h2>
+            <h2>{{ $distributor->name ?? 'Distributor Agency' }}</h2>
             <p><strong>DISTRIBUTION DEMAND / BOOKING SLIP</strong></p>
-            <p>{{ $distributor->name ?? 'Distributor Agency' }} ({{ $distributor->code }})</p>
+            @if(!empty($distributor->area) || !empty($distributor->city))
+            <p>{{ $distributor->area ? $distributor->area . ', ' : '' }}{{ $distributor->city ?? '' }}</p>
+            @endif
             <p>Phone: {{ $distributor->phone ?? '-' }}</p>
         </div>
 

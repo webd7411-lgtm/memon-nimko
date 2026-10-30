@@ -387,10 +387,17 @@
         <td>: {{ $receiptBranch->name }}</td>
       </tr>
       @endif
+      @if(!empty($sale->user?->name))
+      <tr>
+        <th>Booker / Cashier</th>
+        <td>: {{ $sale->user->name }}</td>
+      </tr>
+      @else
       <tr>
         <th>Operator Name</th>
         <td>: {{ auth()->user()->name ?? 'Admin' }}</td>
       </tr>
+      @endif
       <tr>
         <th>Order Type</th>
         <td>: {{ $sale->order_type ?? 'Walk-in' }}</td>

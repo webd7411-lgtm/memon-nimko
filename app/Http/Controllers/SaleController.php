@@ -3152,7 +3152,7 @@ class SaleController extends Controller
     }
     public function saleinvoice($id)
     {
-        $sale = Sale::with(['customer_relation', 'branch'])->findOrFail($id);
+        $sale = Sale::with(['customer_relation', 'branch', 'user'])->findOrFail($id);
 
         $saleReturn = \App\Models\SalesReturn::where('sale_id', $sale->id)->first();
 
@@ -3942,7 +3942,7 @@ class SaleController extends Controller
 
     public function salerecepit($id)
     {
-        $sale = Sale::with(['customer_relation', 'branch'])->findOrFail($id);
+        $sale = Sale::with(['customer_relation', 'branch', 'user'])->findOrFail($id);
 
         // Decode sale pivot or comma fields
         $products = explode(',', $sale->product);
