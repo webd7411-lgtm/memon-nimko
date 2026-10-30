@@ -113,7 +113,19 @@
         <div class="receipt-subtitle">Mobile: {{ $distributor->phone }}</div>
         @endif
         <div class="receipt-subtitle font-monospace mt-1">Invoice: <strong>{{ $sale->invoice_no }}</strong></div>
-        <div class="receipt-subtitle">Date: {{ \Carbon\Carbon::parse($sale->sale_date)->format('d-m-Y h:i A') }}</div>
+        @php
+            if ($sale->created_at) {
+                $created = \Carbon\Carbon::parse($sale->created_at)->timezone(config('app.timezone', 'Asia/Karachi'));
+                if ($sale->sale_date) {
+                    $invoiceDateTime = \Carbon\Carbon::parse($sale->sale_date)->setTime($created->hour, $created->minute, $created->second);
+                } else {
+                    $invoiceDateTime = $created;
+                }
+            } else {
+                $invoiceDateTime = \Carbon\Carbon::parse($sale->sale_date);
+            }
+        @endphp
+        <div class="receipt-subtitle">Date: {{ $invoiceDateTime->format('d-m-Y h:i A') }}</div>
         @php
             $bookerDisplayName = null;
             if ($sale->booker) {

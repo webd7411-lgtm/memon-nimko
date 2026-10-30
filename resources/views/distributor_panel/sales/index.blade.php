@@ -80,6 +80,9 @@
                         </td>
                         <td>
                             <span class="text-dark">{{ \Carbon\Carbon::parse($sale->sale_date)->format('d M, Y') }}</span>
+                            @if($sale->created_at)
+                            <div class="text-muted" style="font-size: 0.72rem;">{{ $sale->created_at->timezone(config('app.timezone', 'Asia/Karachi'))->format('h:i A') }}</div>
+                            @endif
                         </td>
                         <td class="text-center">
                             @if($sale->payment_type === 'cash')

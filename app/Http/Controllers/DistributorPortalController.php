@@ -719,7 +719,7 @@ class DistributorPortalController extends Controller
                 'distributor_id'          => $distributor->id,
                 'booker_user_id'          => $bookerUserId,
                 'distributor_customer_id' => $customer->id,
-                'sale_date'               => now()->format('Y-m-d'),
+                'sale_date'               => $request->sale_date ?: now()->format('Y-m-d'),
                 'subtotal'                => $subtotal,
                 'discount'                => $discount,
                 'grand_total'             => $grandTotal,
