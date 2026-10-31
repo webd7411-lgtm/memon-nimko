@@ -31,9 +31,9 @@
             --card-border: #e2e8f0;
         }
 
-        html, body {
+        html {
             overflow-x: hidden;
-            max-width: 100vw;
+            overflow-y: auto;
             width: 100%;
         }
 
@@ -45,6 +45,8 @@
             display: flex;
             flex-direction: column;
             -webkit-font-smoothing: antialiased;
+            overflow: visible;
+            width: 100%;
         }
 
         /* ═════════════════════════════════════════════════════════════════════
@@ -347,9 +349,14 @@
             margin-top: auto;
             background: #ffffff;
             border-top: 1px solid #e2e8f0;
-            padding: 12px 0;
+            padding: 14px 0;
             font-size: 0.8rem;
             color: #64748b;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            clear: both;
         }
 
         /* ─── Responsive Media Queries ─── */
@@ -660,8 +667,6 @@
                 </ul>
             </div>
         </div>
-            </div>
-        </div>
     </header>
 
     <!-- Mobile Drawer Offcanvas (< 992px) -->
@@ -799,7 +804,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <main class="py-2 py-md-3 flex-grow-1" style="overflow-x: hidden; width: 100%;">
+    <main class="py-2 py-md-3" style="width: 100%; flex: 1 0 auto; overflow: visible;">
         @yield('content')
     </main>
 

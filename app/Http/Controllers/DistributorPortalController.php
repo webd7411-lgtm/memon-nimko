@@ -660,13 +660,20 @@ class DistributorPortalController extends Controller
                 $itemSubtotal = $qty * $price;
                 $subtotal += $itemSubtotal;
 
+                $itemDisc = (float) ($request->item_disc[$index] ?? 0);
+                $discType = $request->disc_type[$index] ?? 'percent';
+                $discVal = (float) ($request->disc_val[$index] ?? 0);
+
                 $itemsData[] = [
-                    'product_id' => $productId,
-                    'variant_id' => $variantId,
-                    'qty'        => $qty,
-                    'unit_price' => $price,
-                    'subtotal'   => $itemSubtotal,
-                    'dist_stock' => $distStock,
+                    'product_id'    => $productId,
+                    'variant_id'    => $variantId,
+                    'qty'           => $qty,
+                    'unit_price'    => $price,
+                    'subtotal'      => $itemSubtotal,
+                    'discount'      => $itemDisc,
+                    'discount_type' => $discType,
+                    'discount_val'  => $discVal,
+                    'dist_stock'    => $distStock,
                 ];
             }
 
@@ -739,6 +746,9 @@ class DistributorPortalController extends Controller
                     'qty'                 => $row['qty'],
                     'unit_price'          => $row['unit_price'],
                     'subtotal'            => $row['subtotal'],
+                    'discount'            => $row['discount'] ?? 0.00,
+                    'discount_type'       => $row['discount_type'] ?? 'percent',
+                    'discount_val'        => $row['discount_val'] ?? 0.00,
                 ]);
 
                 $distStock = $row['dist_stock'];

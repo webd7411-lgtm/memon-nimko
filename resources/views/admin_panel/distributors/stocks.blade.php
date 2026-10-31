@@ -31,7 +31,25 @@
             </h5>
             <span class="text-muted small">Live inventory quantities currently loaded in distributor custody, vehicles, and vans</span>
         </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('admin.distributors.opening_stock') }}" class="btn btn-sm text-white rounded-pill px-3 shadow-sm" style="background: linear-gradient(135deg, #0f766e, #0d9488); font-weight: 600;">
+                <i class="fas fa-plus-circle me-1"></i> Add Opening Stock
+            </a>
+        </div>
     </div>
+
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm mb-3" role="alert">
+        <i class="fas fa-check-circle me-1"></i> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm mb-3" role="alert">
+        <i class="fas fa-exclamation-circle me-1"></i> {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
 
     <!-- Filter Bar -->
     <div class="card border-0 shadow-sm rounded-4 mb-4">

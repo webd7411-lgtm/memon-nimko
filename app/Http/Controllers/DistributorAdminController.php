@@ -586,6 +586,128 @@ class DistributorAdminController extends Controller
     }
 
     /**
+     * Show form to add initial / opening stock directly to distributor custody.
+     * Does not deduct from warehouse stock.
+     */
+    public function createOpeningStock()
+    {
+        $distributors = Distributor::where('status', 'active')->orderBy('name')->get();
+        $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
+
+        return view('admin_panel.distributors.opening_stock', compact('distributors', 'products'));
+    }
+
+    /**
+     * Store opening stock for distributor custody.
+     */
+    public function storeOpeningStock(Request $request)
+    {
+        $request->validate([
+            'distributor_id' => 'required|exists:distributors,id',
+            'opening_date'   => 'required|date',
+            'affect_ledger'  => 'nullable|in:0,1',
+            'notes'          => 'nullable|string|max:500',
+            'product_id'     => 'required|array|min:1',
+            'product_id.*'   => 'required',
+            'quantity'       => 'required|array|min:1',
+            'quantity.*'     => 'required|numeric|min:0.01',
+            'unit_price'     => 'required|array|min:1',
+            'unit_price.*'   => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $distributor = Distributor::findOrFail($request->distributor_id);
+            $affectLedger = (int)($request->affect_ledger ?? 0) === 1;
+            $totalAmount = 0;
+            $totalQty = 0;
+            $itemsCount = 0;
+
+            foreach ($request->product_id as $index => $rawProductId) {
+                if (empty($rawProductId)) continue;
+
+                $productId = $rawProductId;
+                $variantId = null;
+
+                // Support combined "productId_variantId" format
+                if (is_string($rawProductId) && str_contains($rawProductId, '_')) {
+                    $parts = explode('_', $rawProductId);
+                    $productId = (int)$parts[0];
+                    $variantId = !empty($parts[1]) && (int)$parts[1] > 0 ? (int)$parts[1] : null;
+                } else {
+                    $productId = (int)$rawProductId;
+                    $variantId = !empty($request->variant_id[$index]) ? (int)$request->variant_id[$index] : null;
+                }
+
+                $qty = (float) ($request->quantity[$index] ?? 0);
+                $price = (float) ($request->unit_price[$index] ?? 0);
+
+                if ($qty <= 0 || $productId <= 0) continue;
+
+                $subtotal = $qty * $price;
+                $totalQty += $qty;
+                $totalAmount += $subtotal;
+                $itemsCount++;
+
+                // Add or update Distributor Custody Stock (Directly, without touching main warehouse)
+                $distStock = DistributorStock::firstOrCreate([
+                    'distributor_id' => $distributor->id,
+                    'product_id'     => $productId,
+                    'variant_id'     => $variantId,
+                ], [
+                    'qty'       => 0,
+                    'avg_price' => $price,
+                ]);
+
+                // Calculate weighted avg price or set price
+                if ($distStock->qty > 0 && ($distStock->qty + $qty) > 0) {
+                    $distStock->avg_price = (($distStock->qty * (float)$distStock->avg_price) + ($qty * $price)) / ($distStock->qty + $qty);
+                } else {
+                    $distStock->avg_price = $price;
+                }
+
+                $distStock->qty += $qty;
+                $distStock->save();
+            }
+
+            if ($itemsCount === 0) {
+                return back()->withInput()->with('error', 'Please enter at least one product with valid quantity.');
+            }
+
+            // If user selected to affect the ledger
+            if ($affectLedger && $totalAmount > 0) {
+                $distributor->current_balance += $totalAmount;
+                $distributor->save();
+
+                DistributorLedger::create([
+                    'distributor_id' => $distributor->id,
+                    'date'           => $request->opening_date ?: now()->format('Y-m-d'),
+                    'type'           => 'opening_stock',
+                    'reference_no'   => 'OSTK-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                    'description'    => $request->notes ?: 'Distributor Opening Stock Custody Initial Setup (' . $itemsCount . ' items)',
+                    'debit'          => $totalAmount,
+                    'credit'         => 0,
+                    'balance'        => $distributor->current_balance,
+                    'created_by'     => Auth::id(),
+                ]);
+            }
+
+            DB::commit();
+
+            $msg = "Opening stock added successfully for {$distributor->name} ({$itemsCount} items, {$totalQty} total qty).";
+            if ($affectLedger && $totalAmount > 0) {
+                $msg .= " Ledger updated with Rs. " . number_format($totalAmount, 2) . " debit.";
+            }
+
+            return redirect()->route('admin.distributors.stocks', ['distributor_id' => $distributor->id])->with('success', $msg);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Failed to add opening stock: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * View Company <-> Distributor financial statement / ledger.
      */
     public function ledger($id, Request $request)

@@ -36,7 +36,7 @@
 }
 
 /* SELECT2 ENHANCEMENTS */
-.select2-container { width: 100% !important; }
+.ss-wrapper .select2-container { width: 100% !important; }
 .select2-container--default .select2-selection--single {
     height: 34px !important;
     border: 1.5px solid var(--ss-border) !important;
@@ -81,6 +81,12 @@
     padding: 5px 8px !important;
     outline: none !important;
     font-size: 12.5px !important;
+}
+.select2-results__option {
+    padding: 6px 10px !important;
+    font-size: 12.5px !important;
+    white-space: normal !important;
+    word-break: break-word;
 }
 
 /* TOP CONTROLS BAR */
@@ -744,7 +750,7 @@
                                         <option value="" disabled selected>-- Select Retail Shop / Customer --</option>
                                         @foreach($customers as $c)
                                             <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}" data-approved-discount="{{ (float)($c->approved_discount ?? 0) }}">
-                                                ðŸª {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
+                                                {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
                                             </option>
                                         @endforeach
                                     @else
@@ -802,7 +808,7 @@
                     <div class="ss-barcode-box flex-grow-1">
                         <i class="fas fa-barcode"></i>
                         <input type="text" id="barcodeScanner" class="ss-barcode-input" placeholder="Scan Barcode (Variant / SKU)..." autocomplete="off" autofocus>
-                        <button type="button" id="btnClearBarcode" class="ss-btn-clear-barcode">âœ•</button>
+                        <button type="button" id="btnClearBarcode" class="ss-btn-clear-barcode" title="Clear Barcode"><i class="fas fa-times"></i></button>
                     </div>
                     <button type="button" class="ss-btn-add-row" id="btnAddGridRow" title="Add New Row (F4)" style="height: 32px; white-space: nowrap;">
                         <i class="fas fa-plus"></i> Add Row (F4)
@@ -862,7 +868,7 @@
                                     <th style="width: 100px;">PRICE</th>
                                     <th style="width: 125px;">DISCOUNT</th>
                                     <th style="width: 110px;">AMOUNT</th>
-                                    <th style="width: 36px;">âœ•</th>
+                                    <th style="width: 36px;" class="text-center" title="Delete Row"><i class="fas fa-trash-alt text-muted"></i></th>
                                 </tr>
                             </thead>
                             <tbody id="saleGridBody">
@@ -926,12 +932,21 @@
 
                     <div id="paymentMethodsContainer">
                         <div class="ss-pm-row" data-index="0">
+                            @php
+                                $cashAccount = $bankAccounts->first(function($a) {
+                                    return stripos($a->title, "cash") !== false;
+                                });
+                                $otherAccounts = $bankAccounts->filter(function($a) {
+                                    return stripos($a->title, "cash") === false;
+                                });
+                            @endphp
                             <select class="ss-pm-select pm-account-select" name="payment_account[]" id="pmAccountSelect">
-                                <option value="cash" selected>Cash in hand</option>
-                                <option value="credit">Credit (Due)</option>
-                                @if(isset($bankAccounts) && $bankAccounts->count() > 0)
-                                    <optgroup label="My Bank & Online Accounts">
-                                        @foreach($bankAccounts as $acc)
+                                <option value="{{ $cashAccount ? $cashAccount->id : "cash" }}" selected>
+                                    {{ $cashAccount ? $cashAccount->title : "Cash in hand" }}
+                                </option>
+                                @if($otherAccounts->count() > 0)
+                                    <optgroup label="Bank & Online Accounts">
+                                        @foreach($otherAccounts as $acc)
                                             <option value="{{ $acc->id }}">{{ $acc->title }} @if($acc->account_number)({{ $acc->account_number }})@endif</option>
                                         @endforeach
                                     </optgroup>
@@ -940,72 +955,34 @@
                             <input type="number" step="any" min="0" class="ss-pm-input pm-amount-input" name="payment_amount[]" id="pmAmountInput" placeholder="0.00" value="0.00">
                         </div>
                     </div>
+
+                    <!-- Smart Quick Cash Buttons -->
+                    <div class="d-flex flex-wrap gap-1 mt-2" id="smartPayButtons">
+                        <button type="button" class="btn btn-sm btn-outline-success fw-bold flex-fill smart-pay-btn" data-action="full" title="Pay Full Bill">
+                            <i class="fas fa-check-double me-1"></i> Full
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold flex-fill smart-pay-btn" data-val="5000">
+                            5,000
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold flex-fill smart-pay-btn" data-val="1000">
+                            1,000
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold flex-fill smart-pay-btn" data-val="500">
+                            500
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold flex-fill smart-pay-btn" data-action="clear" title="Reset to 0 (Full Credit / Due)">
+                            <i class="fas fa-undo me-1"></i> 0
+                        </button>
+                    </div>
                 </div>
 
                 <!-- BIG SAVE & COMPLETE BUTTON -->
-                <button type="submit" class="ss-btn-save-complete" id="btnSaveComplete">
+                <button type="button" class="ss-btn-save-complete" id="btnSaveComplete">
                     <i class="fas fa-save"></i> Save & Complete (F9)
                 </button>
             </div>
         </div>
-    
-<!-- Modal: Quick Add Account for Distributor -->
-<div class="modal fade" id="quickAddAccountModal" tabindex="-1" aria-labelledby="quickAddAccountModalLabel" aria-hidden="true" style="z-index: 1060;">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header text-white" style="background: linear-gradient(135deg, #090d16 0%, #0f766e 100%);">
-                <h6 class="modal-title fw-bold" id="quickAddAccountModalLabel">
-                    <i class="fas fa-university me-1.5"></i> Open My Bank / Cash Account
-                </h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="quickAddAccountForm">
-                @csrf
-                <div class="modal-body p-3.5">
-                    <div class="mb-2.5">
-                        <label class="form-label fw-bold text-dark small mb-1">Account Category / Head <span class="text-danger">*</span></label>
-                        <select name="head_id" id="qaHeadId" class="form-select form-select-sm rounded-3 shadow-none">
-                            @if(isset($accountHeads))
-                                @foreach($accountHeads as $h)
-                                    <option value="{{ $h->id }}" {{ str_contains(strtolower($h->name), "bank") ? "selected" : "" }}>{{ $h->name }}</option>
-                                @endforeach
-                            @endif
-                        </select>
-                    </div>
-
-                    <div class="mb-2.5">
-                        <label class="form-label fw-bold text-dark small mb-1">Account Title <span class="text-danger">*</span></label>
-                        <input type="text" name="title" id="qaTitle" class="form-control form-control-sm rounded-3 shadow-none" placeholder="e.g. Meezan Bank (Distributor Current) or Cash Register" required>
-                    </div>
-
-                    <div class="row g-2 mb-2.5">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold text-dark small mb-1">Bank Name (Optional)</label>
-                            <input type="text" name="bank_name" id="qaBankName" class="form-control form-control-sm rounded-3 shadow-none" placeholder="e.g. Meezan Bank">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold text-dark small mb-1">Account / IBAN Number</label>
-                            <input type="text" name="account_number" id="qaAccountNumber" class="form-control form-control-sm rounded-3 shadow-none" placeholder="e.g. 010203040506">
-                        </div>
-                    </div>
-
-                    <div class="mb-1">
-                        <label class="form-label fw-semibold text-dark small mb-1">Opening Balance (PKR)</label>
-                        <input type="number" step="any" min="0" name="opening_balance" id="qaOpeningBalance" class="form-control form-control-sm rounded-3 shadow-none" placeholder="0.00" value="0">
-                    </div>
-                </div>
-                <div class="modal-footer bg-light px-3 py-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm btn-teal rounded-pill px-3" id="btnSubmitQuickAccount">
-                        <i class="fas fa-check me-1"></i> Save & Select Account
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-</form>
+    </form>
 </div>
 
 <!-- FLOATING PRODUCT SEARCH DROPDOWN -->
@@ -1032,25 +1009,25 @@
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Shop / Store Name <span class="text-danger">*</span></label>
-                        <input type="text" name="shop_name" class="form-control" required placeholder="e.g. Al-Madina Super Store">
+                        <input type="text" name="shop_name" class="form-control" required placeholder="e.g. Madina General Store">
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold small">Owner Name</label>
-                            <input type="text" name="owner_name" class="form-control" placeholder="Muhammad Ali">
+                            <label class="form-label fw-bold small">Owner / Contact Person</label>
+                            <input type="text" name="owner_name" class="form-control" placeholder="Owner Name">
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold small">Mobile / Phone</label>
-                            <input type="text" name="phone" class="form-control" placeholder="03XXXXXXXXX">
+                            <label class="form-label fw-bold small">Phone / Mobile</label>
+                            <input type="text" name="phone" class="form-control" placeholder="0300-1234567">
                         </div>
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold small">Market / Area</label>
-                            <input type="text" name="area" class="form-control" placeholder="Latifabad">
+                            <label class="form-label fw-bold small">Area / Route</label>
+                            <input type="text" name="area" class="form-control" placeholder="e.g. Saddar, Market">
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold small">Opening Balance</label>
+                            <label class="form-label fw-bold small">Opening Balance Due</label>
                             <input type="number" step="any" name="opening_balance" class="form-control" placeholder="0.00" value="0">
                         </div>
                     </div>
@@ -1069,7 +1046,11 @@
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success btn-sm fw-bold" id="btnSaveQuickCust"><i class="fas fa-check me-1"></i> Save & Select</button>
                 </div>
-            
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Quick Add Account for Distributor -->
 <div class="modal fade" id="quickAddAccountModal" tabindex="-1" aria-labelledby="quickAddAccountModalLabel" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered">
@@ -1122,11 +1103,6 @@
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-</form>
         </div>
     </div>
 </div>
@@ -1172,7 +1148,7 @@ $(document).ready(function() {
     $('#customerSelect').select2({
         placeholder: "Search Customer / Retailer...",
         width: '100%',
-        dropdownAutoWidth: true
+        dropdownAutoWidth: false
     }).on('select2:select', function() {
         updateCustomerBadge();
         setTimeout(function() { $('#barcodeScanner').focus(); }, 60);
@@ -1252,7 +1228,7 @@ $(document).ready(function() {
                 </td>
                 <td class="excel-cell excel-disc-cell">
                     <div class="ss-disc-wrap">
-                        <input type="number" step="any" min="0" class="ss-excel-input text-end row-disc-val" value="${discVal}">
+                        <input type="number" step="any" min="0" name="disc_val[]" class="ss-excel-input text-end row-disc-val" value="${discVal}">
                         <button type="button" class="ss-disc-toggle-btn ${discType === 'percent' ? 'btn-pct' : 'btn-pkr'}" data-type="${discType}" title="Click to toggle % / PKR">${discType === 'percent' ? '%' : 'PKR'}</button>
                         <input type="hidden" name="disc_type[]" class="row-disc-type" value="${discType}">
                         <input type="hidden" name="item_disc[]" class="row-disc-amount" value="${calcDisc.toFixed(2)}">
@@ -1262,7 +1238,7 @@ $(document).ready(function() {
                     <input type="number" step="any" readonly name="total[]" class="ss-excel-input text-end fw-bold row-amount" value="${amount.toFixed(2)}" style="background: #f8fafc; color: #0f172a;">
                 </td>
                 <td class="excel-cell text-center">
-                    <button type="button" class="ss-btn-del-row" title="Delete / Clear Row">âœ•</button>
+                    <button type="button" class="ss-btn-del-row" title="Delete / Clear Row"><i class="fas fa-trash-alt"></i></button>
                 </td>
             </tr>
         `;
@@ -1325,11 +1301,15 @@ $(document).ready(function() {
         items.forEach(function(p, idx) {
             const sizeLabel = p.size && p.size !== '-' ? ` <span class="badge bg-secondary text-white" style="font-size:9px;">${p.size}</span>` : '';
             const stockColor = p.stock > 0 ? 'text-success' : 'text-danger';
+            let codeParts = [];
+            if (p.code) codeParts.push(p.code);
+            if (p.barcode) codeParts.push(p.barcode);
+            const codeSub = codeParts.length > 0 ? `<div class="text-muted" style="font-size:10px;">${codeParts.join(' &bull; ')}</div>` : '';
             const $item = $(`
                 <div class="ss-drop-item ${idx === 0 ? 'selected' : ''}" data-idx="${idx}">
                     <div>
                         <div class="fw-bold" style="font-size:12px;">${p.name}${sizeLabel}</div>
-                        <div class="text-muted" style="font-size:10px;">${p.code ? p.code + ' â€¢ ' : ''}${p.barcode ? p.barcode : ''}</div>
+                        ${codeSub}
                     </div>
                     <div class="text-end">
                         <div class="fw-bold text-dark" style="font-size:12px;">Rs. ${Number(p.price).toFixed(2)}</div>
@@ -1673,20 +1653,8 @@ $(document).ready(function() {
         $('#summaryLineDiscount').text(lineDiscount.toFixed(2));
         $('#summaryNetTotal').text(netTotal.toFixed(2));
 
-        // Payment logic
-        const pmAccount = $('#pmAccountSelect').val();
+        // Payment logic - amount is NOT auto-filled; user can enter or click Smart Buttons
         const $pmInput = $('#pmAmountInput');
-
-        if (pmAccount === 'credit') {
-            $pmInput.val('0.00');
-            $('#inputPaymentType').val('credit');
-        } else if (pmAccount === 'cash') {
-            if (parseFloat($pmInput.val()) <= 0 || parseFloat($pmInput.val()) === parseFloat($('#summaryNetTotal').text())) {
-                $pmInput.val(netTotal.toFixed(2));
-            }
-            $('#inputPaymentType').val('cash');
-        }
-
         const totalPaid = parseFloat($pmInput.val()) || 0;
         $('#summaryTotalPaid').text(totalPaid.toFixed(2));
 
@@ -1699,7 +1667,15 @@ $(document).ready(function() {
             $('#summaryChangeBox').attr('class', 'ss-change-box').html(`<span>Change / Balance:</span> <span>${balance.toFixed(2)}</span>`);
         }
 
-        // Set hidden form fields
+        // Payment type determination
+        if (totalPaid >= netTotal && netTotal > 0) {
+            $('#inputPaymentType').val('cash');
+        } else if (totalPaid > 0) {
+            $('#inputPaymentType').val('partial');
+        } else {
+            $('#inputPaymentType').val('credit');
+        }
+
         $('#inputTotalDiscount').val(lineDiscount.toFixed(2));
         $('#inputPaidAmount').val(totalPaid.toFixed(2));
     }
@@ -1731,13 +1707,69 @@ $(document).ready(function() {
         recalculateTotals();
     });
 
-    // Top Save button triggers form
-    $('#btnTopSave').on('click', function() {
-        $('#dposScreenForm').submit();
+    // --- SMART PAYMENT BUTTONS ---
+    $(document).on('click', '.smart-pay-btn', function() {
+        const action = $(this).data('action');
+        const val = $(this).data('val');
+        const $pmInput = $('#pmAmountInput');
+        const netTotal = parseFloat($('#summaryNetTotal').text()) || 0;
+
+        if (action === 'full') {
+            $pmInput.val(netTotal.toFixed(2));
+        } else if (action === 'clear') {
+            $pmInput.val('0.00');
+        } else if (val) {
+            $pmInput.val(parseFloat(val).toFixed(2));
+        }
+        recalculateTotals();
     });
 
-    // Shortcut F9 -> Submit Form
-    
+    $(document).on('input', '#pmAmountInput', function() {
+        recalculateTotals();
+    });
+
+    // --- FORM SUBMISSION (TOP SAVE & MAIN SAVE) ---
+    function submitDistributorSale() {
+        const custId = $('#customerSelect').val();
+        if (!custId) {
+            alert('Please select a Retail Shop / Customer before saving.');
+            $('#customerSelect').select2('open');
+            return;
+        }
+
+        let validRows = 0;
+        $('#saleGridBody tr.ss-grid-row').each(function() {
+            const pId = $(this).find('.row-product-id').val();
+            const q = parseFloat($(this).find('.row-qty').val()) || 0;
+            if (pId && q > 0) {
+                validRows++;
+            }
+        });
+
+        if (validRows === 0) {
+            alert('Please add at least one product with quantity before saving.');
+            $('#saleGridBody tr.ss-grid-row:first .ss-prod-search-input').focus();
+            return;
+        }
+
+        // Disable unselected rows so no empty arrays are submitted
+        $('#saleGridBody tr.ss-grid-row').each(function() {
+            const pId = $(this).find('.row-product-id').val();
+            if (!pId) {
+                $(this).find('input, select').prop('disabled', true);
+            }
+        });
+
+        $('#btnSaveComplete').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving Sale...');
+        $('#btnTopSave').prop('disabled', true);
+        document.getElementById('dposScreenForm').submit();
+    }
+
+    $('#btnTopSave, #btnSaveComplete').on('click', function(e) {
+        e.preventDefault();
+        submitDistributorSale();
+    });
+
     // Open Quick Add Account Modal
     $("#btnAddAccountRow").on("click", function() {
         $("#qaTitle").val("");
@@ -1792,7 +1824,7 @@ $(document).ready(function() {
     $(document).on('keydown', function(e) {
         if (e.key === 'F9') {
             e.preventDefault();
-            $('#dposScreenForm').submit();
+            submitDistributorSale();
         }
         if (e.key === 'F4') {
             e.preventDefault();
@@ -1818,7 +1850,7 @@ $(document).ready(function() {
 
                 if (res.customer) {
                     const c = res.customer;
-                    const optText = 'ðŸª ' + c.shop_name + (c.owner_name ? ' (' + c.owner_name + ')' : '') + (c.area ? ' - ' + c.area : '');
+                    const optText = c.shop_name + (c.owner_name ? ' (' + c.owner_name + ')' : '') + (c.area ? ' - ' + c.area : '');
                     const newOpt = new Option(optText, c.id, true, true);
                     $(newOpt).attr('data-type', 'retailer');
                     $(newOpt).attr('data-balance', c.current_balance || 0);

@@ -448,6 +448,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders/{id}', [DistributorAdminController::class, 'showOrder'])->name('orders.show')->middleware('permission:Distributor Orders');
         Route::post('/orders/{id}/dispatch', [DistributorAdminController::class, 'dispatchOrder'])->name('orders.dispatch')->middleware('permission:Dispatch Distributor Order');
         Route::get('/stocks', [DistributorAdminController::class, 'stocks'])->name('stocks')->middleware('permission:Distributor Custody Stocks');
+        Route::get('/opening-stock', [DistributorAdminController::class, 'createOpeningStock'])->name('opening_stock')->middleware('permission:Distributor Custody Stocks');
+        Route::post('/opening-stock/store', [DistributorAdminController::class, 'storeOpeningStock'])->name('opening_stock.store')->middleware('permission:Distributor Custody Stocks');
         Route::get('/ledger/{id}', [DistributorAdminController::class, 'ledger'])->name('ledger')->middleware('permission:Distributor Ledger');
         Route::post('/payment/{id}', [DistributorAdminController::class, 'storePayment'])->name('payment.store');
         Route::get('/secondary-sales', [DistributorAdminController::class, 'secondarySales'])->name('secondary_sales')->middleware('permission:Distributor Secondary Sales');

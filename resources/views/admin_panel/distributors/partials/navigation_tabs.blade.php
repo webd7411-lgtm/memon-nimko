@@ -112,7 +112,7 @@
             @can('Distributor Custody Stocks')
             <!-- 6. Stock Transfers (Custody) -->
             <a href="{{ route('admin.distributors.stocks') }}" 
-               class="dist-nav-tab {{ $currentRoute === 'admin.distributors.stocks' ? 'active' : '' }}">
+               class="dist-nav-tab {{ in_array($currentRoute, ['admin.distributors.stocks', 'admin.distributors.opening_stock']) ? 'active' : '' }}">
                 Stock Transfers
             </a>
             @endcan

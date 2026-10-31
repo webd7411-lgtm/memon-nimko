@@ -156,13 +156,19 @@
     <table class="receipt-table">
         <thead>
             <tr>
-                <th style="width: 50%;">Item</th>
-                <th class="text-center" style="width: 20%;">Qty</th>
-                <th class="text-end" style="width: 30%;">Amount</th>
+                <th style="width: 44%;">Item</th>
+                <th class="text-center" style="width: 16%;">Qty</th>
+                <th class="text-center" style="width: 18%;">Disc</th>
+                <th class="text-end" style="width: 22%;">Amount</th>
             </tr>
         </thead>
         <tbody>
             @foreach($sale->items as $item)
+            @php
+                $itemGross = (float)$item->qty * (float)$item->unit_price;
+                $itemDisc = (float)($item->discount ?? 0);
+                $netItemAmount = max(0, ((float)$item->subtotal > 0 ? (float)$item->subtotal : $itemGross) - $itemDisc);
+            @endphp
             <tr>
                 <td>
                     {{ $item->product->item_name }}
@@ -171,7 +177,18 @@
                     @endif
                 </td>
                 <td class="text-center">{{ (float)$item->qty }}</td>
-                <td class="text-end">Rs {{ number_format($item->subtotal, 2) }}</td>
+                <td class="text-center">
+                    @if($itemDisc > 0)
+                        @if($item->discount_type === 'percent' && (float)($item->discount_val ?? 0) > 0)
+                            <span style="font-weight: 700; color: #dc2626;">{{ (float)$item->discount_val }}%</span>
+                        @else
+                            <span style="font-weight: 700; color: #dc2626;">-Rs {{ number_format($itemDisc, 0) }}</span>
+                        @endif
+                    @else
+                        <span style="color: #999;">-</span>
+                    @endif
+                </td>
+                <td class="text-end">Rs {{ number_format($netItemAmount, 2) }}</td>
             </tr>
             @endforeach
         </tbody>

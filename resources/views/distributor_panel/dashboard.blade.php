@@ -40,13 +40,13 @@
 
 .erp-dashboard {
   background: var(--erp-bg);
-  min-height: 100vh;
+  min-height: auto;
   padding: 0.5rem 0.35rem 2.5rem 0.35rem;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: var(--erp-text-main);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-  max-width: 100vw;
+  overflow: visible;
+
   width: 100%;
 }
 
@@ -259,7 +259,7 @@
   border: 1px solid var(--erp-border);
   border-radius: var(--erp-radius-sm);
   padding: 0.9rem 1rem;
-  height: 100%;
+  height: auto;
   text-decoration: none !important;
   color: inherit !important;
   transition: all 0.2s ease;
@@ -362,7 +362,7 @@
   border: 1px solid var(--erp-border);
   border-radius: var(--erp-radius);
   padding: 1.1rem;
-  height: 100%;
+  height: auto;
   box-shadow: var(--erp-shadow-card);
   display: flex;
   flex-direction: column;
@@ -955,7 +955,7 @@
     {{-- ══════════════════════════════════════════════════════════════ --}}
     <div class="row g-3">
       {{-- Left Column: Recent Sales & Recoveries --}}
-      <div class="col-12 col-lg-7">
+      <div class="col-12 col-lg-7 d-flex flex-column gap-3">
         {{-- Recent Secondary Sales Invoices --}}
         <div class="erp-card-surface mb-3">
           <div class="erp-card-header">
@@ -1074,7 +1074,7 @@
       </div>
 
       {{-- Right Column: Demand Orders & Priority Retailers --}}
-      <div class="col-12 col-lg-5">
+      <div class="col-12 col-lg-5 d-flex flex-column gap-3">
         {{-- Demand Requisitions to Head Office --}}
         <div class="erp-card-surface mb-3">
           <div class="erp-card-header">

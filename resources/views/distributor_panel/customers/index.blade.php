@@ -10,7 +10,7 @@
                 <a href="{{ route('distributor.dashboard') }}" class="text-white-50 text-decoration-none small">
                     <i class="fas fa-arrow-left me-1"></i> Dashboard
                 </a>
-                <span class="text-white-50">â€¢</span>
+                <span class="text-white-50">&bull;</span>
                 <span class="badge rounded-pill px-3 py-1.5" style="background: rgba(15, 118, 110, 0.4); border: 1px solid rgba(20, 184, 166, 0.4); color: #5eead4;">
                     Retail Network
                 </span>
@@ -89,7 +89,7 @@
                             </div>
                         </td>
                         <td>
-                            <span class="text-dark"><i class="fas fa-phone-alt me-1 text-muted" style="font-size: 0.75rem;"></i> {{ $cust->phone ?: 'â€”' }}</span>
+                            <span class="text-dark"><i class="fas fa-phone-alt me-1 text-muted" style="font-size: 0.75rem;"></i> {{ $cust->phone ?: '-' }}</span>
                         </td>
                         <td>
                             <span class="badge bg-light text-secondary border px-2.5 py-1">
