@@ -972,7 +972,7 @@
           <div class="erp-card-header">
             <h3 class="erp-card-heading">
               <i class="fas fa-tags text-teal"></i>
-              <span>Top Nimko Categories Contribution</span>
+              <span>Top Categories Contribution</span>
             </h3>
             <a href="{{ route('report.sale.category') }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.7rem;">Categories</a>
           </div>
@@ -1024,7 +1024,7 @@
           <div class="erp-card-header">
             <h3 class="erp-card-heading">
               <i class="fas fa-award text-amber"></i>
-              <span>Top 10 Selling Nimko Products</span>
+              <span>Top 10 Selling Products</span>
             </h3>
             <a href="{{ route('report.item_stock') }}" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size:0.72rem;">
               Stock Report &rarr;
