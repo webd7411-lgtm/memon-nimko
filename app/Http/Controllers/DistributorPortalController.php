@@ -482,7 +482,7 @@ class DistributorPortalController extends Controller
         $distributor = $this->getDistributor();
 
         $request->validate([
-            'booker_user_id'    => 'nullable|exists:users,id',
+            'booker_user_id'    => Auth::user()->usertype === 'order_booker' ? 'nullable' : 'required|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',
@@ -561,7 +561,7 @@ class DistributorPortalController extends Controller
         $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($id);
 
         $request->validate([
-            'booker_user_id'    => 'nullable|exists:users,id',
+            'booker_user_id'    => 'required|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',

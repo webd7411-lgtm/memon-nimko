@@ -469,10 +469,10 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold small text-dark mb-1">
-                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker (Optional)
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assign Order Booker *
                                 </label>
-                                <select name="booker_user_id" id="addCustomerBookerSelect" class="form-select form-select-sm">
-                                    <option value="">-- All / Any Order Booker --</option>
+                                <select name="booker_user_id" id="addCustomerBookerSelect" class="form-select form-select-sm" required>
+                                    <option value="">-- Select Order Booker --</option>
                                 </select>
                             </div>
 
@@ -575,10 +575,10 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold small text-dark mb-1">
-                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assign Order Booker *
                                 </label>
-                                <select name="booker_user_id" id="editBookerSelect{{ $c->id }}" class="form-select form-select-sm" data-selected="{{ $c->booker_user_id }}">
-                                    <option value="">-- All / Any Order Booker --</option>
+                                <select name="booker_user_id" id="editBookerSelect{{ $c->id }}" class="form-select form-select-sm" data-selected="{{ $c->booker_user_id }}" required>
+                                    <option value="">-- Select Order Booker --</option>
                                     @php
                                         $parentDist = $distributors->firstWhere('id', $c->distributor_id);
                                     @endphp
@@ -827,7 +827,7 @@
 
         function populateBookers(distId, selectElem, selectedBookerId = null) {
             if (!selectElem) return;
-            selectElem.innerHTML = '<option value="">-- All / Any Order Booker --</option>';
+            selectElem.innerHTML = '<option value="">-- Select Order Booker --</option>';
 
             if (!distId) return;
 

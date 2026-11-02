@@ -1358,7 +1358,7 @@ class DistributorAdminController extends Controller
     {
         $request->validate([
             'distributor_id'    => 'required|exists:distributors,id',
-            'booker_user_id'    => 'nullable|exists:users,id',
+            'booker_user_id'    => 'required|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',
@@ -1418,7 +1418,7 @@ class DistributorAdminController extends Controller
 
         $request->validate([
             'distributor_id'    => 'required|exists:distributors,id',
-            'booker_user_id'    => 'nullable|exists:users,id',
+            'booker_user_id'    => 'required|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',

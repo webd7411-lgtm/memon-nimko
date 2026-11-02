@@ -721,13 +721,40 @@
         border: 1px solid #e2e8f0 !important;
     }
 
-    /* Standard Submenu Dropdown */
+    /* Standard Submenu Dropdown (Scrollable for large lists like Reports) */
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu):hover > .submenu,
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu).show-submenu > .submenu {
-        min-width: 240px !important;
+        min-width: 260px !important;
         width: auto !important;
         left: 0 !important;
-        padding: 12px 14px !important;
+        padding: 10px 12px !important;
+        max-height: calc(100vh - 125px) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #cbd5e1 transparent !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu::-webkit-scrollbar {
+        width: 5px !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu::-webkit-scrollbar-track {
+        background: transparent !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu::-webkit-scrollbar-thumb {
+        background: #cbd5e1 !important;
+        border-radius: 10px !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8 !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu-item li a {
+        padding: 6px 10px !important;
+        font-size: 0.84rem !important;
     }
 
     /* Mega Menu Dropdown (Management) */

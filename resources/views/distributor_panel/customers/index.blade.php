@@ -164,10 +164,10 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold small text-dark mb-1">
-                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker (Optional)
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assign Order Booker *
                                 </label>
-                                <select name="booker_user_id" class="form-select form-select-sm">
-                                    <option value="">-- All / Any Order Booker --</option>
+                                <select name="booker_user_id" class="form-select form-select-sm" required>
+                                    <option value="">-- Select Order Booker --</option>
                                     @if(isset($bookers))
                                         @foreach($bookers as $bkr)
                                         <option value="{{ $bkr->id }}">{{ $bkr->name }} ({{ $bkr->email }})</option>
@@ -262,10 +262,10 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold small text-dark mb-1">
-                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker (Optional)
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assign Order Booker *
                                 </label>
-                                <select name="booker_user_id" class="form-select form-select-sm">
-                                    <option value="">-- All / Any Order Booker --</option>
+                                <select name="booker_user_id" class="form-select form-select-sm" required>
+                                    <option value="">-- Select Order Booker --</option>
                                     @if(isset($bookers))
                                         @foreach($bookers as $bkr)
                                         <option value="{{ $bkr->id }}" {{ $cust->booker_user_id == $bkr->id ? 'selected' : '' }}>
