@@ -1284,6 +1284,35 @@
             </div>
           </div>
 
+          {{-- Return Summary Alert (Shown only when returns exist for this invoice) --}}
+          <div id="mdlReturnAlert" class="erp-card-box mt-2 mb-0" style="display: none; background: #fff1f2; border: 1.5px solid #fecdd3; border-left: 5px solid #e11d48;">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+              <div>
+                <div class="fw-bold text-danger d-flex align-items-center gap-2 fs-6">
+                  <i class="bi bi-arrow-return-left fs-5"></i>
+                  <span>Sale Return Processed Against This Invoice</span>
+                  <span class="badge bg-danger rounded-pill px-2.5 py-1" id="mdlReturnCountBadge">1 Return</span>
+                </div>
+                <div class="text-muted small mt-1" id="mdlReturnNoteText">
+                  <!-- Return Note & Date -->
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                <div class="text-end">
+                  <span class="text-muted small d-block text-uppercase fw-semibold" style="font-size: 0.68rem;">Total Returned Qty</span>
+                  <span class="fw-bold text-danger fs-6" id="mdlHeaderRetQty">0 pcs</span>
+                </div>
+                <div class="text-end">
+                  <span class="text-muted small d-block text-uppercase fw-semibold" style="font-size: 0.68rem;">Total Refund Value</span>
+                  <span class="fw-bold text-danger fs-6" id="mdlHeaderRetAmount">PKR 0</span>
+                </div>
+                <a id="mdlBtnReturnReceipt" href="#" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold shadow-sm" style="font-size: 0.78rem;">
+                  <i class="bi bi-receipt me-1"></i> Return Receipt
+                </a>
+              </div>
+            </div>
+          </div>
+
           {{-- Itemized Products Table (ALL Products Shown Here) --}}
           <div class="erp-card-box mt-2 mb-0">
             <div class="erp-card-title">
@@ -1293,15 +1322,17 @@
               <table class="erp-items-table">
                 <thead>
                   <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 32%;">Item Name & Variant</th>
-                    <th style="width: 14%;">Barcode / SKU</th>
-                    <th style="width: 8%;">Unit</th>
-                    <th style="width: 8%; text-align: center;">Qty</th>
-                    <th style="width: 11%; text-align: right;">Unit Price</th>
-                    <th style="width: 8%; text-align: center;" title="Trade Offer (Free / Scheme Qty)">T.O</th>
+                    <th style="width: 4%;">#</th>
+                    <th style="width: 27%;">Item Name & Variant</th>
+                    <th style="width: 12%;">Barcode / SKU</th>
+                    <th style="width: 6%;">Unit</th>
+                    <th style="width: 8%; text-align: center;" title="Quantity originally given / sold">Sold Qty</th>
+                    <th style="width: 8%; text-align: center;" title="Quantity returned by customer">Returned</th>
+                    <th style="width: 8%; text-align: center;" title="Remaining active quantity">Net Qty</th>
+                    <th style="width: 9%; text-align: right;">Unit Price</th>
+                    <th style="width: 6%; text-align: center;" title="Trade Offer (Free / Scheme Qty)">T.O</th>
                     <th style="width: 8%; text-align: right;">Discount</th>
-                    <th style="width: 10%; text-align: right;">Total</th>
+                    <th style="width: 12%; text-align: right;">Net Total</th>
                   </tr>
                 </thead>
                 <tbody id="mdlItemsBody">
@@ -1322,6 +1353,10 @@
                 <span class="label">Total Discount</span>
                 <span class="val text-danger" id="mdlDiscount">- PKR 0</span>
               </div>
+              <div class="erp-calc-item" id="mdlReturnedBox" style="display: none;">
+                <span class="label text-danger">Total Returned (Refund)</span>
+                <span class="val text-danger fw-bold" id="mdlReturnedVal">- PKR 0</span>
+              </div>
               <div class="erp-calc-item">
                 <span class="label">Cash Paid</span>
                 <span class="val" id="mdlCash">PKR 0</span>
@@ -1333,7 +1368,7 @@
             </div>
 
             <div class="erp-net-banner">
-              <div class="banner-label">
+              <div class="banner-label" id="mdlNetBannerLabel">
                 <i class="bi bi-check2-circle me-1"></i> Net Amount Payable (After Discount)
               </div>
               <div class="banner-val" id="mdlNet">
@@ -1640,35 +1675,93 @@ $(document).ready(function() {
                     $('#mdlBranch').text(s.branch || '-');
                     $('#mdlReference').text(s.reference || '-');
 
-                    // Line Items (All products listed here cleanly)
+                    // Line Items (All products listed here cleanly with Sold, Returned & Net Qtys)
                     $('#mdlItemCount').text(s.items ? s.items.length : 0);
                     var rowsHtml = '';
                     if (s.items && s.items.length) {
                         s.items.forEach(function(item, idx) {
                             var vText = item.variant ? '<span class="badge bg-light text-dark border ms-1">' + esc(item.variant) + '</span>' : '';
+
+                            var retBadge = '';
+                            var netQtyHtml = '';
+                            var totalHtml = '';
+
+                            var soldQty = item.sold_qty !== undefined ? item.sold_qty : item.qty;
+                            var retQty = item.returned_qty || 0;
+                            var netQty = item.net_qty !== undefined ? item.net_qty : (soldQty - retQty);
+
+                            if (retQty > 0) {
+                                retBadge = '<span class="badge bg-danger-subtle text-danger border border-danger fw-bold px-2 py-0.5">-' + formatNumber(retQty) + '</span>';
+                                if (item.is_full_return || netQty <= 0) {
+                                    netQtyHtml = '<span class="badge bg-secondary-subtle text-muted border px-2 py-0.5">0 (Returned)</span>';
+                                    totalHtml = '<del class="text-muted small d-block">PKR ' + formatNumber(item.total) + '</del>'
+                                              + '<span class="badge bg-danger-subtle text-danger border border-danger">PKR 0</span>';
+                                } else {
+                                    netQtyHtml = '<strong class="text-dark">' + formatNumber(netQty) + '</strong>';
+                                    totalHtml = '<del class="text-muted small d-block">PKR ' + formatNumber(item.total) + '</del>'
+                                              + '<strong class="text-success">PKR ' + formatNumber(item.net_total) + '</strong>';
+                                }
+                            } else {
+                                retBadge = '<span class="text-muted">-</span>';
+                                netQtyHtml = '<strong>' + formatNumber(soldQty) + '</strong>';
+                                totalHtml = '<span class="fw-bold">PKR ' + formatNumber(item.total) + '</span>';
+                            }
+
                             rowsHtml += '<tr>'
                                 + '<td>' + (idx + 1) + '</td>'
                                 + '<td><strong>' + esc(item.item_name) + '</strong>' + vText + '</td>'
                                 + '<td><span class="font-monospace text-muted">' + esc(item.item_code || '-') + '</span></td>'
                                 + '<td>' + esc(item.unit || 'PC') + '</td>'
-                                + '<td style="text-align: center;"><strong>' + formatNumber(item.qty) + '</strong></td>'
+                                + '<td style="text-align: center;"><span class="fw-bold text-dark">' + formatNumber(soldQty) + '</span></td>'
+                                + '<td style="text-align: center;">' + retBadge + '</td>'
+                                + '<td style="text-align: center;">' + netQtyHtml + '</td>'
                                 + '<td style="text-align: right;">PKR ' + formatNumber(item.price) + '</td>'
                                 + '<td style="text-align: center;">' + (item.trade_offer > 0 ? ('<span class="badge bg-success-subtle text-success border border-success fw-bold">+' + formatNumber(item.trade_offer) + ' Free</span>') : '<span class="text-muted">-</span>') + '</td>'
                                 + '<td style="text-align: right;" class="text-danger">' + (item.discount > 0 ? ('- PKR ' + formatNumber(item.discount)) : '-') + '</td>'
-                                + '<td style="text-align: right;" class="fw-bold">PKR ' + formatNumber(item.total) + '</td>'
+                                + '<td style="text-align: right;">' + totalHtml + '</td>'
                                 + '</tr>';
                         });
                     } else {
-                        rowsHtml = '<tr><td colspan="9" class="text-center py-3 text-muted">No items recorded.</td></tr>';
+                        rowsHtml = '<tr><td colspan="11" class="text-center py-3 text-muted">No items recorded.</td></tr>';
                     }
                     $('#mdlItemsBody').html(rowsHtml);
+
+                    // Returns Summary Banner
+                    var retSum = s.returns_summary || {};
+                    if (retSum.has_returns) {
+                        $('#mdlReturnAlert').show();
+                        $('#mdlReturnCountBadge').text(retSum.returns_count + (retSum.returns_count > 1 ? ' Returns' : ' Return'));
+                        var retInfo = retSum.last_return_note ? ('Note: ' + esc(retSum.last_return_note)) : 'Return Processed';
+                        if (retSum.last_return_date) retInfo += ' • Date: ' + retSum.last_return_date;
+                        $('#mdlReturnNoteText').text(retInfo);
+                        $('#mdlHeaderRetQty').text(formatNumber(retSum.total_returned_qty) + ' pcs');
+                        $('#mdlHeaderRetAmount').text('PKR ' + formatNumber(retSum.returned_amount));
+
+                        if (retSum.return_invoice_url) {
+                            $('#mdlBtnReturnReceipt').attr('href', retSum.return_invoice_url).show();
+                        } else {
+                            $('#mdlBtnReturnReceipt').hide();
+                        }
+                    } else {
+                        $('#mdlReturnAlert').hide();
+                    }
 
                     // Financial Panel
                     var fin = s.financial || {};
                     $('#mdlGross').text('PKR ' + formatNumber(fin.gross || 0));
                     $('#mdlDiscount').text('- PKR ' + formatNumber(fin.total_discount || 0));
+
+                    if (fin.returned_amount > 0) {
+                        $('#mdlReturnedBox').show();
+                        $('#mdlReturnedVal').text('- PKR ' + formatNumber(fin.returned_amount));
+                        $('#mdlNetBannerLabel').html('<i class="bi bi-check2-circle me-1"></i> Net Active Value (After Discount & Returns)');
+                    } else {
+                        $('#mdlReturnedBox').hide();
+                        $('#mdlNetBannerLabel').html('<i class="bi bi-check2-circle me-1"></i> Net Amount Payable (After Discount)');
+                    }
+
                     $('#mdlCash').text('PKR ' + formatNumber(fin.cash || 0));
-                    
+
                     var cardText = 'PKR ' + formatNumber(fin.card || 0);
                     if (fin.card_account) cardText += ' (' + esc(fin.card_account) + ')';
                     $('#mdlCard').text(cardText);

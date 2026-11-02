@@ -261,14 +261,47 @@
 
     {{-- KPI STAT CARDS --}}
     @php
-      $lowStockCount = $materials->filter(function($m) {
+      $lowStockCount = 0;
+      $totalBranchStockValue = 0;
+      $totalWarehouseStockValue = 0;
+
+      foreach ($materials as $m) {
         $factor = (float)($m->conversion_factor ?? 1);
-        $purQty = $factor > 0 ? ($m->currentStock() / $factor) : $m->currentStock();
-        return $purQty <= (float)($m->alert_qty ?? 0);
-      })->count();
+        $sQty = $m->currentStock();
+        $purQty = $factor > 0 ? ($sQty / $factor) : $sQty;
+        if ($purQty <= (float)($m->alert_qty ?? 0)) {
+          $lowStockCount++;
+        }
+        $lastCost = (float)$m->lastPurchaseCost();
+        if ($purQty > 0) {
+          $totalBranchStockValue += ($purQty * $lastCost);
+        }
+      }
+
+      foreach ($warehouseStocks as $ws) {
+        if ($ws->rawMaterial) {
+          $f = (float)($ws->rawMaterial->conversion_factor ?? 1);
+          $pQty = $f > 0 ? ((float)$ws->qty / $f) : (float)$ws->qty;
+          $totalWarehouseStockValue += $pQty * (float)$ws->rawMaterial->lastPurchaseCost();
+        }
+      }
+
+      $totalOverallStockValue = $totalBranchStockValue + $totalWarehouseStockValue;
     @endphp
     <div class="row g-3 mb-4">
-      <div class="col-6 col-md-3">
+      <div class="col-6 col-lg-3">
+        <div class="rm-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid #0f766e;margin-bottom:0;">
+          <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#ccfbf1;color:#0f766e;width:48px;height:48px;">
+            <i class="bi bi-cash-stack fs-4"></i>
+          </div>
+          <div>
+            <span class="d-block text-muted small fw-semibold" style="font-size:.73rem;text-transform:uppercase;">Total RM Stock Value</span>
+            <strong class="fs-5 text-dark" style="color:#0f766e;">Rs {{ number_format($totalBranchStockValue, 2) }}</strong>
+            <small class="d-block text-muted" style="font-size:.7rem;">Total All: Rs {{ number_format($totalOverallStockValue, 2) }}</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
         <div class="rm-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid var(--accent);margin-bottom:0;">
           <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#eff6ff;color:var(--accent);width:48px;height:48px;">
             <i class="bi bi-boxes fs-4"></i>
@@ -279,7 +312,7 @@
           </div>
         </div>
       </div>
-      <div class="col-6 col-md-3">
+      <div class="col-6 col-lg-3">
         <div class="rm-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid {{ $lowStockCount > 0 ? 'var(--danger)' : 'var(--success)' }};margin-bottom:0;">
           <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:{{ $lowStockCount > 0 ? '#fef2f2' : '#ecfdf5' }};color:{{ $lowStockCount > 0 ? 'var(--danger)' : 'var(--success)' }};width:48px;height:48px;">
             <i class="bi bi-exclamation-triangle-fill fs-4"></i>
@@ -290,18 +323,7 @@
           </div>
         </div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="rm-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid var(--success);margin-bottom:0;">
-          <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#ecfdf5;color:var(--success);width:48px;height:48px;">
-            <i class="bi bi-cart-check-fill fs-4"></i>
-          </div>
-          <div>
-            <span class="d-block text-muted small fw-semibold" style="font-size:.73rem;text-transform:uppercase;">Purchases Count</span>
-            <strong class="fs-5 text-dark">{{ count($purchases) }} Entries</strong>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
+      <div class="col-6 col-lg-3">
         <div class="rm-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid #8b5cf6;margin-bottom:0;">
           <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background:#f3e8ff;color:#8b5cf6;width:48px;height:48px;">
             <i class="bi bi-receipt-cutoff fs-4"></i>
@@ -309,6 +331,7 @@
           <div>
             <span class="d-block text-muted small fw-semibold" style="font-size:.73rem;text-transform:uppercase;">Product Recipes</span>
             <strong class="fs-5 text-dark">{{ isset($productsWithBom) ? count($productsWithBom) : 0 }} Recipes</strong>
+            <small class="d-block text-muted" style="font-size:.7rem;">Purchases: {{ count($purchases) }}</small>
           </div>
         </div>
       </div>
@@ -378,7 +401,7 @@
                       {{ number_format($purQty, 2) }} {{ $m->unit }}
                     </span>
                     @if($factor > 1)
-                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ number_format($sqty, 2) }} {{ $cUnit }})</div>
+                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ format_consumption_qty($sqty, $cUnit) }})</div>
                     @endif
                     @if($whQty > 0)
                       <div class="mt-1">
@@ -747,6 +770,9 @@
               <div class="text-muted small mt-1" style="font-size:.78rem;">Shop floor inventory for active branch with opening stock, purchases, recipe usages, and current closing balance</div>
             </div>
             <div class="d-flex align-items-center gap-2">
+              <span class="badge px-3 py-2 border shadow-sm" style="background:#f0fdf4;color:#15803d;font-size:.85rem;font-weight:700;">
+                <i class="bi bi-cash-coin me-1"></i> Branch Stock Value: Rs {{ number_format($totalBranchStockValue, 2) }}
+              </span>
               <button type="button" class="rm-btn rm-btn-sm" style="background:#eff6ff;color:var(--accent);border:1px solid #bfdbfe;" onclick="switchTab('tab-warehouse-stock')">
                 <i class="bi bi-building me-1"></i> View Warehouse Stock
               </button>
@@ -871,7 +897,7 @@
                   <td style="font-weight:700;" class="open-stock-cell" data-label="Opening Stock">
                     <span class="text-dark">{{ number_format($openPur, 2) }} {{ $m->unit }}</span>
                     @if($factor > 1)
-                      <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ number_format($openCons, 2) }} {{ $cUnit }})</div>
+                      <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ format_consumption_qty($openCons, $cUnit) }})</div>
                     @endif
                   </td>
                   <td style="font-weight:700;" class="purchase-qty-cell" data-label="Purchase Qty">
@@ -880,7 +906,7 @@
                         +{{ number_format($purPur, 2) }} {{ $m->unit }}
                       </span>
                       @if($factor > 1)
-                        <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ number_format($purCons, 2) }} {{ $cUnit }})</div>
+                        <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ format_consumption_qty($purCons, $cUnit) }})</div>
                       @endif
                     @else
                       <span class="text-muted small">0.00</span>
@@ -889,7 +915,7 @@
                   <td style="font-weight:700;" class="used-qty-cell" data-label="Used Qty">
                     @if($usedCons > 0)
                       <span class="badge bg-danger-subtle text-danger border fw-bold" style="font-size:.82rem;">
-                        -{{ number_format($usedCons, 2) }} {{ $cUnit }}
+                        -{{ format_consumption_qty($usedCons, $cUnit) }}
                       </span>
                       @if($factor > 1)
                         <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ number_format($usedPur, 2) }} {{ $m->unit }})</div>
@@ -903,7 +929,7 @@
                       {{ number_format($currPur, 2) }} {{ $m->unit }}
                     </span>
                     @if($factor > 1)
-                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ number_format($currCons, 2) }} {{ $cUnit }})</div>
+                      <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ format_consumption_qty($currCons, $cUnit) }})</div>
                     @endif
                   </td>
                   <td data-label="Alert Qty">
@@ -1075,7 +1101,7 @@
                     </td>
                     <td data-label="Recipe Qty">
                       <span class="badge bg-light text-secondary border font-monospace">
-                        {{ number_format($rawQty, 2) }} {{ $m->consumption_unit ?? $m->unit }}
+                        {{ format_consumption_qty($rawQty, $m->consumption_unit ?? $m->unit) }}
                       </span>
                     </td>
                     <td data-label="Purchase Price">

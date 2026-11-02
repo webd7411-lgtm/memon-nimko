@@ -149,3 +149,38 @@ if (!function_exists('receipt_logo_url')) {
         return null;
     }
 }
+
+if (!function_exists('format_consumption_qty')) {
+    /**
+     * Format a consumption quantity (e.g. Grams / ML).
+     * If unit is gram/gm/grams/g and value >= 1000, converts to kg & gm (e.g. 1kg 200g or 37kg 984.45g).
+     */
+    function format_consumption_qty($val, $unit = 'gram'): string
+    {
+        $val = (float)$val;
+        $unitLower = strtolower(trim($unit));
+        $isGram = in_array($unitLower, ['gram', 'grams', 'gm', 'g', 'grm', 'grms']);
+
+        if (!$isGram) {
+            return number_format($val, 2) . ' ' . $unit;
+        }
+
+        $isNegative = $val < 0;
+        $grams = abs($val);
+
+        if ($grams >= 1000) {
+            $kg = floor($grams / 1000);
+            $gm = round(fmod($grams, 1000), 2);
+            $prefix = $isNegative ? '-' : '';
+            if ($gm > 0) {
+                // If fractional gram exists, display it cleanly
+                $gmStr = ($gm == floor($gm)) ? (int)$gm : number_format($gm, 2);
+                return $prefix . number_format($kg) . 'kg ' . $gmStr . 'gm';
+            }
+            return $prefix . number_format($kg) . 'kg';
+        }
+
+        $gmStr = ($grams == floor($grams)) ? (int)$grams : number_format($grams, 2);
+        return ($isNegative ? '-' : '') . $gmStr . ' gm';
+    }
+}

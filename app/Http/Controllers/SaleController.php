@@ -3027,11 +3027,58 @@ class SaleController extends Controller
         $totals    = explode(',', $sale->per_total ?? '');
         $rawVariants = explode(',', $sale->variant_id ?? '');
 
+        // Fetch all returns for this sale from sales_returns table
+        $returns = \App\Models\SalesReturn::where('sale_id', $sale->id)->orderBy('created_at', 'desc')->get();
+        $hasReturns = $returns->count() > 0;
+
+        // Flatten all returned items across all return records for accurate line-item mapping
+        $returnedPool = [];
+        $totalReturnedQty = 0;
+        $totalRefundAmount = 0;
+
+        foreach ($returns as $ret) {
+            $rProds   = array_map('trim', explode(',', $ret->product ?? ''));
+            $rCodes   = array_map('trim', explode(',', $ret->product_code ?? ''));
+            $rVids    = !empty($ret->variant_id) ? array_map('trim', explode(',', $ret->variant_id)) : [];
+            $rQtys    = array_map('trim', explode(',', $ret->qty ?? ''));
+            $rPrices  = array_map('trim', explode(',', $ret->per_price ?? ''));
+            $rTotals  = array_map('trim', explode(',', $ret->per_total ?? ''));
+
+            foreach ($rProds as $rIndex => $rProd) {
+                $rq = isset($rQtys[$rIndex]) ? (float)$rQtys[$rIndex] : 0;
+                if ($rq <= 0) continue;
+
+                $rc = $rCodes[$rIndex] ?? '';
+                $rv = $rVids[$rIndex] ?? '';
+                $rp = isset($rPrices[$rIndex]) ? (float)$rPrices[$rIndex] : 0;
+                $rt = isset($rTotals[$rIndex]) ? (float)$rTotals[$rIndex] : ($rq * $rp);
+
+                $totalReturnedQty += $rq;
+                $totalRefundAmount += $rt;
+
+                $returnedPool[] = [
+                    'return_id'   => $ret->id,
+                    'product'     => $rProd,
+                    'code'        => $rc,
+                    'variant_id'  => $rv,
+                    'qty'         => $rq,
+                    'price'       => $rp,
+                    'total'       => $rt,
+                    'created_at'  => $ret->created_at,
+                ];
+            }
+        }
+
         $items = [];
         $totalLineDiscount = 0;
+        $totalSoldQty = 0;
+        $totalNetQty = 0;
+
         foreach ($prodIds as $i => $pid) {
             $qty = (float)($qtys[$i] ?? 0);
             if ($qty == 0 && empty($pid)) continue;
+
+            $totalSoldQty += $qty;
 
             $p = $productsMap[$pid] ?? null;
             $vId = $rawVariants[$i] ?? null;
@@ -3046,25 +3093,68 @@ class SaleController extends Controller
             $unit = $units[$i] ?? ($p ? $p->unit_type : 'Piece');
             $code = $codes[$i] ?? ($p ? ($p->barcode_path ?: $p->item_code) : '');
 
+            // Calculate returned quantity for this specific line item
+            $lineReturnedQty = 0;
+            $lineRefundAmount = 0;
+
+            foreach ($returnedPool as &$rItem) {
+                if ($rItem['qty'] <= 0) continue;
+
+                $matched = false;
+                if (!empty($vId) && !empty($rItem['variant_id']) && $vId == $rItem['variant_id']) {
+                    $matched = true;
+                } elseif (!empty($code) && !empty($rItem['code']) && trim($code) === trim($rItem['code'])) {
+                    $matched = true;
+                } elseif ($rItem['product'] == $pid || $rItem['product'] === $pName || ($p && $rItem['product'] === $p->item_name)) {
+                    $matched = true;
+                }
+
+                if ($matched) {
+                    $deduct = min($rItem['qty'], max(0, $qty - $lineReturnedQty));
+                    $lineReturnedQty += $deduct;
+                    $lineRefundAmount += ($deduct * ($rItem['price'] ?: $price));
+                    $rItem['qty'] -= $deduct;
+                }
+            }
+            unset($rItem);
+
+            $netQty = max(0, $qty - $lineReturnedQty);
+            $totalNetQty += $netQty;
+            $netTotal = max(0, $lineTot - $lineRefundAmount);
+
             $items[] = [
-                'index' => $i + 1,
-                'item_id' => $pid,
-                'item_name' => $pName,
-                'variant' => $vLabel,
-                'item_code' => $code,
-                'unit' => strtoupper($unit),
-                'qty' => $qty,
-                'price' => $price,
-                'trade_offer' => (float)($tradeOffers[$i] ?? 0),
-                'discount' => $disc,
-                'total' => $lineTot,
+                'index'          => $i + 1,
+                'item_id'        => $pid,
+                'item_name'      => $pName,
+                'variant'        => $vLabel,
+                'item_code'      => $code,
+                'unit'           => strtoupper($unit),
+                'qty'            => $qty,
+                'sold_qty'       => $qty,
+                'returned_qty'   => $lineReturnedQty,
+                'net_qty'        => $netQty,
+                'price'          => $price,
+                'trade_offer'    => (float)($tradeOffers[$i] ?? 0),
+                'discount'       => $disc,
+                'total'          => $lineTot,
+                'refund_amount'  => $lineRefundAmount,
+                'net_total'      => $netTotal,
+                'is_returned'    => ($lineReturnedQty > 0),
+                'is_full_return' => ($lineReturnedQty >= $qty && $qty > 0),
             ];
         }
 
         $gross = (float)($sale->total_bill_amount ?: 0);
         $extraDiscount = (float)($sale->total_extradiscount ?: 0);
         $totalDiscount = $extraDiscount > 0 ? $extraDiscount : $totalLineDiscount;
-        $net = (float)($sale->total_net ?: ($gross - $totalDiscount));
+        $originalNet = (float)($sale->total_net ?: ($gross - $totalDiscount));
+
+        // Actual return net sum from sales_returns
+        $actualReturnNetSum = (float)$returns->sum('total_net');
+        if ($actualReturnNetSum <= 0 && $totalRefundAmount > 0) {
+            $actualReturnNetSum = $totalRefundAmount;
+        }
+        $netAfterReturns = max(0, $originalNet - $actualReturnNetSum);
 
         $customerInfo = [
             'name' => $sale->customer_display_name,
@@ -3111,10 +3201,12 @@ class SaleController extends Controller
         if ((string)$sale->sale_status === '2') {
             $statusLabel = 'Exchanged';
             $statusBadgeClass = 'badge-erp-exchange';
-        } elseif ((string)$sale->sale_status === '1' || ($sale->returns_count ?? 0) > 0) {
+        } elseif ((string)$sale->sale_status === '1' || $hasReturns) {
             $statusLabel = 'Returned';
             $statusBadgeClass = 'badge-erp-return';
         }
+
+        $latestReturn = $returns->first();
 
         return response()->json([
             'success' => true,
@@ -3130,15 +3222,31 @@ class SaleController extends Controller
                 'customer' => $customerInfo,
                 'branch' => $sale->branch ? $sale->branch->name : 'Main Store',
                 'financial' => [
-                    'gross' => $gross,
-                    'line_discount' => $totalLineDiscount,
-                    'extra_discount' => $extraDiscount,
-                    'total_discount' => $totalDiscount,
-                    'net' => $net,
-                    'cash' => (float)($sale->cash ?: 0),
-                    'card' => (float)($sale->card ?: 0),
-                    'card_account' => $sale->cardAccount ? $sale->cardAccount->title : null,
-                    'change' => (float)($sale->change ?: 0),
+                    'gross'            => $gross,
+                    'line_discount'    => $totalLineDiscount,
+                    'extra_discount'   => $extraDiscount,
+                    'total_discount'   => $totalDiscount,
+                    'original_net'     => $originalNet,
+                    'returned_amount'  => $actualReturnNetSum,
+                    'net'              => $netAfterReturns,
+                    'cash'             => (float)($sale->cash ?: 0),
+                    'card'             => (float)($sale->card ?: 0),
+                    'card_account'     => $sale->cardAccount ? $sale->cardAccount->title : null,
+                    'change'           => (float)($sale->change ?: 0),
+                ],
+                'totals_summary' => [
+                    'total_sold_qty'     => $totalSoldQty,
+                    'total_returned_qty' => $totalReturnedQty,
+                    'total_net_qty'      => $totalNetQty,
+                ],
+                'returns_summary' => [
+                    'has_returns'         => $hasReturns,
+                    'returns_count'       => $returns->count(),
+                    'total_returned_qty'  => $totalReturnedQty,
+                    'returned_amount'     => $actualReturnNetSum,
+                    'last_return_date'    => $latestReturn ? \Carbon\Carbon::parse($latestReturn->created_at)->format('d M Y, h:i A') : null,
+                    'last_return_note'    => $latestReturn ? ($latestReturn->return_note ?: 'Customer Return') : null,
+                    'return_invoice_url'  => $latestReturn ? route('saleReturn.invoice', $latestReturn->id) : null,
                 ],
                 'items' => $items,
                 'urls' => [
