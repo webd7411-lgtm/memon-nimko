@@ -640,6 +640,12 @@
                             </a>
                         </li>
                         <li class="portal-nav-item">
+                            <a href="{{ route('distributor.returns.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.returns.*') ? 'active' : '' }}" style="color: #ef4444 !important;">
+                                <i class="fas fa-undo-alt text-danger"></i>
+                                <span>Sale Returns</span>
+                            </a>
+                        </li>
+                        <li class="portal-nav-item">
                             <a href="{{ route('distributor.company_ledger.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.company_ledger.*') ? 'active' : '' }}">
                                 <i class="fas fa-file-invoice-dollar"></i>
                                 <span>Company Ledger</span>
@@ -769,6 +775,11 @@
                     <li class="nav-item">
                         <a href="{{ route('distributor.sales.index') }}" class="portal-nav-link {{ (request()->routeIs('distributor.sales.index') || request()->routeIs('distributor.sales.receipt')) ? 'active' : '' }} text-white w-100 py-2">
                             <i class="fas fa-cash-register me-2"></i> Sales Register
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.returns.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.returns.*') ? 'active' : '' }} text-danger w-100 py-2">
+                            <i class="fas fa-undo-alt me-2 text-danger"></i> Sale Returns
                         </a>
                     </li>
                     <li class="nav-item">

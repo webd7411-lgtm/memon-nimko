@@ -16,10 +16,20 @@
             <h4 class="mb-0 mt-1 fw-bold text-white">Demand Order Summary</h4>
             <p class="mb-0 text-white-50 small">Submitted on {{ \Carbon\Carbon::parse($order->order_date)->format('d M, Y') }}</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
             @if($order->status === 'pending')
+            <a href="{{ route('distributor.orders.edit', $order->id) }}" class="btn btn-sm btn-light rounded-pill px-3 py-1.5 fw-bold text-dark">
+                <i class="fas fa-edit me-1 text-primary"></i> Edit Demand
+            </a>
+            <form action="{{ route('distributor.orders.destroy', $order->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this demand order #{{ $order->order_no }}?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1.5 text-white border-danger-subtle bg-danger-subtle">
+                    <i class="fas fa-trash-alt me-1 text-danger"></i> Delete Demand
+                </button>
+            </form>
             <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning px-3 py-2 fs-6">
-                ⏳ Waiting for Company Dispatch
+                ⏳ Waiting for Dispatch
             </span>
             @elseif($order->status === 'dispatched')
             <span class="badge rounded-pill bg-primary px-3 py-2 fs-6 shadow-sm">
@@ -28,6 +38,10 @@
             @elseif($order->status === 'delivered')
             <span class="badge rounded-pill bg-success px-3 py-2 fs-6 shadow-sm">
                 ✅ Stock Delivered into Custody
+            </span>
+            @elseif($order->status === 'rejected')
+            <span class="badge rounded-pill bg-danger px-3 py-2 fs-6 shadow-sm">
+                ❌ Order Rejected by Company
             </span>
             @endif
         </div>

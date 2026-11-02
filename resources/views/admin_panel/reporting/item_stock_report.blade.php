@@ -149,6 +149,10 @@
 .pc-sum-card.orange { border-color: var(--pc-warning); }
 .pc-sum-card.red { border-color: var(--pc-danger); }
 .pc-sum-card.purple { border-color: #764ba2; }
+.pc-sum-card.blue { border-color: #0284c7; }
+.pc-sum-card.teal { border-color: #0f766e; }
+.badge-fg { background-color: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #bae6fd; }
+.badge-rm { background-color: #fef3c7; color: #b45309; font-weight: 700; font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #fde68a; }
 
 .pc-sum-card .lbl {
   font-size: .68rem;
@@ -566,24 +570,49 @@
 
       {{-- Summary Cards --}}
       <div class="pc-sum-grid">
-        <div class="pc-sum-card"><div class="lbl">Total Products</div><div class="val" id="cTotal">–</div></div>
+        <div class="pc-sum-card"><div class="lbl">Total Items</div><div class="val" id="cTotal">–</div></div>
         <div class="pc-sum-card green"><div class="lbl">In Stock</div><div class="val" id="cInStock">–</div></div>
         <div class="pc-sum-card orange"><div class="lbl">Low Stock (≤5)</div><div class="val" id="cLow">–</div></div>
         <div class="pc-sum-card red"><div class="lbl">Out of Stock</div><div class="val" id="cOut">–</div></div>
-        <div class="pc-sum-card"><div class="lbl">Total Sold</div><div class="val" id="cSold">–</div></div>
+        <div class="pc-sum-card"><div class="lbl">Total Sold (FG)</div><div class="val" id="cSold">–</div></div>
         <div class="pc-sum-card"><div class="lbl">Total Purchased</div><div class="val" id="cPurch">–</div></div>
-        <div class="pc-sum-card purple"><div class="lbl">Inventory Value</div><div class="val" id="cValue">–</div></div>
+        <div class="pc-sum-card blue" id="cardFgValue"><div class="lbl">FG Value (Finish Goods)</div><div class="val" id="cFgValue" style="color:#0284c7;">–</div></div>
+        <div class="pc-sum-card teal" id="cardRmValue"><div class="lbl">Raw Material Value</div><div class="val" id="cRmValue" style="color:#0f766e;">–</div></div>
+        <div class="pc-sum-card purple" id="cardTotalValue"><div class="lbl">Total Inventory Value</div><div class="val" id="cValue" style="color:#764ba2;">–</div></div>
+      </div></div>
       </div>
 
-      {{-- Filter --}}
+{{-- Filter --}}
       <div class="pc-filter">
-        <div class="fg fg-wide">
-          <label>Filter by Product</label>
+        {{-- Item Type Dropdown (FG / Raw Material / Both) --}}
+        <div class="fg" style="min-width: 170px;">
+          <label><i class="bi bi-diagram-3-fill text-primary me-1"></i>Stock Type</label>
+          <select id="item_type" class="pc-fld fw-bold" onchange="onItemTypeChange()">
+            <option value="all" selected>📦 Both (FG & Raw Material)</option>
+            <option value="fg">🏷️ Finish Goods (FG Only)</option>
+            <option value="rm">🌾 Raw Material Only</option>
+          </select>
+        </div>
+
+        <div class="fg fg-wide" id="wrap_product_filter">
+          <label>Filter by Product (FG)</label>
           <select id="product_id" class="select2-item pc-fld" multiple style="width:100%">
             <option value="all">— All Products —</option>
             @foreach($products as $prod)
             <option value="{{ $prod->id }}">{{ $prod->item_code }} – {{ $prod->item_name }}</option>
             @endforeach
+          </select>
+        </div>
+
+        <div class="fg fg-wide" id="wrap_rm_filter" style="display:none;">
+          <label>Filter by Raw Material</label>
+          <select id="raw_material_id" class="select2-rm pc-fld" multiple style="width:100%">
+            <option value="all">— All Raw Materials —</option>
+            @if(isset($rawMaterials))
+              @foreach($rawMaterials as $rm)
+              <option value="{{ $rm->id }}">{{ $rm->name }} ({{ $rm->unit }})</option>
+              @endforeach
+            @endif
           </select>
         </div>
         <div class="fg">
@@ -714,6 +743,7 @@
 @section('scripts')
 <script>
 $(document).ready(function() {
+    $('.select2-rm').select2({ placeholder: "Filter Raw Materials", allowClear: true });
     $('.select2-item').select2({ placeholder:'Search product…', allowClear:true, width:'100%' });
     $('.select2-var').select2({ placeholder:'Search product…', allowClear:true, width:'100%' });
     fetchReport();
@@ -723,6 +753,36 @@ function getProductIds() {
     var vals = $('#product_id').val();
     if (!vals || vals.length === 0 || vals.includes('all')) return 'all';
     return vals;
+}
+
+function getRawMaterialIds() {
+    var vals = $('#raw_material_id').val();
+    if (!vals || vals.length === 0 || vals.includes('all')) return 'all';
+    return vals;
+}
+
+function onItemTypeChange() {
+    var type = $('#item_type').val();
+    if (type === 'rm') {
+        $('#wrap_product_filter').hide();
+        $('#wrap_rm_filter').show();
+        $('#cardFgValue').hide();
+        $('#cardRmValue').show();
+        $('#cardTotalValue .lbl').text('Raw Material Inventory Value');
+    } else if (type === 'fg') {
+        $('#wrap_product_filter').show();
+        $('#wrap_rm_filter').hide();
+        $('#cardFgValue').show();
+        $('#cardRmValue').hide();
+        $('#cardTotalValue .lbl').text('FG Inventory Value');
+    } else {
+        $('#wrap_product_filter').show();
+        $('#wrap_rm_filter').show();
+        $('#cardFgValue').show();
+        $('#cardRmValue').show();
+        $('#cardTotalValue .lbl').text('Total Inventory Value');
+    }
+    fetchReport();
 }
 
 /* ═══════ TAB SWITCH ═══════ */
@@ -743,11 +803,18 @@ function printClosing(forceMovementOnly) {
     var productIds = getProductIds();
     var onlyMovement = (forceMovementOnly === true) || $('#only_movement').is(':checked') ? '1' : '0';
 
+    var itemType = $('#item_type').val() || 'all';
+    var rmIds = getRawMaterialIds();
+
     var params = 'start_date=' + startDate + '&end_date=' + endDate
                + '&start_time=' + startTime + '&end_time=' + endTime
-               + '&only_movement=' + onlyMovement;
+               + '&only_movement=' + onlyMovement
+               + '&item_type=' + itemType;
     if (productIds !== 'all') {
         productIds.forEach(function(id) { params += '&product_id[]=' + id; });
+    }
+    if (rmIds !== 'all') {
+        rmIds.forEach(function(id) { params += '&raw_material_id[]=' + id; });
     }
     var url = "{{ route('report.item_stock.closing_print') }}?" + params;
     window.open(url, '_blank');
@@ -757,15 +824,26 @@ function printClosing(forceMovementOnly) {
 let allRows = [];
 
 function fetchReport() {
+    const itemType = $('#item_type').val() || 'all';
     const productIds = getProductIds();
+    const rmIds = getRawMaterialIds();
     const startDate = $('#start_date').val();
     const endDate   = $('#end_date').val();
     const startTime = $('#start_time').val() || '00:00:00';
     const endTime   = $('#end_time').val() || '23:59:59';
     showSpinner();
-    var data = { _token:"{{ csrf_token() }}", start_date:startDate, end_date:endDate, start_time:startTime, end_time:endTime };
+    var data = { 
+        _token:"{{ csrf_token() }}", 
+        item_type: itemType,
+        start_date: startDate, 
+        end_date: endDate, 
+        start_time: startTime, 
+        end_time: endTime 
+    };
     if (productIds === 'all') { data.product_id = 'all'; }
     else { data.product_id = productIds; }
+    if (rmIds === 'all') { data.raw_material_id = 'all'; }
+    else { data.raw_material_id = rmIds; }
     $.ajax({
         url: "{{ route('report.item_stock.fetch') }}", type:'POST', dataType:'json',
         data: data,
@@ -848,8 +926,11 @@ function renderRows(rows) {
         const adjDec = parseFloat(r.adj_decrease) || 0;
 
         h += '<tr class="' + rc + '"><td>' + (i + 1) + '</td>';
+        var typeBadge = (r.item_type === 'rm') 
+            ? '<span class="badge-rm me-1">RAW</span>' 
+            : '<span class="badge-fg me-1">FG</span>';
         h += '<td><code class="pc-code">' + esc(r.item_code) + '</code></td>';
-        h += '<td class="pc-name">' + esc(r.item_name) + '</td>';
+        h += '<td class="pc-name">' + typeBadge + esc(r.item_name) + '</td>';
         h += '<td class="num">' + formatVal(r.initial_stock, r.is_kg, r.unit) + '</td>';
         h += '<td class="num">' + formatVal(r.produced, r.is_kg, r.unit) + '</td>';
         h += '<td class="num" style="color:#d35400;font-weight:700">' + (parseFloat(r.prod_usage) > 0 ? '-' + formatVal(r.prod_usage, r.is_kg, r.unit) : '–') + '</td>';
@@ -898,6 +979,12 @@ function updateCards(res) {
 
     setText('cSold', totalSold > 0 ? (totalSold % 1 === 0 ? totalSold.toFixed(0) : totalSold.toFixed(2)) : '0');
     setText('cPurch', totalPurch > 0 ? (totalPurch % 1 === 0 ? totalPurch.toFixed(0) : totalPurch.toFixed(2)) : '0');
+    if (res.fg_value !== undefined) {
+        setText('cFgValue', 'Rs ' + Math.round(res.fg_value).toLocaleString());
+    }
+    if (res.rm_value !== undefined) {
+        setText('cRmValue', 'Rs ' + Math.round(res.rm_value).toLocaleString());
+    }
     if (res.grand_total !== undefined) {
         setText('cValue', 'Rs ' + Math.round(res.grand_total).toLocaleString());
     }

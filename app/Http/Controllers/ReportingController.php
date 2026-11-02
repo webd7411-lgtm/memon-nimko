@@ -17,15 +17,22 @@ class ReportingController extends Controller
 {
     public function item_stock_report()
     {
-        // Pass ALL products for the dropdown — no pagination needed
+        // Pass ALL products for the dropdown
         $products = \App\Models\Product::orderBy('item_name', 'asc')
             ->select('id', 'item_code', 'item_name')
             ->get();
-        return view('admin_panel.reporting.item_stock_report', compact('products'));
+
+        $rawMaterials = \App\Models\RawMaterial::orderBy('name', 'asc')
+            ->select('id', 'name', 'unit', 'consumption_unit')
+            ->get();
+
+        return view('admin_panel.reporting.item_stock_report', compact('products', 'rawMaterials'));
     }
 
     public function fetchItemStock(Request $request)
     {
+        $itemType = $request->input('item_type', 'all'); // 'fg', 'rm', or 'all'
+        $rawMaterialIdsArr = $request->input('raw_material_id', 'all');
         $productIdsArr = $request->input('product_id', 'all');
         $searchQ    = trim($request->get('q', ''));
         $startDate  = $request->start_date ?? date('Y-m-01');
@@ -1050,10 +1057,255 @@ class ReportingController extends Controller
             }
         }
 
+        // -------------------------------------------------------------
+        // RAW MATERIAL STOCK CALCULATION & VALUATION
+        // -------------------------------------------------------------
+        $rmRows = [];
+        $rmGrandTotalValue = 0;
+        $branchIdForRM = is_all_branches() ? null : active_branch_id();
+
+        // Check if we need to load Raw Materials
+        if ($itemType === 'rm' || $itemType === 'all') {
+            $rmQuery = \App\Models\RawMaterial::with(['stocks' => function($q) use ($branchIdForRM) {
+                if ($branchIdForRM) $q->where('branch_id', $branchIdForRM);
+            }]);
+
+            $rmIdsFilter = [];
+            if (is_array($rawMaterialIdsArr)) {
+                if (!in_array('all', $rawMaterialIdsArr)) {
+                    $rmIdsFilter = $rawMaterialIdsArr;
+                }
+            } elseif ($rawMaterialIdsArr !== 'all') {
+                $rmIdsFilter = [$rawMaterialIdsArr];
+            }
+
+            if (!empty($rmIdsFilter)) {
+                $rmQuery->whereIn('id', $rmIdsFilter);
+            } elseif ($searchQ !== '') {
+                $rmQuery->where(function($q) use ($searchQ) {
+                    $q->where('name', 'like', "%{$searchQ}%");
+                });
+            }
+
+            $rawMaterials = $rmQuery->orderBy('name')->get();
+            $materialIds = $rawMaterials->pluck('id')->toArray();
+
+            if (!empty($materialIds)) {
+                // 1. Live stock
+                $liveStockQuery = \App\Models\RawMaterialStock::whereIn('raw_material_id', $materialIds)
+                    ->where(function($q) {
+                        $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                    });
+                if ($branchIdForRM) {
+                    $liveStockQuery->where('branch_id', $branchIdForRM);
+                }
+                $rmLiveStocks = $liveStockQuery->select('raw_material_id', DB::raw('SUM(qty) as total_qty'))
+                    ->groupBy('raw_material_id')
+                    ->pluck('total_qty', 'raw_material_id')
+                    ->toArray();
+
+                // 2. Purchases after endDT
+                $rmPurchAfterQuery = DB::table('raw_material_purchase_items as rmpi')
+                    ->join('raw_material_purchases as rmp', 'rmp.id', '=', 'rmpi.purchase_id')
+                    ->whereIn('rmpi.raw_material_id', $materialIds)
+                    ->where(function($q) {
+                        $q->whereNull('rmp.warehouse_id')->orWhere('rmp.warehouse_id', 0);
+                    })
+                    ->where(DB::raw("COALESCE(rmp.created_at, CONCAT(rmp.date, ' 00:00:00'))"), '>', $endDT);
+                if ($branchIdForRM) {
+                    $rmPurchAfterQuery->where('rmp.branch_id', $branchIdForRM);
+                }
+                $rmPurchAfter = $rmPurchAfterQuery->select('rmpi.raw_material_id', DB::raw('SUM(rmpi.qty) as total_qty'))
+                    ->groupBy('rmpi.raw_material_id')
+                    ->pluck('total_qty', 'rmpi.raw_material_id')
+                    ->toArray();
+
+                // 3. Returns after endDT
+                $rmReturnAfterQuery = DB::table('raw_material_purchase_return_items as rmri')
+                    ->join('raw_material_purchase_returns as rmr', 'rmr.id', '=', 'rmri.purchase_return_id')
+                    ->whereIn('rmri.raw_material_id', $materialIds)
+                    ->where(function($q) {
+                        $q->whereNull('rmr.warehouse_id')->orWhere('rmr.warehouse_id', 0);
+                    })
+                    ->where(DB::raw("COALESCE(rmr.created_at, CONCAT(rmr.return_date, ' 00:00:00'))"), '>', $endDT);
+                if ($branchIdForRM) {
+                    $rmReturnAfterQuery->where('rmr.branch_id', $branchIdForRM);
+                }
+                $rmReturnAfter = $rmReturnAfterQuery->select('rmri.raw_material_id', DB::raw('SUM(rmri.qty) as total_qty'))
+                    ->groupBy('rmri.raw_material_id')
+                    ->pluck('total_qty', 'rmri.raw_material_id')
+                    ->toArray();
+
+                // 4. Usage after endDT
+                $rmUsageAfterQuery = DB::table('production_raw_material_usage as prmu')
+                    ->join('production_entries as pe', 'pe.id', '=', 'prmu.production_entry_id')
+                    ->whereIn('prmu.raw_material_id', $materialIds)
+                    ->where(function($q) {
+                        $q->whereNull('pe.warehouse_id')->orWhere('pe.warehouse_id', 0);
+                    })
+                    ->where(DB::raw("COALESCE(prmu.created_at, CONCAT(pe.production_date, ' 00:00:00'))"), '>', $endDT);
+                if ($branchIdForRM) {
+                    $rmUsageAfterQuery->where(function($q) use ($branchIdForRM) {
+                        $q->where('prmu.branch_id', $branchIdForRM)->orWhere('pe.branch_id', $branchIdForRM);
+                    });
+                }
+                $rmUsageAfter = $rmUsageAfterQuery->select('prmu.raw_material_id', DB::raw('SUM(prmu.qty_used) as total_qty'))
+                    ->groupBy('prmu.raw_material_id')
+                    ->pluck('total_qty', 'prmu.raw_material_id')
+                    ->toArray();
+
+                // 5. Purchases in period
+                $rmPurchPeriodQuery = DB::table('raw_material_purchase_items as rmpi')
+                    ->join('raw_material_purchases as rmp', 'rmp.id', '=', 'rmpi.purchase_id')
+                    ->whereIn('rmpi.raw_material_id', $materialIds)
+                    ->where(function($q) {
+                        $q->whereNull('rmp.warehouse_id')->orWhere('rmp.warehouse_id', 0);
+                    })
+                    ->whereBetween(DB::raw("COALESCE(rmp.created_at, CONCAT(rmp.date, ' 00:00:00'))"), [$startDT, $endDT]);
+                if ($branchIdForRM) {
+                    $rmPurchPeriodQuery->where('rmp.branch_id', $branchIdForRM);
+                }
+                $rmPurchPeriod = $rmPurchPeriodQuery->select('rmpi.raw_material_id', DB::raw('SUM(rmpi.qty) as total_qty'))
+                    ->groupBy('rmpi.raw_material_id')
+                    ->pluck('total_qty', 'rmpi.raw_material_id')
+                    ->toArray();
+
+                // 6. Returns in period
+                $rmReturnPeriodQuery = DB::table('raw_material_purchase_return_items as rmri')
+                    ->join('raw_material_purchase_returns as rmr', 'rmr.id', '=', 'rmri.purchase_return_id')
+                    ->whereIn('rmri.raw_material_id', $materialIds)
+                    ->where(function($q) {
+                        $q->whereNull('rmr.warehouse_id')->orWhere('rmr.warehouse_id', 0);
+                    })
+                    ->whereBetween(DB::raw("COALESCE(rmr.created_at, CONCAT(rmr.return_date, ' 00:00:00'))"), [$startDT, $endDT]);
+                if ($branchIdForRM) {
+                    $rmReturnPeriodQuery->where('rmr.branch_id', $branchIdForRM);
+                }
+                $rmReturnPeriod = $rmReturnPeriodQuery->select('rmri.raw_material_id', DB::raw('SUM(rmri.qty) as total_qty'))
+                    ->groupBy('rmri.raw_material_id')
+                    ->pluck('total_qty', 'rmri.raw_material_id')
+                    ->toArray();
+
+                // 7. Usages in period
+                $rmUsagePeriodQuery = DB::table('production_raw_material_usage as prmu')
+                    ->join('production_entries as pe', 'pe.id', '=', 'prmu.production_entry_id')
+                    ->whereIn('prmu.raw_material_id', $materialIds)
+                    ->where(function($q) {
+                        $q->whereNull('pe.warehouse_id')->orWhere('pe.warehouse_id', 0);
+                    })
+                    ->whereBetween(DB::raw("COALESCE(prmu.created_at, CONCAT(pe.production_date, ' 00:00:00'))"), [$startDT, $endDT]);
+                if ($branchIdForRM) {
+                    $rmUsagePeriodQuery->where(function($q) use ($branchIdForRM) {
+                        $q->where('prmu.branch_id', $branchIdForRM)->orWhere('pe.branch_id', $branchIdForRM);
+                    });
+                }
+                $rmUsagePeriod = $rmUsagePeriodQuery->select('prmu.raw_material_id', DB::raw('SUM(prmu.qty_used) as total_qty'))
+                    ->groupBy('prmu.raw_material_id')
+                    ->pluck('total_qty', 'prmu.raw_material_id')
+                    ->toArray();
+
+                // 8. Latest Purchase unit price per raw material
+                $latestPrices = DB::table('raw_material_purchase_items as rmpi')
+                    ->join('raw_material_purchases as rmp', 'rmp.id', '=', 'rmpi.purchase_id')
+                    ->whereIn('rmpi.raw_material_id', $materialIds)
+                    ->where('rmp.invoice_no', 'not like', 'INIT-%')
+                    ->where(function($q) {
+                        $q->whereNull('rmp.vendor_name')->orWhere('rmp.vendor_name', '!=', 'Initial Cost Setup');
+                    })
+                    ->orderBy('rmpi.id', 'desc')
+                    ->select('rmpi.raw_material_id', 'rmpi.price_per_unit')
+                    ->get()
+                    ->unique('raw_material_id')
+                    ->pluck('price_per_unit', 'raw_material_id')
+                    ->toArray();
+
+                foreach ($rawMaterials as $m) {
+                    $factor = (float)($m->conversion_factor ?? 1);
+                    if ($factor <= 0) $factor = 1;
+
+                    $sNow = (float)($rmLiveStocks[$m->id] ?? 0);
+                    $pAfter = ((float)($rmPurchAfter[$m->id] ?? 0)) * $factor;
+                    $rAfter = ((float)($rmReturnAfter[$m->id] ?? 0)) * $factor;
+                    $uAfter = (float)($rmUsageAfter[$m->id] ?? 0);
+
+                    $sEnd = $sNow - $pAfter + $rAfter + $uAfter;
+
+                    $pPeriodPur = (float)($rmPurchPeriod[$m->id] ?? 0);
+                    $pPeriod = $pPeriodPur * $factor;
+
+                    $rPeriodPur = (float)($rmReturnPeriod[$m->id] ?? 0);
+                    $rPeriod = $rPeriodPur * $factor;
+
+                    $uPeriod = (float)($rmUsagePeriod[$m->id] ?? 0);
+
+                    $netPPeriod = $pPeriod - $rPeriod;
+                    $sStart = $sEnd - $netPPeriod + $uPeriod;
+
+                    // Pricing in purchase unit
+                    $purPrice = (float)($latestPrices[$m->id] ?? $m->initial_price ?? 0);
+                    $costPerConsumption = ($factor > 0) ? ($purPrice / $factor) : $purPrice;
+
+                    // Valuation: closing stock in consumption unit * price per consumption unit
+                    if ($sEnd > 0) {
+                        $rmGrandTotalValue += ($sEnd * $costPerConsumption);
+                    }
+
+                    // Format values in purchase unit for display
+                    $rmRows[] = [
+                        'item_type'          => 'rm',
+                        'product_id'         => 'rm_' . $m->id,
+                        'item_code'          => 'RM-' . str_pad($m->id, 3, '0', STR_PAD_LEFT),
+                        'item_name'          => $m->name . ' [Raw Material]',
+                        'is_kg'              => false,
+                        'unit'               => $m->unit ?? 'Unit',
+                        'consumption_unit'   => $m->consumption_unit ?? 'Unit',
+                        'conversion_factor'  => $factor,
+                        'initial_stock'      => round($sStart / $factor, 2),
+                        'produced'           => 0,
+                        'prod_usage'         => round($uPeriod / $factor, 2), // Used in production
+                        'purchased'          => round($pPeriodPur, 2),
+                        'purchase_return'    => round($rPeriodPur, 2),
+                        'transfer'           => 0,
+                        'transfer_in'        => 0,
+                        'adj_increase'       => 0,
+                        'adj_decrease'       => 0,
+                        'sold'               => 0,
+                        'trade_offer'        => 0,
+                        'sale_return'        => 0,
+                        'trade_offer_return' => 0,
+                        'balance'            => round($sEnd / $factor, 2),
+                        'val_price'          => $purPrice,
+                        'row_value'          => round(($sEnd / $factor) * $purPrice, 2),
+                    ];
+                }
+            }
+        }
+
+        $fgGrandTotalValue = $grandTotalValue;
+        $totalCombinedValue = $fgGrandTotalValue + $rmGrandTotalValue;
+
+        // Apply item_type filter to rows
+        if ($itemType === 'rm') {
+            $finalRows = $rmRows;
+            $currentViewValue = $rmGrandTotalValue;
+        } elseif ($itemType === 'fg') {
+            $finalRows = $rows;
+            $currentViewValue = $fgGrandTotalValue;
+        } else {
+            // 'all' -> Merge Finished Goods + Raw Materials
+            $finalRows = array_merge($rows, $rmRows);
+            $currentViewValue = $totalCombinedValue;
+        }
+
         return response()->json([
-            'data'        => $rows,
-            'grand_total' => $grandTotalValue,
-            'total'       => count($rows),
+            'data'             => $finalRows,
+            'grand_total'      => $currentViewValue,
+            'fg_value'         => $fgGrandTotalValue,
+            'rm_value'         => $rmGrandTotalValue,
+            'total_value'      => $totalCombinedValue,
+            'total'            => count($finalRows),
+            'fg_count'         => count($rows),
+            'rm_count'         => count($rmRows),
         ]);
     }
 
@@ -2769,12 +3021,17 @@ class ReportingController extends Controller
         $startDT = $startDate . ' ' . $startTime;
         $endDT   = $endDate   . ' ' . $endTime;
 
+        $itemType = $request->input('item_type', 'all');
+        $rawMaterialIds = $request->input('raw_material_id', 'all');
+
         $request->merge([
-            'product_id' => $productIds,
-            'start_date' => $startDate,
-            'end_date'   => $endDate,
-            'start_time' => $startTime,
-            'end_time'   => $endTime,
+            'item_type'       => $itemType,
+            'raw_material_id' => $rawMaterialIds,
+            'product_id'      => $productIds,
+            'start_date'      => $startDate,
+            'end_date'        => $endDate,
+            'start_time'      => $startTime,
+            'end_time'        => $endTime,
         ]);
 
         $response = $this->fetchItemStock($request);

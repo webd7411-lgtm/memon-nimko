@@ -87,6 +87,10 @@
                             <span class="badge rounded-pill bg-success-subtle text-success border border-success px-2.5 py-1">
                                 ✅ Delivered
                             </span>
+                            @elseif($order->status === 'rejected')
+                            <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger px-2.5 py-1">
+                                ❌ Rejected
+                            </span>
                             @else
                             <span class="badge bg-secondary text-white px-2.5 py-1">
                                 {{ ucfirst($order->status) }}
@@ -94,9 +98,23 @@
                             @endif
                         </td>
                         <td class="text-end pe-4">
-                            <a href="{{ route('distributor.orders.show', $order->id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1">
-                                <i class="fas fa-eye me-1"></i> View
-                            </a>
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <a href="{{ route('distributor.orders.show', $order->id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1" title="View Demand Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                @if($order->status === 'pending')
+                                <a href="{{ route('distributor.orders.edit', $order->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1" title="Edit Demand">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ route('distributor.orders.destroy', $order->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this demand order #{{ $order->order_no }}?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" title="Delete Demand">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                     @empty

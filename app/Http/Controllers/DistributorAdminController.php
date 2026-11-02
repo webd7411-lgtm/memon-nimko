@@ -564,6 +564,37 @@ class DistributorAdminController extends Controller
     }
 
     /**
+     * Reject a distributor demand order with reason.
+     */
+    public function rejectOrder(Request $request, $id)
+    {
+        $order = DistributorOrder::with('distributor')->findOrFail($id);
+
+        if (in_array($order->status, ['dispatched', 'delivered'])) {
+            return back()->with('error', 'Cannot reject an order that has already been dispatched.');
+        }
+
+        if ($order->status === 'rejected') {
+            return back()->with('info', 'This order is already marked as rejected.');
+        }
+
+        $request->validate([
+            'admin_remarks' => 'nullable|string|max:1000',
+        ]);
+
+        $remarks = $request->admin_remarks ?: ($request->rejection_reason ?: 'Order rejected by head office.');
+
+        $order->update([
+            'status'        => 'rejected',
+            'approved_by'   => Auth::id(),
+            'approved_at'   => now(),
+            'admin_remarks' => $remarks,
+        ]);
+
+        return back()->with('warning', "Demand Order #{$order->order_no} has been rejected.");
+    }
+
+    /**
      * View stock in custody of all distributors.
      */
     public function stocks(Request $request)

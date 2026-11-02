@@ -21,6 +21,26 @@
     <!-- Horizontal Navigation Tabs -->
     @include('admin_panel.distributors.partials.navigation_tabs')
 
+    <!-- Flash Messages -->
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm mb-3" role="alert">
+        <i class="fas fa-check-circle me-1"></i> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('warning'))
+    <div class="alert alert-warning alert-dismissible fade show rounded-4 border-0 shadow-sm mb-3" role="alert">
+        <i class="fas fa-exclamation-triangle me-1"></i> {{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm mb-3" role="alert">
+        <i class="fas fa-times-circle me-1"></i> {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     <!-- Top Subtitle Header -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
@@ -29,7 +49,7 @@
                 Distributor Demand Requests (Purchase Requisitions)
                 <span class="badge rounded-pill text-white" style="background: #0f766e; font-size: 0.72rem;">Stock Indents</span>
             </h5>
-            <span class="text-muted small">Review incoming stock requisitions from distributors, approve dispatches, and fulfill orders</span>
+            <span class="text-muted small">Review incoming stock requisitions from distributors, approve dispatches, or reject orders</span>
         </div>
     </div>
 
@@ -126,19 +146,43 @@
                             <span class="badge rounded-pill bg-success-subtle text-success border border-success px-2.5 py-1">
                                 ✅ Delivered
                             </span>
+                            @elseif($order->status === 'rejected')
+                            <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger px-2.5 py-1">
+                                ❌ Rejected
+                            </span>
+                            @if($order->admin_remarks)
+                            <div class="text-muted small text-truncate" style="max-width: 140px; margin: 2px auto 0;" title="{{ $order->admin_remarks }}">
+                                {{ $order->admin_remarks }}
+                            </div>
+                            @endif
                             @else
                             <span class="badge rounded-pill bg-secondary text-white px-2.5 py-1">
                                 {{ ucfirst($order->status) }}
                             </span>
                             @endif
                         </td>
-                        <td class="text-end pe-4">
+                        <td class="text-end pe-4 text-nowrap">
+                            @if($order->status === 'pending')
+                            <div class="d-inline-flex align-items-center gap-1.5 justify-content-end">
+                                <a href="{{ route('admin.distributors.orders.show', $order->id) }}"
+                                   class="btn btn-sm rounded-pill px-3 text-white shadow-sm"
+                                   style="background: #0f766e; border: 1px solid #14b8a6;"
+                                   title="Review and dispatch items">
+                                    <i class="fas fa-box-open me-1"></i> Review & Dispatch
+                                </a>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-2.5 shadow-sm"
+                                        title="Reject Order"
+                                        onclick="openRejectModal({{ $order->id }}, '{{ $order->order_no }}', '{{ addslashes($order->distributor->name ?? 'Distributor') }}')">
+                                    <i class="fas fa-times-circle me-1"></i> Reject
+                                </button>
+                            </div>
+                            @else
                             <a href="{{ route('admin.distributors.orders.show', $order->id) }}"
-                               class="btn btn-sm rounded-pill px-3 {{ $order->status === 'pending' ? 'text-white' : 'btn-outline-secondary' }}"
-                               style="{{ $order->status === 'pending' ? 'background: #0f766e; border: 1px solid #14b8a6;' : '' }}">
-                                <i class="fas {{ $order->status === 'pending' ? 'fa-box-open' : 'fa-eye' }} me-1"></i>
-                                {{ $order->status === 'pending' ? 'Review & Dispatch' : 'View Details' }}
+                               class="btn btn-sm rounded-pill px-3 btn-outline-secondary">
+                                <i class="fas fa-eye me-1"></i> View Details
                             </a>
+                            @endif
                         </td>
                     </tr>
                     @empty
@@ -161,4 +205,50 @@
         @endif
     </div>
 </div>
+
+<!-- Reject Order Modal -->
+<div class="modal fade" id="rejectOrderModal" tabindex="-1" aria-labelledby="rejectOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form id="rejectOrderForm" method="POST" action="">
+                @csrf
+                <div class="modal-header border-bottom py-3">
+                    <h6 class="modal-title fw-bold text-danger d-flex align-items-center gap-2" id="rejectOrderModalLabel">
+                        <i class="fas fa-times-circle"></i> Reject Demand Order
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="p-3 rounded-3 mb-3" style="background: #fef2f2; border: 1px dashed #fca5a5;">
+                        <div class="text-muted small">Are you sure you want to reject this distributor demand order?</div>
+                        <div class="fw-bold text-dark mt-1" id="rejectOrderNo"></div>
+                        <div class="text-muted small" id="rejectDistributorName"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-muted text-uppercase">Rejection Reason / Remarks (Optional)</label>
+                        <textarea name="admin_remarks" class="form-control" rows="3" placeholder="e.g. Out of stock, payment pending, quantity adjustment required..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top py-2 px-4">
+                    <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger rounded-pill px-4 fw-bold">
+                        <i class="fas fa-times-circle me-1"></i> Confirm Reject
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRejectModal(orderId, orderNo, distName) {
+    const form = document.getElementById('rejectOrderForm');
+    form.action = "{{ url('admin/distributors/orders') }}/" + orderId + "/reject";
+    document.getElementById('rejectOrderNo').innerText = "Order: " + orderNo;
+    document.getElementById('rejectDistributorName').innerText = "Distributor: " + distName;
+    const modal = new bootstrap.Modal(document.getElementById('rejectOrderModal'));
+    modal.show();
+}
+</script>
 @endsection

@@ -24,6 +24,8 @@ use App\Models\User;
 use App\Models\ProductVariant;
 use App\Models\DistributorClaim;
 use App\Models\DistributorClaimItem;
+use App\Models\DistributorSalesReturn;
+use App\Models\DistributorSalesReturnItem;
 use Illuminate\Support\Facades\Hash;
 
 
@@ -447,6 +449,127 @@ class DistributorPortalController extends Controller
     }
 
     /**
+     * Edit demand order (Allowed only if status is pending).
+     */
+    public function editOrder($id)
+    {
+        $distributor = $this->getDistributor();
+        $order = DistributorOrder::with(['items.product.unit', 'items.variant'])
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return redirect()->route('distributor.orders.show', $order->id)
+                ->with('error', 'Only pending demand orders can be modified.');
+        }
+
+        $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
+
+        return view('distributor_panel.orders.edit', compact('distributor', 'order', 'products'));
+    }
+
+    /**
+     * Update demand order (Allowed only if status is pending).
+     */
+    public function updateOrder(Request $request, $id)
+    {
+        $distributor = $this->getDistributor();
+        $order = DistributorOrder::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return redirect()->route('distributor.orders.show', $order->id)
+                ->with('error', 'Only pending demand orders can be edited.');
+        }
+
+        $request->validate([
+            'product_id'     => 'required|array|min:1',
+            'product_id.*'   => 'required|exists:products,id',
+            'requested_qty'  => 'required|array|min:1',
+            'requested_qty.*'=> 'required|numeric|min:0.01',
+            'notes'          => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $totalQty = 0;
+            $totalAmount = 0;
+            $itemsData = [];
+
+            foreach ($request->product_id as $index => $productId) {
+                $qty = (float) ($request->requested_qty[$index] ?? 0);
+                if ($qty <= 0) continue;
+
+                $variantId = $request->variant_id[$index] ?? null;
+                $product = Product::find($productId);
+                $unitPrice = (float) ($product->wholesale_price ?? $product->price ?? 0);
+                $subtotal = $qty * $unitPrice;
+
+                $totalQty += $qty;
+                $totalAmount += $subtotal;
+
+                $itemsData[] = [
+                    'distributor_order_id' => $order->id,
+                    'product_id'           => $productId,
+                    'variant_id'           => $variantId,
+                    'requested_qty'        => $qty,
+                    'approved_qty'         => 0,
+                    'unit_price'           => $unitPrice,
+                    'subtotal'             => $subtotal,
+                ];
+            }
+
+            if (empty($itemsData)) {
+                return back()->withInput()->with('error', 'Please enter at least one item quantity.');
+            }
+
+            // Delete old items and insert updated ones
+            $order->items()->delete();
+            foreach ($itemsData as $item) {
+                DistributorOrderItem::create($item);
+            }
+
+            $order->update([
+                'total_items'  => count($itemsData),
+                'total_qty'    => $totalQty,
+                'total_amount' => $totalAmount,
+                'notes'        => $request->notes,
+            ]);
+
+            DB::commit();
+            return redirect()->route('distributor.orders.index')->with('success', "Order #{$order->order_no} updated successfully!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Error updating demand: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete demand order (Allowed only if status is pending).
+     */
+    public function destroyOrder($id)
+    {
+        $distributor = $this->getDistributor();
+        $order = DistributorOrder::where('distributor_id', $distributor->id)->findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return back()->with('error', 'Only pending demand orders can be deleted. This order is already ' . $order->status . '.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $orderNo = $order->order_no;
+            $order->items()->delete();
+            $order->delete();
+
+            DB::commit();
+            return redirect()->route('distributor.orders.index')->with('success', "Demand order #{$orderNo} has been deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error deleting demand order: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * List of retail customers / shops belonging to this distributor.
      */
     public function myCustomers(Request $request)
@@ -839,6 +962,241 @@ class DistributorPortalController extends Controller
         $customers = DistributorCustomer::where('distributor_id', $distributor->id)->get();
 
         return view('distributor_panel.sales.index', compact('distributor', 'sales', 'customers'));
+    }
+
+    /**
+     * List of Customer Sales Returns handled by distributor.
+     */
+    public function salesReturnsList(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $query = DistributorSalesReturn::with(['customer', 'items.product', 'sale'])
+            ->where('distributor_id', $distributor->id);
+
+        if ($request->customer_id) {
+            $query->where('distributor_customer_id', $request->customer_id);
+        }
+
+        if ($request->start_date && $request->end_date) {
+            $query->whereBetween('return_date', [$request->start_date, $request->end_date]);
+        }
+
+        $returns = $query->latest('return_date')->latest('id')->paginate(15);
+        $customers = DistributorCustomer::where('distributor_id', $distributor->id)->get();
+
+        return view('distributor_panel.returns.index', compact('distributor', 'returns', 'customers'));
+    }
+
+    /**
+     * Screen to create a customer sale return.
+     */
+    public function createSaleReturn(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $customers = DistributorCustomer::where('distributor_id', $distributor->id)
+            ->where('status', 'active')
+            ->orderBy('shop_name')
+            ->get();
+
+        $saleId = $request->get('sale_id');
+        $selectedSale = null;
+        if ($saleId) {
+            $selectedSale = DistributorSale::with(['customer', 'items.product.unit', 'items.variant'])
+                ->where('distributor_id', $distributor->id)
+                ->find($saleId);
+        }
+
+        // Available stock products in distributor custody
+        $stocks = DistributorStock::with(['product.unit', 'variant'])
+            ->where('distributor_id', $distributor->id)
+            ->get();
+
+        $returnNo = DistributorSalesReturn::generateReturnNo();
+        $accounts = Account::where('status', 1)
+            ->where('distributor_id', $distributor->id)
+            ->get();
+
+        return view('distributor_panel.returns.create', compact('distributor', 'customers', 'selectedSale', 'stocks', 'returnNo', 'accounts'));
+    }
+
+    /**
+     * Process & Store Customer Sale Return.
+     */
+    public function storeSaleReturn(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'distributor_customer_id' => 'required|exists:distributor_customers,id',
+            'return_date'             => 'required|date',
+            'product_id'              => 'required|array|min:1',
+            'product_id.*'            => 'nullable',
+            'return_qty'              => 'required|array|min:1',
+            'return_qty.*'            => 'nullable|numeric|min:0',
+            'unit_price'              => 'required|array',
+            'refund_mode'             => 'required|in:credit,cash',
+            'account_id'              => 'nullable',
+            'refund_amount'           => 'nullable|numeric|min:0',
+            'reason'                  => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $customer = DistributorCustomer::where('distributor_id', $distributor->id)
+                ->findOrFail($request->distributor_customer_id);
+
+            $sale = null;
+            if ($request->filled('distributor_sale_id')) {
+                $sale = DistributorSale::where('distributor_id', $distributor->id)->find($request->distributor_sale_id);
+            }
+
+            $totalReturnAmount = 0;
+            $itemsData = [];
+
+            foreach ($request->product_id as $index => $productId) {
+                if (empty($productId)) continue;
+                $qty = (float) ($request->return_qty[$index] ?? 0);
+                if ($qty <= 0) continue;
+
+                $price = (float) ($request->unit_price[$index] ?? 0);
+                $variantId = $request->variant_id[$index] ?? null;
+                $condition = $request->item_condition[$index] ?? 'restockable';
+                $saleItemId = $request->sale_item_id[$index] ?? null;
+
+                $subtotal = $qty * $price;
+                $totalReturnAmount += $subtotal;
+
+                $itemsData[] = [
+                    'product_id'             => $productId,
+                    'variant_id'             => $variantId,
+                    'distributor_sale_item_id'=> $saleItemId,
+                    'qty'                    => $qty,
+                    'unit_price'             => $price,
+                    'subtotal'               => $subtotal,
+                    'item_condition'         => $condition,
+                ];
+            }
+
+            if (empty($itemsData)) {
+                throw new \Exception('Please enter at least one item with valid return quantity.');
+            }
+
+            $refundMode = $request->refund_mode;
+            $refundAmount = 0;
+            $creditAdjusted = 0;
+
+            if ($refundMode === 'cash') {
+                $refundAmount = min($totalReturnAmount, (float) ($request->refund_amount ?? $totalReturnAmount));
+                $creditAdjusted = max(0, $totalReturnAmount - $refundAmount);
+            } else {
+                // credit adjustment directly reduces customer due
+                $creditAdjusted = $totalReturnAmount;
+                $refundAmount = 0;
+            }
+
+            $bookerUserId = $customer->booker_user_id ?: (Auth::user()->usertype === 'order_booker' ? Auth::id() : null);
+
+            $salesReturn = DistributorSalesReturn::create([
+                'return_no'               => DistributorSalesReturn::generateReturnNo(),
+                'distributor_id'          => $distributor->id,
+                'distributor_sale_id'     => $sale ? $sale->id : null,
+                'distributor_customer_id' => $customer->id,
+                'booker_user_id'          => $bookerUserId,
+                'account_id'              => $request->account_id ?: null,
+                'return_date'             => $request->return_date,
+                'subtotal'                => $totalReturnAmount,
+                'refund_amount'           => $refundAmount,
+                'net_return_amount'       => $totalReturnAmount,
+                'credit_adjusted'         => $creditAdjusted,
+                'refund_mode'             => $refundMode,
+                'reason'                  => $request->reason,
+                'created_by'              => Auth::id(),
+            ]);
+
+            // Save items and increase distributor custody stock for restockable items
+            foreach ($itemsData as $row) {
+                $row['distributor_sales_return_id'] = $salesReturn->id;
+                DistributorSalesReturnItem::create($row);
+
+                if ($row['item_condition'] === 'restockable') {
+                    $stock = DistributorStock::firstOrCreate([
+                        'distributor_id' => $distributor->id,
+                        'product_id'     => $row['product_id'],
+                        'variant_id'     => $row['variant_id'],
+                    ], [
+                        'qty'       => 0,
+                        'avg_price' => $row['unit_price'],
+                    ]);
+
+                    $stock->qty = (float)$stock->qty + $row['qty'];
+                    $stock->save();
+                }
+            }
+
+            // Customer Ledger Update:
+            // Sale Return always CREDITS the customer's account (lowering their outstanding debt)
+            $newCustBalance = (float)$customer->current_balance;
+            if ($creditAdjusted > 0) {
+                $newCustBalance = $newCustBalance - $creditAdjusted;
+
+                DistributorCustomerLedger::create([
+                    'distributor_customer_id' => $customer->id,
+                    'distributor_id'          => $distributor->id,
+                    'account_id'              => $request->account_id ?: null,
+                    'date'                    => $request->return_date,
+                    'type'                    => 'return',
+                    'reference_no'            => $salesReturn->return_no,
+                    'description'             => "Customer Return #{$salesReturn->return_no}" . ($sale ? " (Against Inv #{$sale->invoice_no})" : "") . " - Balance Deducted",
+                    'debit'                   => 0,
+                    'credit'                  => $creditAdjusted,
+                    'balance'                 => $newCustBalance,
+                ]);
+            }
+
+            // If cash refund was paid to customer directly:
+            if ($refundAmount > 0) {
+                // If paid in cash, record refund voucher note
+                DistributorCustomerLedger::create([
+                    'distributor_customer_id' => $customer->id,
+                    'distributor_id'          => $distributor->id,
+                    'account_id'              => $request->account_id ?: null,
+                    'date'                    => $request->return_date,
+                    'type'                    => 'payment_refund',
+                    'reference_no'            => 'REF-' . $salesReturn->return_no,
+                    'description'             => "Cash Refund of Rs. " . number_format($refundAmount, 2) . " paid to customer for Return #{$salesReturn->return_no}",
+                    'debit'                   => 0,
+                    'credit'                  => 0,
+                    'balance'                 => $newCustBalance,
+                ]);
+            }
+
+            $customer->update(['current_balance' => $newCustBalance]);
+
+            DB::commit();
+            return redirect()->route('distributor.sales.receipt_return', $salesReturn->id)
+                ->with('success', "Sale return #{$salesReturn->return_no} processed successfully! Stock and customer ledger updated.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Error processing customer return: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show Return Receipt.
+     */
+    public function returnReceipt($id)
+    {
+        $distributor = $this->getDistributor();
+        $return = DistributorSalesReturn::with(['customer', 'sale', 'items.product.unit', 'items.variant', 'account'])
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        return view('distributor_panel.returns.receipt', compact('distributor', 'return'));
     }
 
     /**

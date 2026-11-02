@@ -455,6 +455,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/direct-sale/store', [DistributorAdminController::class, 'storeDirectSale'])->name('direct_sale.store')->middleware('permission:Create Distributor Direct Sale');
         Route::get('/orders/{id}', [DistributorAdminController::class, 'showOrder'])->name('orders.show')->middleware('permission:Distributor Orders');
         Route::post('/orders/{id}/dispatch', [DistributorAdminController::class, 'dispatchOrder'])->name('orders.dispatch')->middleware('permission:Dispatch Distributor Order');
+        Route::post('/orders/{id}/reject', [DistributorAdminController::class, 'rejectOrder'])->name('orders.reject')->middleware('permission:Dispatch Distributor Order|Distributor Orders');
         Route::get('/stocks', [DistributorAdminController::class, 'stocks'])->name('stocks')->middleware('permission:Distributor Custody Stocks');
         Route::get('/opening-stock', [DistributorAdminController::class, 'createOpeningStock'])->name('opening_stock')->middleware('permission:Distributor Custody Stocks');
         Route::post('/opening-stock/store', [DistributorAdminController::class, 'storeOpeningStock'])->name('opening_stock.store')->middleware('permission:Distributor Custody Stocks');
@@ -500,6 +501,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders/create', [DistributorPortalController::class, 'createOrder'])->name('orders.create');
         Route::post('/orders/store', [DistributorPortalController::class, 'storeOrder'])->name('orders.store');
         Route::get('/orders/{id}', [DistributorPortalController::class, 'showOrder'])->name('orders.show');
+        Route::get('/orders/{id}/edit', [DistributorPortalController::class, 'editOrder'])->name('orders.edit');
+        Route::post('/orders/{id}/update', [DistributorPortalController::class, 'updateOrder'])->name('orders.update');
+        Route::delete('/orders/{id}/delete', [DistributorPortalController::class, 'destroyOrder'])->name('orders.destroy');
         
         // Customers (Retail Shops)
         Route::get('/customers', [DistributorPortalController::class, 'myCustomers'])->name('customers.index');
@@ -513,6 +517,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/create', [DistributorPortalController::class, 'createSale'])->name('sales.create');
         Route::post('/sales/store', [DistributorPortalController::class, 'storeSale'])->name('sales.store');
         Route::get('/sales/receipt/{id}', [DistributorPortalController::class, 'saleReceipt'])->name('sales.receipt');
+
+        // Customer Sales Returns (Retailer Returns)
+        Route::get('/returns', [DistributorPortalController::class, 'salesReturnsList'])->name('returns.index');
+        Route::get('/returns/create', [DistributorPortalController::class, 'createSaleReturn'])->name('returns.create');
+        Route::post('/returns/store', [DistributorPortalController::class, 'storeSaleReturn'])->name('returns.store');
+        Route::get('/returns/receipt/{id}', [DistributorPortalController::class, 'returnReceipt'])->name('sales.receipt_return');
 
         // Accounts (Chart of Accounts for Distributor)
         Route::get('/accounts', [DistributorPortalController::class, 'accountsList'])->name('accounts.index');
