@@ -532,6 +532,7 @@ select.sa-fld {
 
     <form action="{{ route('stock-adjustment.store') }}" method="POST" id="adjForm">
       @csrf
+      <input type="hidden" name="create_expense_voucher" id="create_expense_voucher" value="0">
 
       {{-- ═══ ADJUSTMENT INFO ═══ --}}
       <div class="sa-card">
@@ -766,6 +767,15 @@ $(document).ready(function () {
   }
 
   // ═══ SAVE ═══
+  var isSubmitting = false;
+
+  $('#adjForm').on('submit', function (e) {
+    if (!isSubmitting) {
+      e.preventDefault();
+      $('#saveBtn').trigger('click');
+    }
+  });
+
   $('#saveBtn').on('click', function () {
     if (!$('.sa-type .tp-opt.active').length) {
       Swal.fire({ icon: 'warning', title: 'Type Required', text: 'Select Increase or Decrease', timer: 1800, showConfirmButton: false }); return;
@@ -779,9 +789,39 @@ $(document).ready(function () {
       Swal.fire({ icon: 'warning', title: 'Empty', text: 'Add at least one product', timer: 1800, showConfirmButton: false }); return;
     }
 
-    var b = $('#saveBtn'), s = $('#saveSpin'), t = $('#saveTxt');
-    b.prop('disabled', true); s.removeClass('d-none'); t.text('Saving...');
-    $('#adjForm').submit();
+    function doSubmit() {
+      var b = $('#saveBtn'), s = $('#saveSpin'), t = $('#saveTxt');
+      b.prop('disabled', true); s.removeClass('d-none'); t.text('Saving...');
+      isSubmitting = true;
+      $('#adjForm').submit();
+    }
+
+    var adjType = $('input[name="type"]:checked').val() || $('.sa-type .tp-opt.active').data('t');
+
+    if (adjType === 'decrease') {
+      Swal.fire({
+        title: 'Create Expense Voucher?',
+        text: 'Do you want to create an expense voucher for this stock decrease?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#1a4d8c',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-check-lg me-1"></i> Yes',
+        cancelButtonText: '<i class="bi bi-x-lg me-1"></i> No',
+        reverseButtons: true,
+        allowOutsideClick: false
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          $('#create_expense_voucher').val('1');
+        } else {
+          $('#create_expense_voucher').val('0');
+        }
+        doSubmit();
+      });
+    } else {
+      $('#create_expense_voucher').val('0');
+      doSubmit();
+    }
   });
 
   @if(session('success'))

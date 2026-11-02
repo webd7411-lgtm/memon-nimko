@@ -282,40 +282,149 @@
   margin: 0 !important;
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed;
 }
 
 .ev-table thead th {
-  background: #f8fafc;
-  font-size: 0.75rem;
-  font-weight: 700;
+  background: #f1f5f9;
+  font-size: 0.72rem;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--ev-text-muted);
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--ev-border);
+  color: #475569;
+  padding: 0.85rem 0.75rem;
+  border-bottom: 2px solid var(--ev-border);
   border-top: none;
-  white-space: nowrap;
+  white-space: normal !important;
+  vertical-align: middle;
 }
 
 .ev-table tbody td {
-  padding: 0.85rem 1rem;
+  padding: 0.85rem 0.75rem;
   vertical-align: middle;
   border-bottom: 1px solid var(--ev-border-lt);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   color: var(--ev-text-sec);
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .ev-table tbody tr:hover td {
   background-color: #f8fafc;
 }
 
-/* Desktop: fixed layout = table NEVER overflows / no horizontal scroll */
-.ev-table { table-layout: fixed; width: 100% !important; }
-.ev-table thead th { white-space: normal !important; overflow-wrap: break-word; }
-.ev-table tbody td { white-space: normal !important; overflow-wrap: break-word; word-break: break-word; }
-.ev-table tbody td .d-flex { flex-wrap: wrap; }
-.ev-table tbody td .d-flex span:first-child { flex: 1 1 auto; min-width: 0; word-break: break-word; }
-.ev-table-wrapper { overflow-x: hidden; }
+/* Account Badges */
+.ev-acc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal !important;
+  word-break: break-word;
+  max-width: 100%;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.05);
+}
+
+/* Breakdown Cards */
+.ev-breakdown-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #3b82f6;
+  border-radius: 8px;
+  padding: 0.4rem 0.65rem;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ev-breakdown-card:last-child {
+  margin-bottom: 0;
+}
+.ev-breakdown-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.79rem;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.ev-breakdown-acc {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 0.08rem 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+}
+.ev-breakdown-amt {
+  flex: 0 0 auto;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+  white-space: nowrap;
+}
+
+/* Plus / Minus Action Buttons */
+.ev-row-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  outline: none;
+}
+.ev-row-btn-add {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+.ev-row-btn-add:hover {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+.ev-row-btn-remove {
+  background: #fff1f2;
+  color: #e11d48;
+  border-color: #fecdd3;
+}
+.ev-row-btn-remove:hover {
+  background: #f43f5e;
+  color: #ffffff;
+  border-color: #f43f5e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
+}
+
+.ev-table-wrapper { overflow-x: auto; }
 
 /* ═══════ MODAL STYLING ═══════ */
 .ev-modal .modal-content {
@@ -523,6 +632,10 @@
           <i class="bi bi-plus-lg me-1"></i> Add Expense Voucher
         </button>
 
+        <button class="ev-btn ev-btn-glass" data-bs-toggle="modal" data-bs-target="#addExpenseHeadModal">
+          <i class="bi bi-folder-plus me-1"></i> Add Expense Head
+        </button>
+
         <a class="ev-btn ev-btn-glass" href="{{ route('expense-vochers') }}">
           <i class="bi bi-box-arrow-up-right me-1"></i> Full Page Form
         </a>
@@ -622,18 +735,18 @@
       </div>
 
       <div class="ev-table-wrapper">
-        <table id="productTable" class="table ev-table align-middle nowrap" style="width:100%">
+        <table id="productTable" class="table ev-table align-middle" style="width:100%">
           <thead>
             <tr>
               <th width="4%">ID</th>
-              <th width="10%">Voucher No</th>
-              <th width="15%">Account Head</th>
-              <th width="15%">Account</th>
-              <th width="30%">Remarks & Breakdown</th>
-              <th width="12%" class="text-end">Total Amount</th>
-              <th width="10%">Date</th>
-              <th width="8%">User</th>
-              <th width="6%" class="text-center">Actions</th>
+              <th width="9%">Voucher No</th>
+              <th width="14%">Expense Head</th>
+              <th width="16%">Paid From (Account)</th>
+              <th width="27%">Remarks & Breakdown</th>
+              <th width="11%" class="text-end">Total Amount</th>
+              <th width="9%">Date</th>
+              <th width="6%">User</th>
+              <th width="4%" class="text-center">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -641,12 +754,45 @@
             <tr>
               <td class="fw-bold" data-order="{{ $voucher->id }}">#{{ $voucher->id }}</td>
               <td>
-                <span class="badge bg-light text-dark border font-monospace fw-bold">
+                <span class="badge font-monospace fw-bold" style="background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; font-size:0.8rem; padding:0.3rem 0.55rem; border-radius:6px;">
                   {{ $voucher->evid }}
                 </span>
               </td>
-              <td class="fw-bold text-dark">{{ $voucher->type_name }}</td>
-              <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $voucher->party_name }}</span></td>
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <i class="bi bi-folder2-open text-primary fs-6 flex-shrink-0"></i>
+                  <span class="fw-bold text-dark" style="font-size:0.84rem; line-height:1.35; word-break:break-word;">{{ $voucher->type_name }}</span>
+                </div>
+              </td>
+              <td>
+                @if($voucher->is_stock_adjustment)
+                  <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle text-wrap text-start" style="font-size:0.75rem; line-height:1.35;">
+                    <i class="bi bi-box-seam me-1"></i> Stock Adjustment (Non-Cash)
+                  </span>
+                @else
+                  @php
+                    $rowAccIds = is_array($voucher->row_account_id)
+                      ? $voucher->row_account_id
+                      : (json_decode($voucher->row_account_id, true) ?? []);
+                    $uniqueAccIds = array_filter(array_unique($rowAccIds));
+                  @endphp
+                  @if(!empty($uniqueAccIds))
+                    @foreach($uniqueAccIds as $accId)
+                      <div class="ev-acc-badge mb-1">
+                        <i class="bi bi-wallet2 flex-shrink-0"></i>
+                        <span>{{ $accountsMap[$accId] ?? 'Account #'.$accId }}</span>
+                      </div>
+                    @endforeach
+                  @elseif($voucher->party_name && $voucher->party_name !== 'N/A')
+                    <div class="ev-acc-badge">
+                      <i class="bi bi-wallet2 flex-shrink-0"></i>
+                      <span>{{ $voucher->party_name }}</span>
+                    </div>
+                  @else
+                    <span class="text-muted small">-</span>
+                  @endif
+                @endif
+              </td>
               <td>
                 @php
                   $remarks = is_array($voucher->remarks)
@@ -659,33 +805,38 @@
                 @endphp
 
                 @foreach ($remarks as $i => $remark)
-                  <div class="d-flex justify-content-between align-items-center mb-1 p-2 rounded bg-light border">
-                    <span class="text-dark fw-medium small">
+                  <div class="ev-breakdown-card">
+                    <div class="ev-breakdown-desc">
                       <i class="bi bi-chat-left-text me-1 text-secondary"></i> {{ $remark }}
-                    </span>
-                    <span class="badge bg-primary">
+                      @if(isset($rowAccIds[$i]) && isset($accountsMap[$rowAccIds[$i]]))
+                        <div class="ev-breakdown-acc">
+                          <i class="bi bi-wallet2"></i> {{ $accountsMap[$rowAccIds[$i]] }}
+                        </div>
+                      @endif
+                    </div>
+                    <div class="ev-breakdown-amt">
                       Rs {{ number_format($amounts[$i] ?? 0, 2) }}
-                    </span>
+                    </div>
                   </div>
                 @endforeach
               </td>
-              <td class="text-end fw-bold text-success">
+              <td class="text-end fw-bold text-success" style="font-size:0.92rem;">
                 Rs {{ number_format($voucher->total_amount, 2) }}
               </td>
               <td data-order="{{ \Carbon\Carbon::parse($voucher->date)->format('Y-m-d') }}">
-                <span class="badge bg-light text-dark border fw-normal">
-                  {{ \Carbon\Carbon::parse($voucher->date)->format('d-m-Y') }}
+                <span class="badge bg-light text-dark border fw-medium" style="font-size:0.76rem;">
+                  <i class="bi bi-calendar3 me-1 text-muted"></i>{{ \Carbon\Carbon::parse($voucher->date)->format('d-m-Y') }}
                 </span>
               </td>
               <td>
-                <span class="badge bg-secondary-subtle text-secondary border">
-                  {{ $voucher->user->name ?? 'Admin' }}
+                <span class="badge bg-secondary-subtle text-secondary border fw-medium" style="font-size:0.74rem;">
+                  <i class="bi bi-person me-1"></i>{{ $voucher->user->name ?? 'Admin' }}
                 </span>
               </td>
               <td class="text-center">
                 <a href="{{ route('expenseVoucher.print', $voucher->id) }}"
                   target="_blank"
-                  class="btn btn-sm btn-outline-danger rounded-2" title="Print Receipt">
+                  class="btn btn-sm btn-outline-danger rounded-2" style="width:32px; height:32px; padding:0; display:inline-flex; align-items:center; justify-content:center;" title="Print Receipt">
                   <i class="bi bi-printer"></i>
                 </a>
               </td>
@@ -704,7 +855,7 @@
 
 {{-- ═══════ ADD EXPENSE MODAL ═══════ --}}
 <div class="modal fade ev-modal" id="expenseModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1040px;">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="bi bi-receipt me-2 text-primary"></i>Add Expense Voucher</h5>
@@ -723,42 +874,68 @@
             <input type="date" name="date" class="ev-input" value="{{ date('Y-m-d') }}" required>
           </div>
           <div class="col-md-4">
-            <label class="ev-label">Account Head</label>
-            <select name="vendor_type" id="modalVendorType" class="ev-input" required>
-              <option value="">Select Head</option>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="ev-label mb-0">Expense Head</label>
+              <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addExpenseHeadModal">
+                <i class="bi bi-plus-circle me-1"></i>+ New Head
+              </button>
+            </div>
+            <select name="vendor_type" id="modalExpenseHead" class="ev-input" required>
+              <option value="">Select Expense Head</option>
               @foreach($AccountHeads ?? [] as $head)
                 <option value="{{ $head->id }}">{{ $head->name }}</option>
               @endforeach
             </select>
           </div>
         </div>
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="ev-label">Account</label>
-            <select name="vendor_id" id="modalVendorId" class="ev-input" required>
-              <option value="">Select Head first</option>
-            </select>
-          </div>
-        </div>
+
         <hr class="my-3 text-muted">
-        <div class="fw-bold fs-6 text-dark mb-2"><i class="bi bi-list-stars me-1 text-primary"></i> Expense Lines</div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold fs-6 text-dark"><i class="bi bi-list-stars me-1 text-primary"></i> Expense Lines</div>
+          <small class="text-muted">Select paying account for each item</small>
+        </div>
+
+        <div class="row g-2 text-muted small fw-bold text-uppercase mb-2 px-1 d-none d-md-flex align-items-center">
+          <div class="col-md-5"><i class="bi bi-card-text me-1"></i> Remark / Description</div>
+          <div class="col-md-3"><i class="bi bi-wallet2 me-1"></i> Paid From (Account)</div>
+          <div class="col-md-2"><i class="bi bi-cash me-1"></i> Amount (PKR)</div>
+          <div class="col-md-2 text-center"><i class="bi bi-gear me-1"></i> Action</div>
+        </div>
+
         <div id="modalExpenseRows">
-          <div class="row g-2 mb-2 expense-row">
-            <div class="col-md-7">
+          <div class="row g-2 mb-2 expense-row align-items-center">
+            <div class="col-md-5">
               <input type="text" name="remarks[]" class="ev-input" placeholder="Remark / Description" required>
             </div>
             <div class="col-md-3">
-              <input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="Amount" required>
+              <select name="row_account_id[]" class="ev-input row-account-select" required>
+                <option value="">Select Account (Paid From)</option>
+                @foreach($accounts ?? [] as $acc)
+                  <option value="{{ $acc->id }}">{{ $acc->title }} ({{ $acc->head->name ?? 'Account' }})</option>
+                @endforeach
+              </select>
             </div>
-            <div class="col-md-2 d-flex gap-1">
-              <button type="button" class="btn btn-outline-success btn-sm add-expense-row rounded-2"><i class="bi bi-plus"></i></button>
-              <button type="button" class="btn btn-outline-danger btn-sm remove-expense-row rounded-2"><i class="bi bi-dash"></i></button>
+            <div class="col-md-2">
+              <input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="0.00" required>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center gap-2">
+              <button type="button" class="ev-row-btn ev-row-btn-add add-expense-row" title="Add Row">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+              <button type="button" class="ev-row-btn ev-row-btn-remove remove-expense-row" title="Remove Row">
+                <i class="bi bi-dash-lg"></i>
+              </button>
             </div>
           </div>
         </div>
-        <div class="row mt-3">
-          <div class="col-md-4 offset-md-8">
-            <label class="ev-label">Total Amount</label>
+        <div class="row mt-3 align-items-center">
+          <div class="col-md-6">
+            <button type="button" class="btn btn-sm btn-outline-primary add-expense-row rounded-2 px-3 py-2 fw-semibold">
+              <i class="bi bi-plus-circle me-1"></i> Add Another Line
+            </button>
+          </div>
+          <div class="col-md-4 offset-md-2">
+            <label class="ev-label">Total Amount (PKR)</label>
             <input type="text" id="modalTotalAmount" class="ev-input fw-bold text-primary fs-5" value="0.00" readonly>
           </div>
         </div>
@@ -766,6 +943,34 @@
           <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="ev-btn ev-btn-primary px-4">
             <i class="bi bi-save me-1"></i> Save Voucher
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{{-- ═══════ ADD EXPENSE HEAD MODAL ═══════ --}}
+<div class="modal fade ev-modal" id="addExpenseHeadModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-folder-plus me-2 text-primary"></i>Add Expense Head</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="addExpenseHeadForm">
+        @csrf
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="ev-label">Expense Head Name</label>
+            <input type="text" name="name" id="newHeadName" class="ev-input" placeholder="e.g. Utility Bills, Office Supplies, Fuel..." required>
+          </div>
+          <div id="headFormAlert" class="alert d-none py-2 px-3 small rounded-2 mb-0"></div>
+        </div>
+        <div class="modal-footer bg-light px-4 py-3">
+          <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" id="saveHeadBtn" class="ev-btn ev-btn-primary">
+            <i class="bi bi-check-lg me-1"></i> Save Head
           </button>
         </div>
       </form>
@@ -835,15 +1040,23 @@ $(document).ready(function() {
 
             var itemCount = 0;
             var items = '';
-            $('<div>').html($(tds[4]).html()).find('div.d-flex').each(function () {
-                var remark = $(this).find('span').first().text().trim();
-                var amt = $(this).find('.badge').text().trim();
-                itemCount++;
-                items += '<div class="evc-item">'
-                    + '<span class="evc-item-nm">' + esc(remark) + '</span>'
-                    + '<span class="evc-item-total">' + esc(amt) + '</span>'
-                    + '</div>';
-            });
+            var $breakdowns = $('<div>').html($(tds[4]).html()).find('.ev-breakdown-card');
+            if ($breakdowns.length) {
+                $breakdowns.each(function () {
+                    var remark = $(this).find('.ev-breakdown-desc').clone().children().remove().end().text().trim();
+                    var amt = $(this).find('.ev-breakdown-amt').text().trim();
+                    itemCount++;
+                    items += '<div class="evc-item">'
+                        + '<span class="evc-item-nm">' + esc(remark) + '</span>'
+                        + '<span class="evc-item-total">' + esc(amt) + '</span>'
+                        + '</div>';
+                });
+            } else {
+                $('<div>').html($(tds[4]).html()).find('.badge').each(function() {
+                    itemCount++;
+                    items += '<div class="evc-item"><span class="evc-item-nm">Item</span><span class="evc-item-total">' + esc($(this).text().trim()) + '</span></div>';
+                });
+            }
 
             html += '<div class="evc-card">'
                 + '<div class="evc-head">'
@@ -854,7 +1067,7 @@ $(document).ready(function() {
                 + '<span class="evc-id">#' + esc(id) + '</span>'
                 + '</div>'
                 + '<div class="evc-meta">'
-                + '<span><i class="bi bi-building"></i>' + esc(party) + '</span>'
+                + '<span><i class="bi bi-wallet2"></i>' + esc(party) + '</span>'
                 + '<span><i class="bi bi-calendar3"></i>' + esc(date) + '</span>'
                 + '<span><i class="bi bi-person"></i>' + esc(user) + '</span>'
                 + '</div>'
@@ -875,29 +1088,35 @@ $(document).ready(function() {
         $(document.body).focus();
     });
 
-    $('#modalVendorType').on('change', function() {
-        var headId = $(this).val();
-        if (!headId) { $('#modalVendorId').html('<option value="">Select Head first</option>'); return; }
-        $.get('/get-accounts-by-head/' + headId, function(data) {
-            var html = '<option value="">Select Account</option>';
-            $.each(data, function(i, a) { html += '<option value="' + a.id + '">' + a.title + '</option>'; });
-            $('#modalVendorId').html(html);
-        });
-    });
+    // Accounts HTML template for dynamic rows
+    var accountOptionsHtml = `@foreach($accounts ?? [] as $acc)<option value="{{ $acc->id }}">{{ addslashes($acc->title) }} ({{ addslashes($acc->head->name ?? 'Account') }})</option>@endforeach`;
 
+    // Add Expense Row
     $(document).on('click', '.add-expense-row', function() {
-        var row = '<div class="row g-2 mb-2 expense-row">\
-            <div class="col-md-7"><input type="text" name="remarks[]" class="ev-input" placeholder="Remark / Description" required></div>\
-            <div class="col-md-3"><input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="Amount" required></div>\
-            <div class="col-md-2 d-flex gap-1">\
-                <button type="button" class="btn btn-outline-success btn-sm add-expense-row rounded-2"><i class="bi bi-plus"></i></button>\
-                <button type="button" class="btn btn-outline-danger btn-sm remove-expense-row rounded-2"><i class="bi bi-dash"></i></button>\
-            </div></div>';
+        var row = '<div class="row g-2 mb-2 expense-row align-items-center">\
+            <div class="col-md-5">\
+                <input type="text" name="remarks[]" class="ev-input" placeholder="Remark / Description" required>\
+            </div>\
+            <div class="col-md-3">\
+                <select name="row_account_id[]" class="ev-input row-account-select" required>\
+                    <option value="">Select Account (Paid From)</option>' + accountOptionsHtml + '</select>\
+            </div>\
+            <div class="col-md-2">\
+                <input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="0.00" required>\
+            </div>\
+            <div class="col-md-2 d-flex align-items-center justify-content-center gap-2">\
+                <button type="button" class="ev-row-btn ev-row-btn-add add-expense-row" title="Add Row"><i class="bi bi-plus-lg"></i></button>\
+                <button type="button" class="ev-row-btn ev-row-btn-remove remove-expense-row" title="Remove Row"><i class="bi bi-dash-lg"></i></button>\
+            </div>\
+        </div>';
         $('#modalExpenseRows').append(row);
     });
 
+    // Remove Expense Row
     $(document).on('click', '.remove-expense-row', function() {
-        if ($('.expense-row').length > 1) $(this).closest('.expense-row').remove();
+        if ($('.expense-row').length > 1) {
+            $(this).closest('.expense-row').remove();
+        }
         calcModalTotal();
     });
 
@@ -909,6 +1128,7 @@ $(document).ready(function() {
         $('#modalTotalAmount').val(total.toFixed(2));
     }
 
+    // Save Voucher Submission
     $('#expenseForm').on('submit', function(e) {
         e.preventDefault();
         var btn = $(this).find('button[type="submit"]');
@@ -926,10 +1146,73 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
                 else if (xhr.responseJSON && xhr.responseJSON.errors) {
                     var errs = Object.values(xhr.responseJSON.errors).flat();
-                    msg = errs.join('<br>');
+                    msg = errs.join('\n');
                 }
                 alert(msg);
-                btn.prop('disabled', false).text('Save Voucher');
+                btn.prop('disabled', false).html('<i class="bi bi-save me-1"></i> Save Voucher');
+            }
+        });
+    });
+
+    // Add Expense Head AJAX Submission
+    var wasExpenseModalOpen = false;
+    $('#addExpenseHeadModal').on('show.bs.modal', function() {
+        if ($('#expenseModal').hasClass('show')) {
+            wasExpenseModalOpen = true;
+            $('#expenseModal').modal('hide');
+        }
+    });
+
+    $('#addExpenseHeadModal').on('hidden.bs.modal', function() {
+        if (wasExpenseModalOpen) {
+            $('#expenseModal').modal('show');
+            wasExpenseModalOpen = false;
+        }
+    });
+
+    $('#addExpenseHeadForm').on('submit', function(e) {
+        e.preventDefault();
+        var $form = $(this);
+        var $btn = $('#saveHeadBtn');
+        var $alert = $('#headFormAlert');
+        var headName = $('#newHeadName').val().trim();
+
+        if (!headName) return;
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
+        $alert.addClass('d-none').removeClass('alert-success alert-danger').text('');
+
+        $.ajax({
+            url: '{{ route("coa.head.store") }}',
+            method: 'POST',
+            data: $form.serialize(),
+            success: function(res) {
+                $btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i> Save Head');
+                var newHead = res.head || { id: res.id, name: headName };
+                var headId = newHead.id || newHead.name;
+
+                // Add to Expense Head select in Voucher Modal and select it
+                $('#modalExpenseHead').append(
+                    $('<option>', { value: headId, text: newHead.name, selected: true })
+                );
+
+                $alert.removeClass('d-none').addClass('alert-success').text('Head "' + newHead.name + '" added successfully!');
+                $('#newHeadName').val('');
+
+                setTimeout(function() {
+                    $('#addExpenseHeadModal').modal('hide');
+                    $alert.addClass('d-none');
+                }, 800);
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i> Save Head');
+                var msg = 'Failed to add Expense Head.';
+                if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    var errs = Object.values(xhr.responseJSON.errors).flat();
+                    msg = errs.join(' ');
+                }
+                $alert.removeClass('d-none').addClass('alert-danger').text(msg);
             }
         });
     });

@@ -308,7 +308,11 @@ class SaleController extends Controller
         $todayNetSales = (clone $todaySalesQuery)->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(total_net, total_bill_amount - COALESCE(total_extradiscount, 0))'));
 
         // Calculate today's expenses
-        $todayExpenseQuery = \App\Models\ExpenseVoucher::query()->whereDate('date', date('Y-m-d'));
+        $todayExpenseQuery = \App\Models\ExpenseVoucher::query()
+            ->whereDate('date', date('Y-m-d'))
+            ->where(function($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', false);
+            });
         if (!is_all_branches()) {
             $todayExpenseQuery->where('branch_id', active_branch_id());
         }

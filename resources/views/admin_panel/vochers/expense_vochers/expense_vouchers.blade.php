@@ -340,31 +340,29 @@
 
         {{-- Top Information Fields --}}
         <div class="row g-3 mb-4">
-          <div class="col-12 col-md-2">
+          <div class="col-12 col-md-3">
             <label class="evf-label">EVID</label>
             <input type="text" class="evf-input fw-bold font-monospace" name="evid" value="{{ $nextRvid }}" readonly style="background:#f8fafc;">
           </div>
 
-          <div class="col-12 col-md-4">
-            <label class="evf-label">Account Head</label>
-            <select name="vendor_type" class="evf-input">
-              <option value="">Select Account Head</option>
+          <div class="col-12 col-md-3">
+            <label class="evf-label">Date</label>
+            <input type="date" class="evf-input" name="date" value="{{ date('Y-m-d') }}" required>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="evf-label mb-0">Expense Head</label>
+              <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addExpenseHeadModal">
+                <i class="bi bi-plus-circle me-1"></i>+ New Head
+              </button>
+            </div>
+            <select name="vendor_type" id="pageExpenseHead" class="evf-input" required>
+              <option value="">Select Expense Head</option>
               @foreach($AccountHeads as $head)
               <option value="{{ $head->id }}">{{ $head->name }}</option>
               @endforeach
             </select>
-          </div>
-
-          <div class="col-12 col-md-4">
-            <label class="evf-label">Account</label>
-            <select name="vendor_id" class="evf-input">
-              <option disabled selected>Select Head First</option>
-            </select>
-          </div>
-
-          <div class="col-12 col-md-2">
-            <label class="evf-label">Date</label>
-            <input type="date" class="evf-input" name="date" value="{{ date('Y-m-d') }}">
           </div>
         </div>
 
@@ -374,6 +372,7 @@
             <thead>
               <tr>
                 <th>Remarks / Line Details</th>
+                <th style="width:280px">Paid From (Account)</th>
                 <th class="text-end" style="width:200px">Amount (PKR)</th>
                 <th class="text-center" style="width:70px">Action</th>
               </tr>
@@ -382,10 +381,18 @@
             <tbody>
               <tr>
                 <td>
-                  <input type="text" name="remarks[]" class="evf-input remark-input" placeholder="Enter remarks...">
+                  <input type="text" name="remarks[]" class="evf-input remark-input" placeholder="Enter remarks..." required>
                 </td>
                 <td>
-                  <input type="number" step="0.01" name="amount[]" class="evf-input text-end amount-input" placeholder="0.00">
+                  <select name="row_account_id[]" class="evf-input" required>
+                    <option value="">Select Account (Paid From)</option>
+                    @foreach($accounts ?? [] as $acc)
+                      <option value="{{ $acc->id }}">{{ $acc->title }} ({{ $acc->head->name ?? 'Account' }})</option>
+                    @endforeach
+                  </select>
+                </td>
+                <td>
+                  <input type="number" step="0.01" name="amount[]" class="evf-input text-end amount-input" placeholder="0.00" required>
                 </td>
                 <td class="text-center">
                   <button type="button" class="btn btn-sm btn-outline-danger rounded-2 removeRow">
@@ -397,7 +404,12 @@
 
             <tfoot>
               <tr class="bg-light">
-                <th class="text-end fw-bold text-dark">Total Voucher Amount</th>
+                <th colspan="2" class="text-end fw-bold text-dark">
+                  <button type="button" class="btn btn-sm btn-outline-primary rounded-2 me-3" onclick="addRow()">
+                    <i class="bi bi-plus-circle me-1"></i> Add Another Line
+                  </button>
+                  Total Voucher Amount
+                </th>
                 <th>
                   <input type="text" id="totalAmount" class="evf-input text-end fw-bold text-primary fs-6" readonly value="0.00">
                 </th>
@@ -422,10 +434,40 @@
 
   </div>
 </div>
+
+{{-- ═══════ ADD EXPENSE HEAD MODAL ═══════ --}}
+<div class="modal fade evf-modal" id="addExpenseHeadModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white p-3">
+        <h5 class="modal-title fs-6"><i class="bi bi-folder-plus me-2 text-primary"></i>Add Expense Head</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="addExpenseHeadForm">
+        @csrf
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="evf-label">Expense Head Name</label>
+            <input type="text" name="name" id="newHeadName" class="evf-input" placeholder="e.g. Utility Bills, Office Supplies, Fuel..." required>
+          </div>
+          <div id="headFormAlert" class="alert d-none py-2 px-3 small rounded-2 mb-0"></div>
+        </div>
+        <div class="modal-footer bg-light px-4 py-3">
+          <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" id="saveHeadBtn" class="evf-btn evf-btn-primary">
+            <i class="bi bi-check-lg me-1"></i> Save Head
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 @endsection
 
 @section('scripts')
 <script>
+var accountOptionsHtml = `@foreach($accounts ?? [] as $acc)<option value="{{ $acc->id }}">{{ addslashes($acc->title) }} ({{ addslashes($acc->head->name ?? 'Account') }})</option>@endforeach`;
+
 function calculateTotal() {
     let total = 0;
     $('.amount-input').each(function() {
@@ -438,10 +480,16 @@ function addRow() {
     let row = `
     <tr>
         <td>
-            <input type="text" name="remarks[]" class="evf-input remark-input" placeholder="Enter remarks...">
+            <input type="text" name="remarks[]" class="evf-input remark-input" placeholder="Enter remarks..." required>
         </td>
         <td>
-            <input type="number" step="0.01" name="amount[]" class="evf-input text-end amount-input" placeholder="0.00">
+            <select name="row_account_id[]" class="evf-input" required>
+                <option value="">Select Account (Paid From)</option>
+                ` + accountOptionsHtml + `
+            </select>
+        </td>
+        <td>
+            <input type="number" step="0.01" name="amount[]" class="evf-input text-end amount-input" placeholder="0.00" required>
         </td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-outline-danger rounded-2 removeRow">
@@ -466,27 +514,57 @@ $(document).on('input', '.amount-input', function() {
 });
 
 $(document).on('click', '.removeRow', function() {
-    $(this).closest('tr').remove();
+    if ($('#voucherTable tbody tr').length > 1) {
+        $(this).closest('tr').remove();
+    }
     calculateTotal();
 });
 
-$(document).on('change', 'select[name="vendor_type"]', function() {
-    let headId = $(this).val();
-    let $account = $('select[name="vendor_id"]');
+// Add Expense Head AJAX Submission
+$('#addExpenseHeadForm').on('submit', function(e) {
+    e.preventDefault();
+    var $form = $(this);
+    var $btn = $('#saveHeadBtn');
+    var $alert = $('#headFormAlert');
+    var headName = $('#newHeadName').val().trim();
 
-    $account.html('<option disabled selected>Loading...</option>');
+    if (!headName) return;
 
-    if (!headId) {
-        $account.html('<option disabled selected>Select</option>');
-        return;
-    }
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
+    $alert.addClass('d-none').removeClass('alert-success alert-danger').text('');
 
-    $.get('{{ url("get-accounts-by-head") }}/' + headId, function(res) {
-        let html = '<option disabled selected>Select Account</option>';
-        res.forEach(acc => {
-            html += `<option value="${acc.id}">${acc.title}</option>`;
-        });
-        $account.html(html);
+    $.ajax({
+        url: '{{ route("coa.head.store") }}',
+        method: 'POST',
+        data: $form.serialize(),
+        success: function(res) {
+            $btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i> Save Head');
+            var newHead = res.head || { id: res.id, name: headName };
+            var headId = newHead.id || newHead.name;
+
+            // Add to Expense Head select and select it
+            $('#pageExpenseHead').append(
+                $('<option>', { value: headId, text: newHead.name, selected: true })
+            );
+
+            $alert.removeClass('d-none').addClass('alert-success').text('Head "' + newHead.name + '" added successfully!');
+            $('#newHeadName').val('');
+
+            setTimeout(function() {
+                $('#addExpenseHeadModal').modal('hide');
+                $alert.addClass('d-none');
+            }, 800);
+        },
+        error: function(xhr) {
+            $btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i> Save Head');
+            var msg = 'Failed to add Expense Head.';
+            if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+            else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                var errs = Object.values(xhr.responseJSON.errors).flat();
+                msg = errs.join(' ');
+            }
+            $alert.removeClass('d-none').addClass('alert-danger').text(msg);
+        }
     });
 });
 </script>

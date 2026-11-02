@@ -624,14 +624,24 @@
               <div class="bs-row-value" id="rowReceivables">Rs 0.00</div>
             </div>
 
-            {{-- 4. Inventory / Stock --}}
+            {{-- 4. Finished Goods Stock --}}
             <div class="bs-row-item">
               <div class="bs-row-label">
                 <i class="fas fa-boxes text-warning"></i>
-                <span>Closing Stock / Inventory Value</span>
+                <span>Closing Stock (Finished Goods)</span>
                 <span class="bs-row-badge" data-bs-toggle="modal" data-bs-target="#stockModal">Stock Value</span>
               </div>
               <div class="bs-row-value" id="rowInventory">Rs 0.00</div>
+            </div>
+
+            {{-- 4b. Raw Material Stock --}}
+            <div class="bs-row-item">
+              <div class="bs-row-label">
+                <i class="fas fa-seedling text-success"></i>
+                <span>Raw Material Stock Value</span>
+                <span class="bs-row-badge" data-bs-toggle="modal" data-bs-target="#rawStockModal">RM Stock</span>
+              </div>
+              <div class="bs-row-value" id="rowRawStock">Rs 0.00</div>
             </div>
 
             {{-- 5. Advances to Vendors (if any) --}}
@@ -900,20 +910,18 @@
   </div>
 </div>
 
-{{-- ═══════ MODAL: INVENTORY VALUATION ═══════ --}}
+{{-- ═══════ MODAL: FINISHED GOODS VALUATION ═══════ --}}
 <div class="modal fade" id="stockModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-boxes text-warning me-2"></i> Inventory &amp; Stock Valuation</h5>
+        <h5 class="modal-title"><i class="fas fa-boxes text-warning me-2"></i> Finished Goods Stock Valuation</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-0">
         <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
           <div>
-            <span>Finished Goods: <strong id="modalFinishedStock">Rs 0</strong></span>
-            <span class="mx-2">&bull;</span>
-            <span>Raw Materials: <strong id="modalRawStock">Rs 0</strong></span>
+            <span>Total Finished Stock: <strong id="modalFinishedStock">Rs 0</strong></span>
           </div>
           <div>
             <span>Total Units: <strong id="modalTotalStockQty">0</strong></span>
@@ -931,6 +939,44 @@
               </tr>
             </thead>
             <tbody id="stockTableBody">
+              {{-- Populated via AJAX --}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- ═══════ MODAL: RAW MATERIALS VALUATION ═══════ --}}
+<div class="modal fade" id="rawStockModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-seedling text-success me-2"></i> Raw Material Stock Valuation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+          <div>
+            <span>Total Raw Material Stock: <strong id="modalRawStock">Rs 0</strong></span>
+          </div>
+          <div>
+            <span>Total Items: <strong id="modalRawTotalItems">0</strong></span>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Material Name</th>
+                <th>Unit</th>
+                <th class="text-end">Quantity</th>
+                <th class="text-end">Unit Cost</th>
+                <th class="text-end">Total Valuation</th>
+              </tr>
+            </thead>
+            <tbody id="rawStockTableBody">
               {{-- Populated via AJAX --}}
             </tbody>
           </table>
@@ -1053,7 +1099,8 @@ $(document).ready(function() {
     $('#rowBankBalances').text(formatMoney(a.bank_accounts.total));
     $('#rowReceivables').text(formatMoney(a.accounts_receivable.total));
     $('#badgeCustCount').text(a.accounts_receivable.count);
-    $('#rowInventory').text(formatMoney(a.inventory.total));
+    $('#rowInventory').text(formatMoney(a.inventory.finished_goods));
+    $('#rowRawStock').text(formatMoney(a.inventory.raw_materials));
 
     if (a.advances_to_vendors && a.advances_to_vendors.total > 0) {
       $('#rowAdvanceVendorsContainer').show();
@@ -1171,14 +1218,14 @@ $(document).ready(function() {
     }
     $('#vendorsTableBody').html(vendHtml);
 
-    // Stock Modal
+    // Finished Goods Modal
     $('#modalFinishedStock').text(formatMoney(a.inventory.finished_goods));
-    $('#modalRawStock').text(formatMoney(a.inventory.raw_materials));
     $('#modalTotalStockQty').text(a.inventory.total_qty);
 
     var stockHtml = '';
-    if (a.inventory.items && a.inventory.items.length > 0) {
-      a.inventory.items.forEach(function(it) {
+    var finishedList = a.inventory.finished_items || [];
+    if (finishedList.length > 0) {
+      finishedList.forEach(function(it) {
         stockHtml += '<tr>' +
           '<td><strong>' + it.name + '</strong><br><small class="text-muted">' + it.code + '</small></td>' +
           '<td><span class="badge bg-light text-dark">' + it.category + '</span></td>' +
@@ -1188,9 +1235,30 @@ $(document).ready(function() {
         '</tr>';
       });
     } else {
-      stockHtml = '<tr><td colspan="5" class="text-center text-muted py-3">No inventory items in stock</td></tr>';
+      stockHtml = '<tr><td colspan="5" class="text-center text-muted py-3">No finished goods in stock</td></tr>';
     }
     $('#stockTableBody').html(stockHtml);
+
+    // Raw Materials Modal
+    $('#modalRawStock').text(formatMoney(a.inventory.raw_materials));
+    var rawList = a.inventory.raw_items || [];
+    $('#modalRawTotalItems').text(rawList.length);
+
+    var rawHtml = '';
+    if (rawList.length > 0) {
+      rawList.forEach(function(rm) {
+        rawHtml += '<tr>' +
+          '<td><strong>' + rm.name + '</strong><br><small class="text-muted">' + rm.code + '</small></td>' +
+          '<td><span class="badge bg-light text-success">' + (rm.unit || 'Unit') + '</span></td>' +
+          '<td class="text-end">' + rm.qty + '</td>' +
+          '<td class="text-end">' + formatMoney(rm.unit_cost) + '</td>' +
+          '<td class="text-end text-success"><strong>' + formatMoney(rm.total_val) + '</strong></td>' +
+        '</tr>';
+      });
+    } else {
+      rawHtml = '<tr><td colspan="5" class="text-center text-muted py-3">No raw materials in stock</td></tr>';
+    }
+    $('#rawStockTableBody').html(rawHtml);
 
     // Assets Modal
     var astHtml = '';
@@ -1240,9 +1308,10 @@ $(document).ready(function() {
       '<tr><td>Cash in Hand</td><td>' + d.assets.cash_in_hand.total + '</td><td>Accounts Payable (Vendors)</td><td>' + d.liabilities.accounts_payable.total + '</td></tr>' +
       '<tr><td>Bank Balances</td><td>' + d.assets.bank_accounts.total + '</td><td>Customer Advances</td><td>' + d.liabilities.customer_advances.total + '</td></tr>' +
       '<tr><td>Accounts Receivable (Customers)</td><td>' + d.assets.accounts_receivable.total + '</td><td><b>Owner\'s Equity:</b></td><td></td></tr>' +
-      '<tr><td>Closing Inventory / Stock</td><td>' + d.assets.inventory.total + '</td><td>Invested Capital</td><td>' + d.equity.invested_capital + '</td></tr>' +
-      '<tr><td>Advances to Vendors</td><td>' + d.assets.advances_to_vendors.total + '</td><td>Retained Reserves</td><td>' + d.equity.retained_earnings + '</td></tr>' +
-      '<tr><td><b>Fixed Assets:</b></td><td>' + d.assets.total_fixed_assets + '</td><td>Net Profit / (Loss)</td><td>' + d.equity.net_profit + '</td></tr>' +
+      '<tr><td>Closing Stock (Finished Goods)</td><td>' + d.assets.inventory.finished_goods + '</td><td>Invested Capital</td><td>' + d.equity.invested_capital + '</td></tr>' +
+      '<tr><td>Raw Material Stock Value</td><td>' + d.assets.inventory.raw_materials + '</td><td>Retained Reserves</td><td>' + d.equity.retained_earnings + '</td></tr>' +
+      '<tr><td>Advances to Vendors</td><td>' + d.assets.advances_to_vendors.total + '</td><td>Net Profit / (Loss)</td><td>' + d.equity.net_profit + '</td></tr>' +
+      '<tr><td><b>Fixed Assets:</b></td><td>' + d.assets.total_fixed_assets + '</td><td></td><td></td></tr>' +
       '<tr><td><b>TOTAL ASSETS</b></td><td><b>' + d.assets.total_assets + '</b></td><td><b>TOTAL LIABILITIES & EQUITY</b></td><td><b>' + d.equity.total_liabilities_and_equity + '</b></td></tr>' +
       '</table>';
 

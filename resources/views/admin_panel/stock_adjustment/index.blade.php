@@ -247,6 +247,9 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
                   <i class="bi bi-{{ $adj->type === 'increase' ? 'plus' : 'dash' }}"></i>
                   {{ ucfirst($adj->type) }}
                 </span>
+                @if($adj->expense_voucher_id)
+                <span class="badge bg-light text-primary border ms-1" title="Expense Voucher Created"><i class="bi bi-receipt"></i> EV</span>
+                @endif
               </td>
               <td class="pc-reason">{{ $adj->reason }}</td>
               <td>

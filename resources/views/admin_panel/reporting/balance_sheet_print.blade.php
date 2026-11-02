@@ -235,8 +235,12 @@
                                     <td class="amount">Rs {{ number_format($data['assets']['accounts_receivable']['total'] ?? 0, 2) }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="label">Closing Inventory / Stock Value</td>
-                                    <td class="amount">Rs {{ number_format($data['assets']['inventory']['total'] ?? 0, 2) }}</td>
+                                    <td class="label">Closing Stock (Finished Goods)</td>
+                                    <td class="amount">Rs {{ number_format($data['assets']['inventory']['finished_goods'] ?? 0, 2) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="label">Raw Material Stock Value</td>
+                                    <td class="amount">Rs {{ number_format($data['assets']['inventory']['raw_materials'] ?? 0, 2) }}</td>
                                 </tr>
                                 @if(!empty($data['assets']['advances_to_vendors']['total']) && $data['assets']['advances_to_vendors']['total'] > 0)
                                 <tr>

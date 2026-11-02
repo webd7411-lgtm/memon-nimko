@@ -725,7 +725,8 @@ class VoucherController extends Controller
     {
         $narrations = \App\Models\Narration::where('expense_head', 'Expense voucher')
             ->pluck('narration', 'id');
-        $AccountHeads = AccountHead::get();
+        $AccountHeads = AccountHead::where('status', 1)->get();
+        $accounts = Account::where('status', 1)->with('head')->get();
 
         // Last RVID nikalna
         $lastVoucher = \App\Models\ExpenseVoucher::latest('id')->first();
@@ -734,7 +735,7 @@ class VoucherController extends Controller
         $nextId = $lastVoucher ? $lastVoucher->id + 1 : 1;
         $nextRvid = 'EVID-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
 
-        return view('admin_panel.vochers.expense_vochers.expense_vouchers', compact('narrations', 'AccountHeads', 'nextRvid'));
+        return view('admin_panel.vochers.expense_vochers.expense_vouchers', compact('narrations', 'AccountHeads', 'accounts', 'nextRvid'));
     }
 
     public function store_expense_vochers(Request $request)
@@ -742,12 +743,13 @@ class VoucherController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'evid'        => 'required',
-                'date'        => 'required',
-                'vendor_type' => 'required', // Account Head ID
-                'vendor_id'   => 'required', // Account ID
-                'remarks'     => 'required|array',
-                'amount'      => 'required|array',
+                'evid'           => 'required',
+                'date'           => 'required',
+                'vendor_type'    => 'required', // Expense Head ID
+                'vendor_id'      => 'nullable', // Account ID (optional, row accounts used)
+                'remarks'        => 'required|array',
+                'amount'         => 'required|array',
+                'row_account_id' => 'required|array',
             ]);
             // ✅ Calculate total
             $totalAmount = 0;
@@ -755,20 +757,33 @@ class VoucherController extends Controller
                 $totalAmount += (float)$amt;
             }
 
+            // Fallback for party_id if vendor_id is not provided
+            $firstAccountId = null;
+            if (!empty($request->row_account_id)) {
+                foreach ($request->row_account_id as $accId) {
+                    if (!empty($accId)) {
+                        $firstAccountId = $accId;
+                        break;
+                    }
+                }
+            }
+
             // ✅ Save Voucher
             $voucher = ExpenseVoucher::create([
-                'evid'         => $request->evid,
-                'user_id'      => auth()->id(), // ✅ Save current user ID
-                'branch_id'    => active_branch_id(),
-                'entry_date'   => now(),
-                'date'         => $request->date,
-                'type'         => $request->vendor_type, // Account Head
-                'party_id'     => $request->vendor_id,   // Account
-                'remarks'      => $request->remarks, // Assuming ExpenseVoucher model has casts for this
-                'amount'       => $request->amount, // Assuming ExpenseVoucher model has casts for this
-                'total_amount' => $totalAmount,
+                'evid'           => $request->evid,
+                'user_id'        => auth()->id(), // ✅ Save current user ID
+                'branch_id'      => active_branch_id(),
+                'entry_date'     => now(),
+                'date'           => $request->date,
+                'type'           => $request->vendor_type, // Expense Head
+                'party_id'       => $request->vendor_id ?? $firstAccountId,
+                'row_account_id' => $request->row_account_id,
+                'remarks'        => $request->remarks,
+                'amount'         => $request->amount,
+                'total_amount'   => $totalAmount,
             ]);
 
+            // Track expense account balance if defined for head
             foreach ($request->amount as $amt) {
                 if ($amt > 0) {
                     $expenseAccount = Account::where('head_id', $request->vendor_type)->first();
@@ -779,16 +794,38 @@ class VoucherController extends Controller
                 }
             }
 
-            $payingAccount = Account::find($request->vendor_id);
-            if ($payingAccount) {
-                $payingAccount->opening_balance -= $totalAmount;
-                $payingAccount->save();
+            // ✅ Deduct line amounts from each selected paying account
+            if ($request->row_account_id && $request->amount) {
+                foreach ($request->row_account_id as $index => $accId) {
+                    $rowAmount = isset($request->amount[$index]) ? (float)$request->amount[$index] : 0;
+                    if ($rowAmount > 0 && !empty($accId)) {
+                        $payingAccount = Account::find($accId);
+                        if ($payingAccount) {
+                            $payingAccount->opening_balance -= $rowAmount;
+                            $payingAccount->save();
+                        }
+                    }
+                }
             }
 
             DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Expense Voucher saved successfully',
+                ]);
+            }
+
             return redirect()->route('all-expense-vochers')->with('success', 'Expense Voucher saved successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
             return back()->with('error', $e->getMessage());
         }
     }
@@ -821,11 +858,13 @@ class VoucherController extends Controller
 
         $vouchers = $query->orderBy('id', 'desc')->get();
         $users = \App\Models\User::all();
-        $AccountHeads = \App\Models\AccountHead::get();
+        $AccountHeads = \App\Models\AccountHead::where('status', 1)->get();
+        $accounts = \App\Models\Account::where('status', 1)->with('head')->get();
+        $accountsMap = \App\Models\Account::pluck('title', 'id');
         $lastVoucher = \App\Models\ExpenseVoucher::latest('id')->first();
         $nextId = $lastVoucher ? $lastVoucher->id + 1 : 1;
         $nextRvid = 'EVID-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
-        return view('admin_panel.vochers.expense_vochers.all_expense_vochers', compact('vouchers', 'users', 'AccountHeads', 'nextRvid'));
+        return view('admin_panel.vochers.expense_vochers.all_expense_vochers', compact('vouchers', 'users', 'AccountHeads', 'accounts', 'accountsMap', 'nextRvid'));
     }
 
     public function expenseprint($id)
@@ -845,17 +884,27 @@ class VoucherController extends Controller
             $amounts = is_array($decoded) ? $decoded : (!empty($amounts) ? [$amounts] : []);
         }
 
-        // ✅ Build rows (Remarks + Amount only)
+        $rowAccountIds = $voucher->row_account_id ?? [];
+        if (!is_array($rowAccountIds)) {
+            $decoded = json_decode($rowAccountIds, true);
+            $rowAccountIds = is_array($decoded) ? $decoded : [];
+        }
+        $accountsMap = \App\Models\Account::pluck('title', 'id');
+
+        // ✅ Build rows (Remarks + Account + Amount)
         $rows = [];
         foreach ($remarks as $i => $remark) {
+            $accId = $rowAccountIds[$i] ?? null;
             $rows[] = [
                 'description' => $remark,
+                'account'     => $accId && isset($accountsMap[$accId]) ? $accountsMap[$accId] : null,
                 'amount'      => (float)($amounts[$i] ?? 0),
             ];
         }
 
-        // ✅ Party is always ACCOUNT now
-        $account = \App\Models\Account::find($voucher->party_id);
+        // ✅ Party account fallback
+        $partyAccountId = $voucher->party_id ?? ($rowAccountIds[0] ?? null);
+        $account = $partyAccountId ? \App\Models\Account::find($partyAccountId) : null;
 
         $party = (object)[
             'name'    => $account->title ?? '-',

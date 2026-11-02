@@ -329,7 +329,11 @@ class DistributorPortalController extends Controller
         $totalItems = $stocks->total();
         $totalQty = DistributorStock::where('distributor_id', $distributor->id)->sum('qty');
 
-        return view('distributor_panel.stock.index', compact('distributor', 'stocks', 'totalItems', 'totalQty'));
+        $totalStockValue = (float) DistributorStock::where('distributor_id', $distributor->id)
+            ->selectRaw('COALESCE(SUM(qty * COALESCE(avg_price, 0)), 0) as val')
+            ->value('val');
+
+        return view('distributor_panel.stock.index', compact('distributor', 'stocks', 'totalItems', 'totalQty', 'totalStockValue'));
     }
 
     /**

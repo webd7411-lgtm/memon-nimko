@@ -16,6 +16,7 @@ class ExpenseVoucher extends Model
         'row_account_id' => 'array',
         'amount' => 'array',
         'remarks' => 'array',
+        'is_stock_adjustment' => 'boolean',
     ];
 
     /**
@@ -68,11 +69,19 @@ class ExpenseVoucher extends Model
         return $this->belongsTo(Branch::class, 'branch_id', 'id');
     }
 
+    public function stockAdjustment()
+    {
+        return $this->belongsTo(StockAdjustment::class, 'stock_adjustment_id', 'id');
+    }
+
     /**
      * Helper Attributes
      */
     public function getPartyNameAttribute()
     {
+        if ($this->is_stock_adjustment) {
+            return 'Stock Adjustment (' . ($this->stockAdjustment?->ref_no ?? 'Non-Cash') . ')';
+        }
         if (is_numeric($this->type)) {
             return $this->partyAccount?->title ?? 'N/A';
         }

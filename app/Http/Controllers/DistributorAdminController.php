@@ -1416,15 +1416,18 @@ class DistributorAdminController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Dynamic summary metrics based on active filters (Booker, Distributor, Search, Status)
+        $statsQuery = clone $query;
+        $totalCustomers = (clone $statsQuery)->count();
+        $totalMarketDue = (float) (clone $statsQuery)->where('current_balance', '>', 0)->sum('current_balance');
+        $customersWithDueCount = (clone $statsQuery)->where('current_balance', '>', 0)->count();
+
         $customers = $query->latest('id')->paginate(15)->appends($request->all());
 
         $distributors = Distributor::with(['bookers' => function($q) {
             $q->select('id', 'name', 'email', 'distributor_id');
         }])->where('status', 'active')->orderBy('name')->get();
         $accounts = Account::where('status', 1)->with('head')->orderBy('title')->get();
-        $totalCustomers = DistributorCustomer::count();
-        $totalMarketDue = DistributorCustomer::sum('current_balance');
-        $customersWithDueCount = DistributorCustomer::where('current_balance', '>', 0)->count();
 
         return view('admin_panel.distributors.customers', compact(
             'customers',

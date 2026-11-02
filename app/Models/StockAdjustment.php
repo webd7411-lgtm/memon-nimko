@@ -27,4 +27,9 @@ class StockAdjustment extends Model
     {
         return $this->belongsTo(\App\Models\Warehouse::class, 'warehouse_id');
     }
+
+    public function expenseVoucher()
+    {
+        return $this->belongsTo(\App\Models\ExpenseVoucher::class, 'expense_voucher_id');
+    }
 }

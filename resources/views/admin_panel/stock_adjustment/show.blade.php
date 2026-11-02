@@ -180,6 +180,20 @@
             </div>
           </div>
           @endif
+          @if($adjustment->expenseVoucher)
+          <div class="pc-info-row">
+            <span class="pc-info-ic"><i class="bi bi-receipt"></i></span>
+            <div>
+              <div class="pc-info-lb">Expense Voucher</div>
+              <div class="pc-info-val">
+                <a href="{{ route('all-expense-vochers') }}?start_date={{ $adjustment->adjustment_date }}&end_date={{ $adjustment->adjustment_date }}" class="text-primary fw-bold" target="_blank">
+                  {{ $adjustment->expenseVoucher->evid }}
+                </a>
+                <span class="badge bg-warning text-dark ms-1" style="font-size: .65rem;">Non-Cash Memo</span>
+              </div>
+            </div>
+          </div>
+          @endif
         </div>
       </div>
     </div>

@@ -2476,7 +2476,10 @@ class ReportingController extends Controller
                 $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
             });
         $prevExpQ = ExpenseVoucher::where('date', '>=', $startDate)
-            ->where('date', '<', $selectedDate);
+            ->where('date', '<', $selectedDate)
+            ->where(function($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', false);
+            });
 
         if ($selectedBranchId !== 'all') {
             $prevSalesQ->where('branch_id', $selectedBranchId);
@@ -2521,7 +2524,11 @@ class ReportingController extends Controller
             ->where(function($q) {
                 $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
             });
-        $expQ = ExpenseVoucher::with('user')->whereDate('date', $selectedDate);
+        $expQ = ExpenseVoucher::with('user')
+            ->whereDate('date', $selectedDate)
+            ->where(function($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', false);
+            });
 
         if ($selectedBranchId !== 'all') {
             $salesQ->where('branch_id', $selectedBranchId);
@@ -3977,7 +3984,7 @@ class ReportingController extends Controller
         $finishedGoodsValue = 0;
         $totalStockQty = 0;
         $categoryStockSummary = [];
-        $topStockItems = [];
+        $finishedItems = [];
 
         foreach ($stocksData as $stk) {
             $qty = (float)$stk->qty;
@@ -4006,7 +4013,7 @@ class ReportingController extends Controller
             $catName = $stk->category_name ?? 'General';
             $categoryStockSummary[$catName] = ($categoryStockSummary[$catName] ?? 0) + $lineValue;
 
-            $topStockItems[] = [
+            $finishedItems[] = [
                 'name'      => $stk->item_name . ($stk->variant_name ? ' (' . $stk->variant_name . ')' : ''),
                 'code'      => $stk->item_code,
                 'category'  => $catName,
@@ -4018,6 +4025,7 @@ class ReportingController extends Controller
 
         // Raw Materials Stock Valuation
         $rawMaterialValue = 0;
+        $rawItems = [];
         if (\Illuminate\Support\Facades\Schema::hasTable('raw_material_stocks')) {
             $rmStocksQ = DB::table('raw_material_stocks')
                 ->join('raw_materials', 'raw_materials.id', '=', 'raw_material_stocks.raw_material_id');
@@ -4046,10 +4054,11 @@ class ReportingController extends Controller
                 $val = ($qty / $conv) * $pricePerUnit;
                 $rawMaterialValue += $val;
 
-                $topStockItems[] = [
-                    'name'      => '[RM] ' . $rm->name,
+                $rawItems[] = [
+                    'name'      => $rm->name,
                     'code'      => 'RM-' . $rm->id,
                     'category'  => 'Raw Materials',
+                    'unit'      => $rm->unit,
                     'qty'       => round($qty / $conv, 2) . ' ' . $rm->unit,
                     'unit_cost' => $pricePerUnit,
                     'total_val' => $val,
@@ -4057,6 +4066,9 @@ class ReportingController extends Controller
             }
         }
 
+        usort($finishedItems, function($a, $b) { return $b['total_val'] <=> $a['total_val']; });
+        usort($rawItems, function($a, $b) { return $b['total_val'] <=> $a['total_val']; });
+        $topStockItems = array_merge($finishedItems, $rawItems);
         usort($topStockItems, function($a, $b) { return $b['total_val'] <=> $a['total_val']; });
         $totalInventoryValue = $finishedGoodsValue + $rawMaterialValue;
 
@@ -4227,7 +4239,9 @@ class ReportingController extends Controller
                     'raw_materials' => $rawMaterialValue,
                     'total_qty' => $totalStockQty,
                     'categories' => $categoryStockSummary,
-                    'items' => array_slice($topStockItems, 0, 30),
+                    'items' => array_slice($topStockItems, 0, 50),
+                    'finished_items' => $finishedItems,
+                    'raw_items' => $rawItems,
                 ],
                 'fixed_assets' => [
                     'total' => $totalFixedAssetsValue,

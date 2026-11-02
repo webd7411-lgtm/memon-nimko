@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <!-- Quick Stat Pill -->
+    <!-- Quick Stat Pills -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6 col-lg-4">
             <div class="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-row align-items-center justify-content-between"
@@ -40,6 +40,19 @@
                 <div class="rounded-circle d-flex align-items-center justify-content-center"
                      style="width: 44px; height: 44px; background: rgba(15, 118, 110, 0.1); color: #0f766e; font-size: 1.2rem;">
                     <i class="fas fa-boxes"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-row align-items-center justify-content-between"
+                 style="border-left: 4px solid #2563eb !important;">
+                <div>
+                    <span class="text-muted small fw-semibold text-uppercase">Total Stock Value</span>
+                    <h3 class="fw-bold mb-0 text-dark mt-1">Rs. {{ number_format($totalStockValue ?? 0, 2) }}</h3>
+                </div>
+                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                     style="width: 44px; height: 44px; background: rgba(37, 99, 235, 0.1); color: #2563eb; font-size: 1.2rem;">
+                    <i class="fas fa-money-bill-wave"></i>
                 </div>
             </div>
         </div>

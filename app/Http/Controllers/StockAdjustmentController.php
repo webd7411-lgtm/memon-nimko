@@ -152,9 +152,78 @@ Stock::create([
                  }
             }
 
+            // If decrease and user opted to create an informational expense voucher (Tareeqa 1)
+            $expenseVoucherRef = null;
+            if ($request->type === 'decrease' && $request->input('create_expense_voucher') == '1') {
+                $expenseHead = \App\Models\AccountHead::where('name', 'like', '%Stock Adjustment%')
+                    ->orWhere('name', 'like', '%Damaged & Expired%')
+                    ->first();
+
+                if (!$expenseHead) {
+                    $expenseHead = \App\Models\AccountHead::firstOrCreate(
+                        ['name' => 'Damaged & Expired Stock Claims'],
+                        ['status' => 1]
+                    );
+                }
+
+                $voucherRemarks = [];
+                $voucherAmounts = [];
+                $totalVoucherAmount = 0;
+
+                $adjustment->load(['items.product', 'items.variant']);
+
+                foreach ($adjustment->items as $item) {
+                    $p = $item->product;
+                    $v = $item->variant;
+
+                    $unitPrice = 0;
+                    if ($v && floatval($v->cost_price) > 0) {
+                        $unitPrice = floatval($v->cost_price);
+                    } elseif ($v && floatval($v->price) > 0) {
+                        $unitPrice = floatval($v->price);
+                    } elseif ($p && floatval($p->price) > 0) {
+                        $unitPrice = floatval($p->price);
+                    }
+
+                    $rowAmount = round($unitPrice * floatval($item->qty), 2);
+                    $totalVoucherAmount += $rowAmount;
+
+                    $pName = $p ? $p->item_name : 'Product #' . $item->product_id;
+                    $vLabel = $v ? (' (' . ($v->size_label ?: $v->variant_name ?: ($v->size_value . ' ' . $v->size_unit)) . ')') : '';
+                    $itemNote = $item->notes ? " [Note: {$item->notes}]" : '';
+
+                    $voucherRemarks[] = "{$pName}{$vLabel} - Decreased {$item->qty} {$item->unit} [Stock Adj: {$refNo}]{$itemNote}";
+                    $voucherAmounts[] = (string)$rowAmount;
+                }
+
+                $voucher = \App\Models\ExpenseVoucher::create([
+                    'evid'                => \App\Models\ExpenseVoucher::generateInvoiceNo(),
+                    'user_id'             => Auth::id(),
+                    'branch_id'           => active_branch_id(),
+                    'entry_date'          => now(),
+                    'date'                => $request->adjustment_date,
+                    'type'                => $expenseHead->id,
+                    'party_id'            => null,
+                    'row_account_id'      => [],
+                    'remarks'             => $voucherRemarks,
+                    'amount'              => $voucherAmounts,
+                    'total_amount'        => $totalVoucherAmount,
+                    'is_stock_adjustment' => true,
+                    'stock_adjustment_id' => $adjustment->id,
+                ]);
+
+                $adjustment->expense_voucher_id = $voucher->id;
+                $adjustment->save();
+                $expenseVoucherRef = $voucher->evid;
+            }
+
             DB::commit();
+            $msg = 'Stock adjustment saved! Ref: ' . $refNo;
+            if ($expenseVoucherRef) {
+                $msg .= ' | Expense Voucher created: ' . $expenseVoucherRef . ' (Informational - No Cash Deducted)';
+            }
             return redirect()->route('stock-adjustment.index')
-                ->with('success', 'Stock adjustment saved! Ref: ' . $refNo);
+                ->with('success', $msg);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors('Error: ' . $e->getMessage())->withInput();
@@ -163,7 +232,7 @@ Stock::create([
 
     public function show($id)
     {
-        $adjustment = StockAdjustment::with(['user', 'items.product', 'items.variant'])->findOrFail($id);
+        $adjustment = StockAdjustment::with(['user', 'items.product', 'items.variant', 'expenseVoucher'])->findOrFail($id);
         return view('admin_panel.stock_adjustment.show', compact('adjustment'));
     }
 
@@ -396,6 +465,12 @@ Stock::create([
                     }
                     $stock->save();
                 }
+            }
+
+            if ($adjustment->expense_voucher_id) {
+                \App\Models\ExpenseVoucher::where('id', $adjustment->expense_voucher_id)
+                    ->where('is_stock_adjustment', true)
+                    ->delete();
             }
 
             $refNo = $adjustment->ref_no;
