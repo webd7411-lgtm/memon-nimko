@@ -125,6 +125,12 @@
             </a>
             @endcan
 
+            <!-- Recovery & Hierarchy Ledger Report -->
+            <a href="{{ route('report.distribution_recovery_ledger') }}" 
+               class="dist-nav-tab {{ $currentRoute === 'report.distribution_recovery_ledger' ? 'active' : '' }}" style="color: #dc2626 !important; font-weight: 600;">
+                <i class="fas fa-file-invoice-dollar me-1"></i> Recovery Ledger
+            </a>
+
             @can('Distributor Payments')
             <!-- 8. Payments & Approvals -->
             <a href="{{ route('admin.distributors.payments') }}" 

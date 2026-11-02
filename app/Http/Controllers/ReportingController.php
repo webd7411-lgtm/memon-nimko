@@ -4356,4 +4356,217 @@ class ReportingController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Distribution Outstanding Recovery & Full Chain Ledger Audit Report
+     * Company -> Distributor -> Order Booker -> Retail Customer
+     */
+    public function distribution_recovery_ledger_report()
+    {
+        $distributors = \App\Models\Distributor::with(['bookers:id,name,email,distributor_id'])
+            ->orderBy('name')
+            ->get();
+
+        $bookers = \App\Models\User::where('usertype', 'order_booker')
+            ->orWhereNotNull('distributor_id')
+            ->orderBy('name')
+            ->get();
+
+        return view('admin_panel.reporting.distribution_recovery_ledger', compact('distributors', 'bookers'));
+    }
+
+    /**
+     * Fetch Distribution Recovery & Ledger Audit Data (AJAX)
+     */
+    public function fetch_distribution_recovery_ledger_report(Request $request)
+    {
+        $distributorFilter = $request->distributor_id;
+        $bookerFilter      = $request->booker_user_id;
+        $search            = trim($request->search ?? '');
+
+        // Query Distributors with bookers and customers
+        $distQuery = \App\Models\Distributor::query();
+
+        if ($distributorFilter && $distributorFilter !== 'all') {
+            $distQuery->where('id', $distributorFilter);
+        }
+
+        $distributors = $distQuery->with([
+            'bookers' => function($q) use ($bookerFilter) {
+                if ($bookerFilter && $bookerFilter !== 'all') {
+                    $q->where('id', $bookerFilter);
+                }
+            },
+            'customers' => function($q) use ($bookerFilter, $search) {
+                if ($bookerFilter && $bookerFilter !== 'all') {
+                    $q->where('booker_user_id', $bookerFilter);
+                }
+                if ($search) {
+                    $q->where(function($sq) use ($search) {
+                        $sq->where('shop_name', 'like', "%{$search}%")
+                           ->orWhere('owner_name', 'like', "%{$search}%")
+                           ->orWhere('phone', 'like', "%{$search}%")
+                           ->orWhere('area', 'like', "%{$search}%");
+                    });
+                }
+                $q->with('booker:id,name,email');
+            }
+        ])->orderBy('name')->get();
+
+        $distributorRows = [];
+        $grandCompanyReceivableFromDistributors = 0;
+        $grandMarketReceivableFromRetailers = 0;
+        $totalRetailShopsCount = 0;
+        $totalBookersCount = 0;
+
+        foreach ($distributors as $dist) {
+            $distDue = (float) $dist->current_balance;
+            $grandCompanyReceivableFromDistributors += $distDue;
+
+            // Load last 5 ledger entries of distributor with company
+            $distLedgerRecent = \App\Models\DistributorLedger::where('distributor_id', $dist->id)
+                ->latest('id')
+                ->take(5)
+                ->get()
+                ->map(function($e) {
+                    return [
+                        'date' => \Carbon\Carbon::parse($e->date)->format('d M, Y'),
+                        'type' => ucfirst(str_replace('_', ' ', $e->type ?? 'entry')),
+                        'ref'  => $e->reference_no ?? '-',
+                        'desc' => $e->description ?? '-',
+                        'debit' => (float)$e->debit,
+                        'credit' => (float)$e->credit,
+                        'balance' => (float)$e->balance
+                    ];
+                });
+
+            // Calculate total market receivables under this distributor
+            $distMarketDue = (float) $dist->customers->sum('current_balance');
+            $grandMarketReceivableFromRetailers += $distMarketDue;
+            $totalRetailShopsCount += $dist->customers->count();
+            $totalBookersCount += $dist->bookers->count();
+
+            // Group customers by booker
+            $bookersGrouped = [];
+
+            // 1. Map registered bookers under distributor
+            foreach ($dist->bookers as $bkr) {
+                $bkrCusts = $dist->customers->where('booker_user_id', $bkr->id);
+                $bkrDueSum = (float) $bkrCusts->sum('current_balance');
+
+                $custRows = [];
+                foreach ($bkrCusts as $c) {
+                    // Recent ledger entries for customer
+                    $custLedgerRecent = \App\Models\DistributorCustomerLedger::where('distributor_customer_id', $c->id)
+                        ->latest('id')
+                        ->take(4)
+                        ->get()
+                        ->map(function($cl) {
+                            return [
+                                'date' => \Carbon\Carbon::parse($cl->date)->format('d M, Y'),
+                                'type' => ucfirst(str_replace('_', ' ', $cl->type ?? 'entry')),
+                                'ref'  => $cl->reference_no ?? '-',
+                                'desc' => $cl->description ?? '-',
+                                'debit' => (float)$cl->debit,
+                                'credit' => (float)$cl->credit,
+                                'balance' => (float)$cl->balance
+                            ];
+                        });
+
+                    $custRows[] = [
+                        'id' => $c->id,
+                        'shop_name' => $c->shop_name,
+                        'owner_name' => $c->owner_name ?: 'N/A',
+                        'phone' => $c->phone ?: '—',
+                        'area' => $c->area ?: 'General',
+                        'approved_discount' => (float)($c->approved_discount ?? 0),
+                        'current_balance' => (float)$c->current_balance,
+                        'ledger_url' => route('admin.distributors.customers.ledger', $c->id),
+                        'recent_ledgers' => $custLedgerRecent
+                    ];
+                }
+
+                $bookersGrouped[] = [
+                    'id' => $bkr->id,
+                    'name' => $bkr->name,
+                    'email' => $bkr->email,
+                    'shops_count' => $bkrCusts->count(),
+                    'total_market_due' => $bkrDueSum,
+                    'customers' => array_values($custRows)
+                ];
+            }
+
+            // 2. Unassigned / legacy shops under this distributor (if any booker_user_id is null)
+            $unassignedCusts = $dist->customers->whereNull('booker_user_id');
+            if ($unassignedCusts->count() > 0) {
+                $unassignedDueSum = (float) $unassignedCusts->sum('current_balance');
+                $unassignedRows = [];
+                foreach ($unassignedCusts as $c) {
+                    $custLedgerRecent = \App\Models\DistributorCustomerLedger::where('distributor_customer_id', $c->id)
+                        ->latest('id')
+                        ->take(4)
+                        ->get()
+                        ->map(function($cl) {
+                            return [
+                                'date' => \Carbon\Carbon::parse($cl->date)->format('d M, Y'),
+                                'type' => ucfirst(str_replace('_', ' ', $cl->type ?? 'entry')),
+                                'ref'  => $cl->reference_no ?? '-',
+                                'desc' => $cl->description ?? '-',
+                                'debit' => (float)$cl->debit,
+                                'credit' => (float)$cl->credit,
+                                'balance' => (float)$cl->balance
+                            ];
+                        });
+
+                    $unassignedRows[] = [
+                        'id' => $c->id,
+                        'shop_name' => $c->shop_name,
+                        'owner_name' => $c->owner_name ?: 'N/A',
+                        'phone' => $c->phone ?: '—',
+                        'area' => $c->area ?: 'General',
+                        'approved_discount' => (float)($c->approved_discount ?? 0),
+                        'current_balance' => (float)$c->current_balance,
+                        'ledger_url' => route('admin.distributors.customers.ledger', $c->id),
+                        'recent_ledgers' => $custLedgerRecent
+                    ];
+                }
+
+                $bookersGrouped[] = [
+                    'id' => 0,
+                    'name' => 'Unassigned / Direct Retailers',
+                    'email' => '-',
+                    'shops_count' => $unassignedCusts->count(),
+                    'total_market_due' => $unassignedDueSum,
+                    'customers' => array_values($unassignedRows)
+                ];
+            }
+
+            $distributorRows[] = [
+                'id' => $dist->id,
+                'name' => $dist->name,
+                'code' => $dist->code,
+                'phone' => $dist->phone ?: '—',
+                'city' => $dist->city ?: '—',
+                'company_receivable' => $distDue,
+                'market_receivable' => $distMarketDue,
+                'bookers_count' => count($dist->bookers),
+                'shops_count' => count($dist->customers),
+                'ledger_url' => route('admin.distributors.ledger', $dist->id),
+                'recent_ledgers' => $distLedgerRecent,
+                'bookers' => $bookersGrouped
+            ];
+        }
+
+        return response()->json([
+            'status' => true,
+            'summary' => [
+                'company_receivable_from_distributors' => $grandCompanyReceivableFromDistributors,
+                'market_receivable_from_retailers'     => $grandMarketReceivableFromRetailers,
+                'total_distributors_count'             => count($distributors),
+                'total_bookers_count'                  => $totalBookersCount,
+                'total_retail_shops_count'             => $totalRetailShopsCount,
+            ],
+            'distributors' => $distributorRows
+        ]);
+    }
 }

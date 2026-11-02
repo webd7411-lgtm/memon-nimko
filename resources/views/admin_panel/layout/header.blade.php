@@ -640,6 +640,12 @@
                                     </a>
                                 </li>
                                 <li>
+                                    <a href="{{ route('report.distribution_recovery_ledger') }}" style="background: rgba(220, 38, 38, 0.08); border-radius: 6px; margin: 4px 6px; padding: 6px 10px;">
+                                        <i class="fas fa-file-invoice-dollar text-danger"></i>
+                                        <span class="fw-bold text-danger">Recovery & Chain Ledger Report</span>
+                                    </a>
+                                </li>
+                                <li>
                                     <a href="{{ route('distributor.dashboard') }}" style="background: rgba(15, 118, 110, 0.12); border-radius: 6px; margin: 4px 6px; padding: 6px 10px;">
                                         <i class="fas fa-truck-moving text-teal" style="color: #0f766e;"></i>
                                         <span class="fw-bold text-dark">Open Distributor & Booker Portal</span>
@@ -702,6 +708,7 @@
                                 @can('Customer Ledger')
                                 <li><a href="{{ route('report.customer.ledger') }}"><i class="fas fa-user-check"></i> Customer Ledgers</a></li>
                                 @endcan
+                                <li><a href="{{ route('report.distribution_recovery_ledger') }}"><i class="fas fa-network-wired text-danger"></i> <span class="fw-bold text-danger">Distribution Recovery & Chain Ledger</span></a></li>
 
                                 @can('Vendor Ledger')
                                 <li><a href="{{ route('report.vendor.ledger') }}"><i class="fas fa-truck"></i> Vendor Ledgers</a></li>
