@@ -576,9 +576,11 @@
         <div class="pc-sum-card red"><div class="lbl">Out of Stock</div><div class="val" id="cOut">–</div></div>
         <div class="pc-sum-card"><div class="lbl">Total Sold (FG)</div><div class="val" id="cSold">–</div></div>
         <div class="pc-sum-card"><div class="lbl">Total Purchased</div><div class="val" id="cPurch">–</div></div>
+        @if(can_view_stock_values())
         <div class="pc-sum-card blue" id="cardFgValue"><div class="lbl">FG Value (Finish Goods)</div><div class="val" id="cFgValue" style="color:#0284c7;">–</div></div>
         <div class="pc-sum-card teal" id="cardRmValue"><div class="lbl">Raw Material Value</div><div class="val" id="cRmValue" style="color:#0f766e;">–</div></div>
         <div class="pc-sum-card purple" id="cardTotalValue"><div class="lbl">Total Inventory Value</div><div class="val" id="cValue" style="color:#764ba2;">–</div></div>
+        @endif
       </div></div>
       </div>
 
@@ -766,21 +768,27 @@ function onItemTypeChange() {
     if (type === 'rm') {
         $('#wrap_product_filter').hide();
         $('#wrap_rm_filter').show();
-        $('#cardFgValue').hide();
-        $('#cardRmValue').show();
-        $('#cardTotalValue .lbl').text('Raw Material Inventory Value');
+        if (canViewStockValues) {
+            $('#cardFgValue').hide();
+            $('#cardRmValue').show();
+            $('#cardTotalValue .lbl').text('Raw Material Inventory Value');
+        }
     } else if (type === 'fg') {
         $('#wrap_product_filter').show();
         $('#wrap_rm_filter').hide();
-        $('#cardFgValue').show();
-        $('#cardRmValue').hide();
-        $('#cardTotalValue .lbl').text('FG Inventory Value');
+        if (canViewStockValues) {
+            $('#cardFgValue').show();
+            $('#cardRmValue').hide();
+            $('#cardTotalValue .lbl').text('FG Inventory Value');
+        }
     } else {
         $('#wrap_product_filter').show();
         $('#wrap_rm_filter').show();
-        $('#cardFgValue').show();
-        $('#cardRmValue').show();
-        $('#cardTotalValue .lbl').text('Total Inventory Value');
+        if (canViewStockValues) {
+            $('#cardFgValue').show();
+            $('#cardRmValue').show();
+            $('#cardTotalValue .lbl').text('Total Inventory Value');
+        }
     }
     fetchReport();
 }
@@ -821,6 +829,7 @@ function printClosing(forceMovementOnly) {
 }
 
 /* ═══════ ITEM STOCK ═══════ */
+const canViewStockValues = {{ can_view_stock_values() ? 'true' : 'false' }};
 let allRows = [];
 
 function fetchReport() {
@@ -979,14 +988,16 @@ function updateCards(res) {
 
     setText('cSold', totalSold > 0 ? (totalSold % 1 === 0 ? totalSold.toFixed(0) : totalSold.toFixed(2)) : '0');
     setText('cPurch', totalPurch > 0 ? (totalPurch % 1 === 0 ? totalPurch.toFixed(0) : totalPurch.toFixed(2)) : '0');
-    if (res.fg_value !== undefined) {
-        setText('cFgValue', 'Rs ' + Math.round(res.fg_value).toLocaleString());
-    }
-    if (res.rm_value !== undefined) {
-        setText('cRmValue', 'Rs ' + Math.round(res.rm_value).toLocaleString());
-    }
-    if (res.grand_total !== undefined) {
-        setText('cValue', 'Rs ' + Math.round(res.grand_total).toLocaleString());
+    if (canViewStockValues) {
+        if (res.fg_value !== undefined) {
+            setText('cFgValue', 'Rs ' + Math.round(res.fg_value).toLocaleString());
+        }
+        if (res.rm_value !== undefined) {
+            setText('cRmValue', 'Rs ' + Math.round(res.rm_value).toLocaleString());
+        }
+        if (res.grand_total !== undefined) {
+            setText('cValue', 'Rs ' + Math.round(res.grand_total).toLocaleString());
+        }
     }
 }
 

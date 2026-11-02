@@ -296,7 +296,7 @@
           </div>
           <div>
             <span class="d-block text-muted small fw-semibold" style="font-size:.73rem;text-transform:uppercase;">Total RM Stock Value</span>
-            <strong class="fs-5 text-dark" style="color:#0f766e;">Rs {{ number_format($totalBranchStockValue, 2) }}</strong>
+            <strong class="fs-5 text-dark" style="color:#0f766e;">Rs {{ number_format(is_all_branches() ? $totalOverallStockValue : $totalBranchStockValue, 2) }}</strong>
             <small class="d-block text-muted" style="font-size:.7rem;">Total All: Rs {{ number_format($totalOverallStockValue, 2) }}</small>
           </div>
         </div>

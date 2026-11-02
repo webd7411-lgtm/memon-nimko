@@ -213,7 +213,7 @@ table tbody tr:last-child td { border-bottom: none; }
   <div class="line" style="margin-bottom:6px;"></div>
 
   <div class="info-row"><span>Total Items:</span><span class="bold">{{ $total }}</span></div>
-  @if(!empty($grandTotal))
+  @if(!empty($grandTotal) && can_view_stock_values())
   <div class="info-row"><span>Stock Value (Rs):</span><span class="bold">Rs {{ number_format($grandTotal, 0) }}</span></div>
   @endif
 

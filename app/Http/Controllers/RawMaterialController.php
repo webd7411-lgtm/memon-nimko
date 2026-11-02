@@ -294,6 +294,22 @@ class RawMaterialController extends Controller
         $material->notes = $request->notes;
         $material->save();
 
+        // Also update latest purchase item price if it exists, so purchase history / cost reflection stays updated
+        if ($request->has('initial_price')) {
+            $newPrice = (float)$request->initial_price;
+            $latestPurchaseItem = RawMaterialPurchaseItem::where('raw_material_id', $material->id)
+                ->whereHas('purchase', function($q) {
+                    $q->where('invoice_no', 'not like', 'INIT-%')
+                      ->where('vendor_name', '!=', 'Initial Cost Setup');
+                })
+                ->latest('id')
+                ->first();
+            if ($latestPurchaseItem) {
+                $latestPurchaseItem->price_per_unit = $newPrice;
+                $latestPurchaseItem->save();
+            }
+        }
+
         // Ensure stock record exists with opening stock (converted to consumption units)
         $branchId = is_all_branches() ? null : active_branch_id();
         $openingQty = (float)($request->opening_stock ?? 0);

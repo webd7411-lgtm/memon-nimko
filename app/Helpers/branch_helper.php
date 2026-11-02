@@ -184,3 +184,48 @@ if (!function_exists('format_consumption_qty')) {
         return ($isNegative ? '-' : '') . $gmStr . ' gm';
     }
 }
+
+if (!function_exists('can_view_stock_values')) {
+    /**
+     * Check if the authenticated user is allowed to view financial stock valuation
+     * (FG Value, Raw Material Value, Total Inventory Value).
+     * ONLY allowed for Super Admin.
+     */
+    function can_view_stock_values($user = null): bool
+    {
+        if (!$user) {
+            $user = auth()->user();
+        }
+        if (!$user) {
+            return false;
+        }
+
+        // 1. Check Super Admin email
+        if ($user->email === 'admin@admin.com') {
+            return true;
+        }
+
+        // 2. Check Spatie hasRole for Super Admin
+        if (method_exists($user, 'hasRole')) {
+            try {
+                if ($user->hasRole('super-admin') || $user->hasRole('Super Admin')) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+                // Ignore if role check fails
+            }
+        }
+
+        // 3. Check loaded roles relation
+        if (method_exists($user, 'roles') && $user->roles) {
+            foreach ($user->roles as $role) {
+                $roleName = strtolower(trim($role->name ?? ''));
+                if ($roleName === 'super-admin' || $roleName === 'super admin') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+}

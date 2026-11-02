@@ -1297,12 +1297,14 @@ class ReportingController extends Controller
             $currentViewValue = $totalCombinedValue;
         }
 
+        $canViewStockValues = can_view_stock_values();
+
         return response()->json([
             'data'             => $finalRows,
-            'grand_total'      => $currentViewValue,
-            'fg_value'         => $fgGrandTotalValue,
-            'rm_value'         => $rmGrandTotalValue,
-            'total_value'      => $totalCombinedValue,
+            'grand_total'      => $canViewStockValues ? $currentViewValue : 0,
+            'fg_value'         => $canViewStockValues ? $fgGrandTotalValue : 0,
+            'rm_value'         => $canViewStockValues ? $rmGrandTotalValue : 0,
+            'total_value'      => $canViewStockValues ? $totalCombinedValue : 0,
             'total'            => count($finalRows),
             'fg_count'         => count($rows),
             'rm_count'         => count($rmRows),
@@ -3045,7 +3047,7 @@ class ReportingController extends Controller
         $json = $response->getData();
 
         $rows = $json->data ?? [];
-        $grandTotal = $json->grand_total ?? 0;
+        $grandTotal = can_view_stock_values() ? ($json->grand_total ?? 0) : 0;
 
         $onlyMovement = $request->boolean('only_movement') || $request->get('only_movement') == '1';
         if ($onlyMovement) {
@@ -4027,40 +4029,32 @@ class ReportingController extends Controller
         $rawMaterialValue = 0;
         $rawItems = [];
         if (\Illuminate\Support\Facades\Schema::hasTable('raw_material_stocks')) {
-            $rmStocksQ = DB::table('raw_material_stocks')
-                ->join('raw_materials', 'raw_materials.id', '=', 'raw_material_stocks.raw_material_id');
-            if (!$isAllBranch) $rmStocksQ->where('raw_material_stocks.branch_id', $activeBId);
+            $rawMaterialsList = \App\Models\RawMaterial::with('stocks')->orderBy('name')->get();
 
-            $rmStocks = $rmStocksQ->select(
-                'raw_materials.id',
-                'raw_materials.name',
-                'raw_materials.unit',
-                'raw_materials.consumption_unit',
-                'raw_materials.conversion_factor',
-                'raw_material_stocks.qty'
-            )->get();
+            foreach ($rawMaterialsList as $rm) {
+                $factor = (float)($rm->conversion_factor ?? 1);
+                if ($factor <= 0) $factor = 1;
 
-            $latestRmPrices = DB::table('raw_material_purchase_items')
-                ->select('raw_material_id', 'price_per_unit')
-                ->orderBy('id', 'desc')
-                ->get()
-                ->keyBy('raw_material_id');
+                if ($isAllBranch) {
+                    $sQty = $rm->totalStock();
+                } else {
+                    $sQty = $rm->currentStock(null, $activeBId);
+                }
 
-            foreach ($rmStocks as $rm) {
-                $qty = (float)$rm->qty;
-                if ($qty <= 0) continue;
-                $conv = (float)($rm->conversion_factor > 0 ? $rm->conversion_factor : 1);
-                $pricePerUnit = isset($latestRmPrices[$rm->id]) ? (float)$latestRmPrices[$rm->id]->price_per_unit : 0;
-                $val = ($qty / $conv) * $pricePerUnit;
+                if ($sQty <= 0) continue;
+
+                $purQty = $factor > 0 ? ($sQty / $factor) : $sQty;
+                $unitCost = (float)$rm->lastPurchaseCost();
+                $val = $purQty * $unitCost;
                 $rawMaterialValue += $val;
 
                 $rawItems[] = [
                     'name'      => $rm->name,
                     'code'      => 'RM-' . $rm->id,
                     'category'  => 'Raw Materials',
-                    'unit'      => $rm->unit,
-                    'qty'       => round($qty / $conv, 2) . ' ' . $rm->unit,
-                    'unit_cost' => $pricePerUnit,
+                    'unit'      => $rm->unit ?? 'Unit',
+                    'qty'       => round($purQty, 2) . ' ' . ($rm->unit ?? ''),
+                    'unit_cost' => $unitCost,
                     'total_val' => $val,
                 ];
             }
