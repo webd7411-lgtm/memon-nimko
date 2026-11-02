@@ -2866,7 +2866,9 @@ class SaleController extends Controller
             $saleReturn->customer = $sale->customer ?? $request->customer;
             $saleReturn->reference = $request->reference;
             $saleReturn->product = implode(',', $combined_products);
-            $saleReturn->variant_id = implode(',', $combined_variant_ids);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('sales_returns', 'variant_id')) {
+                $saleReturn->variant_id = implode(',', $combined_variant_ids);
+            }
             $saleReturn->product_code = implode(',', $combined_codes);
             $saleReturn->brand = implode(',', $combined_brands);
             $saleReturn->unit = implode(',', $combined_units);
@@ -4099,8 +4101,9 @@ class SaleController extends Controller
             }
         }
 
-        // Map variant_id from parent sale
+        // Map variant_id from return or parent sale
         $parentSale = $return->sale;
+        $return_vids = !empty($return->variant_id) ? explode(',', $return->variant_id) : [];
         $sale_codes = $parentSale ? explode(',', $parentSale->product_code) : [];
         $sale_vids  = $parentSale ? explode(',', $parentSale->variant_id ?? '') : [];
         $codeToVid  = [];
@@ -4124,7 +4127,7 @@ class SaleController extends Controller
                 ->orWhere('item_code', $code)
                 ->first();
 
-            $vId = $codeToVid[$code] ?? '';
+            $vId = !empty($return_vids[$index]) ? trim($return_vids[$index]) : ($codeToVid[$code] ?? '');
             $vModel = $vId ? \App\Models\ProductVariant::find($vId) : null;
             $variantName = $vModel ? ($vModel->size_label ?: $vModel->variant_name) : '';
 
