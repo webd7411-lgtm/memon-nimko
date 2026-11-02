@@ -162,27 +162,39 @@
                             @endif
                         </td>
                         <td class="text-end pe-4 text-nowrap">
-                            @if($order->status === 'pending')
-                            <div class="d-inline-flex align-items-center gap-1.5 justify-content-end">
+                            <div class="d-inline-flex align-items-center gap-1 justify-content-end flex-wrap">
+                                @if($order->status === 'pending')
                                 <a href="{{ route('admin.distributors.orders.show', $order->id) }}"
-                                   class="btn btn-sm rounded-pill px-3 text-white shadow-sm"
+                                   class="btn btn-sm rounded-pill px-2.5 text-white shadow-sm"
                                    style="background: #0f766e; border: 1px solid #14b8a6;"
                                    title="Review and dispatch items">
-                                    <i class="fas fa-box-open me-1"></i> Review & Dispatch
+                                    <i class="fas fa-box-open me-1"></i> Dispatch
+                                </a>
+                                <a href="{{ route('admin.distributors.orders.edit', $order->id) }}"
+                                   class="btn btn-sm rounded-pill px-2.5 btn-outline-warning shadow-sm fw-semibold"
+                                   title="Edit order quantities or products">
+                                    <i class="fas fa-edit me-1"></i> Edit
                                 </a>
                                 <button type="button"
-                                        class="btn btn-sm btn-outline-danger rounded-pill px-2.5 shadow-sm"
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-2 shadow-sm"
                                         title="Reject Order"
                                         onclick="openRejectModal({{ $order->id }}, '{{ $order->order_no }}', '{{ addslashes($order->distributor->name ?? 'Distributor') }}')">
                                     <i class="fas fa-times-circle me-1"></i> Reject
                                 </button>
+                                @else
+                                <a href="{{ route('admin.distributors.orders.show', $order->id) }}"
+                                   class="btn btn-sm rounded-pill px-3 btn-outline-secondary">
+                                    <i class="fas fa-eye me-1"></i> View Details
+                                </a>
+                                @if(in_array($order->status, ['rejected', 'pending']))
+                                <a href="{{ route('admin.distributors.orders.edit', $order->id) }}"
+                                   class="btn btn-sm rounded-pill px-2.5 btn-outline-warning shadow-sm fw-semibold"
+                                   title="Edit order">
+                                    <i class="fas fa-edit me-1"></i> Edit
+                                </a>
+                                @endif
+                                @endif
                             </div>
-                            @else
-                            <a href="{{ route('admin.distributors.orders.show', $order->id) }}"
-                               class="btn btn-sm rounded-pill px-3 btn-outline-secondary">
-                                <i class="fas fa-eye me-1"></i> View Details
-                            </a>
-                            @endif
                         </td>
                     </tr>
                     @empty

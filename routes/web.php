@@ -454,6 +454,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/direct-sale', [DistributorAdminController::class, 'createDirectSale'])->name('direct_sale')->middleware('permission:Create Distributor Direct Sale');
         Route::post('/direct-sale/store', [DistributorAdminController::class, 'storeDirectSale'])->name('direct_sale.store')->middleware('permission:Create Distributor Direct Sale');
         Route::get('/orders/{id}', [DistributorAdminController::class, 'showOrder'])->name('orders.show')->middleware('permission:Distributor Orders');
+        Route::get('/orders/{id}/edit', [DistributorAdminController::class, 'editOrder'])->name('orders.edit')->middleware('permission:Distributor Orders');
+        Route::post('/orders/{id}/update', [DistributorAdminController::class, 'updateOrder'])->name('orders.update')->middleware('permission:Distributor Orders');
         Route::post('/orders/{id}/dispatch', [DistributorAdminController::class, 'dispatchOrder'])->name('orders.dispatch')->middleware('permission:Dispatch Distributor Order');
         Route::post('/orders/{id}/reject', [DistributorAdminController::class, 'rejectOrder'])->name('orders.reject')->middleware('permission:Dispatch Distributor Order|Distributor Orders');
         Route::get('/stocks', [DistributorAdminController::class, 'stocks'])->name('stocks')->middleware('permission:Distributor Custody Stocks');

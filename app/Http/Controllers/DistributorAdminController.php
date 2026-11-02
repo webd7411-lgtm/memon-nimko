@@ -595,6 +595,113 @@ class DistributorAdminController extends Controller
     }
 
     /**
+     * Edit demand order (Admin panel).
+     * Pending orders can be modified, or dispatched orders if needed.
+     */
+    public function editOrder($id)
+    {
+        $order = DistributorOrder::with(['distributor', 'items.product.unit', 'items.variant'])->findOrFail($id);
+
+        if ($order->status === 'dispatched' || $order->status === 'delivered') {
+            return redirect()->route('admin.distributors.orders.show', $order->id)
+                ->with('error', 'Dispatched or delivered orders cannot be edited because stock and ledger have already been posted.');
+        }
+
+        $distributors = Distributor::orderBy('name')->get();
+        $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
+
+        return view('admin_panel.distributors.order_edit', compact('order', 'distributors', 'products'));
+    }
+
+    /**
+     * Update demand order from Admin panel.
+     */
+    public function updateOrder(Request $request, $id)
+    {
+        $order = DistributorOrder::with(['distributor', 'items'])->findOrFail($id);
+
+        if ($order->status === 'dispatched' || $order->status === 'delivered') {
+            return redirect()->route('admin.distributors.orders.show', $order->id)
+                ->with('error', 'Dispatched or delivered orders cannot be edited.');
+        }
+
+        $request->validate([
+            'distributor_id' => 'required|exists:distributors,id',
+            'product_id'     => 'required|array|min:1',
+            'product_id.*'   => 'required|exists:products,id',
+            'requested_qty'  => 'required|array|min:1',
+            'requested_qty.*'=> 'required|numeric|min:0.01',
+            'unit_price'     => 'nullable|array',
+            'order_date'     => 'nullable|date',
+            'notes'          => 'nullable|string',
+            'admin_remarks'  => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $totalQty = 0;
+            $totalAmount = 0;
+            $itemsData = [];
+
+            foreach ($request->product_id as $index => $productId) {
+                $qty = (float) ($request->requested_qty[$index] ?? 0);
+                if ($qty <= 0) continue;
+
+                $variantId = $request->variant_id[$index] ?? null;
+                $product = Product::find($productId);
+                
+                $priceInput = $request->unit_price[$index] ?? null;
+                if ($priceInput !== null && $priceInput !== '') {
+                    $unitPrice = (float)$priceInput;
+                } else {
+                    $unitPrice = (float) ($product->wholesale_price ?? $product->price ?? 0);
+                }
+
+                $subtotal = $qty * $unitPrice;
+                $totalQty += $qty;
+                $totalAmount += $subtotal;
+
+                $itemsData[] = [
+                    'distributor_order_id' => $order->id,
+                    'product_id'           => $productId,
+                    'variant_id'           => $variantId,
+                    'requested_qty'        => $qty,
+                    'approved_qty'         => 0,
+                    'unit_price'           => $unitPrice,
+                    'subtotal'             => $subtotal,
+                ];
+            }
+
+            if (empty($itemsData)) {
+                return back()->withInput()->with('error', 'Please enter at least one product with quantity.');
+            }
+
+            // Replace items
+            $order->items()->delete();
+            foreach ($itemsData as $item) {
+                DistributorOrderItem::create($item);
+            }
+
+            // Update main order
+            $order->update([
+                'distributor_id' => $request->distributor_id,
+                'order_date'     => $request->order_date ?: $order->order_date,
+                'total_items'    => count($itemsData),
+                'total_qty'      => $totalQty,
+                'total_amount'   => $totalAmount,
+                'notes'          => $request->notes,
+                'admin_remarks'  => $request->admin_remarks,
+            ]);
+
+            DB::commit();
+            return redirect()->route('admin.distributors.orders')->with('success', "Order #{$order->order_no} updated successfully!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Error updating order: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * View stock in custody of all distributors.
      */
     public function stocks(Request $request)
