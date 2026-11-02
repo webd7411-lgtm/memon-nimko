@@ -16,6 +16,11 @@ class DistributorCustomer extends Model
         return $this->belongsTo(Distributor::class);
     }
 
+    public function booker()
+    {
+        return $this->belongsTo(User::class, 'booker_user_id');
+    }
+
     public function sales()
     {
         return $this->hasMany(DistributorSale::class);

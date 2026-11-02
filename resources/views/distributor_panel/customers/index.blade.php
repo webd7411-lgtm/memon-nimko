@@ -82,10 +82,15 @@
                         <td class="ps-4">
                             <div class="fw-bold text-dark fs-6">{{ $cust->shop_name }}</div>
                             <span class="text-muted small">Prop: {{ $cust->owner_name ?: 'N/A' }}</span>
-                            <div class="mt-1">
+                            <div class="mt-1 d-flex flex-wrap gap-1">
                                 <span class="badge rounded-pill {{ ($cust->approved_discount ?? 0) > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border' }} px-2 py-0.5" style="font-size: 0.7rem;">
                                     <i class="fas fa-percentage me-1"></i> Discount Limit: {{ (float)($cust->approved_discount ?? 0) }}%
                                 </span>
+                                @if($cust->booker)
+                                <span class="badge rounded-pill border px-2 py-0.5" style="background: rgba(15, 118, 110, 0.1); color: #0f766e; border-color: rgba(15, 118, 110, 0.25) !important; font-size: 0.7rem;">
+                                    <i class="fas fa-user-tie me-1"></i> Booker: {{ $cust->booker->name }}
+                                </span>
+                                @endif
                             </div>
                         </td>
                         <td>
@@ -138,56 +143,93 @@
 
 <!-- Add Customer Modal -->
 <div class="modal fade" id="addCustomerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 860px;">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <form action="{{ route('distributor.customers.store') }}" method="POST">
                 @csrf
-                <div class="modal-header text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-store me-2"></i> Register New Retail Customer</h5>
+                <div class="modal-header py-2.5 px-3.5 text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-store-alt fs-5"></i>
+                        <h5 class="modal-title fw-bold mb-0" style="font-size: 1.05rem;">Register New Retail Customer</h5>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Shop / Store Name *</label>
-                        <input type="text" name="shop_name" class="form-control" placeholder="e.g. Madina Super Store" required>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Owner / Proprietor</label>
-                            <input type="text" name="owner_name" class="form-control" placeholder="Owner Name">
+                <div class="modal-body p-3.5 p-md-4">
+                    <div class="row g-3 g-md-4">
+                        <!-- Left Column: Shop Identity & Booker -->
+                        <div class="col-12 col-md-6 border-end-md pe-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-store text-teal me-1.5" style="color: #0f766e;"></i> SHOP IDENTITY & BOOKER
+                            </h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker (Optional)
+                                </label>
+                                <select name="booker_user_id" class="form-select form-select-sm">
+                                    <option value="">-- All / Any Order Booker --</option>
+                                    @if(isset($bookers))
+                                        @foreach($bookers as $bkr)
+                                        <option value="{{ $bkr->id }}">{{ $bkr->name }} ({{ $bkr->email }})</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Shop / Store Name *</label>
+                                <input type="text" name="shop_name" class="form-control form-control-sm" placeholder="e.g. Madina Super Store" required>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Owner / Proprietor</label>
+                                    <input type="text" name="owner_name" class="form-control form-control-sm" placeholder="Owner Name">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Mobile Number</label>
+                                    <input type="text" name="phone" class="form-control form-control-sm" placeholder="0300-1234567">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Mobile Number</label>
-                            <input type="text" name="phone" class="form-control" placeholder="0300-1234567">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Area / Market Route</label>
-                        <input type="text" name="area" class="form-control" placeholder="e.g. Main Market, Malir">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Full Address</label>
-                        <textarea name="address" rows="2" class="form-control" placeholder="Optional complete shop address..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Approved Discount Limit (%) for Order Booker</label>
-                        <div class="input-group">
-                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
-                            <span class="input-group-text fw-bold">%</span>
-                        </div>
-                        <span class="text-muted small" style="font-size: 0.75rem;">Order Booker cannot exceed this discount when booking orders for this shop.</span>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Initial Opening Balance (Previous Balance)</label>
-                        <div class="input-group">
-                            <span class="input-group-text">Rs.</span>
-                            <input type="number" step="0.01" min="0" name="opening_balance" class="form-control" value="0.00">
+
+                        <!-- Right Column: Route, Discount & Opening Balance -->
+                        <div class="col-12 col-md-6 ps-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-sliders-h text-teal me-1.5" style="color: #0f766e;"></i> ROUTE, DISCOUNT & CREDIT
+                            </h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Area / Market Route</label>
+                                <input type="text" name="area" class="form-control form-control-sm" placeholder="e.g. Main Market, Malir">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Full Shop Address</label>
+                                <input type="text" name="address" class="form-control form-control-sm" placeholder="Optional complete shop address...">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
+                                    <span class="input-group-text fw-bold">%</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small text-dark mb-1">Initial Opening Balance (Previous Balance)</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Rs.</span>
+                                    <input type="number" step="0.01" min="0" name="opening_balance" class="form-control" value="0.00">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white rounded-pill px-4" style="background: #0f766e; border: 1px solid #14b8a6;">
+                <div class="modal-footer bg-light py-2 px-3.5 d-flex justify-content-end align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3.5" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm text-white rounded-pill px-4 fw-semibold shadow-sm" style="background: #0f766e; border: 1px solid #14b8a6;">
                         <i class="fas fa-check me-1"></i> Save Shop
                     </button>
                 </div>
@@ -199,49 +241,87 @@
 <!-- Edit Customer Modals -->
 @foreach($customers as $cust)
 <div class="modal fade" id="editCustomerModal{{ $cust->id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 860px;">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <form action="{{ route('distributor.customers.update', $cust->id) }}" method="POST">
                 @csrf
-                <div class="modal-header text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i> Edit Retailer: {{ $cust->shop_name }}</h5>
+                <div class="modal-header py-2.5 px-3.5 text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-edit fs-5"></i>
+                        <h5 class="modal-title fw-bold mb-0" style="font-size: 1.05rem;">Edit Retailer: {{ $cust->shop_name }}</h5>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Shop / Store Name *</label>
-                        <input type="text" name="shop_name" class="form-control" value="{{ $cust->shop_name }}" required>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Owner / Proprietor</label>
-                            <input type="text" name="owner_name" class="form-control" value="{{ $cust->owner_name }}">
+                <div class="modal-body p-3.5 p-md-4">
+                    <div class="row g-3 g-md-4">
+                        <!-- Left Column: Shop Identity & Booker -->
+                        <div class="col-12 col-md-6 border-end-md pe-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-store text-teal me-1.5" style="color: #0f766e;"></i> SHOP IDENTITY & BOOKER
+                            </h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker (Optional)
+                                </label>
+                                <select name="booker_user_id" class="form-select form-select-sm">
+                                    <option value="">-- All / Any Order Booker --</option>
+                                    @if(isset($bookers))
+                                        @foreach($bookers as $bkr)
+                                        <option value="{{ $bkr->id }}" {{ $cust->booker_user_id == $bkr->id ? 'selected' : '' }}>
+                                            {{ $bkr->name }} ({{ $bkr->email }})
+                                        </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Shop / Store Name *</label>
+                                <input type="text" name="shop_name" class="form-control form-control-sm" value="{{ $cust->shop_name }}" required>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Owner / Proprietor</label>
+                                    <input type="text" name="owner_name" class="form-control form-control-sm" value="{{ $cust->owner_name }}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Mobile Number</label>
+                                    <input type="text" name="phone" class="form-control form-control-sm" value="{{ $cust->phone }}">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Mobile Number</label>
-                            <input type="text" name="phone" class="form-control" value="{{ $cust->phone }}">
+
+                        <!-- Right Column: Route & Discount -->
+                        <div class="col-12 col-md-6 ps-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-sliders-h text-teal me-1.5" style="color: #0f766e;"></i> ROUTE & DISCOUNT LIMIT
+                            </h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Area / Market Route</label>
+                                <input type="text" name="area" class="form-control form-control-sm" value="{{ $cust->area }}">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Full Shop Address</label>
+                                <input type="text" name="address" class="form-control form-control-sm" value="{{ $cust->address }}" placeholder="Optional address">
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($cust->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
+                                    <span class="input-group-text fw-bold">%</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Area / Market Route</label>
-                        <input type="text" name="area" class="form-control" value="{{ $cust->area }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Full Address</label>
-                        <textarea name="address" rows="2" class="form-control">{{ $cust->address }}</textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Approved Discount Limit (%) for Order Booker</label>
-                        <div class="input-group">
-                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($cust->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
-                            <span class="input-group-text fw-bold">%</span>
-                        </div>
-                        <span class="text-muted small" style="font-size: 0.75rem;">Order Booker cannot exceed this discount percentage for this shop.</span>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white rounded-pill px-4" style="background: #0f766e; border: 1px solid #14b8a6;">
+                <div class="modal-footer bg-light py-2 px-3.5 d-flex justify-content-end align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3.5" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm text-white rounded-pill px-4 fw-semibold shadow-sm" style="background: #0f766e; border: 1px solid #14b8a6;">
                         <i class="fas fa-save me-1"></i> Update Shop Details
                     </button>
                 </div>
@@ -250,4 +330,12 @@
     </div>
 </div>
 @endforeach
+
+<style>
+@media (min-width: 768px) {
+    .border-end-md {
+        border-right: 1px solid #e2e8f0 !important;
+    }
+}
+</style>
 @endsection

@@ -1235,11 +1235,15 @@ class DistributorAdminController extends Controller
      */
     public function customers(Request $request)
     {
-        $query = DistributorCustomer::with(['distributor'])
+        $query = DistributorCustomer::with(['distributor', 'booker'])
             ->withCount(['sales', 'ledgers']);
 
         if ($request->filled('distributor_id')) {
             $query->where('distributor_id', $request->distributor_id);
+        }
+
+        if ($request->filled('booker_user_id')) {
+            $query->where('booker_user_id', $request->booker_user_id);
         }
 
         if ($request->filled('search')) {
@@ -1254,6 +1258,10 @@ class DistributorAdminController extends Controller
                       $dq->where('name', 'like', "%{$search}%")
                          ->orWhere('code', 'like', "%{$search}%")
                          ->orWhere('city', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('booker', function($bq) use ($search) {
+                      $bq->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
                   });
             });
         }
@@ -1272,7 +1280,9 @@ class DistributorAdminController extends Controller
 
         $customers = $query->latest('id')->paginate(15)->appends($request->all());
 
-        $distributors = Distributor::where('status', 'active')->orderBy('name')->get();
+        $distributors = Distributor::with(['bookers' => function($q) {
+            $q->select('id', 'name', 'email', 'distributor_id');
+        }])->where('status', 'active')->orderBy('name')->get();
         $accounts = Account::where('status', 1)->with('head')->orderBy('title')->get();
         $totalCustomers = DistributorCustomer::count();
         $totalMarketDue = DistributorCustomer::sum('current_balance');
@@ -1348,6 +1358,7 @@ class DistributorAdminController extends Controller
     {
         $request->validate([
             'distributor_id'    => 'required|exists:distributors,id',
+            'booker_user_id'    => 'nullable|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',
@@ -1364,6 +1375,7 @@ class DistributorAdminController extends Controller
         try {
             $customer = DistributorCustomer::create([
                 'distributor_id'    => $request->distributor_id,
+                'booker_user_id'    => $request->booker_user_id ?: null,
                 'shop_name'         => $request->shop_name,
                 'owner_name'        => $request->owner_name,
                 'phone'             => $request->phone,
@@ -1406,6 +1418,7 @@ class DistributorAdminController extends Controller
 
         $request->validate([
             'distributor_id'    => 'required|exists:distributors,id',
+            'booker_user_id'    => 'nullable|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',
@@ -1417,6 +1430,7 @@ class DistributorAdminController extends Controller
 
         $customer->update([
             'distributor_id'    => $request->distributor_id,
+            'booker_user_id'    => $request->booker_user_id ?: null,
             'shop_name'         => $request->shop_name,
             'owner_name'        => $request->owner_name,
             'phone'             => $request->phone,

@@ -35,6 +35,11 @@
         margin-bottom: 12px;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
+        @media (min-width: 768px) {
+        .border-end-md {
+            border-right: 1px solid #e2e8f0 !important;
+        }
+    }
     .dist-btn-action {
         font-size: 0.74rem !important;
         padding: 4px 11px !important;
@@ -147,7 +152,7 @@
         <div class="card-body p-3">
             <form method="GET" action="{{ route('admin.distributors.customers') }}" class="row g-2 align-items-center">
                 <!-- Search -->
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white border-end-0 text-muted">
                             <i class="fas fa-search"></i>
@@ -161,7 +166,7 @@
                 <!-- Distributor Filter -->
                 <div class="col-12 col-sm-6 col-md-3">
                     <select name="distributor_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">-- All Distributors / Bookers --</option>
+                        <option value="">-- All Distributors --</option>
                         @foreach($distributors as $d)
                         <option value="{{ $d->id }}" {{ request('distributor_id') == $d->id ? 'selected' : '' }}>
                             {{ $d->name }} ({{ $d->code }})
@@ -170,8 +175,26 @@
                     </select>
                 </div>
 
+                <!-- Order Booker Filter -->
+                <div class="col-12 col-sm-6 col-md-2">
+                    <select name="booker_user_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">-- All Bookers --</option>
+                        @foreach($distributors as $d)
+                            @if($d->bookers && $d->bookers->count() > 0)
+                                <optgroup label="{{ $d->name }}">
+                                    @foreach($d->bookers as $bkr)
+                                    <option value="{{ $bkr->id }}" {{ request('booker_user_id') == $bkr->id ? 'selected' : '' }}>
+                                        {{ $bkr->name }}
+                                    </option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+
                 <!-- Balance Status Filter -->
-                <div class="col-12 col-sm-6 col-md-3">
+                <div class="col-12 col-sm-6 col-md-2">
                     <select name="balance_status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">-- All Accounts (Any Balance) --</option>
                         <option value="due" {{ request('balance_status') === 'due' ? 'selected' : '' }}>Outstanding Due Only (&gt; 0)</option>
@@ -249,11 +272,19 @@
                             <a href="{{ route('admin.distributors.customers', ['distributor_id' => $c->distributor->id]) }}" class="text-decoration-none">
                                 <div class="fw-bold text-dark">{{ $c->distributor->name }}</div>
                                 <span class="badge bg-light text-secondary border px-2 py-0.5" style="font-size: 0.7rem;">
-                                    {{ $c->distributor->code }} â€¢ {{ ucfirst($c->distributor->type ?? 'distributor') }}
+                                    {{ $c->distributor->code }} &bull; {{ ucfirst($c->distributor->type ?? 'distributor') }}
                                 </span>
                             </a>
                             @else
                             <span class="text-muted small">Unassigned</span>
+                            @endif
+
+                            @if($c->booker)
+                            <div class="mt-1">
+                                <span class="badge rounded-pill border px-2 py-0.5" style="background: rgba(15, 118, 110, 0.1); color: #0f766e; border-color: rgba(15, 118, 110, 0.25) !important; font-size: 0.7rem;">
+                                    <i class="fas fa-user-tie me-1"></i> Booker: {{ $c->booker->name }}
+                                </span>
+                            </div>
                             @endif
                         </td>
                         <td>
@@ -354,6 +385,9 @@
 
             <div class="small mb-2">
                 <div class="text-muted"><i class="fas fa-truck-loading me-1"></i> Distributor: <strong class="text-dark">{{ $c->distributor->name ?? 'N/A' }}</strong></div>
+                @if($c->booker)
+                <div class="text-muted"><i class="fas fa-user-tie me-1" style="color: #0f766e;"></i> Booker: <strong class="text-dark">{{ $c->booker->name }}</strong></div>
+                @endif
                 <div class="text-muted"><i class="fas fa-phone-alt me-1"></i> Phone: <span class="text-dark">{{ $c->phone ?: 'â€”' }}</span></div>
                 <div class="text-muted"><i class="fas fa-map-marker-alt me-1"></i> Area: <span class="text-dark">{{ $c->area ?: 'General' }}</span></div>
             </div>
@@ -402,76 +436,100 @@
 <!-- MODAL: ADD NEW RETAIL CUSTOMER                 -->
 <!-- ============================================== -->
 <div class="modal fade" id="addRetailCustomerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 860px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <form action="{{ route('admin.distributors.customers.store') }}" method="POST">
                 @csrf
-                <div class="modal-header text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
-                    <h5 class="modal-title fw-bold" style="font-size: 1.05rem;">
-                        <i class="fas fa-store me-2"></i> Register New Retail Customer
-                    </h5>
+                <div class="modal-header py-2.5 px-3.5 text-white" style="background: linear-gradient(135deg, #090d16, #0f766e);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-store-alt fs-5"></i>
+                        <h5 class="modal-title fw-bold mb-0" style="font-size: 1.05rem;">Register New Retail Customer</h5>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Assign to Distributor / Booker *</label>
-                        <select name="distributor_id" class="form-select form-select-sm" required>
-                            <option value="">-- Select Distributor --</option>
-                            @foreach($distributors as $d)
-                            <option value="{{ $d->id }}" {{ request('distributor_id') == $d->id ? 'selected' : '' }}>
-                                {{ $d->name }} ({{ $d->code }} - {{ ucfirst($d->type ?? 'distributor') }})
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
+                <div class="modal-body p-3.5 p-md-4">
+                    <div class="row g-3 g-md-4">
+                        <!-- Left Column: Distributor & Booker Mapping & Shop Info -->
+                        <div class="col-12 col-md-6 border-end-md pe-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-network-wired text-teal me-1.5" style="color: #0f766e;"></i> ASSIGNMENT & SHOP IDENTITY
+                            </h6>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Shop / Store Name *</label>
-                        <input type="text" name="shop_name" class="form-control form-control-sm" placeholder="e.g. Madina Super Store" required>
-                    </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Assign to Distributor *</label>
+                                <select name="distributor_id" id="addCustomerDistributorSelect" class="form-select form-select-sm" required>
+                                    <option value="">-- Select Distributor --</option>
+                                    @foreach($distributors as $d)
+                                    <option value="{{ $d->id }}" {{ request('distributor_id') == $d->id ? 'selected' : '' }}>
+                                        {{ $d->name }} ({{ $d->code }} - {{ ucfirst($d->type ?? 'distributor') }})
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small text-dark">Owner / Proprietor</label>
-                            <input type="text" name="owner_name" class="form-control form-control-sm" placeholder="Owner Name">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker (Optional)
+                                </label>
+                                <select name="booker_user_id" id="addCustomerBookerSelect" class="form-select form-select-sm">
+                                    <option value="">-- All / Any Order Booker --</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Shop / Store Name *</label>
+                                <input type="text" name="shop_name" class="form-control form-control-sm" placeholder="e.g. Madina Super Store" required>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Owner / Proprietor</label>
+                                    <input type="text" name="owner_name" class="form-control form-control-sm" placeholder="Owner Name">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Mobile / Phone</label>
+                                    <input type="text" name="phone" class="form-control form-control-sm" placeholder="0300-1234567">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small text-dark">Mobile / Phone</label>
-                            <input type="text" name="phone" class="form-control form-control-sm" placeholder="0300-1234567">
+
+                        <!-- Right Column: Location, Discount & Opening Balance -->
+                        <div class="col-12 col-md-6 ps-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-sliders-h text-teal me-1.5" style="color: #0f766e;"></i> ROUTE, DISCOUNT & OPENING CREDIT
+                            </h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Area / Market Route</label>
+                                <input type="text" name="area" class="form-control form-control-sm" placeholder="e.g. Malir Halt Market, Korangi #4">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Full Shop Address</label>
+                                <input type="text" name="address" class="form-control form-control-sm" placeholder="Optional physical location address">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
+                                    <span class="input-group-text fw-bold">%</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small text-dark mb-1">Initial Opening Balance (Previous Udhaar / Debt)</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Rs.</span>
+                                    <input type="number" step="0.01" min="0" name="opening_balance" class="form-control" value="0.00">
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Area / Market Route</label>
-                        <input type="text" name="area" class="form-control form-control-sm" placeholder="e.g. Malir Halt Market, Korangi #4">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Full Shop Address</label>
-                        <textarea name="address" rows="2" class="form-control form-control-sm" placeholder="Optional physical address..."></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Approved Discount Limit (%) for Order Booker</label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
-                            <span class="input-group-text fw-bold">%</span>
-                        </div>
-                        <span class="text-muted" style="font-size: 0.72rem;">Order Booker cannot exceed this discount percentage when booking orders for this shop.</span>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label fw-semibold small text-dark">Initial Opening Balance (Previous Credit / Udhaar)</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text">Rs.</span>
-                            <input type="number" step="0.01" min="0" name="opening_balance" class="form-control" value="0.00">
-                        </div>
-                        <span class="text-muted" style="font-size: 0.72rem;">If this retailer has previous debt before entering the system, specify it here.</span>
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm text-white rounded-pill px-4" style="background: #0f766e;">
+                <div class="modal-footer bg-light py-2 px-3.5 d-flex justify-content-end align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3.5" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm text-white rounded-pill px-4 fw-semibold shadow-sm" style="background: #0f766e;">
                         <i class="fas fa-check me-1"></i> Save Shop Account
                     </button>
                 </div>
@@ -480,80 +538,114 @@
     </div>
 </div>
 
-<!-- ============================================== -->
 <!-- LOOP MODALS (Edit, Payment, Delete)            -->
 <!-- ============================================== -->
 @foreach($customers as $c)
 <!-- 1. Edit Customer Modal -->
 <div class="modal fade" id="editCustomerModal{{ $c->id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 860px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <form action="{{ route('admin.distributors.customers.update', $c->id) }}" method="POST">
                 @csrf
-                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b, #334155);">
-                    <h5 class="modal-title fw-bold" style="font-size: 1.05rem;">
-                        <i class="fas fa-edit me-2"></i> Edit Retailer: {{ $c->shop_name }}
-                    </h5>
+                <div class="modal-header py-2.5 px-3.5 text-white" style="background: linear-gradient(135deg, #1e293b, #334155);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-edit fs-5"></i>
+                        <h5 class="modal-title fw-bold mb-0" style="font-size: 1.05rem;">Edit Retailer: {{ $c->shop_name }}</h5>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Assigned Distributor *</label>
-                        <select name="distributor_id" class="form-select form-select-sm" required>
-                            @foreach($distributors as $d)
-                            <option value="{{ $d->id }}" {{ $c->distributor_id == $d->id ? 'selected' : '' }}>
-                                {{ $d->name }} ({{ $d->code }})
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
+                <div class="modal-body p-3.5 p-md-4">
+                    <div class="row g-3 g-md-4">
+                        <!-- Left Column: Distributor & Booker Mapping & Shop Info -->
+                        <div class="col-12 col-md-6 border-end-md pe-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-network-wired text-primary me-1.5"></i> ASSIGNMENT & SHOP IDENTITY
+                            </h6>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Shop / Store Name *</label>
-                        <input type="text" name="shop_name" class="form-control form-control-sm" value="{{ $c->shop_name }}" required>
-                    </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Assigned Distributor *</label>
+                                <select name="distributor_id" class="form-select form-select-sm edit-dist-select" data-cust-id="{{ $c->id }}" required>
+                                    @foreach($distributors as $d)
+                                    <option value="{{ $d->id }}" {{ $c->distributor_id == $d->id ? 'selected' : '' }}>
+                                        {{ $d->name }} ({{ $d->code }})
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small text-dark">Owner / Proprietor</label>
-                            <input type="text" name="owner_name" class="form-control form-control-sm" value="{{ $c->owner_name }}">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">
+                                    <i class="fas fa-user-tie text-teal me-1" style="color: #0f766e;"></i> Assigned Order Booker
+                                </label>
+                                <select name="booker_user_id" id="editBookerSelect{{ $c->id }}" class="form-select form-select-sm" data-selected="{{ $c->booker_user_id }}">
+                                    <option value="">-- All / Any Order Booker --</option>
+                                    @php
+                                        $parentDist = $distributors->firstWhere('id', $c->distributor_id);
+                                    @endphp
+                                    @if($parentDist && $parentDist->bookers)
+                                        @foreach($parentDist->bookers as $bkr)
+                                        <option value="{{ $bkr->id }}" {{ $c->booker_user_id == $bkr->id ? 'selected' : '' }}>
+                                            {{ $bkr->name }} ({{ $bkr->email }})
+                                        </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Shop / Store Name *</label>
+                                <input type="text" name="shop_name" class="form-control form-control-sm" value="{{ $c->shop_name }}" required>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Owner / Proprietor</label>
+                                    <input type="text" name="owner_name" class="form-control form-control-sm" value="{{ $c->owner_name }}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small text-dark mb-1">Mobile / Phone</label>
+                                    <input type="text" name="phone" class="form-control form-control-sm" value="{{ $c->phone }}">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small text-dark">Mobile / Phone</label>
-                            <input type="text" name="phone" class="form-control form-control-sm" value="{{ $c->phone }}">
+
+                        <!-- Right Column: Location, Discount & Status -->
+                        <div class="col-12 col-md-6 ps-md-4">
+                            <h6 class="fw-bold text-dark pb-1 border-bottom mb-3" style="font-size: 0.84rem; letter-spacing: 0.3px;">
+                                <i class="fas fa-sliders-h text-primary me-1.5"></i> ROUTE, DISCOUNT & STATUS
+                            </h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Area / Market Route</label>
+                                <input type="text" name="area" class="form-control form-control-sm" value="{{ $c->area }}">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Full Address</label>
+                                <input type="text" name="address" class="form-control form-control-sm" value="{{ $c->address }}" placeholder="Optional address">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($c->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
+                                    <span class="input-group-text fw-bold">%</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small text-dark mb-1">Account Status</label>
+                                <select name="status" class="form-select form-select-sm">
+                                    <option value="active" {{ $c->status === 'active' ? 'selected' : '' }}>Active (Can Place Orders)</option>
+                                    <option value="inactive" {{ $c->status === 'inactive' ? 'selected' : '' }}>Inactive (Blocked)</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Area / Market Route</label>
-                        <input type="text" name="area" class="form-control form-control-sm" value="{{ $c->area }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Full Address</label>
-                        <textarea name="address" rows="2" class="form-control form-control-sm">{{ $c->address }}</textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small text-dark">Approved Discount Limit (%) for Order Booker</label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($c->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
-                            <span class="input-group-text fw-bold">%</span>
-                        </div>
-                        <span class="text-muted" style="font-size: 0.72rem;">Order Booker cannot exceed this discount percentage when booking orders for this shop.</span>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label fw-semibold small text-dark">Status</label>
-                        <select name="status" class="form-select form-select-sm">
-                            <option value="active" {{ $c->status === 'active' ? 'selected' : '' }}>Active</option>
-                            <option value="inactive" {{ $c->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                        </select>
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4">
+                <div class="modal-footer bg-light py-2 px-3.5 d-flex justify-content-end align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3.5" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm">
                         <i class="fas fa-save me-1"></i> Update Changes
                     </button>
                 </div>
@@ -711,5 +803,77 @@
     </div>
 </div>
 @endforeach
+
+
+@php
+    $distributorsJson = $distributors->map(function($d) {
+        return [
+            'id' => $d->id,
+            'name' => $d->name,
+            'bookers' => $d->bookers ? $d->bookers->map(function($b) {
+                return [
+                    'id' => $b->id,
+                    'name' => $b->name,
+                    'email' => $b->email,
+                ];
+            })->values() : []
+        ];
+    });
+@endphp
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const distributorsData = @json($distributorsJson);
+
+        function populateBookers(distId, selectElem, selectedBookerId = null) {
+            if (!selectElem) return;
+            selectElem.innerHTML = '<option value="">-- All / Any Order Booker --</option>';
+
+            if (!distId) return;
+
+            const dist = distributorsData.find(d => String(d.id) === String(distId));
+            if (dist && dist.bookers && dist.bookers.length > 0) {
+                dist.bookers.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.name + (b.email ? ' (' + b.email + ')' : '');
+                    if (selectedBookerId && String(selectedBookerId) === String(b.id)) {
+                        opt.selected = true;
+                    }
+                    selectElem.appendChild(opt);
+                });
+            } else {
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.textContent = "-- No Order Bookers Registered under this Distributor --";
+                opt.disabled = true;
+                selectElem.appendChild(opt);
+            }
+        }
+
+        // Add Customer Modal
+        const addDistSelect = document.getElementById('addCustomerDistributorSelect');
+        const addBookerSelect = document.getElementById('addCustomerBookerSelect');
+        if (addDistSelect && addBookerSelect) {
+            addDistSelect.addEventListener('change', function () {
+                populateBookers(this.value, addBookerSelect);
+            });
+            if (addDistSelect.value) {
+                populateBookers(addDistSelect.value, addBookerSelect);
+            }
+        }
+
+        // Edit Customer Modals
+        document.querySelectorAll('.edit-dist-select').forEach(function (select) {
+            const custId = select.getAttribute('data-cust-id');
+            const bookerSelect = document.getElementById('editBookerSelect' + custId);
+            if (!bookerSelect) return;
+
+            select.addEventListener('change', function () {
+                populateBookers(this.value, bookerSelect);
+            });
+        });
+    });
+</script>
 
 @endsection

@@ -469,8 +469,9 @@ class DistributorPortalController extends Controller
         $customers = $query->latest('id')->paginate(15);
         $totalCustomers = $customers->total();
         $totalReceivable = DistributorCustomer::where('distributor_id', $distributor->id)->sum('current_balance');
+        $bookers = User::where('distributor_id', $distributor->id)->where('usertype', 'order_booker')->get();
 
-        return view('distributor_panel.customers.index', compact('distributor', 'customers', 'totalCustomers', 'totalReceivable'));
+        return view('distributor_panel.customers.index', compact('distributor', 'customers', 'totalCustomers', 'totalReceivable', 'bookers'));
     }
 
     /**
@@ -481,6 +482,7 @@ class DistributorPortalController extends Controller
         $distributor = $this->getDistributor();
 
         $request->validate([
+            'booker_user_id'    => 'nullable|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',
@@ -493,10 +495,13 @@ class DistributorPortalController extends Controller
         $openingBalance = (float) ($request->opening_balance ?? 0);
         $approvedDiscount = (float) ($request->approved_discount ?? 0);
 
+        $bookerUserId = $request->booker_user_id ?: (Auth::user()->usertype === 'order_booker' ? Auth::id() : null);
+
         DB::beginTransaction();
         try {
             $customer = DistributorCustomer::create([
                 'distributor_id'    => $distributor->id,
+                'booker_user_id'    => $bookerUserId,
                 'shop_name'         => $request->shop_name,
                 'owner_name'        => $request->owner_name,
                 'phone'             => $request->phone,
@@ -556,6 +561,7 @@ class DistributorPortalController extends Controller
         $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($id);
 
         $request->validate([
+            'booker_user_id'    => 'nullable|exists:users,id',
             'shop_name'         => 'required|string|max:255',
             'owner_name'        => 'nullable|string|max:255',
             'phone'             => 'nullable|string|max:20',
@@ -565,6 +571,7 @@ class DistributorPortalController extends Controller
         ]);
 
         $customer->update([
+            'booker_user_id'    => $request->has('booker_user_id') ? ($request->booker_user_id ?: null) : $customer->booker_user_id,
             'shop_name'         => $request->shop_name,
             'owner_name'        => $request->owner_name,
             'phone'             => $request->phone,

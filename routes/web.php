@@ -339,6 +339,10 @@ Route::middleware('auth')->group(function () {
     Route::get('report/sale', [ReportingController::class, 'sale_report'])->name('report.sale')->middleware('permission:Sale Report');
     Route::get('report/sale/fetch', [ReportingController::class, 'fetchsaleReport'])->name('report.sale.fetch')->middleware('permission:Sale Report');
 
+    // Consolidated Master Sales Report (Direct Customers, Distributors, Bookers, Retailers)
+    Route::get('report/consolidated-sales', [ReportingController::class, 'consolidated_master_report'])->name('report.consolidated_sales')->middleware('permission:Sale Report|Distributors');
+    Route::get('report/consolidated-sales/fetch', [ReportingController::class, 'fetch_consolidated_master_report'])->name('report.consolidated_sales.fetch')->middleware('permission:Sale Report|Distributors');
+
     Route::get('report/sale-closing', [ReportingController::class, 'sale_closing_report'])->name('report.sale_closing')->middleware('permission:Sale Report|Daily Sale Closing Report');
     Route::get('report/sale-closing/fetch', [ReportingController::class, 'fetchSaleClosingReport'])->name('report.sale_closing.fetch')->middleware('permission:Sale Report|Daily Sale Closing Report');
     Route::get('report/sale-closing/print', [ReportingController::class, 'printSaleClosingReport'])->name('report.sale_closing.print')->middleware('permission:Sale Report|Daily Sale Closing Report|Print Sale Closing');

@@ -680,6 +680,7 @@
 
                                 @can('Sale Report')
                                 <li><a href="{{ route('report.sale') }}"><i class="fas fa-chart-bar"></i> Sale Report</a></li>
+                                <li><a href="{{ route('report.consolidated_sales') }}" style="font-weight: 600; color: #0d6efd;"><i class="fas fa-sitemap text-primary"></i> Master Channel Report</a></li>
                                 @endcan
 
                                 @can('Category Sale Report')

@@ -4022,4 +4022,338 @@ class ReportingController extends Controller
 
         return view('admin_panel.reporting.balance_sheet_print', compact('data', 'asOfDate', 'branchId'));
     }
+
+    /**
+     * Consolidated Master Sales & Channel Operations Report
+     * Direct Customers, Distributors, Order Bookers & Retail Customers
+     */
+    public function consolidated_master_report()
+    {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        $distributors = \App\Models\Distributor::orderBy('name')->get();
+        $bookers = \App\Models\User::whereNotNull('distributor_id')->orderBy('name')->get();
+
+        return view('admin_panel.reporting.consolidated_master_report', compact('branches', 'distributors', 'bookers'));
+    }
+
+    /**
+     * Fetch Consolidated Master Report Data (AJAX)
+     */
+    public function fetch_consolidated_master_report(Request $request)
+    {
+        $startDate = $request->start_date ? $request->start_date . ' 00:00:00' : date('Y-m-01 00:00:00');
+        $endDate   = $request->end_date   ? $request->end_date   . ' 23:59:59' : date('Y-m-d 23:59:59');
+        $branchId  = $request->branch_id;
+
+        // -------------------------------------------------------------
+        // 1. DIRECT SALES (Company Direct Sales from `sales` table)
+        // Note: sales.customer with 'dist_%' are distributor direct billing, exclude here
+        // -------------------------------------------------------------
+        $directQuery = DB::table('sales')
+            ->leftJoin('customers', 'sales.customer', '=', 'customers.id')
+            ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
+            ->whereBetween('sales.created_at', [$startDate, $endDate])
+            ->where(function ($q) {
+                $q->whereNull('sales.customer')
+                  ->orWhere('sales.customer', 'not like', 'dist_%');
+            });
+
+        if ($branchId && $branchId !== 'all') {
+            $directQuery->where('sales.branch_id', $branchId);
+        }
+
+        $directSalesRaw = $directQuery->select(
+            'sales.id',
+            'sales.invoice_no',
+            'sales.customer',
+            'customers.customer_name',
+            'customers.mobile as customer_phone',
+            'customers.customer_type',
+            'customers.opening_balance as customer_balance',
+            'sales.per_total as subtotal',
+            'sales.total_extradiscount as order_discount',
+            'sales.total_net as net_amount',
+            'sales.cash as cash_received',
+            'sales.card as card_received',
+            'sales.created_at',
+            'branches.name as branch_name'
+        )->get();
+
+        // Group direct sales by customer for ledger-style view
+        $directCustomerSummary = [];
+        $totalDirectNet = 0;
+        $totalDirectPaid = 0;
+        $totalDirectDue = 0;
+
+        foreach ($directSalesRaw as $s) {
+            $cKey = $s->customer ? 'cust_' . $s->customer : 'walk_in';
+            $cName = $s->customer_name ?: ($s->customer ? 'Customer #' . $s->customer : 'Walk-in Customer');
+
+            if (!isset($directCustomerSummary[$cKey])) {
+                $directCustomerSummary[$cKey] = [
+                    'customer_id'     => $s->customer,
+                    'customer_name'   => $cName,
+                    'phone'           => $s->customer_phone ?? '-',
+                    'type'            => $s->customer_type ?? 'Walking Customer',
+                    'ledger_balance'  => (float)($s->customer_balance ?? 0),
+                    'total_invoices'  => 0,
+                    'total_sales'     => 0,
+                    'total_paid'      => 0,
+                    'total_due'       => 0,
+                    'invoices'        => []
+                ];
+            }
+
+            $net  = (float)$s->net_amount;
+            $paid = (float)($s->cash_received ?? 0) + (float)($s->card_received ?? 0);
+            $due  = max(0, $net - $paid);
+
+            $totalDirectNet  += $net;
+            $totalDirectPaid += $paid;
+            $totalDirectDue  += $due;
+
+            $directCustomerSummary[$cKey]['total_invoices']++;
+            $directCustomerSummary[$cKey]['total_sales'] += $net;
+            $directCustomerSummary[$cKey]['total_paid']  += $paid;
+            $directCustomerSummary[$cKey]['total_due']   += $due;
+            $directCustomerSummary[$cKey]['invoices'][]  = [
+                'id'         => $s->id,
+                'invoice_no' => $s->invoice_no,
+                'date'       => Carbon::parse($s->created_at)->format('d M, Y h:i A'),
+                'branch'     => $s->branch_name ?? '-',
+                'amount'     => $net,
+                'paid'       => $paid,
+                'due'        => $due
+            ];
+        }
+
+        // -------------------------------------------------------------
+        // 2. PRIMARY SALES: Company to Distributors (from `distributor_orders` approved/dispatched/delivered)
+        // -------------------------------------------------------------
+        $distOrdersQuery = DB::table('distributor_orders')
+            ->join('distributors', 'distributor_orders.distributor_id', '=', 'distributors.id')
+            ->whereBetween('distributor_orders.created_at', [$startDate, $endDate])
+            ->whereIn('distributor_orders.status', ['approved', 'dispatched', 'delivered']);
+
+        $distributorOrdersRaw = $distOrdersQuery->select(
+            'distributor_orders.id',
+            'distributor_orders.order_no',
+            'distributor_orders.distributor_id',
+            'distributors.name as distributor_name',
+            'distributors.code as distributor_code',
+            'distributors.phone as distributor_phone',
+            'distributors.city as distributor_city',
+            'distributors.current_balance as distributor_balance',
+            'distributor_orders.total_qty',
+            'distributor_orders.total_amount',
+            'distributor_orders.status',
+            'distributor_orders.order_date',
+            'distributor_orders.created_at'
+        )->get();
+
+        $totalCompanyToDistSales = 0;
+        foreach ($distributorOrdersRaw as $o) {
+            $totalCompanyToDistSales += (float)$o->total_amount;
+        }
+
+        // -------------------------------------------------------------
+        // 3. SECONDARY & MARKET SALES: Distributor to Order Bookers & Retail Customers
+        // Table: `distributor_sales` (Invoices to Retailers)
+        // Table: `distributor_shop_bookings` (Order Bookers bookings)
+        // -------------------------------------------------------------
+        $secSalesQuery = DB::table('distributor_sales')
+            ->join('distributors', 'distributor_sales.distributor_id', '=', 'distributors.id')
+            ->join('distributor_customers', 'distributor_sales.distributor_customer_id', '=', 'distributor_customers.id')
+            ->leftJoin('users as bookers', 'distributor_sales.booker_user_id', '=', 'bookers.id')
+            ->whereBetween('distributor_sales.created_at', [$startDate, $endDate]);
+
+        $distributorSalesRaw = $secSalesQuery->select(
+            'distributor_sales.id',
+            'distributor_sales.invoice_no',
+            'distributor_sales.distributor_id',
+            'distributors.name as distributor_name',
+            'distributors.code as distributor_code',
+            'distributors.current_balance as distributor_balance',
+            'distributor_sales.distributor_customer_id',
+            'distributor_customers.shop_name',
+            'distributor_customers.owner_name',
+            'distributor_customers.phone as shop_phone',
+            'distributor_customers.area as shop_area',
+            'distributor_customers.current_balance as shop_balance',
+            'distributor_sales.booker_user_id',
+            'bookers.name as booker_name',
+            'distributor_sales.subtotal',
+            'distributor_sales.discount',
+            'distributor_sales.grand_total',
+            'distributor_sales.paid_amount',
+            'distributor_sales.due_amount',
+            'distributor_sales.sale_date',
+            'distributor_sales.created_at'
+        )->get();
+
+        // Also fetch Bookings from order bookers
+        $bookingsQuery = DB::table('distributor_shop_bookings')
+            ->join('distributors', 'distributor_shop_bookings.distributor_id', '=', 'distributors.id')
+            ->join('users as bookers', 'distributor_shop_bookings.booker_user_id', '=', 'bookers.id')
+            ->join('distributor_customers', 'distributor_shop_bookings.distributor_customer_id', '=', 'distributor_customers.id')
+            ->whereBetween('distributor_shop_bookings.created_at', [$startDate, $endDate])
+            ->select(
+                'distributor_shop_bookings.id',
+                'distributor_shop_bookings.booking_no',
+                'distributor_shop_bookings.distributor_id',
+                'distributors.name as distributor_name',
+                'distributor_shop_bookings.booker_user_id',
+                'bookers.name as booker_name',
+                'distributor_shop_bookings.distributor_customer_id',
+                'distributor_customers.shop_name',
+                'distributor_shop_bookings.grand_total',
+                'distributor_shop_bookings.status',
+                'distributor_shop_bookings.booking_date',
+                'distributor_shop_bookings.created_at'
+            )->get();
+
+        $totalMarketRetailSales = 0;
+        $totalRetailPaid = 0;
+        $totalRetailDue = 0;
+
+        foreach ($distributorSalesRaw as $ds) {
+            $totalMarketRetailSales += (float)$ds->grand_total;
+            $totalRetailPaid        += (float)$ds->paid_amount;
+            $totalRetailDue         += (float)$ds->due_amount;
+        }
+
+        $totalBookingsAmount = 0;
+        foreach ($bookingsQuery as $b) {
+            $totalBookingsAmount += (float)$b->grand_total;
+        }
+
+        // -------------------------------------------------------------
+        // 4. HIERARCHICAL DRILL-DOWN DATA STRUCTURE:
+        // Distributor -> Order Bookers -> Retail Shops -> Sale & Ledger
+        // -------------------------------------------------------------
+        $allDistributors = \App\Models\Distributor::with([
+            'bookers:id,name,phone,distributor_id',
+            'customers:id,distributor_id,shop_name,owner_name,phone,area,current_balance,approved_discount'
+        ])->get();
+
+        $hierarchy = [];
+
+        foreach ($allDistributors as $dist) {
+            $dId = $dist->id;
+
+            // Filter primary sales (Company -> this Distributor)
+            $distPrimary = $distributorOrdersRaw->where('distributor_id', $dId);
+            $distPrimaryTotal = $distPrimary->sum('total_amount');
+
+            // Filter secondary sales (This Distributor -> Retailers)
+            $distSecSales = $distributorSalesRaw->where('distributor_id', $dId);
+            $distSecTotal = $distSecSales->sum('grand_total');
+            $distSecPaid  = $distSecSales->sum('paid_amount');
+            $distSecDue   = $distSecSales->sum('due_amount');
+
+            // Filter bookings for this distributor
+            $distBookings = $bookingsQuery->where('distributor_id', $dId);
+            $distBookingsTotal = $distBookings->sum('grand_total');
+
+            // Breakdown by Order Bookers
+            $bookerStats = [];
+            foreach ($dist->bookers as $bkr) {
+                $bkrSales = $distSecSales->where('booker_user_id', $bkr->id);
+                $bkrBookings = $distBookings->where('booker_user_id', $bkr->id);
+
+                $bkrTotalSales = $bkrSales->sum('grand_total');
+                $bkrTotalBookings = $bkrBookings->sum('grand_total');
+
+                $shopIds = $bkrSales->pluck('distributor_customer_id')->unique();
+                $bkrShopsCount = $shopIds->count();
+
+                $bookerStats[] = [
+                    'id'             => $bkr->id,
+                    'name'           => $bkr->name,
+                    'phone'          => $bkr->phone ?? '-',
+                    'total_bookings' => $bkrTotalBookings,
+                    'booking_count'  => $bkrBookings->count(),
+                    'total_sales'    => $bkrTotalSales,
+                    'sales_count'    => $bkrSales->count(),
+                    'shops_covered'  => $bkrShopsCount,
+                ];
+            }
+
+            // Breakdown by Retail Shops / Customers
+            $shopStats = [];
+            foreach ($dist->customers as $cust) {
+                $shopSales = $distSecSales->where('distributor_customer_id', $cust->id);
+                $shopTotalSales = $shopSales->sum('grand_total');
+                $shopTotalPaid  = $shopSales->sum('paid_amount');
+                $shopTotalDue   = $shopSales->sum('due_amount');
+
+                $shopStats[] = [
+                    'id'               => $cust->id,
+                    'shop_name'        => $cust->shop_name,
+                    'owner_name'       => $cust->owner_name ?? '-',
+                    'phone'            => $cust->phone ?? '-',
+                    'area'             => $cust->area ?? '-',
+                    'approved_discount'=> (float)($cust->approved_discount ?? 0),
+                    'ledger_balance'   => (float)$cust->current_balance,
+                    'period_sales'     => $shopTotalSales,
+                    'period_paid'      => $shopTotalPaid,
+                    'period_due'       => $shopTotalDue,
+                    'invoices_count'   => $shopSales->count(),
+                    'invoices'         => $shopSales->map(function ($s) {
+                        return [
+                            'invoice_no'  => $s->invoice_no,
+                            'date'        => Carbon::parse($s->created_at)->format('d M, Y'),
+                            'booker_name' => $s->booker_name ?: 'Direct/Admin',
+                            'grand_total' => (float)$s->grand_total,
+                            'paid'        => (float)$s->paid_amount,
+                            'due'         => (float)$s->due_amount
+                        ];
+                    })->values()->toArray()
+                ];
+            }
+
+            $hierarchy[] = [
+                'distributor_id'      => $dist->id,
+                'name'                => $dist->name,
+                'code'                => $dist->code,
+                'phone'               => $dist->phone ?? '-',
+                'city'                => $dist->city ?? '-',
+                'ledger_balance'      => (float)$dist->current_balance,
+                'company_sales_total' => $distPrimaryTotal,
+                'company_orders_count'=> $distPrimary->count(),
+                'market_sales_total'  => $distSecTotal,
+                'market_sales_paid'   => $distSecPaid,
+                'market_sales_due'    => $distSecDue,
+                'bookings_total'      => $distBookingsTotal,
+                'bookers_count'       => $dist->bookers->count(),
+                'customers_count'     => $dist->customers->count(),
+                'bookers'             => $bookerStats,
+                'shops'               => $shopStats,
+            ];
+        }
+
+        // Summary KPI Headings
+        $summary = [
+            'total_direct_sales'          => $totalDirectNet,
+            'total_direct_paid'           => $totalDirectPaid,
+            'total_direct_due'            => $totalDirectDue,
+            'total_company_dist_sales'    => $totalCompanyToDistSales,
+            'total_order_booker_bookings' => $totalBookingsAmount,
+            'total_market_retail_sales'   => $totalMarketRetailSales,
+            'total_retail_paid'           => $totalRetailPaid,
+            'total_retail_due'            => $totalRetailDue,
+            'total_gross_ecosystem_sale'  => ($totalDirectNet + $totalCompanyToDistSales)
+        ];
+
+        return response()->json([
+            'status'           => true,
+            'summary'          => $summary,
+            'direct_customers' => array_values($directCustomerSummary),
+            'hierarchy'        => $hierarchy,
+            'period'           => [
+                'start' => Carbon::parse($startDate)->format('d M, Y'),
+                'end'   => Carbon::parse($endDate)->format('d M, Y')
+            ]
+        ]);
+    }
 }
