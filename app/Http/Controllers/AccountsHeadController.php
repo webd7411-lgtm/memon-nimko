@@ -19,7 +19,10 @@ class AccountsHeadController extends Controller
     public function storeHead(Request $request)
     {
         $request->validate(['name' => 'required|string|max:100']);
-        $head = AccountHead::create(['name' => $request->name]);
+        $head = AccountHead::create([
+            'name' => $request->name,
+            'type' => $request->type ?? 'Expense',
+        ]);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

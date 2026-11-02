@@ -725,7 +725,17 @@ class VoucherController extends Controller
     {
         $narrations = \App\Models\Narration::where('expense_head', 'Expense voucher')
             ->pluck('narration', 'id');
-        $AccountHeads = AccountHead::where('status', 1)->get();
+        $AccountHeads = AccountHead::where('status', 1)
+            ->where(function($q) {
+                $q->where('type', 'Expense')
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('type')
+                          ->whereNotIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks'])
+                          ->where('name', 'not like', '%Bank Account%')
+                          ->where('name', 'not like', '%Cash in Hand%');
+                  });
+            })
+            ->get();
         $accounts = Account::where('status', 1)->with('head')->get();
 
         // Last RVID nikalna
@@ -858,7 +868,17 @@ class VoucherController extends Controller
 
         $vouchers = $query->orderBy('id', 'desc')->get();
         $users = \App\Models\User::all();
-        $AccountHeads = \App\Models\AccountHead::where('status', 1)->get();
+        $AccountHeads = \App\Models\AccountHead::where('status', 1)
+            ->where(function($q) {
+                $q->where('type', 'Expense')
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('type')
+                          ->whereNotIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks'])
+                          ->where('name', 'not like', '%Bank Account%')
+                          ->where('name', 'not like', '%Cash in Hand%');
+                  });
+            })
+            ->get();
         $accounts = \App\Models\Account::where('status', 1)->with('head')->get();
         $accountsMap = \App\Models\Account::pluck('title', 'id');
         $lastVoucher = \App\Models\ExpenseVoucher::latest('id')->first();
