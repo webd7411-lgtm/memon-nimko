@@ -172,27 +172,67 @@ class DistributorAdminController extends Controller
         $distributor = Distributor::with('user')->findOrFail($id);
 
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'phone'    => 'required|string|max:20',
-            'city'     => 'nullable|string|max:100',
-            'area'     => 'nullable|string|max:100',
-            'address'  => 'nullable|string',
-            'status'   => 'required|in:active,inactive',
-            'password' => 'nullable|string|min:6',
+            'name'            => 'required|string|max:255',
+            'phone'           => 'required|string|max:20',
+            'city'            => 'nullable|string|max:100',
+            'area'            => 'nullable|string|max:100',
+            'address'         => 'nullable|string',
+            'status'          => 'required|in:active,inactive',
+            'password'        => 'nullable|string|min:6',
+            'opening_balance' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            $distributor->update([
-                'name'    => $request->name,
-                'type'    => $request->type ?: ($distributor->type ?: 'distributor'),
-                'phone'   => $request->phone,
-                'cnic'    => $request->cnic,
-                'city'    => $request->city,
-                'area'    => $request->area,
-                'address' => $request->address,
-                'status'  => $request->status,
-            ]);
+            $oldOpening = (float) ($distributor->opening_balance ?? 0);
+            $newOpening = $request->has('opening_balance') ? (float) ($request->opening_balance ?? 0) : $oldOpening;
+            $diff = $newOpening - $oldOpening;
+
+            $distributor->name    = $request->name;
+            $distributor->type    = $request->type ?: ($distributor->type ?: 'distributor');
+            $distributor->phone   = $request->phone;
+            $distributor->cnic    = $request->cnic;
+            $distributor->city    = $request->city;
+            $distributor->area    = $request->area;
+            $distributor->address = $request->address;
+            $distributor->status  = $request->status;
+
+            if ($request->has('opening_balance')) {
+                $distributor->opening_balance = $newOpening;
+                $distributor->current_balance = (float) $distributor->current_balance + $diff;
+            }
+
+            $distributor->save();
+
+            // Sync with DistributorLedger opening entry
+            if ($request->has('opening_balance') && $diff != 0) {
+                $openingLedger = DistributorLedger::where('distributor_id', $distributor->id)
+                    ->where('type', 'opening')
+                    ->first();
+
+                if ($openingLedger) {
+                    if ($newOpening > 0) {
+                        $openingLedger->debit = $newOpening;
+                        $openingLedger->balance = $newOpening;
+                        $openingLedger->save();
+                    } else {
+                        // If set to 0, remove opening ledger entry
+                        $openingLedger->delete();
+                    }
+                } elseif ($newOpening > 0) {
+                    DistributorLedger::create([
+                        'distributor_id' => $distributor->id,
+                        'date'           => $distributor->created_at ? $distributor->created_at->format('Y-m-d') : now()->format('Y-m-d'),
+                        'type'           => 'opening',
+                        'reference_no'   => 'OP-' . $distributor->code,
+                        'description'    => 'Opening Balance (Updated via Admin)',
+                        'debit'          => $newOpening,
+                        'credit'         => 0,
+                        'balance'        => $newOpening,
+                        'created_by'     => Auth::id(),
+                    ]);
+                }
+            }
 
             if ($distributor->user) {
                 $distributor->user->update([
@@ -213,7 +253,6 @@ class DistributorAdminController extends Controller
             return back()->with('error', 'Update error: ' . $e->getMessage());
         }
     }
-
     /**
      * View purchase orders / demand requests placed by distributors.
      */
