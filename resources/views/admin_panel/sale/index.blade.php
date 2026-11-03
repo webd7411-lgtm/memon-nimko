@@ -1776,6 +1776,14 @@ $(document).ready(function() {
                     $('#mdlBtnEdit').attr('href', urls.edit || '#');
                     $('#mdlBtnReturn').attr('href', urls.return || '#');
 
+                    if (s.is_distributor) {
+                        $('#mdlBtnSlip').hide();
+                        $('#mdlBtnInvoice').html('<i class="bi bi-file-earmark-text-fill"></i> Print A4 Invoice (Distributor)');
+                    } else {
+                        $('#mdlBtnSlip').show().html('<i class="bi bi-printer-fill text-dark"></i> Print Slip');
+                        $('#mdlBtnInvoice').html('<i class="bi bi-file-earmark-text-fill"></i> Print A4 Invoice');
+                    }
+
                     $('#mdlLoading').hide();
                     $('#mdlContent').fadeIn(150);
                 } else {
