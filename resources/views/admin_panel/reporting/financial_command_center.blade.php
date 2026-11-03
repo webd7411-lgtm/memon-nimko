@@ -14,6 +14,7 @@
     --fcc-danger: #ef4444;
     --fcc-warning: #f59e0b;
     --fcc-info: #0284c7;
+    --fcc-purple: #7c3aed;
     --fcc-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -36,6 +37,26 @@
 }
 .fcc-hero h3 { font-weight: 800; margin: 0; font-size: 1.45rem; letter-spacing: -0.5px; }
 .fcc-hero p { margin: 0; font-size: 0.85rem; color: rgba(255, 255, 255, 0.8); }
+
+/* Quick Action Buttons in Hero */
+.fcc-hero-btn {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff !important;
+    padding: 0.45rem 1rem;
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+.fcc-hero-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-1px);
+}
 
 /* Control & Filter Strip */
 .fcc-filter-card {
@@ -71,7 +92,7 @@
     margin-bottom: 0.35rem;
 }
 .fcc-kpi-value {
-    font-size: 1.65rem;
+    font-size: 1.55rem;
     font-weight: 800;
     color: #0f172a;
     line-height: 1.2;
@@ -147,7 +168,7 @@
 
 /* Print styling */
 @media print {
-    .fcc-filter-card, .fcc-hero button, .rt_nav_header, .navbar { display: none !important; }
+    .fcc-filter-card, .fcc-hero button, .fcc-hero .fcc-hero-btn, .rt_nav_header, .navbar { display: none !important; }
     .fcc-container { padding: 0 !important; background: #ffffff !important; }
     .fcc-hero { background: #0f766e !important; color: #fff !important; }
 }
@@ -159,17 +180,24 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="badge bg-white text-dark fw-bold px-2 py-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">EXECUTIVE 360°</span>
-                <span class="text-white-50 small">• Real-time Financial Pulse</span>
+                <span class="text-white-50 small">• Live Financial Pulse & Net Worth</span>
             </div>
-            <h3>Financial Command Center (One-Window Net Worth)</h3>
-            <p>Overall live visibility of Where You Were Yesterday vs Where You Stand Today • Assets • Liabilities • P&L</p>
+            <h3>Financial Command Center (One-Window Control)</h3>
+            <p>Track Where You Were Yesterday vs Where You Stand Today • Assets • Liabilities • P&L • Outsource Capital & Drawings</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Shortcuts to create vouchers -->
+            <a href="{{ route('recepit-vochers') }}" target="_blank" class="fcc-hero-btn" title="Add Outsource Investment via Receipt Voucher">
+                <i class="fas fa-plus-circle text-success"></i> + Inward Investment (Receipt)
+            </a>
+            <a href="{{ route('Payment-vochers') }}" target="_blank" class="fcc-hero-btn" title="Record Personal Drawings / Capital Withdrawal via Payment Voucher">
+                <i class="fas fa-minus-circle text-warning"></i> - Personal Drawings (Payment)
+            </a>
             <button type="button" class="btn btn-light rounded-pill px-3 py-1.5 fw-semibold shadow-sm" onclick="window.print()">
                 <i class="fas fa-print me-1"></i> Print Snapshot
             </button>
             <button type="button" class="btn text-white rounded-pill px-3 py-1.5 fw-semibold shadow-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);" onclick="loadFinancialSnapshot()">
-                <i class="fas fa-sync-alt me-1" id="refreshIcon"></i> Refresh Live Data
+                <i class="fas fa-sync-alt me-1" id="refreshIcon"></i> Refresh
             </button>
         </div>
     </div>
@@ -242,22 +270,22 @@
         </div>
     </div>
 
-    <!-- Top 4 Master Executive KPI Cards -->
+    <!-- Top 5 Master Executive KPI Cards (Including Outsource Fund Movement) -->
     <div class="row g-3 mb-4">
         <!-- 1. Net Worth (Owner's Equity) -->
-        <div class="col-12 col-md-3">
+        <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
             <div class="fcc-kpi-card" style="border-left: 4px solid #0f766e !important;">
-                <div class="fcc-kpi-title">True Net Worth (Assets - Liabilities)</div>
+                <div class="fcc-kpi-title">True Net Worth</div>
                 <div class="fcc-kpi-value" id="kpiNetWorth">Rs. 0.00</div>
                 <div class="d-flex align-items-center justify-content-between mt-2">
                     <span class="fcc-delta-pill" id="deltaNetWorth"><i class="fas fa-minus"></i> 0%</span>
-                    <span class="text-muted" style="font-size: 0.72rem;">vs baseline</span>
+                    <span class="text-muted" style="font-size: 0.72rem;">Assets - Liabilities</span>
                 </div>
             </div>
         </div>
 
         <!-- 2. Total Period Sales -->
-        <div class="col-12 col-md-3">
+        <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
             <div class="fcc-kpi-card" style="border-left: 4px solid #3b82f6 !important;">
                 <div class="fcc-kpi-title">Period Sales Revenue</div>
                 <div class="fcc-kpi-value text-primary" id="kpiSales">Rs. 0.00</div>
@@ -269,7 +297,7 @@
         </div>
 
         <!-- 3. Operating Expenses -->
-        <div class="col-12 col-md-3">
+        <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
             <div class="fcc-kpi-card" style="border-left: 4px solid #f59e0b !important;">
                 <div class="fcc-kpi-title">Operating Expenses</div>
                 <div class="fcc-kpi-value text-warning" id="kpiExpenses">Rs. 0.00</div>
@@ -281,13 +309,72 @@
         </div>
 
         <!-- 4. Net Profit / Loss -->
-        <div class="col-12 col-md-3">
+        <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
             <div class="fcc-kpi-card" style="border-left: 4px solid #10b981 !important;">
                 <div class="fcc-kpi-title">Period Net Profit</div>
                 <div class="fcc-kpi-value text-success" id="kpiNetProfit">Rs. 0.00</div>
                 <div class="d-flex align-items-center justify-content-between mt-2">
                     <span class="fcc-delta-pill" id="deltaNetProfit"><i class="fas fa-minus"></i> 0%</span>
-                    <span class="text-muted" style="font-size: 0.72rem;">After COGS & Expenses</span>
+                    <span class="text-muted" style="font-size: 0.72rem;">P&L Bottom Line</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Net Capital Movement (Injections - Drawings) -->
+        <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
+            <div class="fcc-kpi-card" style="border-left: 4px solid #7c3aed !important;">
+                <div class="fcc-kpi-title">Outsource Capital vs Drawings</div>
+                <div class="fcc-kpi-value text-purple" style="color: #7c3aed;" id="kpiNetCapital">Rs. 0.00</div>
+                <div class="d-flex align-items-center justify-content-between mt-2">
+                    <span class="badge bg-light text-dark border px-2 py-0.5" id="capitalSummaryBadge" style="font-size: 0.72rem;">In: Rs 0 | Out: Rs 0</span>
+                    <span class="text-muted" style="font-size: 0.72rem;">Owner Funds</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OWNER'S CAPITAL & DRAWINGS BANNER (NEW FEATURE FOR OUTSOURCE INJECTIONS & PERSONAL WITHDRAWALS) -->
+    <div class="fcc-panel" style="border: 1px solid #ddd6fe; background: #faf5ff;">
+        <div class="fcc-panel-hdr border-bottom-0 pb-0 mb-3">
+            <div>
+                <h5 class="fcc-panel-title" style="color: #6b21a8;">
+                    <i class="fas fa-hand-holding-usd text-purple" style="color: #7c3aed;"></i>
+                    Owner's Capital Injections & Drawings (Outsource Fund Tracking)
+                </h5>
+                <span class="text-muted small">Bahir se kitni investment aayi (+ Inflow) aur business se kitna personal nikaala (- Drawings/Outflow)</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('recepit-vochers') }}" target="_blank" class="btn btn-sm btn-outline-purple bg-white rounded-pill px-3 fw-semibold border" style="color: #7c3aed;">
+                    <i class="fas fa-plus-circle me-1"></i> New Capital Inflow (RV)
+                </a>
+                <a href="{{ route('Payment-vochers') }}" target="_blank" class="btn btn-sm btn-outline-danger bg-white rounded-pill px-3 fw-semibold border" style="color: #dc2626;">
+                    <i class="fas fa-minus-circle me-1"></i> New Drawing / Outflow (PV)
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <div class="p-3 bg-white rounded-4 border shadow-sm">
+                    <span class="text-muted small fw-bold text-uppercase d-block">Period Capital Injected (+ Inflow)</span>
+                    <h4 class="fw-bold mb-1 text-success mt-1" id="equityInflowVal">Rs. 0.00</h4>
+                    <span class="text-muted small">Outsource investment added via Receipt Vouchers</span>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="p-3 bg-white rounded-4 border shadow-sm">
+                    <span class="text-muted small fw-bold text-uppercase d-block">Period Personal Drawings (- Outflow)</span>
+                    <h4 class="fw-bold mb-1 text-danger mt-1" id="equityOutflowVal">Rs. 0.00</h4>
+                    <span class="text-muted small">Business se nikaala gaya personal fund via Payment Vouchers</span>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="p-3 bg-white rounded-4 border shadow-sm">
+                    <span class="text-muted small fw-bold text-uppercase d-block">All-Time Net Invested Capital</span>
+                    <h4 class="fw-bold mb-1 text-purple mt-1" style="color: #7c3aed;" id="equityCumulativeCapitalVal">Rs. 0.00</h4>
+                    <span class="text-muted small">Cumulative (Total Injected - Total Withdrawn)</span>
                 </div>
             </div>
         </div>
@@ -326,10 +413,6 @@
                 <div class="fcc-row-item">
                     <span class="fcc-row-label"><i class="fas fa-seedling text-info me-2"></i> Raw Materials Live Stock Value</span>
                     <span class="fcc-row-val" id="rowRawMaterials">Rs. 0.00</span>
-                </div>
-                <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-truck-loading text-secondary me-2"></i> Field / Van Custody Stock (Distributors)</span>
-                    <span class="fcc-row-val" id="rowFieldCustody">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
                     <span class="fcc-row-label"><i class="fas fa-users text-primary me-2"></i> Direct Customers Receivable</span>
@@ -426,9 +509,19 @@
                     <h5 class="fw-bold mb-0 text-warning" id="eqLiabilities">- Rs. 0.00</h5>
                 </div>
                 <hr class="border-white opacity-20 my-3">
-                <div>
-                    <span class="text-white-50 small d-block">Net Worth / Owner's Equity</span>
+                <div class="mb-3">
+                    <span class="text-white-50 small d-block">Net Worth / Total Owner's Equity</span>
                     <h3 class="fw-bold mb-0 text-white" id="eqNetWorth">Rs. 0.00</h3>
+                </div>
+                <div class="p-2 rounded" style="background: rgba(255, 255, 255, 0.1);">
+                    <div class="d-flex justify-content-between small text-white-50">
+                        <span>• Net Capital Invested:</span>
+                        <strong class="text-white" id="eqNetInvested">Rs. 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small text-white-50 mt-1">
+                        <span>• Accumulated Earnings / Surplus:</span>
+                        <strong class="text-white" id="eqRetainedEarnings">Rs. 0.00</strong>
+                    </div>
                 </div>
             </div>
         </div>
@@ -498,11 +591,21 @@ function loadFinancialSnapshot() {
             document.getElementById('kpiExpenses').innerText = formatCurrency(res.curr_pl.total_expenses);
             document.getElementById('kpiNetProfit').innerText = formatCurrency(res.curr_pl.net_profit);
 
+            // Capital Movement Card
+            const netCap = res.curr_equity.net_movement;
+            document.getElementById('kpiNetCapital').innerText = (netCap >= 0 ? '+ ' : '') + formatCurrency(netCap);
+            document.getElementById('capitalSummaryBadge').innerText = 'In: ' + formatCurrency(res.curr_equity.injections) + ' | Out: ' + formatCurrency(res.curr_equity.drawings);
+
             // Delta Badges
             updateDeltaBadge('deltaNetWorth', res.comparison.net_worth);
             updateDeltaBadge('deltaSales', res.comparison.sales);
             updateDeltaBadge('deltaExpenses', res.comparison.expenses);
             updateDeltaBadge('deltaNetProfit', res.comparison.net_profit);
+
+            // Outsource Capital Tracking Section
+            document.getElementById('equityInflowVal').innerText = '+ ' + formatCurrency(res.curr_equity.injections);
+            document.getElementById('equityOutflowVal').innerText = '- ' + formatCurrency(res.curr_equity.drawings);
+            document.getElementById('equityCumulativeCapitalVal').innerText = formatCurrency(res.cumulative_equity.net_invested_capital);
 
             // Asset Details
             document.getElementById('totalAssetsVal').innerText = formatCurrency(res.curr_bs.total_assets);
@@ -510,7 +613,6 @@ function loadFinancialSnapshot() {
             document.getElementById('rowBankBalances').innerText = formatCurrency(res.curr_bs.bank_balances);
             document.getElementById('rowFinishedGoods').innerText = formatCurrency(res.curr_bs.inventory.finished_goods);
             document.getElementById('rowRawMaterials').innerText = formatCurrency(res.curr_bs.inventory.raw_materials);
-            document.getElementById('rowFieldCustody').innerText = formatCurrency(res.curr_bs.inventory.field_custody);
             document.getElementById('rowCustomerReceivable').innerText = formatCurrency(res.curr_bs.receivables.direct_customers);
             document.getElementById('rowDistributorReceivable').innerText = formatCurrency(res.curr_bs.receivables.distributors);
             document.getElementById('rowFixedAssets').innerText = formatCurrency(res.curr_bs.fixed_assets);
@@ -533,6 +635,8 @@ function loadFinancialSnapshot() {
             document.getElementById('eqAssets').innerText = formatCurrency(res.curr_bs.total_assets);
             document.getElementById('eqLiabilities').innerText = '- ' + formatCurrency(res.curr_bs.total_liabilities);
             document.getElementById('eqNetWorth').innerText = formatCurrency(res.curr_bs.net_worth);
+            document.getElementById('eqNetInvested').innerText = formatCurrency(res.curr_bs.equity_breakdown.net_invested_capital);
+            document.getElementById('eqRetainedEarnings').innerText = formatCurrency(res.curr_bs.equity_breakdown.retained_earnings);
         })
         .catch(err => {
             if (refreshIcon) refreshIcon.classList.remove('fa-spin');

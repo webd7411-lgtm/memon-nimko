@@ -85,7 +85,16 @@
                     </select>
                 </div>
 
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold text-muted mb-1">Order Type</label>
+                    <select name="payment_type" class="form-select form-select-sm">
+                        <option value="">All (Cash &amp; Credit)</option>
+                        <option value="cash" {{ request('payment_type') === 'cash' ? 'selected' : '' }}>Order Cash</option>
+                        <option value="credit" {{ request('payment_type') === 'credit' ? 'selected' : '' }}>Order Credit</option>
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-2">
                     <label class="form-label small fw-bold text-muted mb-1">Order Booker</label>
                     <select name="booker_id" class="form-select form-select-sm">
                         <option value="">All Bookers</option>
@@ -95,7 +104,7 @@
                     </select>
                 </div>
 
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
                     <label class="form-label small fw-bold text-muted mb-1">Retail Shop</label>
                     <select name="customer_id" class="form-select form-select-sm">
                         <option value="">All Shops</option>
@@ -130,6 +139,7 @@
                         <th>Date</th>
                         <th>Order Booker</th>
                         <th>Retail Shop</th>
+                        <th class="text-center">Order Type</th>
                         <th>Area / Phone</th>
                         <th class="text-center">Items</th>
                         <th class="text-end">Grand Total</th>
@@ -157,6 +167,17 @@
                             <td>
                                 <strong class="text-dark d-block">{{ $b->customer->shop_name ?? 'N/A' }}</strong>
                                 <small class="text-muted">{{ $b->customer->owner_name ?? '' }}</small>
+                            </td>
+                            <td class="text-center">
+                                @if(($b->payment_type ?? 'cash') === 'credit')
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill fw-bold" style="font-size: 0.75rem;">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i> Credit
+                                    </span>
+                                @else
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill fw-bold" style="font-size: 0.75rem;">
+                                        <i class="fas fa-money-bill-wave me-1"></i> Cash
+                                    </span>
+                                @endif
                             </td>
                             <td>
                                 <div><i class="fas fa-map-marker-alt text-danger me-1"></i> {{ $b->customer->area ?? '-' }}</div>
@@ -195,7 +216,7 @@
                                     </button>
 
                                     @if($b->status === 'booked')
-                                        <button type="button" class="btn btn-success btn-deliver-modal" data-id="{{ $b->id }}" data-no="{{ $b->booking_no }}" data-total="{{ $b->grand_total }}" data-shop="{{ $b->customer->shop_name ?? 'Shop' }}" title="Convert to Sale & Deliver">
+                                        <button type="button" class="btn btn-success btn-deliver-modal" data-id="{{ $b->id }}" data-no="{{ $b->booking_no }}" data-total="{{ $b->grand_total }}" data-shop="{{ $b->customer->shop_name ?? 'Shop' }}" data-type="{{ $b->payment_type ?? 'cash' }}" title="Convert to Sale & Deliver">
                                             <i class="fas fa-truck-fast me-1"></i> Deliver
                                         </button>
 
@@ -211,7 +232,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-5 text-muted">
+                            <td colspan="10" class="text-center py-5 text-muted">
                                 <i class="fas fa-inbox fs-1 text-secondary opacity-50 mb-3 d-block"></i>
                                 <h5>No bookings found</h5>
                                 <p class="small text-secondary">No order bookings match the selected filter criteria.</p>
@@ -252,11 +273,15 @@
                         <small class="text-muted d-block">Order Booker:</small>
                         <strong id="dtlBookerName" class="text-dark">-</strong>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-2">
                         <small class="text-muted d-block">Booking Date:</small>
                         <strong id="dtlDate" class="text-dark">-</strong>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-2">
+                        <small class="text-muted d-block">Order Type:</small>
+                        <span id="dtlOrderType" class="badge bg-success text-white px-2 py-1">-</span>
+                    </div>
+                    <div class="col-6 col-md-2">
                         <small class="text-muted d-block">Total Value:</small>
                         <strong id="dtlTotal" class="text-success fs-6">-</strong>
                     </div>
@@ -318,17 +343,30 @@
                         <input type="text" class="form-control bg-light fw-bold" id="delivShopInfo" readonly>
                     </div>
 
+                    <div class="mb-3 p-2.5 rounded-3 border" style="background:#f8fafc;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold text-muted">Booker's Payment Term:</span>
+                            <span id="delivOrderTypeBadge" class="badge px-2.5 py-1.5 fw-bold font-monospace fs-6"></span>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted mb-1">Total Bill Amount</label>
                         <input type="text" class="form-control bg-light fw-bold fs-5 text-dark" id="delivTotalAmount" readonly>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted mb-1">
-                            Cash Collected on Delivery (If Any)
-                        </label>
-                        <input type="number" step="any" min="0" class="form-control fw-bold" name="paid_amount" id="delivPaidAmount" value="0">
-                        <small class="text-muted">Leave as 0 if the full order is supplied on credit.</small>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-muted mb-0">
+                                Cash Collected on Delivery
+                            </label>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-success py-0 px-2 fw-semibold" id="btnQuickFullCash" style="font-size:0.75rem;">Full Cash</button>
+                                <button type="button" class="btn btn-outline-secondary py-0 px-2 fw-semibold" id="btnQuickZeroCredit" style="font-size:0.75rem;">Credit (0)</button>
+                            </div>
+                        </div>
+                        <input type="number" step="any" min="0" class="form-control fw-bold fs-5 text-dark" name="paid_amount" id="delivPaidAmount" value="0">
+                        <small class="text-muted" id="delivPaymentHelpText">Leave as 0 if the full order is supplied on credit.</small>
                     </div>
                 </div>
                 <div class="modal-footer border-0 py-2">
@@ -368,6 +406,10 @@ $(document).ready(function() {
                     const cleanDate = res.formatted_date || (b.booking_date ? (b.booking_date.includes('T') ? b.booking_date.split('T')[0] : b.booking_date) : '-');
                     $('#dtlDate').text(cleanDate);
                     $('#dtlTotal').text('Rs ' + parseFloat(b.grand_total).toLocaleString('en-US', {minimumFractionDigits: 2}));
+
+                    const orderType = (b.payment_type === 'credit') ? '<i class="fas fa-file-invoice-dollar me-1"></i> Order Credit' : '<i class="fas fa-money-bill-wave me-1"></i> Order Cash';
+                    const orderTypeClass = (b.payment_type === 'credit') ? 'badge bg-primary text-white px-2 py-1' : 'badge bg-success text-white px-2 py-1';
+                    $('#dtlOrderType').attr('class', orderTypeClass).html(orderType);
 
                     if (b.notes) {
                         $('#dtlNotes').text(b.notes);
@@ -412,10 +454,27 @@ $(document).ready(function() {
         const no = $(this).data('no');
         const shop = $(this).data('shop');
         const total = parseFloat($(this).data('total') || 0);
+        const orderType = $(this).data('type') || 'cash';
 
         $('#delivShopInfo').val(no + ' - ' + shop);
         $('#delivTotalAmount').val('Rs ' + total.toLocaleString('en-US', {minimumFractionDigits: 2}));
-        $('#delivPaidAmount').val(0);
+
+        if (orderType === 'credit') {
+            $('#delivOrderTypeBadge').attr('class', 'badge bg-primary text-white px-2.5 py-1.5 fw-bold font-monospace fs-6').html('<i class="fas fa-file-invoice-dollar me-1"></i> ORDER CREDIT');
+            $('#delivPaidAmount').val(0);
+            $('#delivPaymentHelpText').text('This booking was booked as Credit. Cash received is set to 0. Change if partial cash was taken.');
+        } else {
+            $('#delivOrderTypeBadge').attr('class', 'badge bg-success text-white px-2.5 py-1.5 fw-bold font-monospace fs-6').html('<i class="fas fa-money-bill-wave me-1"></i> ORDER CASH');
+            $('#delivPaidAmount').val(total);
+            $('#delivPaymentHelpText').text('This booking was booked as Cash. Full cash amount has been pre-filled.');
+        }
+
+        $('#btnQuickFullCash').off('click').on('click', function() {
+            $('#delivPaidAmount').val(total);
+        });
+        $('#btnQuickZeroCredit').off('click').on('click', function() {
+            $('#delivPaidAmount').val(0);
+        });
 
         const formAction = "{{ url('/distributor-portal/shop-bookings') }}/" + id + "/deliver";
         $('#formDeliverBooking').attr('action', formAction);

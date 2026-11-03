@@ -30,7 +30,7 @@
     <div class="card border-0 shadow-sm rounded-4 mb-3">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('distributor.booker.my_bookings') }}" class="row g-2 align-items-end">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Status Filter</label>
                     <select name="status" class="form-select form-select-sm">
                         <option value="">All Statuses</option>
@@ -40,12 +40,21 @@
                     </select>
                 </div>
 
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-bold text-muted mb-1">Order Type</label>
+                    <select name="payment_type" class="form-select form-select-sm">
+                        <option value="">All Types (Cash &amp; Credit)</option>
+                        <option value="cash" {{ request('payment_type') === 'cash' ? 'selected' : '' }}>Order Cash</option>
+                        <option value="credit" {{ request('payment_type') === 'credit' ? 'selected' : '' }}>Order Credit</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Date</label>
                     <input type="date" name="date" class="form-control form-control-sm" value="{{ request('date') }}">
                 </div>
 
-                <div class="col-12 col-md-4 d-flex gap-2">
+                <div class="col-12 col-md-3 d-flex gap-2">
                     <button type="submit" class="btn btn-sm btn-dark w-100 fw-bold">
                         <i class="fas fa-filter me-1"></i> Filter
                     </button>
@@ -64,6 +73,7 @@
                         <th class="ps-3">Booking #</th>
                         <th>Date</th>
                         <th>Shop Name</th>
+                        <th class="text-center">Order Type</th>
                         <th>Area / Phone</th>
                         <th class="text-center">Items</th>
                         <th class="text-end">Grand Total</th>
@@ -81,6 +91,17 @@
                             <td>
                                 <strong class="text-dark d-block">{{ $b->customer->shop_name ?? 'N/A' }}</strong>
                                 <small class="text-muted">{{ $b->customer->owner_name ?? '' }}</small>
+                            </td>
+                            <td class="text-center">
+                                @if(($b->payment_type ?? 'cash') === 'credit')
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill fw-semibold">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i> Credit
+                                    </span>
+                                @else
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill fw-semibold">
+                                        <i class="fas fa-money-bill-wave me-1"></i> Cash
+                                    </span>
+                                @endif
                             </td>
                             <td>
                                 <div><i class="fas fa-map-marker-alt text-danger me-1"></i> {{ $b->customer->area ?? '-' }}</div>
@@ -116,7 +137,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td colspan="9" class="text-center py-5 text-muted">
                                 <i class="fas fa-clipboard fs-1 text-secondary opacity-50 mb-3 d-block"></i>
                                 <h5>No Bookings Found</h5>
                                 <p class="small text-secondary mb-3">You have not booked any orders yet or no records match your filter criteria.</p>

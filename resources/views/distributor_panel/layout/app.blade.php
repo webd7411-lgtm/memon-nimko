@@ -45,7 +45,7 @@
             display: flex;
             flex-direction: column;
             -webkit-font-smoothing: antialiased;
-            overflow: visible;
+            overflow-x: hidden;
             width: 100%;
         }
 
@@ -267,51 +267,50 @@
             transform: scale(1.05);
         }
 
-        /* ─── TIER 2: SLEEK SECONDARY NAVBAR (Exact Super Admin Look) ─── */
+        /* ─── TIER 2: SLEEK SECONDARY NAVBAR ─── */
         .portal-nav-bottom {
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
             box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
             width: 100%;
+            position: relative;
+            z-index: 1025;
         }
 
         .portal-nav-list {
             display: flex;
             align-items: center;
-            gap: 2px;
+            flex-wrap: wrap;
+            gap: 3px;
             margin: 0;
-            padding: 4px 0;
+            padding: 5px 0;
             list-style: none;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
             width: 100%;
-        }
-        .portal-nav-list::-webkit-scrollbar {
-            display: none;
         }
 
         .portal-nav-item {
             flex-shrink: 0;
+            position: relative;
         }
 
         .portal-nav-link {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 6px 9px;
-            font-size: 0.80rem;
+            gap: 6px;
+            padding: 6px 11px;
+            font-size: 0.82rem;
             font-weight: 600;
             color: #475569;
-            border-radius: 7px;
+            border-radius: 8px;
             text-decoration: none;
             transition: all 0.15s ease;
             white-space: nowrap;
+            border: 1px solid transparent;
         }
 
         .portal-nav-link:hover {
             background: #f1f5f9;
-            color: #0f172a;
+            color: #0f766e;
         }
 
         .portal-nav-link.active {
@@ -325,23 +324,142 @@
         }
 
         .portal-nav-link i {
-            font-size: 0.88rem;
+            font-size: 0.86rem;
             color: #64748b;
             transition: color 0.15s ease, transform 0.15s ease;
         }
 
         .portal-nav-link:hover i {
             color: #0f766e;
-            transform: scale(1.08);
+        }
+
+        /* Nav dropdown caret */
+        .portal-nav-link.dropdown-toggle::after {
+            display: none !important;
+        }
+
+        .portal-nav-link .nav-caret {
+            font-size: 0.65rem;
+            margin-left: 3px;
+            opacity: 0.7;
+            transition: transform 0.2s ease;
+        }
+
+        .portal-nav-item.dropdown:hover .nav-caret,
+        .portal-nav-item.dropdown.show .nav-caret {
+            transform: rotate(180deg);
+        }
+
+        .portal-nav-link.active .nav-caret {
+            color: #ffffff;
+            opacity: 0.95;
+        }
+
+        /* Dropdown menu styling */
+        .portal-dropdown-menu {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.05);
+            padding: 6px;
+            min-width: 255px;
+            background: #ffffff;
+            margin-top: 4px !important;
+            z-index: 1060;
+        }
+
+        @media (min-width: 992px) {
+            .portal-nav-item.dropdown:hover > .dropdown-menu {
+                display: block;
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+            .portal-nav-item.dropdown > .dropdown-menu {
+                display: block;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(6px);
+                transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+            }
+        }
+
+        .portal-nav-item.dropdown .dropdown-menu.show {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateY(0) !important;
+        }
+
+        .portal-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #334155;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .portal-dropdown-item:hover {
+            background: #f1f5f9;
+            color: #0f766e;
+            transform: translateX(3px);
+        }
+
+        .portal-dropdown-item.active {
+            background: rgba(15, 118, 110, 0.1) !important;
+            color: #0f766e !important;
+            font-weight: 700;
+        }
+
+        .portal-dd-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .portal-dd-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.2;
+            color: #1e293b;
+        }
+
+        .portal-dropdown-item:hover .portal-dd-title,
+        .portal-dropdown-item.active .portal-dd-title {
+            color: #0f766e;
+        }
+
+        .portal-dd-desc {
+            font-size: 0.70rem;
+            color: #64748b;
+            font-weight: 400;
+            line-height: 1.2;
+            margin-top: 1px;
         }
 
         /* Quick Sale button highlight on Tier 2 */
         .portal-nav-link-sale {
-            color: #0f766e;
+            background: rgba(15, 118, 110, 0.08);
+            color: #0f766e !important;
             font-weight: 700;
+            border: 1px solid rgba(15, 118, 110, 0.25);
         }
         .portal-nav-link-sale i {
-            color: #0f766e;
+            color: #0f766e !important;
+        }
+        .portal-nav-link-sale:hover {
+            background: #0f766e;
+            color: #ffffff !important;
+        }
+        .portal-nav-link-sale:hover i {
+            color: #ffffff !important;
         }
 
         /* Footer */
@@ -585,89 +703,196 @@
                             </a>
                         </li>
                     @else
+                        <!-- 1. Dashboard -->
                         <li class="portal-nav-item">
                             <a href="{{ route('distributor.dashboard') }}" class="portal-nav-link {{ request()->routeIs('distributor.dashboard') ? 'active' : '' }}">
                                 <i class="fas fa-chart-pie"></i>
                                 <span>Dashboard</span>
                             </a>
                         </li>
+
+                        <!-- 2. POS Sale Screen -->
                         <li class="portal-nav-item">
                             <a href="{{ route('distributor.sales.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.sales.create') ? 'active' : 'portal-nav-link-sale' }}">
                                 <i class="fas fa-cart-plus"></i>
                                 <span>Sale Screen</span>
                             </a>
                         </li>
+
+                        <!-- 3. Stock Inventory -->
                         <li class="portal-nav-item">
                             <a href="{{ route('distributor.stock.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.stock.*') ? 'active' : '' }}">
                                 <i class="fas fa-boxes-stacked"></i>
                                 <span>Stock</span>
                             </a>
                         </li>
+
+                        <!-- 4. Demand Orders -->
                         <li class="portal-nav-item">
                             <a href="{{ route('distributor.orders.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.orders.*') ? 'active' : '' }}">
                                 <i class="fas fa-clipboard-list"></i>
                                 <span>Demand Orders</span>
                             </a>
                         </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.customers.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.customers.*') ? 'active' : '' }}">
-                                <i class="fas fa-store"></i>
-                                <span>Retail Customers</span>
-                            </a>
-                        </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.shop_bookings.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.shop_bookings.*') ? 'active' : '' }}">
-                                <i class="fas fa-boxes-packing text-warning"></i>
-                                <span>Shop Bookings</span>
-                            </a>
-                        </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.booker.create') }}" class="portal-nav-link {{ request()->routeIs('distributor.booker.create') ? 'active' : '' }}">
-                                <i class="fas fa-plus-circle text-success"></i>
-                                <span>Take Order</span>
-                            </a>
-                        </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.bookers.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.bookers.*') ? 'active' : '' }}">
+
+                        <!-- 5. Bookings & Retail (Dropdown) -->
+                        @php
+                            $isBookingsActive = request()->routeIs('distributor.customers.*') 
+                                || request()->routeIs('distributor.shop_bookings.*') 
+                                || request()->routeIs('distributor.booker.create') 
+                                || request()->routeIs('distributor.bookers.*');
+                        @endphp
+                        <li class="portal-nav-item dropdown">
+                            <a href="#" class="portal-nav-link dropdown-toggle {{ $isBookingsActive ? 'active' : '' }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-users-gear"></i>
-                                <span>Order Bookers</span>
+                                <span>Bookings & Retail</span>
+                                <i class="fas fa-chevron-down nav-caret"></i>
                             </a>
+                            <ul class="dropdown-menu dropdown-menu-start portal-dropdown-menu shadow-lg">
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.customers.*') ? 'active' : '' }}" href="{{ route('distributor.customers.index') }}">
+                                        <div class="portal-dd-icon bg-primary-subtle text-primary">
+                                            <i class="fas fa-store"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Retail Customers</div>
+                                            <div class="portal-dd-desc">Customer master, ledgers & balances</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.shop_bookings.*') ? 'active' : '' }}" href="{{ route('distributor.shop_bookings.index') }}">
+                                        <div class="portal-dd-icon bg-warning-subtle text-warning">
+                                            <i class="fas fa-boxes-packing"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Shop Bookings</div>
+                                            <div class="portal-dd-desc">Orders booked awaiting dispatch</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.booker.create') ? 'active' : '' }}" href="{{ route('distributor.booker.create') }}">
+                                        <div class="portal-dd-icon bg-success-subtle text-success">
+                                            <i class="fas fa-plus-circle"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Take Order (Punch)</div>
+                                            <div class="portal-dd-desc">Punch new booking for retail shops</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.bookers.*') ? 'active' : '' }}" href="{{ route('distributor.bookers.index') }}">
+                                        <div class="portal-dd-icon bg-info-subtle text-info">
+                                            <i class="fas fa-user-tie"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Order Bookers</div>
+                                            <div class="portal-dd-desc">Staff accounts, routes & targets</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.sales.index') }}" class="portal-nav-link {{ (request()->routeIs('distributor.sales.index') || request()->routeIs('distributor.sales.receipt')) ? 'active' : '' }}">
-                                <i class="fas fa-cash-register"></i>
-                                <span>Sales Register</span>
+
+                        <!-- 6. Sales & Returns (Dropdown) -->
+                        @php
+                            $isSalesActive = request()->routeIs('distributor.sales.index') 
+                                || request()->routeIs('distributor.sales.receipt') 
+                                || request()->routeIs('distributor.returns.*');
+                        @endphp
+                        <li class="portal-nav-item dropdown">
+                            <a href="#" class="portal-nav-link dropdown-toggle {{ $isSalesActive ? 'active' : '' }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-receipt"></i>
+                                <span>Sales & Returns</span>
+                                <i class="fas fa-chevron-down nav-caret"></i>
                             </a>
+                            <ul class="dropdown-menu dropdown-menu-start portal-dropdown-menu shadow-lg">
+                                <li>
+                                    <a class="portal-dropdown-item {{ (request()->routeIs('distributor.sales.index') || request()->routeIs('distributor.sales.receipt')) ? 'active' : '' }}" href="{{ route('distributor.sales.index') }}">
+                                        <div class="portal-dd-icon" style="background: rgba(15, 118, 110, 0.12); color: #0f766e;">
+                                            <i class="fas fa-cash-register"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Sales Register</div>
+                                            <div class="portal-dd-desc">All sales invoices & receipts</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.returns.*') ? 'active' : '' }}" href="{{ route('distributor.returns.index') }}">
+                                        <div class="portal-dd-icon bg-danger-subtle text-danger">
+                                            <i class="fas fa-undo-alt"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title text-danger">Sale Returns</div>
+                                            <div class="portal-dd-desc">Returns, credit notes & replacements</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.returns.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.returns.*') ? 'active' : '' }}" style="color: #ef4444 !important;">
-                                <i class="fas fa-undo-alt text-danger"></i>
-                                <span>Sale Returns</span>
-                            </a>
-                        </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.company_ledger.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.company_ledger.*') ? 'active' : '' }}">
-                                <i class="fas fa-file-invoice-dollar"></i>
-                                <span>Company Ledger</span>
-                            </a>
-                        </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.payments.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.payments.*') ? 'active' : '' }}">
-                                <i class="fas fa-money-bill-wave"></i>
-                                <span>Payment Vouchers</span>
-                            </a>
-                        </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.claims.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.claims.*') ? 'active' : '' }}" title="Claims & Schemes">
-                                <i class="fas fa-hand-holding-dollar"></i>
-                                <span>Claims</span>
-                            </a>
-                        </li>
-                        <li class="portal-nav-item">
-                            <a href="{{ route('distributor.accounts.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.accounts.*') ? 'active' : '' }}">
+
+                        <!-- 7. Finance & Accounts (Dropdown) -->
+                        @php
+                            $isFinanceActive = request()->routeIs('distributor.company_ledger.*') 
+                                || request()->routeIs('distributor.payments.*') 
+                                || request()->routeIs('distributor.claims.*') 
+                                || request()->routeIs('distributor.accounts.*');
+                        @endphp
+                        <li class="portal-nav-item dropdown">
+                            <a href="#" class="portal-nav-link dropdown-toggle {{ $isFinanceActive ? 'active' : '' }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-landmark"></i>
-                                <span>My Accounts</span>
+                                <span>Finance & Accounts</span>
+                                <i class="fas fa-chevron-down nav-caret"></i>
                             </a>
+                            <ul class="dropdown-menu dropdown-menu-start portal-dropdown-menu shadow-lg">
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.company_ledger.*') ? 'active' : '' }}" href="{{ route('distributor.company_ledger.index') }}">
+                                        <div class="portal-dd-icon bg-primary-subtle text-primary">
+                                            <i class="fas fa-file-invoice-dollar"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Company Ledger</div>
+                                            <div class="portal-dd-desc">Main factory ledger statement</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.payments.*') ? 'active' : '' }}" href="{{ route('distributor.payments.index') }}">
+                                        <div class="portal-dd-icon bg-success-subtle text-success">
+                                            <i class="fas fa-money-bill-wave"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Payment Vouchers</div>
+                                            <div class="portal-dd-desc">Bank deposit slips & approvals</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.claims.*') ? 'active' : '' }}" href="{{ route('distributor.claims.index') }}">
+                                        <div class="portal-dd-icon bg-warning-subtle text-warning">
+                                            <i class="fas fa-hand-holding-dollar"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Claims & Schemes</div>
+                                            <div class="portal-dd-desc">Damage, shortage & scheme claims</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.accounts.*') ? 'active' : '' }}" href="{{ route('distributor.accounts.index') }}">
+                                        <div class="portal-dd-icon bg-secondary-subtle text-secondary">
+                                            <i class="fas fa-wallet"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">My Accounts (COA)</div>
+                                            <div class="portal-dd-desc">Cash in hand, bank accounts</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     @endif
                 </ul>

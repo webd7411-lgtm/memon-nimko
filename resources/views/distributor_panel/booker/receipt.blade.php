@@ -119,6 +119,12 @@
             <span>Booking #:</span>
             <strong>{{ $booking->booking_no }}</strong>
         </div>
+        <div class="info-row" style="background: #f1f5f9; padding: 4px 6px; border-radius: 4px; margin: 4px 0;">
+            <span>Order Type:</span>
+            <strong style="text-transform: uppercase; color: {{ ($booking->payment_type === 'credit') ? '#0369a1' : '#15803d' }};">
+                {{ ($booking->payment_type === 'credit') ? 'ORDER CREDIT' : 'ORDER CASH' }}
+            </strong>
+        </div>
         <div class="info-row">
             <span>Date:</span>
             <strong>{{ \Carbon\Carbon::parse($booking->booking_date)->format('d-M-Y') }}</strong>
@@ -135,9 +141,13 @@
             <span>Owner / Phone:</span>
             <span>{{ $booking->customer->owner_name ?? '' }} ({{ $booking->customer->phone ?? '-' }})</span>
         </div>
+        @php
+            $bkrCustAddrParts = array_filter([$booking->customer->address ?? null, $booking->customer->area ?? null]);
+            $bkrCustAddress = implode(', ', $bkrCustAddrParts);
+        @endphp
         <div class="info-row">
-            <span>Area / Addr:</span>
-            <span>{{ $booking->customer->area ?? '-' }}</span>
+            <span>Address:</span>
+            <span>{{ $bkrCustAddress ?: '-' }}</span>
         </div>
         <div class="info-row">
             <span>Shop Balance:</span>

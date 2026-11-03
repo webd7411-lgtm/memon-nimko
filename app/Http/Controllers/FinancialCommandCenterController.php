@@ -10,8 +10,10 @@ use App\Models\Distributor;
 use App\Models\DistributorCustomer;
 use App\Models\DistributorStock;
 use App\Models\ExpenseVoucher;
+use App\Models\PaymentVoucher;
 use App\Models\Product;
 use App\Models\RawMaterial;
+use App\Models\ReceiptsVoucher;
 use App\Models\Sale;
 use App\Models\Vendor;
 use Carbon\Carbon;
@@ -92,11 +94,16 @@ class FinancialCommandCenterController extends Controller
         $currPL = $this->calculatePeriodPL($currStart, $currEnd, $branchId);
         $basePL = $this->calculatePeriodPL($baseStart, $baseEnd, $branchId);
 
-        // 2. Compute Cumulative Balance Sheet & Net Worth AS OF Current vs AS OF Baseline
-        $currBS = $this->calculateCumulativeBalanceSheet($currEnd, $branchId);
-        $baseBS = $this->calculateCumulativeBalanceSheet($baseEnd, $branchId);
+        // 2. Compute Capital / Equity Movements (Outsource Injections vs Owner Drawings)
+        $currEquityMovements = $this->calculateEquityMovements($currStart, $currEnd, $branchId);
+        $baseEquityMovements = $this->calculateEquityMovements($baseStart, $baseEnd, $branchId);
+        $cumulativeEquity   = $this->calculateCumulativeEquity($currEnd, $branchId);
 
-        // 3. Compute Delta Comparison Indicators
+        // 3. Compute Cumulative Balance Sheet & Net Worth AS OF Current vs AS OF Baseline
+        $currBS = $this->calculateCumulativeBalanceSheet($currEnd, $branchId, $cumulativeEquity);
+        $baseBS = $this->calculateCumulativeBalanceSheet($baseEnd, $branchId, $this->calculateCumulativeEquity($baseEnd, $branchId));
+
+        // 4. Compute Delta Comparison Indicators
         $comparison = [
             'labels' => [
                 'current'  => $currLabel,
@@ -108,13 +115,15 @@ class FinancialCommandCenterController extends Controller
             'sales' => $this->buildDeltaItem($currPL['total_sales'], $basePL['total_sales'], 'currency'),
             'expenses' => $this->buildDeltaItem($currPL['total_expenses'], $basePL['total_expenses'], 'currency', true),
             'net_profit' => $this->buildDeltaItem($currPL['net_profit'], $basePL['net_profit'], 'currency'),
+            'capital_injected' => $this->buildDeltaItem($currEquityMovements['injections'], $baseEquityMovements['injections'], 'currency'),
+            'drawings_withdrawn' => $this->buildDeltaItem($currEquityMovements['drawings'], $baseEquityMovements['drawings'], 'currency', true),
             'cash_and_bank' => $this->buildDeltaItem($currBS['cash_and_bank'], $baseBS['cash_and_bank'], 'currency'),
             'inventory_value' => $this->buildDeltaItem($currBS['inventory']['total'], $baseBS['inventory']['total'], 'currency'),
             'receivables' => $this->buildDeltaItem($currBS['receivables']['total'], $baseBS['receivables']['total'], 'currency'),
             'payables' => $this->buildDeltaItem($currBS['payables']['total'], $baseBS['payables']['total'], 'currency', true),
         ];
 
-        // 4. Quick Liquidity & Health Indicators
+        // 5. Quick Liquidity & Health Indicators
         $currentRatio = $currBS['total_liabilities'] > 0
             ? round($currBS['current_assets'] / $currBS['total_liabilities'], 2)
             : ($currBS['current_assets'] > 0 ? 99.9 : 1.0);
@@ -124,21 +133,220 @@ class FinancialCommandCenterController extends Controller
             : 0;
 
         return response()->json([
-            'status'     => true,
-            'curr_label' => $currLabel,
-            'base_label' => $baseLabel,
-            'curr_pl'    => $currPL,
-            'base_pl'    => $basePL,
-            'curr_bs'    => $currBS,
-            'base_bs'    => $baseBS,
-            'comparison' => $comparison,
-            'health'     => [
+            'status'             => true,
+            'curr_label'         => $currLabel,
+            'base_label'         => $baseLabel,
+            'curr_pl'            => $currPL,
+            'base_pl'            => $basePL,
+            'curr_bs'            => $currBS,
+            'base_bs'            => $baseBS,
+            'curr_equity'        => $currEquityMovements,
+            'base_equity'        => $baseEquityMovements,
+            'cumulative_equity'  => $cumulativeEquity,
+            'comparison'         => $comparison,
+            'health'             => [
                 'current_ratio'    => $currentRatio,
                 'debt_to_equity'   => $debtToEquity,
                 'is_profitable'    => $currPL['net_profit'] >= 0,
                 'solvency_status'  => $currBS['net_worth'] >= 0 ? 'Solvent & Healthy' : 'Action Required',
             ],
         ]);
+    }
+
+    /**
+     * Calculate Period-Specific Capital Injections (Outsource / Investment) & Drawings (Personal withdrawals).
+     */
+    private function calculateEquityMovements(string $startDate, string $endDate, $branchId): array
+    {
+        $isAll = ($branchId === 'all');
+
+        // Capital Injections (Receipt Vouchers linked to Equity / Capital accounts or narrations)
+        $rvQ = DB::table('receipts_vouchers')
+            ->whereBetween('entry_date', [$startDate, $endDate]);
+        if (!$isAll) $rvQ->where('branch_id', $branchId);
+
+        // Find equity/capital heads
+        $equityHeadIds = DB::table('account_heads')
+            ->where('name', 'like', '%Equity%')
+            ->orWhere('name', 'like', '%Capital%')
+            ->orWhere('name', 'like', '%Investment%')
+            ->pluck('id')
+            ->toArray();
+
+        $equityAccIds = DB::table('accounts')
+            ->whereIn('head_id', $equityHeadIds)
+            ->orWhere('title', 'like', '%Capital%')
+            ->orWhere('title', 'like', '%Investment%')
+            ->pluck('id')
+            ->toArray();
+
+        $vouchers = $rvQ->get();
+        $injectionsTotal = 0;
+        $injectionsList = [];
+
+        foreach ($vouchers as $v) {
+            $isEquity = false;
+            if (in_array($v->type, $equityHeadIds) || in_array($v->party_id, $equityAccIds)) {
+                $isEquity = true;
+            } else {
+                // Check remarks or narration
+                $narrText = strtolower($v->remarks ?? '');
+                if (str_contains($narrText, 'capital') || str_contains($narrText, 'invest') || str_contains($narrText, 'outsource') || str_contains($narrText, 'loan')) {
+                    $isEquity = true;
+                }
+            }
+
+            if ($isEquity) {
+                $amt = (float) $v->total_amount;
+                $injectionsTotal += $amt;
+                $injectionsList[] = [
+                    'id'          => $v->id,
+                    'rvid'        => $v->rvid,
+                    'date'        => $v->entry_date ?? $v->receipt_date,
+                    'amount'      => $amt,
+                    'remarks'     => $v->remarks ?: 'Capital Injection / Outsource Fund',
+                ];
+            }
+        }
+
+        // Drawings / Outsource Payments (Payment Vouchers linked to Drawings / Owner Withdrawal)
+        $pvQ = DB::table('payment_vouchers')
+            ->whereBetween('entry_date', [$startDate, $endDate]);
+        if (!$isAll) $pvQ->where('branch_id', $branchId);
+
+        $drawingsHeadIds = DB::table('account_heads')
+            ->where('name', 'like', '%Drawing%')
+            ->orWhere('name', 'like', '%Withdrawal%')
+            ->orWhere('name', 'like', '%Personal%')
+            ->pluck('id')
+            ->toArray();
+
+        $drawingsAccIds = DB::table('accounts')
+            ->whereIn('head_id', $drawingsHeadIds)
+            ->orWhere('title', 'like', '%Drawing%')
+            ->orWhere('title', 'like', '%Personal%')
+            ->pluck('id')
+            ->toArray();
+
+        $pvtVouchers = $pvQ->get();
+        $drawingsTotal = 0;
+        $drawingsList = [];
+
+        foreach ($pvtVouchers as $pv) {
+            $isDrawing = false;
+            if (in_array($pv->type, $drawingsHeadIds) || in_array($pv->party_id, $drawingsAccIds)) {
+                $isDrawing = true;
+            } else {
+                $narrText = strtolower($pv->remarks ?? '');
+                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'outsource')) {
+                    $isDrawing = true;
+                }
+            }
+
+            if ($isDrawing) {
+                $amt = (float) $pv->total_amount;
+                $drawingsTotal += $amt;
+                $drawingsList[] = [
+                    'id'          => $pv->id,
+                    'pvid'        => $pv->pvid,
+                    'date'        => $pv->entry_date ?? $pv->receipt_date,
+                    'amount'      => $amt,
+                    'remarks'     => $pv->remarks ?: 'Owner Personal Withdrawal / Return of Capital',
+                ];
+            }
+        }
+
+        $netEquityMovement = $injectionsTotal - $drawingsTotal;
+
+        return [
+            'injections'          => $injectionsTotal,
+            'drawings'            => $drawingsTotal,
+            'net_movement'        => $netEquityMovement,
+            'injections_history'  => array_slice($injectionsList, 0, 10),
+            'drawings_history'    => array_slice($drawingsList, 0, 10),
+        ];
+    }
+
+    /**
+     * Compute Cumulative Equity Injections & Drawings as of a specific date.
+     */
+    private function calculateCumulativeEquity(string $asOfDate, $branchId): array
+    {
+        $isAll = ($branchId === 'all');
+
+        $equityHeadIds = DB::table('account_heads')
+            ->where('name', 'like', '%Equity%')
+            ->orWhere('name', 'like', '%Capital%')
+            ->orWhere('name', 'like', '%Investment%')
+            ->pluck('id')
+            ->toArray();
+
+        $equityAccIds = DB::table('accounts')
+            ->whereIn('head_id', $equityHeadIds)
+            ->orWhere('title', 'like', '%Capital%')
+            ->orWhere('title', 'like', '%Investment%')
+            ->pluck('id')
+            ->toArray();
+
+        $rvQ = DB::table('receipts_vouchers')->where('entry_date', '<=', $asOfDate);
+        if (!$isAll) $rvQ->where('branch_id', $branchId);
+
+        $totalInjected = 0;
+        foreach ($rvQ->get() as $v) {
+            $isEquity = false;
+            if (in_array($v->type, $equityHeadIds) || in_array($v->party_id, $equityAccIds)) {
+                $isEquity = true;
+            } else {
+                $narrText = strtolower($v->remarks ?? '');
+                if (str_contains($narrText, 'capital') || str_contains($narrText, 'invest') || str_contains($narrText, 'outsource') || str_contains($narrText, 'loan')) {
+                    $isEquity = true;
+                }
+            }
+            if ($isEquity) {
+                $totalInjected += (float) $v->total_amount;
+            }
+        }
+
+        $drawingsHeadIds = DB::table('account_heads')
+            ->where('name', 'like', '%Drawing%')
+            ->orWhere('name', 'like', '%Withdrawal%')
+            ->orWhere('name', 'like', '%Personal%')
+            ->pluck('id')
+            ->toArray();
+
+        $drawingsAccIds = DB::table('accounts')
+            ->whereIn('head_id', $drawingsHeadIds)
+            ->orWhere('title', 'like', '%Drawing%')
+            ->orWhere('title', 'like', '%Personal%')
+            ->pluck('id')
+            ->toArray();
+
+        $pvQ = DB::table('payment_vouchers')->where('entry_date', '<=', $asOfDate);
+        if (!$isAll) $pvQ->where('branch_id', $branchId);
+
+        $totalWithdrawn = 0;
+        foreach ($pvQ->get() as $pv) {
+            $isDrawing = false;
+            if (in_array($pv->type, $drawingsHeadIds) || in_array($pv->party_id, $drawingsAccIds)) {
+                $isDrawing = true;
+            } else {
+                $narrText = strtolower($pv->remarks ?? '');
+                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'outsource')) {
+                    $isDrawing = true;
+                }
+            }
+            if ($isDrawing) {
+                $totalWithdrawn += (float) $pv->total_amount;
+            }
+        }
+
+        $netInvestedCapital = $totalInjected - $totalWithdrawn;
+
+        return [
+            'total_injected'       => $totalInjected,
+            'total_withdrawn'      => $totalWithdrawn,
+            'net_invested_capital' => $netInvestedCapital,
+        ];
     }
 
     /**
@@ -203,7 +411,7 @@ class FinancialCommandCenterController extends Controller
     /**
      * Compute Cumulative Balance Sheet & Net Worth as of a specific date.
      */
-    private function calculateCumulativeBalanceSheet(string $asOfDate, $branchId): array
+    private function calculateCumulativeBalanceSheet(string $asOfDate, $branchId, array $cumulativeEquity = []): array
     {
         $endDT = $asOfDate . ' 23:59:59';
         $isAll = ($branchId === 'all');
@@ -285,7 +493,30 @@ class FinancialCommandCenterController extends Controller
         if (!$isAll && \Illuminate\Support\Facades\Schema::hasColumn('customers', 'branch_id')) {
             $custRecQ->where('branch_id', $branchId);
         }
-        $custReceivable = (float) $custRecQ->sum('opening_balance');
+        $customersList = $custRecQ->select('id', 'opening_balance')->get();
+        $latestCustomerLedgers = DB::table('customer_ledgers')
+            ->select('customer_id', 'closing_balance')
+            ->where('created_at', '<=', $endDT)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->unique('customer_id')
+            ->keyBy('customer_id');
+
+        $custReceivable = 0;
+        foreach ($customersList as $cust) {
+            $bal = 0;
+            if (isset($latestCustomerLedgers[$cust->id])) {
+                $bal = (float)$latestCustomerLedgers[$cust->id]->closing_balance;
+            } else {
+                $init = (float)($cust->opening_balance ?? 0);
+                $cSales = (float)DB::table('sales')->where('customer', $cust->id)->where('created_at', '<=', $endDT)->sum(DB::raw('COALESCE(total_net, total_bill_amount)'));
+                $cPay = (float)DB::table('customer_payments')->where('customer_id', $cust->id)->where('payment_date', '<=', $asOfDate)->sum('amount');
+                $bal = $init + $cSales - $cPay;
+            }
+            if ($bal > 0) {
+                $custReceivable += $bal;
+            }
+        }
 
         $distReceivable = (float) DB::table('distributors')
             ->where('status', 'active')
@@ -305,7 +536,33 @@ class FinancialCommandCenterController extends Controller
         $totalAssets   = $currentAssets + $totalFixedAssets;
 
         // 6. LIABILITIES
-        $totalPayables = (float) DB::table('vendors')->sum('opening_balance');
+        $vendorsList = DB::table('vendors')->select('id', 'opening_balance')->get();
+        $latestVendorLedgers = DB::table('vendor_ledgers')
+            ->select('vendor_id', 'closing_balance')
+            ->where('created_at', '<=', $endDT)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->unique('vendor_id')
+            ->keyBy('vendor_id');
+
+        $totalPayables = 0;
+        foreach ($vendorsList as $vnd) {
+            $bal = 0;
+            if (isset($latestVendorLedgers[$vnd->id])) {
+                $bal = (float)$latestVendorLedgers[$vnd->id]->closing_balance;
+            } else {
+                $init = (float)($vnd->opening_balance ?? 0);
+                $vPur = (float)DB::table('purchases')->where('vendor_id', $vnd->id)->where('purchase_date', '<=', $asOfDate)->sum('net_amount');
+                $vRmPur = (float)DB::table('raw_material_purchases')->where('vendor_id', $vnd->id)->where('date', '<=', $asOfDate)->sum('total_cost');
+                $vRet = (float)DB::table('purchase_returns')->where('vendor_id', $vnd->id)->where('return_date', '<=', $asOfDate)->sum('net_amount');
+                $vRmRet = (float)DB::table('raw_material_purchase_returns')->where('vendor_id', $vnd->id)->where('return_date', '<=', $asOfDate)->sum('total_cost');
+                $vPay = (float)DB::table('vendor_payments')->where('vendor_id', $vnd->id)->where('payment_date', '<=', $asOfDate)->sum('amount');
+                $bal = $init + $vPur + $vRmPur - $vRet - $vRmRet - $vPay;
+            }
+            if ($bal > 0) {
+                $totalPayables += $bal;
+            }
+        }
 
         $claimsPayable = (float) DB::table('distributor_claims')
             ->where('status', 'pending')
@@ -315,6 +572,9 @@ class FinancialCommandCenterController extends Controller
 
         // 7. NET WORTH = TOTAL ASSETS - TOTAL LIABILITIES
         $netWorth = $totalAssets - $totalLiabilities;
+
+        $netInvestedCapital = $cumulativeEquity['net_invested_capital'] ?? 0;
+        $retainedEarnings = $netWorth - $netInvestedCapital;
 
         return [
             'cash_and_bank'      => $cashAndBank,
@@ -341,6 +601,10 @@ class FinancialCommandCenterController extends Controller
             ],
             'total_liabilities'  => $totalLiabilities,
             'net_worth'          => $netWorth,
+            'equity_breakdown'   => [
+                'net_invested_capital' => $netInvestedCapital,
+                'retained_earnings'    => $retainedEarnings,
+            ],
         ];
     }
 

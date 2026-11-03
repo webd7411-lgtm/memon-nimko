@@ -723,24 +723,77 @@ class DistributorPortalController extends Controller
             ->orderBy('shop_name')
             ->get();
 
+        // Get order bookers registered under this distributor
+        $orderBookers = User::where('usertype', 'order_booker')
+            ->where('distributor_id', $distributor->id)
+            ->orderBy('name')
+            ->get();
+
         // Get products available in distributor's inventory
-        $stocks = DistributorStock::with(['product.unit', 'product.category_relation', 'variant'])
+        $stocks = DistributorStock::with(['product.unit', 'product.brand', 'product.category_relation', 'variant'])
             ->where('distributor_id', $distributor->id)
             ->where('qty', '>', 0)
             ->get();
 
+        // Build in-memory products catalog identical to company sale screen
+        $productsCatalog = [];
+        foreach ($stocks as $stk) {
+            $p = $stk->product;
+            if (!$p) continue;
+
+            $v = $stk->variant;
+            $price = (float)($v && $v->price > 0 ? $v->price : ($p->price ?? 0));
+            $sizeLabel = $v ? ($v->size_label ?: $v->variant_name ?: '-') : '-';
+            $fullName = $p->item_name . ($sizeLabel !== '-' ? ' (' . $sizeLabel . ')' : '');
+
+            $productsCatalog[] = [
+                'id'             => $p->id,
+                'product_id'     => $p->id,
+                'variant_id'     => $v ? $v->id : null,
+                'item_name'      => $fullName,
+                'base_name'      => $p->item_name,
+                'size'           => $sizeLabel,
+                'color'          => $p->color ?: '-',
+                'unit_type'      => $p->unit_type ?: 'piece',
+                'item_code'      => $p->item_code,
+                'barcode'        => ($v ? $v->barcode_path : null) ?: $p->barcode_path ?: $p->item_code,
+                'brand'          => $p->brand?->name,
+                'price'          => $price,
+                'original_price' => $price,
+                'stock'          => (float)$stk->qty,
+                'category_id'    => $p->category_id,
+            ];
+        }
+
         // Extract categories for quick panel
         $categoryIds = $stocks->pluck('product.category_id')->filter()->unique();
-        $categories = \App\Models\Category::whereIn('id', $categoryIds)->get();
+        $categories = \App\Models\Category::with(['products' => function($q) use ($distributor) {
+            $q->with(['brand', 'variants'])
+              ->whereHas('distributorStocks', function($sq) use ($distributor) {
+                  $sq->where('distributor_id', $distributor->id)->where('qty', '>', 0);
+              });
+        }])->whereIn('id', $categoryIds)->orderBy('name')->get();
 
         $invoiceNo = DistributorSale::generateInvoiceNo();
+        
         // ONLY load distributor's own active accounts (Super Admin accounts are NEVER loaded)
         $bankAccounts = \App\Models\Account::where('status', 1)
             ->where('distributor_id', $distributor->id)
+            ->orderBy('title')
             ->get();
         $accountHeads = \App\Models\AccountHead::where('status', 1)->get();
 
-        return view('distributor_panel.sales.create', compact('distributor', 'customers', 'stocks', 'invoiceNo', 'categories', 'bankAccounts', 'accountHeads'));
+        return view('distributor_panel.sales.create', compact(
+            'distributor',
+            'customers',
+            'orderBookers',
+            'stocks',
+            'productsCatalog',
+            'invoiceNo',
+            'categories',
+            'bankAccounts',
+            'accountHeads'
+        ));
     }
 
     /**
@@ -758,6 +811,8 @@ class DistributorPortalController extends Controller
             'qty.*'                   => 'nullable|numeric|min:0',
             'unit_price'              => 'nullable|array',
             'price'                   => 'nullable|array',
+            'trade_offer'             => 'nullable|array',
+            'trade_offer.*'           => 'nullable|numeric|min:0',
             'discount'                => 'nullable|numeric|min:0',
             'paid_amount'             => 'nullable|numeric|min:0',
             'payment_type'            => 'nullable|in:cash,credit,partial',
@@ -774,10 +829,13 @@ class DistributorPortalController extends Controller
             foreach ($request->product_id as $index => $productId) {
                 if (empty($productId)) continue;
                 $qty = (float) ($request->qty[$index] ?? 0);
+                $tradeOffer = (float) ($request->trade_offer[$index] ?? 0);
                 $price = (float) ($request->unit_price[$index] ?? $request->price[$index] ?? 0);
                 $variantId = $request->variant_id[$index] ?? null;
 
-                if ($qty <= 0) continue;
+                if ($qty <= 0 && $tradeOffer <= 0) continue;
+
+                $totalPhysicalQty = $qty + $tradeOffer;
 
                 // Check distributor stock
                 $distStock = DistributorStock::where('distributor_id', $distributor->id)
@@ -785,10 +843,11 @@ class DistributorPortalController extends Controller
                     ->when($variantId, fn($q) => $q->where('variant_id', $variantId))
                     ->first();
 
-                if (!$distStock || (float)$distStock->qty < $qty) {
+                if (!$distStock || (float)$distStock->qty < $totalPhysicalQty) {
                     $prodName = Product::find($productId)->item_name ?? 'Item';
                     $avail = $distStock ? (float)$distStock->qty : 0;
-                    throw new \Exception("Insufficient van stock for '{$prodName}'. Available: {$avail}, Requested: {$qty}");
+                    $reqMsg = $tradeOffer > 0 ? "{$qty} + {$tradeOffer} T.O = {$totalPhysicalQty}" : "{$qty}";
+                    throw new \Exception("Insufficient van stock for '{$prodName}'. Available: {$avail}, Requested: {$reqMsg}");
                 }
 
                 $itemSubtotal = $qty * $price;
@@ -799,15 +858,17 @@ class DistributorPortalController extends Controller
                 $discVal = (float) ($request->disc_val[$index] ?? 0);
 
                 $itemsData[] = [
-                    'product_id'    => $productId,
-                    'variant_id'    => $variantId,
-                    'qty'           => $qty,
-                    'unit_price'    => $price,
-                    'subtotal'      => $itemSubtotal,
-                    'discount'      => $itemDisc,
-                    'discount_type' => $discType,
-                    'discount_val'  => $discVal,
-                    'dist_stock'    => $distStock,
+                    'product_id'         => $productId,
+                    'variant_id'         => $variantId,
+                    'qty'                => $qty,
+                    'trade_offer'        => $tradeOffer,
+                    'total_physical_qty' => $totalPhysicalQty,
+                    'unit_price'         => $price,
+                    'subtotal'           => $itemSubtotal,
+                    'discount'           => $itemDisc,
+                    'discount_type'      => $discType,
+                    'discount_val'       => $discVal,
+                    'dist_stock'         => $distStock,
                 ];
             }
 
@@ -878,6 +939,7 @@ class DistributorPortalController extends Controller
                     'product_id'          => $row['product_id'],
                     'variant_id'          => $row['variant_id'],
                     'qty'                 => $row['qty'],
+                    'trade_offer'         => $row['trade_offer'] ?? 0.00,
                     'unit_price'          => $row['unit_price'],
                     'subtotal'            => $row['subtotal'],
                     'discount'            => $row['discount'] ?? 0.00,
@@ -886,7 +948,8 @@ class DistributorPortalController extends Controller
                 ]);
 
                 $distStock = $row['dist_stock'];
-                $distStock->qty = max(0, (float)$distStock->qty - $row['qty']);
+                $deductQty = $row['total_physical_qty'] ?? ($row['qty'] + ($row['trade_offer'] ?? 0));
+                $distStock->qty = max(0, (float)$distStock->qty - $deductQty);
                 $distStock->save();
             }
 
@@ -923,9 +986,29 @@ class DistributorPortalController extends Controller
             $customer->update(['current_balance' => $newCustBalance]);
 
             DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success'     => true,
+                    'message'     => "Sale invoice #{$sale->invoice_no} created successfully!",
+                    'sale_id'     => $sale->id,
+                    'invoice_no'  => $sale->invoice_no,
+                    'receipt_url' => route('distributor.sales.receipt', $sale->id),
+                    'invoice_url' => route('distributor.sales.receipt', $sale->id),
+                ]);
+            }
+
             return redirect()->route('distributor.sales.receipt', $sale->id)->with('success', "Sale invoice #{$sale->invoice_no} created successfully!");
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+
             return back()->withInput()->with('error', $e->getMessage());
         }
     }
@@ -1832,6 +1915,7 @@ class DistributorPortalController extends Controller
 
         $request->validate([
             'distributor_customer_id' => 'required|exists:distributor_customers,id',
+            'payment_type'            => 'nullable|in:cash,credit',
             'product_id'              => 'required|array|min:1',
             'qty'                     => 'required|array|min:1',
             'unit_price'              => 'required|array|min:1',
@@ -1887,6 +1971,7 @@ class DistributorPortalController extends Controller
                 'booker_user_id'          => Auth::id(),
                 'distributor_customer_id' => $customer->id,
                 'booking_date'            => $request->booking_date ?? now()->toDateString(),
+                'payment_type'            => $request->payment_type ?? 'cash',
                 'total_items'             => count($itemsData),
                 'total_qty'               => $totalQty,
                 'subtotal'                => $subtotal,
@@ -1946,6 +2031,10 @@ class DistributorPortalController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->payment_type && $request->payment_type !== 'all') {
+            $query->where('payment_type', $request->payment_type);
+        }
+
         if ($request->date) {
             $query->whereDate('booking_date', $request->date);
         }
@@ -1989,8 +2078,14 @@ class DistributorPortalController extends Controller
             $query->where('distributor_customer_id', $request->customer_id);
         }
 
+        if ($request->payment_type && $request->payment_type !== 'all') {
+            $query->where('payment_type', $request->payment_type);
+        }
+
         if ($request->start_date && $request->end_date) {
             $query->whereBetween('booking_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->start_date) {
+            $query->whereDate('booking_date', $request->start_date);
         }
 
         $bookings = $query->latest('id')->paginate(15);

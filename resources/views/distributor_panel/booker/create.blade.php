@@ -171,7 +171,7 @@
             </div>
 
             <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-8">
+                <div class="col-12 col-md-5">
                     <label class="form-label fw-bold text-secondary small mb-1">
                         Retail Shop / Customer <span class="text-danger">*</span>
                     </label>
@@ -191,12 +191,22 @@
                     </select>
                 </div>
 
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label fw-bold text-secondary small mb-1">
+                        <i class="fas fa-hand-holding-dollar text-success me-1"></i> Order Type <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select form-select-sm h-auto py-2 fw-bold" id="orderPaymentType" name="payment_type" required>
+                        <option value="cash" selected>Order Cash</option>
+                        <option value="credit">Order Credit</option>
+                    </select>
+                </div>
+
+                <div class="col-6 col-sm-3 col-md-2">
                     <label class="form-label fw-bold text-secondary small mb-1">Booking Date</label>
                     <input type="date" class="form-control form-control-sm h-auto py-2 fw-bold" name="booking_date" value="{{ date('Y-m-d') }}" required>
                 </div>
 
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-sm-3 col-md-2">
                     <label class="form-label fw-bold text-secondary small mb-1">Booker</label>
                     <input type="text" class="form-control form-control-sm h-auto py-2 bg-light fw-bold text-muted" value="{{ Auth::user()->name ?? 'Booker' }}" readonly>
                 </div>
@@ -357,6 +367,13 @@
                         <strong id="lblSubtotal">Rs 0.00</strong>
                     </div>
 
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <span class="text-secondary">Order Type:</span>
+                        <span id="lblSummaryOrderType" class="badge bg-success text-white px-2.5 py-1 fw-bold font-monospace">
+                            <i class="fas fa-money-bill-wave me-1"></i> Order Cash
+                        </span>
+                    </div>
+
                     <div class="py-2 border-bottom">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -436,6 +453,22 @@ $(document).ready(function() {
         });
     }
     initProductSelect2($('.select2-product'));
+
+    // Dynamic Order Type change feedback
+    $('#orderPaymentType').on('change', function() {
+        const val = $(this).val();
+        if (val === 'credit') {
+            $('#lblSummaryOrderType')
+                .removeClass('bg-success')
+                .addClass('bg-primary')
+                .html('<i class="fas fa-file-invoice-dollar me-1"></i> Order Credit');
+        } else {
+            $('#lblSummaryOrderType')
+                .removeClass('bg-primary')
+                .addClass('bg-success')
+                .html('<i class="fas fa-money-bill-wave me-1"></i> Order Cash');
+        }
+    });
 
     let currentShopApprovedDiscountPct = 0;
 

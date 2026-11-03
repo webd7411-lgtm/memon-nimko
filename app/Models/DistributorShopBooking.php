@@ -47,4 +47,14 @@ class DistributorShopBooking extends Model
         $num = $last ? ($last->id + 1) : 1;
         return 'BK-' . str_pad($num, 4, '0', STR_PAD_LEFT);
     }
+
+    public function getOrderTypeAttribute()
+    {
+        return $this->payment_type ?: 'cash';
+    }
+
+    public function getOrderTypeLabelAttribute()
+    {
+        return ($this->payment_type === 'credit') ? 'Order Credit' : 'Order Cash';
+    }
 }

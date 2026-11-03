@@ -140,14 +140,18 @@
     </div>
 
     <!-- Customer Details -->
-    <div class="mb-2" style="font-size: 0.85rem;">
-        <div><strong>Customer:</strong> {{ $sale->customer->shop_name }}</div>
-        @if($sale->customer->owner_name)
+    <div class="mb-2" style="font-size: 0.85rem; line-height: 1.45;">
+        <div><strong>Customer:</strong> {{ $sale->customer->shop_name ?? ($sale->customer->name ?? 'Walk-in') }}</div>
+        @if(!empty($sale->customer?->owner_name))
         <div><strong>Proprietor:</strong> {{ $sale->customer->owner_name }}</div>
         @endif
-        @if($sale->customer->phone)
-        <div><strong>Phone:</strong> {{ $sale->customer->phone }}</div>
-        @endif
+        @php
+            $custPhone = $sale->customer?->phone ?? ($sale->customer?->mobile ?? null);
+            $custAddressParts = array_filter([$sale->customer?->address ?? null, $sale->customer?->area ?? null]);
+            $custAddress = implode(', ', $custAddressParts);
+        @endphp
+        <div><strong>Mobile:</strong> {{ $custPhone ?: '-' }}</div>
+        <div><strong>Address:</strong> {{ $custAddress ?: '-' }}</div>
         @if($bookerDisplayName)
         <div><strong>Order Booker:</strong> {{ $bookerDisplayName }}</div>
         @endif
@@ -176,7 +180,12 @@
                     <div style="font-size: 0.72rem; color: #555;">{{ $item->variant->size_label ?: $item->variant->variant_name }}</div>
                     @endif
                 </td>
-                <td class="text-center">{{ (float)$item->qty }}</td>
+                <td class="text-center">
+                    {{ (float)$item->qty }}
+                    @if(!empty($item->trade_offer) && (float)$item->trade_offer > 0)
+                        <div style="font-size: 0.72rem; color: #16a34a; font-weight: 700;">+{{ (float)$item->trade_offer }} Free</div>
+                    @endif
+                </td>
                 <td class="text-center">
                     @if($itemDisc > 0)
                         @if($item->discount_type === 'percent' && (float)($item->discount_val ?? 0) > 0)
@@ -223,7 +232,7 @@
         @endif
         <div class="d-flex justify-content-between py-1 text-muted small border-top mt-1">
             <span>Customer Current Balance:</span>
-            <span class="fw-bold">Rs {{ number_format($sale->customer->current_balance, 2) }}</span>
+            <span class="fw-bold">Rs {{ number_format($sale->customer?->current_balance ?? 0, 2) }}</span>
         </div>
     </div>
 

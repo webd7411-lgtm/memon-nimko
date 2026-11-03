@@ -118,7 +118,16 @@
             <div><b>Original Inv:</b> {{ $return->sale->invoice_no }}</div>
             @endif
             <div><b>Customer:</b> {{ $return->customer->shop_name ?? 'N/A' }}</div>
-            <div><b>Owner/Phone:</b> {{ $return->customer->owner_name ?? '' }} ({{ $return->customer->phone ?? '' }})</div>
+            @if(!empty($return->customer?->owner_name))
+            <div><b>Proprietor:</b> {{ $return->customer->owner_name }}</div>
+            @endif
+            @php
+                $retCustPhone = $return->customer?->phone ?? ($return->customer?->mobile ?? null);
+                $retCustAddrParts = array_filter([$return->customer?->address ?? null, $return->customer?->area ?? null]);
+                $retCustAddress = implode(', ', $retCustAddrParts);
+            @endphp
+            <div><b>Mobile:</b> {{ $retCustPhone ?: '-' }}</div>
+            <div><b>Address:</b> {{ $retCustAddress ?: '-' }}</div>
         </div>
 
         <table class="receipt-table">
