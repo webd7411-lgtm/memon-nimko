@@ -54,7 +54,7 @@ class ReportingController extends Controller
         }
 
         // 1. Get products and their variants
-        $pQuery = Product::with(['variants', 'unit'])->orderBy('item_name');
+        $pQuery = Product::with(['variants', 'unit', 'bom.rawMaterial', 'bom.ingredientProduct'])->orderBy('item_name');
 
         $productIdsFilter = [];
         if (is_array($productIdsArr)) {
@@ -75,6 +75,83 @@ class ReportingController extends Controller
 
         $products = $pQuery->get();
         $productIds = $products->pluck('id')->toArray();
+
+        // Latest purchase prices for products (to use as cost when purchased rather than produced)
+        $latestProductPurchasePrices = DB::table('purchase_items')
+            ->whereIn('product_id', $productIds)
+            ->where('price', '>', 0)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->groupBy(function($item) {
+                return $item->product_id . '_' . ($item->variant_id ?? 0);
+            })
+            ->map(function($group) {
+                return (float)$group->first()->price;
+            })
+            ->toArray();
+
+        // Calculate Cost of Goods Manufactured (COGM) from Raw Materials (BOM) for each product & variant
+        $bomProductCostMap = [];
+        foreach ($products as $pObj) {
+            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
+            $pBoms = $pObj->bom ?? collect();
+
+            if ($pBoms->isNotEmpty()) {
+                // Group by variant_id (null for base/all, or specific variant_id)
+                $baseBom = $pBoms->whereNull('variant_id');
+
+                // Compute base product BOM cost (per 1 unit, or per 1 KG if unit_type is kg)
+                $baseCost = 0;
+                foreach ($baseBom as $bItem) {
+                    if ($bItem->rawMaterial) {
+                        $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
+                        $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
+                        if ($factor <= 0) $factor = 1;
+                        $baseCost += ((float)$bItem->qty * ($rmCost / $factor));
+                    } elseif ($bItem->ingredientProduct) {
+                        $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
+                        $baseCost += ((float)$bItem->qty * $ingCost);
+                    }
+                }
+
+                if ($baseCost > 0) {
+                    $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
+                }
+
+                // Check variants
+                foreach ($pObj->variants as $vObj) {
+                    $vBom = $pBoms->where('variant_id', $vObj->id);
+                    if ($vBom->isNotEmpty()) {
+                        $vCost = 0;
+                        foreach ($vBom as $bItem) {
+                            if ($bItem->rawMaterial) {
+                                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
+                                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
+                                if ($factor <= 0) $factor = 1;
+                                $vCost += ((float)$bItem->qty * ($rmCost / $factor));
+                            } elseif ($bItem->ingredientProduct) {
+                                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
+                                $vCost += ((float)$bItem->qty * $ingCost);
+                            }
+                        }
+                        if ($vCost > 0) {
+                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
+                        }
+                    } elseif ($baseCost > 0) {
+                        // Inherit from base scaled by size value if KG product
+                        if ($isObjKg) {
+                            $sizeVal = (float)$vObj->size_value;
+                            if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
+                                $sizeVal /= 1000;
+                            }
+                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
+                        } else {
+                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
+                        }
+                    }
+                }
+            }
+        }
 
         // 2. Bulk queries grouped by product_id AND variant_id with DATE filters
         $purchasesQuery = DB::table('purchase_items')
@@ -876,7 +953,16 @@ class ReportingController extends Controller
                         'balance'            => $closingStock,
                         'unit'               => $p->unit->name ?? ($is_kg ? 'KG' : 'PC'),
                     ];
-                    $valPrice = (float)($v->wholesale_price ?: $v->price ?: $p->wholesale_price ?: $p->price ?: 0);
+                    // Valuation price based on raw material cost (BOM), latest purchase price, or variant cost/wholesale price
+                    $vKey = $p->id . '_' . $v->id;
+                    $valPrice = (float)($bomProductCostMap[$vKey] ?? 0);
+                    if ($valPrice <= 0) {
+                        $valPrice = (float)($latestProductPurchasePrices[$vKey] ?? $latestProductPurchasePrices[$p->id . '_0'] ?? 0);
+                    }
+                    if ($valPrice <= 0) {
+                        $valPrice = (float)($v->cost_price ?: $v->wholesale_price ?: $v->price ?: $p->wholesale_price ?: $p->price ?: 0);
+                    }
+
                     $grandTotalValue += $closingStock * $valPrice;
                 }
             } else {
@@ -1034,20 +1120,35 @@ class ReportingController extends Controller
                 ];
                 
                 $valPrice = 0;
-                if ($is_kg) {
-                    $defaultVar = $p->variants->where('is_default', 1)->first() ?? $p->variants->first();
-                    if ($defaultVar && (float)$defaultVar->price > 0) {
-                        $sVal = (float)$defaultVar->size_value;
-                        $sUnit = strtolower(trim($defaultVar->size_unit ?? 'kg'));
-                        if (in_array($sUnit, ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
-                            $sVal = $sVal / 1000;
+                // 1. Raw material BOM cost (production cost from recipe)
+                $baseKey = $p->id . '_0';
+                if (isset($bomProductCostMap[$baseKey]) && $bomProductCostMap[$baseKey] > 0) {
+                    $valPrice = (float)$bomProductCostMap[$baseKey];
+                }
+
+                // 2. Fallback to latest purchase price
+                if ($valPrice <= 0 && isset($latestProductPurchasePrices[$baseKey]) && $latestProductPurchasePrices[$baseKey] > 0) {
+                    $valPrice = (float)$latestProductPurchasePrices[$baseKey];
+                }
+
+                // 3. Fallback to variant cost price or sale/wholesale price
+                if ($valPrice <= 0) {
+                    if ($is_kg) {
+                        $defaultVar = $p->variants->where('is_default', 1)->first() ?? $p->variants->first();
+                        if ($defaultVar) {
+                            $sVal = (float)$defaultVar->size_value;
+                            $sUnit = strtolower(trim($defaultVar->size_unit ?? 'kg'));
+                            if (in_array($sUnit, ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
+                                $sVal = $sVal / 1000;
+                            }
+                            $varCost = (float)($defaultVar->cost_price ?: $defaultVar->wholesale_price ?: $defaultVar->price ?: 0);
+                            $valPrice = ($sVal > 0) ? ($varCost / $sVal) : $varCost;
+                        } else {
+                            $valPrice = (float)($p->wholesale_price ?: $p->price ?: 0);
                         }
-                        $valPrice = ($sVal > 0) ? ((float)$defaultVar->price / $sVal) : (float)$defaultVar->price;
                     } else {
-                        $valPrice = (float)($p->price ?: $p->wholesale_price ?: 0);
+                        $valPrice = (float)($p->wholesale_price ?: $p->price ?: 0);
                     }
-                } else {
-                    $valPrice = (float)($p->price ?: $p->wholesale_price ?: 0);
                 }
 
                 $valuationQty = $is_kg ? ($closingStock / 1000) : $closingStock;
