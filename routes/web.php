@@ -368,6 +368,10 @@ Route::middleware('auth')->group(function () {
     Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->name('report.profit_loss')->middleware('permission:Sale Report|Profit Loss Report');
     Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch')->middleware('permission:Sale Report|Profit Loss Report');
 
+    // Executive Financial Command Center (One-Window Net Worth & P&L)
+    Route::get('report/financial-command-center', [App\Http\Controllers\FinancialCommandCenterController::class, 'index'])->name('report.financial_command_center')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports|Dashboard');
+    Route::get('report/financial-command-center/fetch', [App\Http\Controllers\FinancialCommandCenterController::class, 'fetchSnapshot'])->name('report.financial_command_center.fetch')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports|Dashboard');
+
     // Balance Sheet Report Routes
     Route::get('report/balance-sheet', [ReportingController::class, 'balance_sheet_report'])->name('report.balance_sheet')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');
     Route::post('report/balance-sheet/fetch', [ReportingController::class, 'fetchBalanceSheetReport'])->name('report.balance_sheet.fetch')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');

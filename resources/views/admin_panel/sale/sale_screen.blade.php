@@ -2711,6 +2711,18 @@ $(document).ready(function() {
                     $('#btnReceiptPrint').attr('href', resp.receipt_url || '#');
                     $('#btnInvoicePrint').attr('href', resp.invoice_url || '#');
 
+                    if (resp.is_distributor) {
+                        $('#btnReceiptPrint').hide();
+                        $('#btnInvoicePrint').removeClass('btn-outline-primary').addClass('btn-primary py-2.5')
+                            .html('<i class="fas fa-print me-1"></i> Print A4 Distributor Invoice');
+                        // Auto-open A4 invoice for distributor
+                        window.open(resp.invoice_url, '_blank');
+                    } else {
+                        $('#btnReceiptPrint').show();
+                        $('#btnInvoicePrint').removeClass('btn-primary py-2.5').addClass('btn-outline-primary py-2')
+                            .html('<i class="fas fa-print me-1"></i> Print A4 Invoice');
+                    }
+
                     $('#saleSuccessModal').modal('show');
                 } else {
                     Swal.fire({ icon: 'error', title: 'Sale Failed', text: resp.message || 'Error occurred.' });

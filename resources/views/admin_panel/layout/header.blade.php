@@ -697,6 +697,8 @@
                                 <li><a href="{{ route('report.sale_closing') }}"><i class="fas fa-file-invoice-dollar"></i> Daily Sale Closing</a></li>
                                 @endcan
 
+                                <li><a href="{{ route('report.financial_command_center') }}" class="fw-bold text-teal" style="color: #0f766e;"><i class="fas fa-tachometer-alt" style="color: #0f766e;"></i> Financial Command Center (360°)</a></li>
+
                                 @can('Profit Loss Report')
                                 <li><a href="{{ route('report.profit_loss') }}"><i class="fas fa-balance-scale"></i> Profit & Loss Report</a></li>
                                 @endcan

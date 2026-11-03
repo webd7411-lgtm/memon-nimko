@@ -232,12 +232,22 @@ class SaleController extends Controller
                 $amountHtml .= '</div>';
 
                 // Professional Action Buttons with "View More" (Details) Modal Button
+                $rawCust = (string)($sale->customer ?? '');
+                $isDist = str_starts_with($rawCust, 'dist_')
+                    || str_starts_with($rawCust, 'booker_')
+                    || ($sale->customer_relation && strtolower($sale->customer_relation->customer_type ?? '') === 'distributor');
+
+                $slipUrl = $isDist ? route('sales.invoice', $sale->id) : route('sales.recepit', $sale->id);
+                $slipTitle = $isDist ? 'Distributor Invoice (A4)' : 'Thermal Print Bill / Slip';
+                $slipLabel = $isDist ? 'A4' : 'Slip';
+                $slipIcon = $isDist ? 'bi-file-earmark-text-fill' : 'bi-printer-fill';
+
                 $actions = '<div class="sl-actions-wrap">
                     <button type="button" class="sl-act sl-act-view btn-view-sale" data-id="'.$sale->id.'" title="View Invoice Details">
                         <i class="bi bi-eye-fill"></i><span>Details</span>
                     </button>
-                    <a href="'.route('sales.recepit', $sale->id).'" class="sl-act sl-act-print" target="_blank" title="Thermal Print Bill / Slip">
-                        <i class="bi bi-printer-fill"></i><span>Slip</span>
+                    <a href="'.$slipUrl.'" class="sl-act '.($isDist ? 'sl-act-inv' : 'sl-act-print').'" target="_blank" title="'.$slipTitle.'">
+                        <i class="bi '.$slipIcon.'"></i><span>'.$slipLabel.'</span>
                     </a>
                     <a href="'.route('sales.invoice', $sale->id).'" class="sl-act sl-act-inv" target="_blank" title="Sale Invoice (A4)">
                         <i class="bi bi-file-earmark-text-fill"></i><span>A4</span>
@@ -1937,15 +1947,26 @@ class SaleController extends Controller
                 if ($action === 'sale' && strtolower($model->order_type ?? '') === 'takeaway') {
                     $printMode = 'token_and_invoice';
                 }
+                $rawCust = (string)($model->customer ?? '');
+                $isDistributor = str_starts_with($rawCust, 'dist_')
+                    || str_starts_with($rawCust, 'booker_')
+                    || ($model->customer_relation && strtolower($model->customer_relation->customer_type ?? '') === 'distributor');
+
+                $invoiceUrl = route('sales.invoice', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1&mode=' . $printMode;
+                $receiptUrl = $isDistributor 
+                    ? $invoiceUrl 
+                    : route('sales.recepit', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1';
+
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json([
-                        'success'     => true,
-                        'message'     => $action === 'save_token' ? 'Order Saved.' : 'Sale completed successfully.',
-                        'sale_id'     => $model->id,
-                        'invoice_no'  => $model->invoice_no,
-                        'invoice_url' => route('sales.invoice', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1&mode=' . $printMode,
-                        'receipt_url' => route('sales.recepit', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1',
-                        'redirect_to' => $returnTo,
+                        'success'        => true,
+                        'message'        => $action === 'save_token' ? 'Order Saved.' : 'Sale completed successfully.',
+                        'sale_id'        => $model->id,
+                        'invoice_no'     => $model->invoice_no,
+                        'invoice_url'    => $invoiceUrl,
+                        'receipt_url'    => $receiptUrl,
+                        'is_distributor' => $isDistributor,
+                        'redirect_to'    => $returnTo,
                     ]);
                 }
                 $invoiceUrl = route('sales.invoice', $model->id) . '?return_to=' . urlencode($returnTo) . '&autoprint=1&mode=' . $printMode;
@@ -3212,11 +3233,17 @@ class SaleController extends Controller
 
         $latestReturn = $returns->first();
 
+        $rawCust = (string)($sale->customer ?? '');
+        $isDistributor = str_starts_with($rawCust, 'dist_')
+            || str_starts_with($rawCust, 'booker_')
+            || ($sale->customer_relation && strtolower($sale->customer_relation->customer_type ?? '') === 'distributor');
+
         return response()->json([
             'success' => true,
             'sale' => [
                 'id' => $sale->id,
                 'invoice_no' => $sale->invoice_no,
+                'is_distributor' => $isDistributor,
                 'date' => \Carbon\Carbon::parse($sale->created_at)->format('d M Y, h:i A'),
                 'cashier' => $sale->user ? $sale->user->name : 'N/A',
                 'order_type' => $sale->order_type ?: 'Walk-in',
@@ -3254,7 +3281,7 @@ class SaleController extends Controller
                 ],
                 'items' => $items,
                 'urls' => [
-                    'receipt' => route('sales.recepit', $sale->id),
+                    'receipt' => $isDistributor ? route('sales.invoice', $sale->id) : route('sales.recepit', $sale->id),
                     'invoice' => route('sales.invoice', $sale->id),
                     'dc' => route('sales.dc', $sale->id),
                     'edit' => route('sales.edit', $sale->id),
@@ -3400,6 +3427,35 @@ class SaleController extends Controller
             ?? (auth()->check() && auth()->user()->branch_id ? \App\Models\Branch::find(auth()->user()->branch_id) : null)
             ?? \App\Models\Branch::find(active_branch_id())
             ?? \App\Models\Branch::first();
+
+        $rawCust = (string)($sale->customer ?? '');
+        $isDistributor = str_starts_with($rawCust, 'dist_')
+            || str_starts_with($rawCust, 'booker_')
+            || ($sale->customer_relation && strtolower($sale->customer_relation->customer_type ?? '') === 'distributor');
+
+        $distributor = null;
+        if (str_starts_with($rawCust, 'dist_')) {
+            $distId = (int) str_replace('dist_', '', $rawCust);
+            $distributor = \App\Models\Distributor::find($distId);
+        } elseif (str_starts_with($rawCust, 'booker_')) {
+            $distId = (int) str_replace('booker_', '', $rawCust);
+            $distributor = \App\Models\Distributor::find($distId);
+        } elseif ($sale->customer_relation && strtolower($sale->customer_relation->customer_type ?? '') === 'distributor') {
+            $distributor = \App\Models\Distributor::where('name', $sale->customer_relation->customer_name)->first();
+        }
+
+        // Distributor invoices (or explicit A4 format requests) render professional A4 Invoice
+        if ($isDistributor || request('format') === 'a4' || request('a4') == 1) {
+            return view('admin_panel.sale.sale_invoice_a4', [
+                'sale'          => $sale,
+                'bill'          => $bill,
+                'saleItems'     => $items,
+                'saleReturn'    => $saleReturn,
+                'distributor'   => $distributor,
+                'isDistributor' => $isDistributor,
+                'receiptBranch' => $receiptBranch,
+            ]);
+        }
 
         return view('admin_panel.sale.saleinvoice', [
             'sale'          => $sale,
@@ -3979,15 +4035,26 @@ class SaleController extends Controller
 
             DB::commit();
 
+            $rawCust = (string)($sale->customer ?? '');
+            $isDistributor = str_starts_with($rawCust, 'dist_')
+                || str_starts_with($rawCust, 'booker_')
+                || ($sale->customer_relation && strtolower($sale->customer_relation->customer_type ?? '') === 'distributor');
+
+            $invoiceUrl = route('sales.invoice', $sale->id) . '?return_to=' . urlencode(route('sale.screen')) . '&autoprint=1&mode=invoice';
+            $receiptUrl = $isDistributor 
+                ? $invoiceUrl 
+                : route('sales.recepit', $sale->id) . '?return_to=' . urlencode(route('sale.screen')) . '&autoprint=1';
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
-                    'success'     => true,
-                    'message'     => 'Sale [' . $sale->invoice_no . '] updated successfully.',
-                    'sale_id'     => $sale->id,
-                    'invoice_no'  => $sale->invoice_no,
-                    'invoice_url' => route('sales.invoice', $sale->id) . '?return_to=' . urlencode(route('sale.screen')) . '&autoprint=1&mode=invoice',
-                    'receipt_url' => route('sales.recepit', $sale->id) . '?return_to=' . urlencode(route('sale.screen')) . '&autoprint=1',
-                    'redirect_to' => route('sale.screen'),
+                    'success'        => true,
+                    'message'        => 'Sale [' . $sale->invoice_no . '] updated successfully.',
+                    'sale_id'        => $sale->id,
+                    'invoice_no'     => $sale->invoice_no,
+                    'invoice_url'    => $invoiceUrl,
+                    'receipt_url'    => $receiptUrl,
+                    'is_distributor' => $isDistributor,
+                    'redirect_to'    => route('sale.screen'),
                 ]);
             }
 
@@ -4057,6 +4124,16 @@ class SaleController extends Controller
     public function salerecepit($id)
     {
         $sale = Sale::with(['customer_relation', 'branch', 'user'])->findOrFail($id);
+
+        $rawCust = (string)($sale->customer ?? '');
+        $isDistributor = str_starts_with($rawCust, 'dist_')
+            || str_starts_with($rawCust, 'booker_')
+            || ($sale->customer_relation && strtolower($sale->customer_relation->customer_type ?? '') === 'distributor');
+
+        // Distributor invoices are always printed in A4 format
+        if ($isDistributor) {
+            return redirect()->route('sales.invoice', array_merge(['id' => $sale->id], request()->query()));
+        }
 
         // Decode sale pivot or comma fields
         $products = explode(',', $sale->product);
