@@ -92,10 +92,13 @@
 <body>
 
 <div class="container no-print py-3 text-center">
-    <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 me-2">
-        <i class="fas fa-print me-1"></i> Print Receipt
+    <button onclick="window.print()" class="btn btn-dark rounded-pill px-3 me-2">
+        <i class="fas fa-receipt me-1"></i> Thermal Receipt
     </button>
-    <a href="{{ route('distributor.sales.create') }}" class="btn btn-success rounded-pill px-4 me-2">
+    <a href="{{ route('distributor.sales.invoice_a4', $sale->id) }}" class="btn btn-primary rounded-pill px-4 me-2">
+        <i class="fas fa-file-invoice me-1"></i> Print A4 Invoice
+    </a>
+    <a href="{{ route('distributor.sales.create') }}" class="btn btn-success rounded-pill px-3 me-2">
         <i class="fas fa-plus me-1"></i> New Sale
     </a>
     <a href="{{ route('distributor.sales.index') }}" class="btn btn-outline-secondary rounded-pill px-3">
@@ -203,22 +206,37 @@
         </tbody>
     </table>
 
+    @php
+        $computedGross = 0;
+        $computedItemDiscount = 0;
+        foreach ($sale->items as $it) {
+            $computedGross += ((float)$it->qty * (float)$it->unit_price);
+            $computedItemDiscount += (float)($it->discount ?? 0);
+        }
+        $subtotalDisplay = (float)$sale->subtotal > 0 ? (float)$sale->subtotal : $computedGross;
+        $discountDisplay = (float)$sale->discount > 0 ? (float)$sale->discount : $computedItemDiscount;
+        if ($discountDisplay > 0 && abs($subtotalDisplay - (float)$sale->grand_total) < 0.01) {
+            $subtotalDisplay = (float)$sale->grand_total + $discountDisplay;
+        }
+        $netTotalDisplay = max(0, $subtotalDisplay - $discountDisplay);
+    @endphp
+
     <div class="receipt-divider"></div>
 
     <div style="font-size: 0.88rem;">
         <div class="d-flex justify-content-between py-1">
             <span>Subtotal:</span>
-            <span>Rs {{ number_format($sale->subtotal, 2) }}</span>
+            <span>Rs {{ number_format($subtotalDisplay, 2) }}</span>
         </div>
-        @if($sale->discount > 0)
-        <div class="d-flex justify-content-between py-1 text-danger">
+        @if($discountDisplay > 0)
+        <div class="d-flex justify-content-between py-1 text-danger fw-bold">
             <span>Discount:</span>
-            <span>- Rs {{ number_format($sale->discount, 2) }}</span>
+            <span>- Rs {{ number_format($discountDisplay, 2) }}</span>
         </div>
         @endif
         <div class="d-flex justify-content-between py-1 fw-bold fs-6 border-top border-bottom my-1">
             <span>Net Total:</span>
-            <span>Rs {{ number_format($sale->grand_total, 2) }}</span>
+            <span>Rs {{ number_format($netTotalDisplay, 2) }}</span>
         </div>
         <div class="d-flex justify-content-between py-1 text-success fw-bold">
             <span>Cash Paid:</span>

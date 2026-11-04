@@ -875,7 +875,20 @@ class DistributorPortalController extends Controller
                 throw new \Exception('No valid items in sale. Please add at least one product with quantity.');
             }
 
-            $discount = (float) ($request->discount ?? 0);
+            // Calculate total line discount from items
+            $totalLineDiscount = 0;
+            foreach ($itemsData as $itemRow) {
+                $totalLineDiscount += (float)($itemRow['discount'] ?? 0);
+            }
+
+            $extraDiscount = (float) ($request->discount ?? $request->extra_discount ?? 0);
+            $submittedExtraCost = (float) ($request->total_extra_cost ?? 0);
+            if ($extraDiscount == 0 && $submittedExtraCost > 0) {
+                $discount = max($totalLineDiscount, $submittedExtraCost);
+            } else {
+                $discount = $totalLineDiscount + $extraDiscount;
+            }
+
             $approvedPct = (float) ($customer->approved_discount ?? 0);
             if (Auth::user()->usertype === 'order_booker' || $request->filled('booker_user_id')) {
                 $maxAllowedDiscount = round(($subtotal * $approvedPct) / 100, 2);
@@ -884,7 +897,16 @@ class DistributorPortalController extends Controller
                 }
             }
             $grandTotal = max(0, $subtotal - $discount);
-            $paidAmount = min($grandTotal, (float) ($request->paid_amount ?? 0));
+
+            $inputPaid = 0;
+            if ($request->filled('paid_amount')) {
+                $inputPaid = (float) $request->paid_amount;
+            } elseif ($request->filled('cash') || $request->filled('card')) {
+                $inputPaid = (float)($request->cash ?? 0) + (float)($request->card ?? 0);
+            } elseif (!empty($request->payment_amount) && is_array($request->payment_amount)) {
+                $inputPaid = array_sum(array_map('floatval', $request->payment_amount));
+            }
+            $paidAmount = min($grandTotal, $inputPaid);
             $dueAmount = max(0, $grandTotal - $paidAmount);
 
             // Determine payment_type if not sent explicitly
@@ -994,6 +1016,7 @@ class DistributorPortalController extends Controller
                     'invoice_no'  => $sale->invoice_no,
                     'receipt_url' => route('distributor.sales.receipt', $sale->id),
                     'invoice_url' => route('distributor.sales.receipt', $sale->id),
+                    'invoice_a4_url' => route('distributor.sales.invoice_a4', $sale->id),
                 ]);
             }
 
@@ -1023,6 +1046,19 @@ class DistributorPortalController extends Controller
             ->findOrFail($id);
 
         return view('distributor_panel.sales.receipt', compact('distributor', 'sale'));
+    }
+
+    /**
+     * Printable A4 invoice for distributor sale.
+     */
+    public function saleInvoiceA4($id)
+    {
+        $distributor = $this->getDistributor();
+        $sale = DistributorSale::with(['customer', 'items.product.unit', 'items.variant', 'booker'])
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        return view('distributor_panel.sales.sale_invoice_a4', compact('distributor', 'sale'));
     }
 
     /**
@@ -2204,8 +2240,12 @@ class DistributorPortalController extends Controller
                     'product_id'          => $item->product_id,
                     'variant_id'          => $item->variant_id,
                     'qty'                 => $item->qty,
+                    'trade_offer'         => $item->trade_offer ?? 0,
                     'unit_price'          => $item->unit_price,
                     'subtotal'            => $item->subtotal,
+                    'discount'            => $item->discount ?? 0,
+                    'discount_type'       => $item->discount_type ?? 'percent',
+                    'discount_val'        => $item->discount_val ?? 0,
                 ]);
             }
 

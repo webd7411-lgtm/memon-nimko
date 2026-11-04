@@ -210,15 +210,16 @@
         <table class="table table-bordered table-invoice align-middle mb-0">
             <thead>
                 <tr>
-                    <th style="width: 4%;" class="text-center">#</th>
-                    <th style="width: 32%;">Item Description & Variant</th>
-                    <th style="width: 12%;" class="text-center">Item Code</th>
-                    <th style="width: 8%;" class="text-center">Unit</th>
-                    <th style="width: 8%;" class="text-center">Quantity</th>
-                    <th style="width: 11%;" class="text-end">Unit Price</th>
+                    <th style="width: 3%;" class="text-center">#</th>
+                    <th style="width: 27%;">Item Description & Variant</th>
+                    <th style="width: 10%;" class="text-center">Item Code</th>
+                    <th style="width: 7%;" class="text-center">Unit</th>
+                    <th style="width: 7%;" class="text-center">Quantity</th>
+                    <th style="width: 10%;" class="text-end">Unit Price</th>
                     <th style="width: 8%;" class="text-center">Scheme / T.O</th>
-                    <th style="width: 8%;" class="text-end">Discount</th>
-                    <th style="width: 11%;" class="text-end">Total Amount</th>
+                    <th style="width: 9%;" class="text-center">Disc. / Unit</th>
+                    <th style="width: 9%;" class="text-end">Discount</th>
+                    <th style="width: 10%;" class="text-end">Total Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -229,9 +230,17 @@
                 @foreach($saleItems as $index => $item)
                 @php
                     $qty = (float)($item['qty'] ?? 0);
+                    $price = (float)($item['price'] ?? 0);
+                    $itemDiscount = (float)($item['discount'] ?? 0);
                     $to = (float)($item['trade_offer'] ?? 0);
                     $totalQtySum += $qty;
                     $totalTOSum += $to;
+
+                    // Per unit discount & rate calculation
+                    $unitDisc = ($qty > 0 && $itemDiscount > 0) ? ($itemDiscount / $qty) : 0;
+                    $lineGross = $price * $qty;
+                    $discPct = ($lineGross > 0 && $itemDiscount > 0) ? (($itemDiscount / $lineGross) * 100) : 0;
+                    $isRoundPct = ($discPct > 0 && abs($discPct - round($discPct)) < 0.01);
                 @endphp
                 <tr>
                     <td class="text-center text-muted">{{ $index + 1 }}</td>
@@ -259,8 +268,24 @@
                         <span class="text-muted">-</span>
                         @endif
                     </td>
+                    <td class="text-center">
+                        @if($unitDisc > 0)
+                            @if($isRoundPct)
+                                <span class="fw-bold text-dark">{{ round($discPct) }}%</span>
+                                <div class="text-muted" style="font-size: 0.70rem;">Rs. {{ number_format($unitDisc, 2) }}/pc</div>
+                            @elseif($discPct > 0 && $discPct < 100)
+                                <span class="fw-bold text-dark">{{ round($discPct, 1) }}%</span>
+                                <div class="text-muted" style="font-size: 0.70rem;">Rs. {{ number_format($unitDisc, 2) }}/pc</div>
+                            @else
+                                <span class="fw-bold text-dark">Rs. {{ number_format($unitDisc, 2) }}</span>
+                                <div class="text-muted" style="font-size: 0.70rem;">per pc</div>
+                            @endif
+                        @else
+                            <span class="text-muted">-</span>
+                        @endif
+                    </td>
                     <td class="text-end text-danger">
-                        {{ $item['discount'] > 0 ? ('- ' . number_format($item['discount'], 2)) : '-' }}
+                        {{ $itemDiscount > 0 ? ('- ' . number_format($itemDiscount, 2)) : '-' }}
                     </td>
                     <td class="text-end fw-bold text-dark">
                         Rs. {{ number_format($item['total'], 2) }}
@@ -274,7 +299,7 @@
                     <td class="text-center text-dark fs-6">{{ (float)$totalQtySum }}</td>
                     <td class="text-center text-uppercase" style="font-size: 0.78rem;">Total T.O:</td>
                     <td class="text-center text-success">{{ $totalTOSum > 0 ? ('+' . (float)$totalTOSum . ' Free') : '-' }}</td>
-                    <td class="text-end text-uppercase" style="font-size: 0.78rem;">Subtotal:</td>
+                    <td colspan="2" class="text-end text-uppercase" style="font-size: 0.78rem;">Subtotal:</td>
                     <td class="text-end text-dark">Rs. {{ number_format($sale->total_bill_amount, 2) }}</td>
                 </tr>
             </tfoot>

@@ -524,6 +524,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/create', [DistributorPortalController::class, 'createSale'])->name('sales.create');
         Route::post('/sales/store', [DistributorPortalController::class, 'storeSale'])->name('sales.store');
         Route::get('/sales/receipt/{id}', [DistributorPortalController::class, 'saleReceipt'])->name('sales.receipt');
+        Route::get('/sales/invoice-a4/{id}', [DistributorPortalController::class, 'saleInvoiceA4'])->name('sales.invoice_a4');
 
         // Customer Sales Returns (Retailer Returns)
         Route::get('/returns', [DistributorPortalController::class, 'salesReturnsList'])->name('returns.index');

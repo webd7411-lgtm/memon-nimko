@@ -104,8 +104,11 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-inline-flex align-items-center gap-1">
-                                <a href="{{ route('distributor.sales.receipt', $sale->id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1" title="Print Invoice">
-                                    <i class="fas fa-print me-1"></i> Print
+                                <a href="{{ route('distributor.sales.receipt', $sale->id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1" title="Thermal Receipt">
+                                    <i class="fas fa-receipt me-1"></i> Thermal
+                                </a>
+                                <a href="{{ route('distributor.sales.invoice_a4', $sale->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" title="A4 Commercial Invoice">
+                                    <i class="fas fa-file-invoice me-1"></i> A4 Print
                                 </a>
                                 <a href="{{ route('distributor.returns.create', ['sale_id' => $sale->id]) }}" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" title="Return Items from this Sale">
                                     <i class="fas fa-undo-alt me-1"></i> Return

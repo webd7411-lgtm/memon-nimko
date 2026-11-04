@@ -979,7 +979,9 @@
         <input type="hidden" name="order_type" value="Walk-in">
         <input type="hidden" name="total_subtotal" id="inputTotalSubtotal" value="0">
         <input type="hidden" name="total_extra_cost" id="inputTotalExtraCost" value="0">
+        <input type="hidden" name="discount" id="inputDiscount" value="0">
         <input type="hidden" name="total_net" id="inputTotalNet" value="0">
+        <input type="hidden" name="paid_amount" id="inputPaidAmount" value="0">
         <input type="hidden" name="cash" id="inputCash" value="0">
         <input type="hidden" name="card" id="inputCard" value="0">
         <input type="hidden" name="card_account_id" id="inputCardAccountId" value="">
@@ -1835,6 +1837,7 @@ $(document).ready(function() {
         // Form Hiddens
         $('#inputTotalSubtotal').val(totalAmount.toFixed(2));
         $('#inputTotalExtraCost').val(lineDiscount.toFixed(2));
+        $('#inputDiscount').val(lineDiscount.toFixed(2));
         $('#inputTotalNet').val(netTotal.toFixed(2));
         $('#inputTotalItems').val(itemCount);
         $('#inputTotalPieces').val(totalQty);
@@ -1873,6 +1876,7 @@ $(document).ready(function() {
         $('#inputCash').val(cashPaid.toFixed(2));
         $('#inputCard').val(cardPaid.toFixed(2));
         $('#inputCardAccountId').val(cardAccId);
+        $('#inputPaidAmount').val(totalPaid.toFixed(2));
 
         $('#summaryTotalPaid').text(totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
@@ -2735,7 +2739,7 @@ $(document).ready(function() {
                     $('#successModalChange').text(`Rs. ${change}`);
 
                     $('#btnReceiptPrint').attr('href', resp.receipt_url || '#');
-                    $('#btnInvoicePrint').attr('href', resp.invoice_url || '#');
+                    $('#btnInvoicePrint').attr('href', resp.invoice_a4_url || resp.invoice_url || '#');
 
                     if (resp.is_distributor) {
                         $('#btnReceiptPrint').hide();
