@@ -639,12 +639,14 @@
                                         <span>Order Bookers Team</span>
                                     </a>
                                 </li>
+                                @can('Distribution Recovery & Chain Ledger')
                                 <li>
                                     <a href="{{ route('report.distribution_recovery_ledger') }}" style="background: rgba(220, 38, 38, 0.08); border-radius: 6px; margin: 4px 6px; padding: 6px 10px;">
                                         <i class="fas fa-file-invoice-dollar text-danger"></i>
                                         <span class="fw-bold text-danger">Recovery & Chain Ledger Report</span>
                                     </a>
                                 </li>
+                                @endcan
                                 <li>
                                     <a href="{{ route('distributor.dashboard') }}" style="background: rgba(15, 118, 110, 0.12); border-radius: 6px; margin: 4px 6px; padding: 6px 10px;">
                                         <i class="fas fa-truck-moving text-teal" style="color: #0f766e;"></i>
@@ -656,7 +658,28 @@
                     </li>
                     @endcanany
 
-                    @canany(['Item Stock Report','Branch Stock Report','Purchase Report','Production Report','Sale Report','Category Sale Report','Daily Sale Closing Report','Profit Loss Report','Balance Sheet Report','Customer Ledger','Vendor Ledger','Expense Report','Expense Audit Report','Stock Adjustment Audit Report','Stock Adjustment','Expense Voucher','System Reports'])
+                    @canany([
+                        'Item Stock Report',
+                        'Branch Stock Report',
+                        'Purchase Report',
+                        'Production Report',
+                        'Sale Report',
+                        'Consolidated Sales Report',
+                        'Master Channel Report',
+                        'Category Sale Report',
+                        'Daily Sale Closing Report',
+                        'Financial Command Center (360°)',
+                        'Reporting 360',
+                        'Profit Loss Report',
+                        'Balance Sheet Report',
+                        'Customer Ledger',
+                        'Distribution Recovery & Chain Ledger',
+                        'Vendor Ledger',
+                        'System Reports',
+                        'Stock Adjustment Audit Report',
+                        'Expense Audit Report',
+                        'Expense Report',
+                    ])
                     @php
                         $isReportsActive = request()->is('report*') || request()->is('System/Reports*') || request()->is('expense-vocher*') || request()->is('stock-adjustment-report*');
                     @endphp
@@ -686,8 +709,11 @@
 
                                 @can('Sale Report')
                                 <li><a href="{{ route('report.sale') }}"><i class="fas fa-chart-bar"></i> Sale Report</a></li>
-                                <li><a href="{{ route('report.consolidated_sales') }}" style="font-weight: 600; color: #0d6efd;"><i class="fas fa-sitemap text-primary"></i> Master Channel Report</a></li>
                                 @endcan
+
+                                @canany(['Consolidated Sales Report', 'Master Channel Report'])
+                                <li><a href="{{ route('report.consolidated_sales') }}" style="font-weight: 600; color: #0d6efd;"><i class="fas fa-sitemap text-primary"></i> Master Channel Report</a></li>
+                                @endcanany
 
                                 @can('Category Sale Report')
                                 <li><a href="{{ route('report.sale.category') }}"><i class="fas fa-chart-pie"></i> Category-wise Sales</a></li>
@@ -697,7 +723,9 @@
                                 <li><a href="{{ route('report.sale_closing') }}"><i class="fas fa-file-invoice-dollar"></i> Daily Sale Closing</a></li>
                                 @endcan
 
+                                @canany(['Financial Command Center (360°)', 'Reporting 360'])
                                 <li><a href="{{ route('report.financial_command_center') }}" class="fw-bold text-teal" style="color: #0f766e;"><i class="fas fa-tachometer-alt" style="color: #0f766e;"></i> Financial Command Center (360°)</a></li>
+                                @endcanany
 
                                 @can('Profit Loss Report')
                                 <li><a href="{{ route('report.profit_loss') }}"><i class="fas fa-balance-scale"></i> Profit & Loss Report</a></li>
@@ -710,7 +738,10 @@
                                 @can('Customer Ledger')
                                 <li><a href="{{ route('report.customer.ledger') }}"><i class="fas fa-user-check"></i> Customer Ledgers</a></li>
                                 @endcan
+
+                                @can('Distribution Recovery & Chain Ledger')
                                 <li><a href="{{ route('report.distribution_recovery_ledger') }}"><i class="fas fa-network-wired text-danger"></i> <span class="fw-bold text-danger">Distribution Recovery & Chain Ledger</span></a></li>
+                                @endcan
 
                                 @can('Vendor Ledger')
                                 <li><a href="{{ route('report.vendor.ledger') }}"><i class="fas fa-truck"></i> Vendor Ledgers</a></li>
@@ -720,11 +751,11 @@
                                 <li><a href="{{ route('System.Reports') }}"><i class="fas fa-file-alt"></i> System Reports</a></li>
                                 @endcan
 
-                                @canany(['Stock Adjustment Audit Report', 'Stock Adjustment'])
+                                @can('Stock Adjustment Audit Report')
                                 <li><a href="{{ route('stock-adjustment.report') }}"><i class="fas fa-sliders-h"></i> Stock Adjustment Audit</a></li>
-                                @endcanany
+                                @endcan
 
-                                @canany(['Expense Audit Report', 'Expense Report', 'Expense Voucher'])
+                                @canany(['Expense Audit Report', 'Expense Report'])
                                 <li><a href="{{ route('expense.vocher') }}"><i class="fas fa-wallet"></i> Expense Audit Report</a></li>
                                 @endcanany
                             </ul>

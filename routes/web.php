@@ -332,27 +332,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/report/branch-stock-fetch', [ReportingController::class, 'fetchBranchStockReport'])->name('report.branch_stock.fetch')->middleware('permission:Branch Stock Report');
 
     Route::get('report/purchase', [ReportingController::class, 'purchase_report'])->name('report.purchase')->middleware('permission:Purchase Report');
-    Route::get('report/production', [ReportingController::class, 'production_report'])->name('report.production')->middleware('permission:Production Report|Production|Purchase|Sale Report|System Reports');
-    Route::post('report/production/fetch', [ReportingController::class, 'fetchProductionReport'])->name('report.production.fetch')->middleware('permission:Production Report|Production|Purchase|Sale Report|System Reports');
+    Route::get('report/production', [ReportingController::class, 'production_report'])->name('report.production')->middleware('permission:Production Report');
+    Route::post('report/production/fetch', [ReportingController::class, 'fetchProductionReport'])->name('report.production.fetch')->middleware('permission:Production Report');
     Route::post('report/purchase/fetch', [ReportingController::class, 'fetchPurchaseReport'])->name('report.purchase.fetch')->middleware('permission:Purchase Report');
 
     Route::get('report/sale', [ReportingController::class, 'sale_report'])->name('report.sale')->middleware('permission:Sale Report');
     Route::get('report/sale/fetch', [ReportingController::class, 'fetchsaleReport'])->name('report.sale.fetch')->middleware('permission:Sale Report');
 
     // Consolidated Master Sales Report (Direct Customers, Distributors, Bookers, Retailers)
-    Route::get('report/consolidated-sales', [ReportingController::class, 'consolidated_master_report'])->name('report.consolidated_sales')->middleware('permission:Sale Report|Distributors');
-    Route::get('report/consolidated-sales/fetch', [ReportingController::class, 'fetch_consolidated_master_report'])->name('report.consolidated_sales.fetch')->middleware('permission:Sale Report|Distributors');
+    Route::get('report/consolidated-sales', [ReportingController::class, 'consolidated_master_report'])->name('report.consolidated_sales')->middleware('permission:Consolidated Sales Report|Master Channel Report');
+    Route::get('report/consolidated-sales/fetch', [ReportingController::class, 'fetch_consolidated_master_report'])->name('report.consolidated_sales.fetch')->middleware('permission:Consolidated Sales Report|Master Channel Report');
 
     // Multi-tier Outstanding Recovery & Ledger Audit Report (Company -> Distributor -> Order Booker -> Retail Customer)
-    Route::get('report/distribution-recovery-ledger', [ReportingController::class, 'distribution_recovery_ledger_report'])->name('report.distribution_recovery_ledger')->middleware('permission:Sale Report|Distributors|Distributor Ledger|Distributor Customers');
-    Route::get('report/distribution-recovery-ledger/fetch', [ReportingController::class, 'fetch_distribution_recovery_ledger_report'])->name('report.distribution_recovery_ledger.fetch')->middleware('permission:Sale Report|Distributors|Distributor Ledger|Distributor Customers');
+    Route::get('report/distribution-recovery-ledger', [ReportingController::class, 'distribution_recovery_ledger_report'])->name('report.distribution_recovery_ledger')->middleware('permission:Distribution Recovery & Chain Ledger');
+    Route::get('report/distribution-recovery-ledger/fetch', [ReportingController::class, 'fetch_distribution_recovery_ledger_report'])->name('report.distribution_recovery_ledger.fetch')->middleware('permission:Distribution Recovery & Chain Ledger');
 
-    Route::get('report/sale-closing', [ReportingController::class, 'sale_closing_report'])->name('report.sale_closing')->middleware('permission:Sale Report|Daily Sale Closing Report');
-    Route::get('report/sale-closing/fetch', [ReportingController::class, 'fetchSaleClosingReport'])->name('report.sale_closing.fetch')->middleware('permission:Sale Report|Daily Sale Closing Report');
-    Route::get('report/sale-closing/print', [ReportingController::class, 'printSaleClosingReport'])->name('report.sale_closing.print')->middleware('permission:Sale Report|Daily Sale Closing Report|Print Sale Closing');
+    Route::get('report/sale-closing', [ReportingController::class, 'sale_closing_report'])->name('report.sale_closing')->middleware('permission:Daily Sale Closing Report');
+    Route::get('report/sale-closing/fetch', [ReportingController::class, 'fetchSaleClosingReport'])->name('report.sale_closing.fetch')->middleware('permission:Daily Sale Closing Report');
+    Route::get('report/sale-closing/print', [ReportingController::class, 'printSaleClosingReport'])->name('report.sale_closing.print')->middleware('permission:Print Sale Closing|Daily Sale Closing Report');
 
-    Route::get('report/sale/category', [ReportingController::class, 'sale_report_category'])->name('report.sale.category')->middleware('permission:Sale Report|Category Sale Report');
-    Route::get('report/sale/category/fetch', [ReportingController::class, 'fetchsalecategoryReport'])->name('report.sale.category.fetch')->middleware('permission:Sale Report|Category Sale Report');
+    Route::get('report/sale/category', [ReportingController::class, 'sale_report_category'])->name('report.sale.category')->middleware('permission:Category Sale Report');
+    Route::get('report/sale/category/fetch', [ReportingController::class, 'fetchsalecategoryReport'])->name('report.sale.category.fetch')->middleware('permission:Category Sale Report');
 
     Route::get('report/customer/ledger', [ReportingController::class, 'customer_ledger_report'])->name('report.customer.ledger')->middleware('permission:Customer Ledger');
     Route::get('report/customer-ledger/fetch', [ReportingController::class, 'fetch_customer_ledger'])->name('report.customer.ledger.fetch')->middleware('permission:Customer Ledger');
@@ -361,21 +361,21 @@ Route::middleware('auth')->group(function () {
     Route::get('report/vendor-ledger/fetch', [ReportingController::class, 'fetch_vendor_ledger'])->name('report.vendor.ledger.fetch')->middleware('permission:Vendor Ledger');
     Route::get('report/vendor-ledger/pdf', [ReportingController::class, 'vendor_ledger_pdf'])->name('report.vendor.ledger.pdf')->middleware('permission:Vendor Ledger');
 
-    Route::get('report/expense/vocher', [ReportingController::class, 'expense_vocher'])->name('expense.vocher')->middleware('permission:Expense Report|Expense Audit Report|Expense Voucher');
-    Route::get('/expense-voucher/ajax', [ReportingController::class, 'expenseVoucherAjax'])->name('expense.voucher.ajax')->middleware('permission:Expense Report|Expense Audit Report|Expense Voucher');
+    Route::get('report/expense/vocher', [ReportingController::class, 'expense_vocher'])->name('expense.vocher')->middleware('permission:Expense Audit Report|Expense Report');
+    Route::get('/expense-voucher/ajax', [ReportingController::class, 'expenseVoucherAjax'])->name('expense.voucher.ajax')->middleware('permission:Expense Audit Report|Expense Report');
 
     // Profit & Loss Report Routes
-    Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->name('report.profit_loss')->middleware('permission:Sale Report|Profit Loss Report');
-    Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch')->middleware('permission:Sale Report|Profit Loss Report');
+    Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->name('report.profit_loss')->middleware('permission:Profit Loss Report');
+    Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLossReport'])->name('report.profit_loss.fetch')->middleware('permission:Profit Loss Report');
 
     // Executive Financial Command Center (One-Window Net Worth & P&L)
-    Route::get('report/financial-command-center', [App\Http\Controllers\FinancialCommandCenterController::class, 'index'])->name('report.financial_command_center')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports|Dashboard');
-    Route::get('report/financial-command-center/fetch', [App\Http\Controllers\FinancialCommandCenterController::class, 'fetchSnapshot'])->name('report.financial_command_center.fetch')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports|Dashboard');
+    Route::get('report/financial-command-center', [App\Http\Controllers\FinancialCommandCenterController::class, 'index'])->name('report.financial_command_center')->middleware('permission:Financial Command Center (360°)|Reporting 360');
+    Route::get('report/financial-command-center/fetch', [App\Http\Controllers\FinancialCommandCenterController::class, 'fetchSnapshot'])->name('report.financial_command_center.fetch')->middleware('permission:Financial Command Center (360°)|Reporting 360');
 
     // Balance Sheet Report Routes
-    Route::get('report/balance-sheet', [ReportingController::class, 'balance_sheet_report'])->name('report.balance_sheet')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');
-    Route::post('report/balance-sheet/fetch', [ReportingController::class, 'fetchBalanceSheetReport'])->name('report.balance_sheet.fetch')->middleware('permission:Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');
-    Route::get('report/balance-sheet/print', [ReportingController::class, 'printBalanceSheetReport'])->name('report.balance_sheet.print')->middleware('permission:Print Balance Sheet|Balance Sheet Report|Sale Report|Profit Loss Report|System Reports');
+    Route::get('report/balance-sheet', [ReportingController::class, 'balance_sheet_report'])->name('report.balance_sheet')->middleware('permission:Balance Sheet Report');
+    Route::post('report/balance-sheet/fetch', [ReportingController::class, 'fetchBalanceSheetReport'])->name('report.balance_sheet.fetch')->middleware('permission:Balance Sheet Report');
+    Route::get('report/balance-sheet/print', [ReportingController::class, 'printBalanceSheetReport'])->name('report.balance_sheet.print')->middleware('permission:Print Balance Sheet|Balance Sheet Report');
 
     // Chart of Accounts
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all')->middleware('permission:Char Of Accounts');
@@ -427,7 +427,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock-adjustment/{id}/edit', [StockAdjustmentController::class, 'edit'])->name('stock-adjustment.edit')->middleware('permission:Stock Adjustment|Edit Stock Adjustment');
     Route::match(['put', 'post'], '/stock-adjustment/{id}', [StockAdjustmentController::class, 'update'])->name('stock-adjustment.update')->middleware('permission:Stock Adjustment|Edit Stock Adjustment');
     Route::delete('/stock-adjustment/{id}', [StockAdjustmentController::class, 'destroy'])->name('stock-adjustment.destroy')->middleware('permission:Stock Adjustment');
-    Route::get('/stock-adjustment-report', [StockAdjustmentController::class, 'report'])->name('stock-adjustment.report')->middleware('permission:Stock Adjustment');
+    Route::get('/stock-adjustment-report', [StockAdjustmentController::class, 'report'])->name('stock-adjustment.report')->middleware('permission:Stock Adjustment Audit Report|Stock Adjustment');
 
     // Raw Material Routes (new grouped)
     Route::prefix('raw-materials')->middleware('permission:Raw Materials|Purchase')->group(function () {

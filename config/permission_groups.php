@@ -265,6 +265,11 @@ return [
             'Distributor Portal',
         ],
 
+        'Reporting 360 & Command Center' => [
+            'Financial Command Center (360°)',
+            'Reporting 360',
+        ],
+
         'Item Stock Report' => [
             'Item Stock Report',
             'Branch Stock Report',
@@ -283,6 +288,11 @@ return [
             'Category Sale Report',
             'Daily Sale Closing Report',
             'Print Sale Closing',
+            'Consolidated Sales Report',
+            'Master Channel Report',
+        ],
+
+        'Profit Loss Report' => [
             'Profit Loss Report',
         ],
 
@@ -295,6 +305,10 @@ return [
             'Customer Ledger',
         ],
 
+        'Distribution Recovery Ledger' => [
+            'Distribution Recovery & Chain Ledger',
+        ],
+
         'Vendor Ledger' => [
             'Vendor Ledger',
         ],
@@ -302,6 +316,11 @@ return [
         'Expense Report' => [
             'Expense Report',
             'Expense Audit Report',
+        ],
+
+        'Stock Adjustment Audit' => [
+            'Stock Adjustment Audit Report',
+            'Print Stock Adjustment Report',
         ],
 
         'System Reports' => [
