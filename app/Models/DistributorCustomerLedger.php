@@ -25,4 +25,9 @@ class DistributorCustomerLedger extends Model
     {
         return $this->belongsTo(Account::class, 'account_id');
     }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }
