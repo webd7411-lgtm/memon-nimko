@@ -1000,7 +1000,7 @@
                                 <i class="fas fa-user-check me-1 text-success"></i> Customer / Booker / Dist. <span class="text-danger">*</span>
                                 @if(isset($sale))
                                     <span class="badge bg-warning text-dark ms-1" style="font-size: 10px;"><i class="fas fa-edit me-1"></i> Edit Mode: {{ $sale->invoice_no }}</span>
-                                    <a href="{{ route('sale.screen') }}" class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" style="font-size: 10px;" title="Exit Edit Mode"><i class="fas fa-plus"></i> New</a>
+                                    <a href="{{ route('distributor.sales.create') }}" class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" style="font-size: 10px;" title="Exit Edit Mode"><i class="fas fa-plus"></i> New</a>
                                 @endif
                             </label>
                             <span id="customerTypeBadge" class="badge bg-light text-secondary border" style="font-size: 10px; padding: 2px 6px;">
@@ -1143,7 +1143,50 @@
                                 </tr>
                             </thead>
                             <tbody id="saleGridBody">
-                                <!-- Dynamic Excel Rows appended via JS -->
+                                @for($i = 1; $i <= 8; $i++)
+                                <tr class="ss-grid-row" id="gridRow_{{ $i }}">
+                                    <td class="excel-cell-idx text-center fw-bold text-muted row-idx">{{ $i }}</td>
+                                    <td class="excel-cell-prod">
+                                        <div class="ss-prod-search-wrap">
+                                            <input type="hidden" name="product_id[]" class="row-product-id" value="">
+                                            <input type="hidden" name="variant_id[]" class="row-variant-id" value="">
+                                            <input type="hidden" name="product_name[]" class="row-product-name" value="">
+                                            <input type="hidden" name="item_code[]" class="row-item-code" value="">
+                                            <input type="hidden" name="uom[]" class="row-uom" value="">
+                                            <input type="hidden" name="unit[]" class="row-unit" value="piece">
+                                            <input type="hidden" name="color[]" class="row-color" value="-">
+
+                                            <input type="text" class="ss-excel-input ss-prod-search-input" placeholder="Search Product (Name / SKU / Barcode)..." value="" autocomplete="off">
+                                            <i class="fas fa-search ss-prod-search-icon"></i>
+                                        </div>
+                                    </td>
+                                    <td class="excel-cell text-center text-muted row-stock-badge">-</td>
+                                    <td class="excel-cell">
+                                        <input type="number" step="any" min="0.01" name="qty[]" class="ss-excel-input text-center row-qty" value="1">
+                                    </td>
+                                    <td class="excel-cell text-center text-muted small fw-semibold row-size-col">-</td>
+                                    <td class="excel-cell">
+                                        <input type="number" step="any" min="0" name="price[]" class="ss-excel-input text-end row-price" value="0.00" data-orig-price="0">
+                                    </td>
+                                    <td class="excel-cell">
+                                        <input type="number" step="any" min="0" name="trade_offer[]" class="ss-excel-input text-center row-trade-offer" value="" placeholder="0" title="Trade Offer (Free Qty)">
+                                    </td>
+                                    <td class="excel-cell excel-disc-cell">
+                                        <div class="ss-disc-wrap">
+                                            <input type="number" step="any" min="0" class="ss-excel-input text-end row-disc-val" value="0">
+                                            <button type="button" class="ss-disc-toggle-btn btn-pct" data-type="percent" title="Click to toggle % / PKR">%</button>
+                                            <input type="hidden" name="disc_type[]" class="row-disc-type" value="percent">
+                                            <input type="hidden" name="item_disc[]" class="row-disc-amount" value="0.00">
+                                        </div>
+                                    </td>
+                                    <td class="excel-cell">
+                                        <input type="number" step="any" readonly name="total[]" class="ss-excel-input text-end fw-bold row-amount" value="0.00" style="background: #f8fafc; color: #0f172a;">
+                                    </td>
+                                    <td class="excel-cell text-center">
+                                        <button type="button" class="ss-btn-del-row" title="Delete / Clear Row">✕</button>
+                                    </td>
+                                </tr>
+                                @endfor
                             </tbody>
                         </table>
                     </div>
@@ -1465,7 +1508,7 @@ $(document).ready(function() {
 
     // --- ROW TEMPLATE GENERATION (EXCEL STYLE - COLOR & PCS REMOVED) ---
     const MIN_BLANK_ROWS = 8;
-    let rowCounter = 0;
+    let rowCounter = $('#saleGridBody tr.ss-grid-row').length || 8;
 
     function createRowHtml(item) {
         rowCounter++;
@@ -2770,6 +2813,8 @@ $(document).ready(function() {
     window.IS_EDIT_MODE = {{ isset($sale) ? 'true' : 'false' }};
 
     if (window.EXISTING_ITEMS && window.EXISTING_ITEMS.length > 0) {
+        $('#saleGridBody').empty();
+        rowCounter = 0;
         window.EXISTING_ITEMS.forEach(function(item) {
             const html = createRowHtml(item);
             $('#saleGridBody').append(html);
