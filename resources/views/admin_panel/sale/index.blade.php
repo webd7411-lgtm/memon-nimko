@@ -847,11 +847,18 @@
   padding: 0 !important;
 }
 /* ═══════ INVOICE DETAILS MODAL (FULL PRODUCTS DETAIL) ═══════ */
+.erp-modal .modal-dialog {
+  max-height: calc(100vh - 2.5rem);
+  margin: 1.25rem auto;
+}
 .erp-modal .modal-content {
   border-radius: 16px;
   border: 1px solid #cbd5e1;
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
   overflow: hidden;
+  max-height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
 }
 .erp-modal-header {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -861,6 +868,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 .erp-modal-header h4 {
   font-size: 1.18rem;
@@ -874,6 +882,41 @@
 .erp-modal-body {
   padding: 1.25rem;
   background: #f8fafc;
+  overflow-y: auto !important;
+  flex: 1 1 auto;
+  max-height: calc(100vh - 190px);
+}
+.erp-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.erp-modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.erp-modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.erp-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.erp-modal-body .table-responsive {
+  max-height: 420px;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+.erp-modal-body .table-responsive::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.erp-modal-body .table-responsive::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.erp-modal-body .table-responsive::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.erp-modal-body .table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 .erp-card-box {
   background: #ffffff;
@@ -926,6 +969,9 @@
   background: #ffffff;
 }
 .erp-items-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   background: #f1f5f9;
   font-size: 0.7rem;
   font-weight: 800;
@@ -1005,6 +1051,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 @media (max-width: 767.98px) {
@@ -1206,7 +1253,7 @@
 <div class="modal fade erp-modal" id="saleDetailModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="erp-modal-header">
+      <div class="modal-header erp-modal-header">
         <div>
           <h4>
             <i class="bi bi-file-earmark-text-fill text-info"></i>
@@ -1221,7 +1268,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
-      <div class="erp-modal-body">
+      <div class="modal-body erp-modal-body">
         {{-- Loading Spinner --}}
         <div id="mdlLoading" class="text-center py-4">
           <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;"></div>
@@ -1380,7 +1427,7 @@
         </div>
       </div>
 
-      <div class="erp-modal-footer">
+      <div class="modal-footer erp-modal-footer">
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <a id="mdlBtnSlip" href="#" target="_blank" class="sl-btn sl-btn-outline">
             <i class="bi bi-printer-fill text-dark"></i> Print Slip

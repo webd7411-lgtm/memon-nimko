@@ -209,16 +209,26 @@
     @php
         $computedGross = 0;
         $computedItemDiscount = 0;
+        $computedNet = 0;
         foreach ($sale->items as $it) {
-            $computedGross += ((float)$it->qty * (float)$it->unit_price);
-            $computedItemDiscount += (float)($it->discount ?? 0);
+            $lG = ((float)$it->qty * (float)$it->unit_price);
+            $d = (float)($it->discount ?? 0);
+            $computedGross += $lG;
+            $computedItemDiscount += $d;
+            $computedNet += max(0, $lG - $d);
         }
-        $subtotalDisplay = (float)$sale->subtotal > 0 ? (float)$sale->subtotal : $computedGross;
-        $discountDisplay = (float)$sale->discount > 0 ? (float)$sale->discount : $computedItemDiscount;
-        if ($discountDisplay > 0 && abs($subtotalDisplay - (float)$sale->grand_total) < 0.01) {
-            $subtotalDisplay = (float)$sale->grand_total + $discountDisplay;
+
+        $rawDiscount = (float)($sale->discount ?? 0);
+        if ($computedItemDiscount > 0 && abs($rawDiscount - (2 * $computedItemDiscount)) < 0.05) {
+            $discountDisplay = $computedItemDiscount;
+        } elseif ($rawDiscount > 0) {
+            $discountDisplay = $rawDiscount;
+        } else {
+            $discountDisplay = $computedItemDiscount;
         }
-        $netTotalDisplay = max(0, $subtotalDisplay - $discountDisplay);
+
+        $subtotalDisplay = $computedGross > 0 ? $computedGross : (float)($sale->subtotal ?? 0);
+        $netTotalDisplay = $computedNet > 0 ? $computedNet : max(0, $subtotalDisplay - $discountDisplay);
     @endphp
 
     <div class="receipt-divider"></div>

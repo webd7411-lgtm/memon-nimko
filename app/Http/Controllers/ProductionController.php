@@ -76,7 +76,7 @@ class ProductionController extends Controller
 
     public function create()
     {
-        $products = Product::with('unit')->orderBy('item_name')->get();
+        $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
         $rawMaterials = RawMaterial::with('stock')->orderBy('name')->get();
         return view('admin_panel.production.create', compact('products', 'rawMaterials'));
     }
@@ -339,7 +339,7 @@ class ProductionController extends Controller
             ->select('rmu.*', 'rm.conversion_factor')
             ->get();
 
-        $products = Product::with('unit')->orderBy('item_name')->get();
+        $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
         $rawMaterials = RawMaterial::with('stock')->orderBy('name')->get();
 
         return view('admin_panel.production.edit', compact('entry', 'items', 'products', 'rawMaterials', 'rawMaterialUsage'));

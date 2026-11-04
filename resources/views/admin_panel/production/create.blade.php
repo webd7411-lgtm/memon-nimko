@@ -355,21 +355,39 @@
               <td>
                 <span class="mobile-lbl">Product</span>
                 <select name="product_id[]" class="pc-select select2 product-select" required style="width:100%;">
-                  <option value="">Search Product...</option>
+                  <option value="">Search Product (with Size / Variant)...</option>
                   @foreach($products as $p)
-                  <option value="{{ $p->id }}"
-                    data-code="{{ $p->item_code }}"
-                    data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
-                    data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
-                    {{ $p->item_code }} - {{ $p->item_name }}
-                  </option>
+                    @if($p->variants && $p->variants->count() > 0)
+                      @foreach($p->variants as $v)
+                        @php
+                          $vLabel = $v->size_label ?: $v->variant_name;
+                          $fullName = $p->item_name . ($vLabel ? ' (' . $vLabel . ')' : '');
+                          $code = $v->barcode_path ?: ($p->item_code ?? '');
+                          $unitName = $v->size_unit ? strtoupper($v->size_unit) : ($p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc'));
+                          $sizeVal = (float)($v->size_value ?? 1);
+                        @endphp
+                        <option value="{{ $p->id }}"
+                          data-variant-id="{{ $v->id }}"
+                          data-code="{{ $code }}"
+                          data-unit="{{ $unitName }}"
+                          data-size-value="{{ $sizeVal }}"
+                          data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
+                          {{ $p->item_code }} - {{ $fullName }}
+                        </option>
+                      @endforeach
+                    @else
+                      <option value="{{ $p->id }}"
+                        data-variant-id=""
+                        data-code="{{ $p->item_code }}"
+                        data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
+                        data-size-value="1"
+                        data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
+                        {{ $p->item_code }} - {{ $p->item_name }}
+                      </option>
+                    @endif
                   @endforeach
                 </select>
-                <div class="variant-container mt-1" style="display:none;">
-                  <select name="variant_id[]" class="pc-select variant-select" style="width:100%;">
-                    <option value="">Select Size (Optional)</option>
-                  </select>
-                </div>
+                <input type="hidden" name="variant_id[]" class="selected-variant-id" value="">
               </td>
               <td>
                 <span class="mobile-lbl">Code</span>
@@ -539,46 +557,9 @@ $(document).ready(function() {
   $(document).on('change', '.product-select', function() {
     let opt = $(this).find(':selected');
     let row = $(this).closest('tr');
-    row.find('.code-display').val(opt.data('code'));
-    row.find('.unit-display').val(opt.data('unit'));
-    updateConversion(row);
-    loadBomForRow(row);
-
-    let productId = $(this).val();
-    let variantSelect = row.find('.variant-select');
-    let variantContainer = row.find('.variant-container');
-    let isGram = opt.data('is-gram') == '1';
-
-    if (productId) {
-      variantContainer.show();
-      variantSelect.html('<option value="">Loading sizes...</option>');
-      $.ajax({
-        url: '/pos/product-variants/' + productId,
-        type: 'GET',
-        success: function(res) {
-          variantSelect.html('<option value="">Select Size (Optional)</option>');
-          if (res.variants && res.variants.length > 0) {
-            res.variants.forEach(function(v) {
-              variantSelect.append('<option value="' + v.id + '" data-size-value="' + (v.size_value || 1) + '">' + v.size_label + '</option>');
-            });
-          } else {
-            variantContainer.hide();
-            variantSelect.html('<option value="">No Sizes</option>');
-          }
-        },
-        error: function() {
-          variantContainer.hide();
-          variantSelect.html('<option value="">Select Size (Optional)</option>');
-        }
-      });
-    } else {
-      variantContainer.hide();
-      variantSelect.html('<option value="">Select Size (Optional)</option>');
-    }
-  });
-
-  $(document).on('change', '.variant-select', function() {
-    let row = $(this).closest('tr');
+    row.find('.code-display').val(opt.data('code') || '');
+    row.find('.unit-display').val(opt.data('unit') || 'Pc');
+    row.find('.selected-variant-id').val(opt.data('variant-id') || '');
     updateConversion(row);
     loadBomForRow(row);
   });
@@ -587,12 +568,12 @@ $(document).ready(function() {
 
   function loadBomForRow(row) {
     var productId = row.find('.product-select').val();
-    var variantId = row.find('.variant-select').val() || '';
+    var opt = row.find('.product-select option:selected');
+    var variantId = opt.data('variant-id') || row.find('.selected-variant-id').val() || '';
     var qty = parseFloat(row.find('.qty-input').val()) || 1;
     if (!productId) return;
 
-    var selectedVarOpt = row.find('.variant-select option:selected');
-    var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+    var varSizeVal = parseFloat(opt.data('size-value')) || 0;
     var multiplier = varSizeVal > 0 ? varSizeVal : 1;
 
     var rowId = row.attr('data-row-id');
@@ -671,8 +652,8 @@ $(document).ready(function() {
     let qty = parseFloat(row.find('.qty-input').val()) || 0;
     let isGram = row.find('.product-select option:selected').data('is-gram') == '1';
     if (isGram && qty > 0) {
-      let selectedVarOpt = row.find('.variant-select option:selected');
-      var varSizeVal = parseFloat(selectedVarOpt.data('size-value')) || 0;
+      let opt = row.find('.product-select option:selected');
+      var varSizeVal = parseFloat(opt.data('size-value')) || 0;
       var multiplier = varSizeVal > 0 ? varSizeVal : 1;
       let grams = qty * multiplier * 1000;
       row.find('.conversion-display').text('(' + grams.toLocaleString() + ' grams to stock)');
@@ -686,8 +667,7 @@ $(document).ready(function() {
     newRow.removeAttr('data-row-id');
     newRow.find('input').val('');
     newRow.find('.conversion-display').text('');
-    newRow.find('.variant-container').hide();
-    newRow.find('.variant-select').html('<option value="">Select Size (Optional)</option>');
+    newRow.find('.selected-variant-id').val('');
     newRow.find('.select2-container').remove();
     $('#productionItems').append(newRow);
     newRow.find('.select2').select2({ width: '100%' });

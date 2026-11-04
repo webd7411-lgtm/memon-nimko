@@ -132,6 +132,7 @@
     // Line totals & discount computations
     $computedGross = 0;
     $computedItemDiscount = 0;
+    $computedNet = 0;
     $totalQtySum = 0;
     $totalTOSum = 0;
 
@@ -142,18 +143,24 @@
         $disc = (float)($it->discount ?? 0);
         $totalQtySum += $qty;
         $totalTOSum += $to;
-        $computedGross += ($qty * $price);
+        $lGross = ($qty * $price);
+        $computedGross += $lGross;
         $computedItemDiscount += $disc;
+        $computedNet += max(0, $lGross - $disc);
     }
 
-    $grossTotal = (float)$sale->subtotal > 0 ? (float)$sale->subtotal : $computedGross;
-    $totalDiscount = (float)$sale->discount > 0 ? (float)$sale->discount : $computedItemDiscount;
-
-    // Safety fallback for legacy records where subtotal equaled grand total despite discounts
-    if ($totalDiscount > 0 && abs($grossTotal - (float)$sale->grand_total) < 0.01) {
-        $grossTotal = (float)$sale->grand_total + $totalDiscount;
+    // Determine clean total discount (handles legacy double-counted discounts)
+    $rawDiscount = (float)($sale->discount ?? 0);
+    if ($computedItemDiscount > 0 && abs($rawDiscount - (2 * $computedItemDiscount)) < 0.05) {
+        $totalDiscount = $computedItemDiscount;
+    } elseif ($rawDiscount > 0) {
+        $totalDiscount = $rawDiscount;
+    } else {
+        $totalDiscount = $computedItemDiscount;
     }
-    $netAmount = max(0, $grossTotal - $totalDiscount);
+
+    $grossTotal = $computedGross > 0 ? $computedGross : (float)($sale->subtotal ?? 0);
+    $netAmount = $computedNet > 0 ? $computedNet : max(0, $grossTotal - $totalDiscount);
 
     // Number to words converter
     $numberToWords = function($number) {
@@ -355,8 +362,9 @@
                     <td class="text-center text-dark fs-6">{{ (float)$totalQtySum }}</td>
                     <td class="text-center text-uppercase" style="font-size: 0.78rem;">Total T.O:</td>
                     <td class="text-center text-success">{{ $totalTOSum > 0 ? ('+' . (float)$totalTOSum . ' Free') : '-' }}</td>
-                    <td colspan="2" class="text-end text-uppercase" style="font-size: 0.78rem;">Subtotal:</td>
-                    <td class="text-end text-dark">Rs. {{ number_format($grossTotal, 2) }}</td>
+                    <td class="text-center text-uppercase" style="font-size: 0.78rem;">Total:</td>
+                    <td class="text-end text-danger fw-bold">{{ $totalDiscount > 0 ? ('- ' . number_format($totalDiscount, 2)) : '-' }}</td>
+                    <td class="text-end text-dark fs-6 fw-bold">Rs. {{ number_format($netAmount, 2) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -396,7 +404,7 @@
                     </tr>
                     @if($totalDiscount > 0)
                     <tr>
-                        <td class="text-danger">Extra Discount:</td>
+                        <td class="text-danger">Total Discount:</td>
                         <td class="text-end fw-bold text-danger">- Rs. {{ number_format($totalDiscount, 2) }}</td>
                     </tr>
                     @endif

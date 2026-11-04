@@ -881,13 +881,20 @@ class DistributorPortalController extends Controller
                 $totalLineDiscount += (float)($itemRow['discount'] ?? 0);
             }
 
-            $extraDiscount = (float) ($request->discount ?? $request->extra_discount ?? 0);
+            $submittedDiscount = (float) ($request->discount ?? 0);
             $submittedExtraCost = (float) ($request->total_extra_cost ?? 0);
-            if ($extraDiscount == 0 && $submittedExtraCost > 0) {
-                $discount = max($totalLineDiscount, $submittedExtraCost);
-            } else {
-                $discount = $totalLineDiscount + $extraDiscount;
+            $extraDiscount = (float) ($request->extra_discount ?? 0);
+
+            // If extra_discount is not explicitly passed, check if submitted discount exceeds line discounts
+            if ($extraDiscount <= 0) {
+                if ($submittedDiscount > $totalLineDiscount) {
+                    $extraDiscount = $submittedDiscount - $totalLineDiscount;
+                } elseif ($submittedExtraCost > $totalLineDiscount) {
+                    $extraDiscount = $submittedExtraCost - $totalLineDiscount;
+                }
             }
+
+            $discount = $totalLineDiscount + $extraDiscount;
 
             $approvedPct = (float) ($customer->approved_discount ?? 0);
             if (Auth::user()->usertype === 'order_booker' || $request->filled('booker_user_id')) {

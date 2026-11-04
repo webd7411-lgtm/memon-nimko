@@ -435,6 +435,10 @@ class SaleController extends Controller
                         return $s->product_id == $p->id && $s->variant_id == $v->id;
                     });
                     $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+                    // Include base product stock if any exists
+                    if ($v->is_default || $p->variants->first()->id == $v->id) {
+                        $stk += (float) $stockMap->where('product_id', $p->id)->whereNull('variant_id')->sum('qty');
+                    }
                     if ($isKg) {
                         $stk = (float) $stockMap->where('product_id', $p->id)->sum('qty');
                     }
@@ -1151,6 +1155,10 @@ class SaleController extends Controller
                         return $s->product_id == $p->id && $s->variant_id == $v->id;
                     });
                     $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+                    // Include base product stock if any exists
+                    if ($v->is_default || $p->variants->first()->id == $v->id) {
+                        $stk += (float) $stockMap->where('product_id', $p->id)->whereNull('variant_id')->sum('qty');
+                    }
                     if ($isKg) {
                         $stk = (float) $stockMap->where('product_id', $p->id)->sum('qty');
                     }
@@ -1223,6 +1231,10 @@ class SaleController extends Controller
                 return $s->product_id == $p->id && $s->variant_id == $v->id;
             });
             $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+                    // Include base product stock if any exists
+                    if ($v->is_default || $p->variants->first()->id == $v->id) {
+                        $stk += (float) $stockMap->where('product_id', $p->id)->whereNull('variant_id')->sum('qty');
+                    }
 
             $results->push([
                 'id'               => $p->id,
@@ -3537,6 +3549,10 @@ class SaleController extends Controller
                         return $s->product_id == $p->id && $s->variant_id == $v->id;
                     });
                     $stk = $vStockRow ? (float)$vStockRow->qty : (float)($v->stock_qty ?? 0);
+                    // Include base product stock if any exists
+                    if ($v->is_default || $p->variants->first()->id == $v->id) {
+                        $stk += (float) $stockMap->where('product_id', $p->id)->whereNull('variant_id')->sum('qty');
+                    }
                     if ($isKg) {
                         $stk = (float) $stockMap->where('product_id', $p->id)->sum('qty');
                     }
