@@ -396,6 +396,10 @@ return [
             'Update Settings',
         ],
 
+        'Profile Settings' => [
+            'Profile Settings',
+        ],
+
         'Tables' => [
             'Tables',
             'Create Table',

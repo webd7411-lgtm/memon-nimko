@@ -62,9 +62,10 @@ Route::get('/', function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Profile Settings
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit')->middleware('permission:Profile Settings');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update')->middleware('permission:Profile Settings');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy')->middleware('permission:Profile Settings');
 
     // Settings
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index')->middleware('permission:Settings');

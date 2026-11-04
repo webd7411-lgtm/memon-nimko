@@ -34,9 +34,11 @@
                     </x-slot>
 
                     <x-slot name="content">
+                        @can('Profile Settings')
                         <x-dropdown-link :href="route('profile.edit')">
                             {{ __('Profile') }}
                         </x-dropdown-link>
+                        @endcan
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
@@ -80,9 +82,11 @@
             </div>
 
             <div class="mt-3 space-y-1">
+                @can('Profile Settings')
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
+                @endcan
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
