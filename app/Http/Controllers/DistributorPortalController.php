@@ -767,11 +767,10 @@ class DistributorPortalController extends Controller
 
         // Extract categories for quick panel
         $categoryIds = $stocks->pluck('product.category_id')->filter()->unique();
-        $categories = \App\Models\Category::with(['products' => function($q) use ($distributor) {
+        $productIds = $stocks->pluck('product_id')->filter()->unique();
+        $categories = \App\Models\Category::with(['products' => function($q) use ($distributor, $productIds) {
             $q->with(['brand', 'variants'])
-              ->whereHas('distributorStocks', function($sq) use ($distributor) {
-                  $sq->where('distributor_id', $distributor->id)->where('qty', '>', 0);
-              });
+              ->whereIn('id', $productIds);
         }])->whereIn('id', $categoryIds)->orderBy('name')->get();
 
         $invoiceNo = DistributorSale::generateInvoiceNo();

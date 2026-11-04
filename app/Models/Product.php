@@ -100,6 +100,11 @@ class Product extends Model
         return $this->hasMany(Stock::class);
     }
 
+    public function distributorStocks()
+    {
+        return $this->hasMany(DistributorStock::class, 'product_id');
+    }
+
     public function bom()
     {
         return $this->hasMany(ProductRawMaterialBom::class, 'product_id');
