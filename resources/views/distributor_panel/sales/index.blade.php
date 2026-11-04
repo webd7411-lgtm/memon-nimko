@@ -93,14 +93,31 @@
                             <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-0.5">Partial</span>
                             @endif
                         </td>
+                        @php
+                            $rowTotal = (float)$sale->grand_total;
+                            $rowDue = (float)$sale->due_amount;
+                            if ($sale->relationLoaded('items') && $sale->items && $sale->items->count() > 0) {
+                                $cG = 0;
+                                $cD = 0;
+                                foreach ($sale->items as $it) {
+                                    $cG += ((float)$it->qty * (float)$it->unit_price);
+                                    $cD += (float)($it->discount ?? 0);
+                                }
+                                $trueNet = max(0, $cG - $cD);
+                                if ($cD > 0 && abs($rowTotal - $cG) < 0.05) {
+                                    $rowTotal = $trueNet;
+                                    $rowDue = max(0, $trueNet - (float)$sale->paid_amount);
+                                }
+                            }
+                        @endphp
                         <td class="text-end fw-bold text-dark">
-                            Rs. {{ number_format($sale->grand_total, 2) }}
+                            Rs. {{ number_format($rowTotal, 2) }}
                         </td>
                         <td class="text-end text-success fw-semibold">
                             Rs. {{ number_format($sale->paid_amount, 2) }}
                         </td>
-                        <td class="text-end fw-bold {{ $sale->due_amount > 0 ? 'text-danger' : 'text-muted' }}">
-                            Rs. {{ number_format($sale->due_amount, 2) }}
+                        <td class="text-end fw-bold {{ $rowDue > 0 ? 'text-danger' : 'text-muted' }}">
+                            Rs. {{ number_format($rowDue, 2) }}
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-inline-flex align-items-center gap-1">

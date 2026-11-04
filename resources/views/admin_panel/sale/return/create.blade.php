@@ -610,11 +610,20 @@
         <input type="hidden" name="sale_id" value="{{ $sale->id }}">
 
         @php
-            $custName  = $customerInfo['name'] ?? 'Walk-in Customer';
+            $custName  = $customerInfo['name'] ?? ($sale->customer_display_name ?: 'Walk-in Customer');
             $custType  = $customerInfo['type'] ?? 'Walk-in';
             $custPhone = $customerInfo['phone'] ?? '-';
             $custCode  = $customerInfo['code'] ?? '-';
             $custRawId = $customerInfo['raw_id'] ?? $sale->customer;
+
+            // Original sale financial status
+            $origNet  = (float)($sale->total_net ?? 0);
+            $origCash = (float)($sale->cash ?? 0);
+            $origCard = (float)($sale->card ?? 0);
+            $origPaid = $origCash + $origCard;
+            $origDue  = max(0, $origNet - $origPaid);
+            $isDueSale = ($origDue > 0.01);
+            $isFullyUnpaid = ($origPaid <= 0.01 && $origNet > 0);
         @endphp
         <input type="hidden" name="customer" value="{{ $custRawId }}">
         <input type="hidden" name="total_subtotal" id="inputTotalSubtotal" value="0">
@@ -723,7 +732,50 @@
         </div>
         @endif
 
-        <!-- ==========================================
+        <!-- ORIGINAL INVOICE PAYMENT / DUE STATUS BANNER -->
+        @if($isFullyUnpaid)
+        <div class="alert alert-danger d-flex align-items-center justify-content-between p-2.5 mb-2 shadow-sm rounded-3 border-danger" style="background: #fef2f2; border-left: 6px solid #dc2626;">
+            <div class="d-flex align-items-center">
+                <span class="badge bg-danger fs-6 me-2.5 px-3 py-2"><i class="fas fa-exclamation-triangle me-1"></i> UDHAR / DUE SALE</span>
+                <div style="font-size: 0.85rem; color: #991b1b; line-height: 1.4;">
+                    <strong>Yeh Invoice mukammal UDHAR (Credit) par thi!</strong> Is customer ne koi cash ada nahi kiya tha (Cash Paid: <strong>Rs. 0.00</strong> | Due Amount: <strong>Rs. {{ number_format($origDue, 2) }}</strong>).
+                    <div class="small fw-semibold mt-0.5" style="color: #b91c1c;">
+                        👉 Customer ko Cash wapis dena zaroori nahi he (Neeche Cash box me 0.00 rehne dein to unka Khata / Balance adjust ho jayega). Lekin agar aap cash dena chahein to de sakte hain.
+                    </div>
+                </div>
+            </div>
+            <div class="text-end font-monospace ps-3 border-start border-danger-subtle" style="min-width: 170px;">
+                <div class="small text-muted fw-bold" style="font-size: 11px;">ORIGINAL SALE DUE</div>
+                <div class="fw-bold text-danger fs-5">Rs. {{ number_format($origDue, 2) }}</div>
+            </div>
+        </div>
+        @elseif($isDueSale)
+        <div class="alert alert-warning d-flex align-items-center justify-content-between p-2.5 mb-2 shadow-sm rounded-3 border-warning" style="background: #fffbeb; border-left: 6px solid #d97706;">
+            <div class="d-flex align-items-center">
+                <span class="badge bg-warning text-dark fs-6 me-2.5 px-3 py-2"><i class="fas fa-info-circle me-1"></i> PARTIAL DUE SALE</span>
+                <div style="font-size: 0.85rem; color: #92400e; line-height: 1.4;">
+                    <strong>Yeh Invoice aadhi ada shuda thi!</strong> Cash Received: <strong>Rs. {{ number_format($origPaid, 2) }}</strong> | Remaining Due: <strong>Rs. {{ number_format($origDue, 2) }}</strong>.
+                    <div class="small fw-semibold mt-0.5" style="color: #b45309;">
+                        👉 Agar cash refund nahi karna to neeche Cash box me 0.00 rehne dein (Khata adjust ho jayega).
+                    </div>
+                </div>
+            </div>
+            <div class="text-end font-monospace ps-3 border-start border-warning-subtle" style="min-width: 170px;">
+                <div class="small text-muted fw-bold" style="font-size: 11px;">REMAINING DUE</div>
+                <div class="fw-bold text-warning fs-5">Rs. {{ number_format($origDue, 2) }}</div>
+            </div>
+        </div>
+        @else
+        <div class="alert alert-success d-flex align-items-center justify-content-between p-2 mb-2 shadow-sm rounded-3 border-success" style="background: #f0fdf4; border-left: 6px solid #16a34a; font-size: 0.85rem;">
+            <div>
+                <span class="badge bg-success me-2 px-2.5 py-1.5"><i class="fas fa-check-circle me-1"></i> FULLY PAID</span>
+                <span class="text-success fw-bold">Original Invoice Cash Paid: Rs. {{ number_format($origPaid, 2) }} (No Due Remaining)</span>
+            </div>
+            <span class="badge bg-white text-success border font-monospace">Due: Rs. 0.00</span>
+        </div>
+        @endif
+
+                <!-- ==========================================
              MAIN CONTENT: EXCEL GRID (LEFT 8 COLS) & POS SIDEBAR (RIGHT 4 COLS)
              ========================================== -->
         <div class="row gx-2 gy-2">
@@ -968,7 +1020,20 @@
                 <div class="ss-sidebar-card">
                     <div class="ss-card-hdr">
                         <h6 class="ss-card-title"><i class="fas fa-credit-card text-success"></i> Refund Payment Method</h6>
+                        @if($isDueSale)
+                            <span class="badge bg-danger text-white font-monospace" style="font-size: 10px;">Due: Rs. {{ number_format($origDue, 0) }}</span>
+                        @endif
                     </div>
+
+                    @if($isDueSale)
+                    <div class="p-2 mb-2 rounded border border-warning" style="background: #fffbeb; font-size: 11.5px; color: #92400e; line-height: 1.35;">
+                        <i class="fas fa-exclamation-circle text-danger me-1"></i>
+                        <strong>Credit / Udhar Notice:</strong> Yeh sale udhar par thi (Due: Rs. {{ number_format($origDue, 2) }}).
+                        <span class="d-block text-muted mt-1" style="font-size: 10.5px;">
+                            Agar customer ko cash nahi dena to Cash input me <strong>0.00</strong> rehne dein (unke ledger / balance se minus ho jayega). Cash dena ho to amount enter karein.
+                        </span>
+                    </div>
+                    @endif
 
                     <div id="paymentMethodsContainer">
                         <div class="ss-pm-row" data-index="0">

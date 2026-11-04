@@ -2435,23 +2435,34 @@ class SaleController extends Controller
             $dcId = (int) str_replace('dc_', '', $rawCust);
             $dc = \App\Models\DistributorCustomer::find($dcId);
             if ($dc) {
-                $customerInfo['name']  = $dc->name;
+                $displayName = $dc->shop_name ?: ($dc->owner_name ?: 'Retail Shop');
+                if ($dc->owner_name && $dc->shop_name && $dc->owner_name !== $dc->shop_name) {
+                    $displayName .= ' (' . $dc->owner_name . ')';
+                }
+                $customerInfo['name']  = $displayName;
                 $customerInfo['type']  = 'Retail Outlet';
-                $customerInfo['phone'] = $dc->phone_no ?: '-';
-                $customerInfo['code']  = $dc->code ?: '-';
+                $customerInfo['phone'] = $dc->phone ?: '-';
+                $customerInfo['code']  = 'SHOP-' . $dc->id;
             }
         } elseif ($sale->customer_relation) {
             $customerInfo['name']  = $sale->customer_relation->customer_name;
             $customerInfo['type']  = $sale->customer_relation->customer_type ?: 'Customer';
-            $customerInfo['phone'] = $sale->customer_relation->mobile_no ?: ($sale->customer_relation->phone ?: '-');
-            $customerInfo['code']  = $sale->customer_relation->customer_code ?: '-';
+            $customerInfo['phone'] = $sale->customer_relation->mobile ?: '-';
+            $customerInfo['code']  = $sale->customer_relation->customer_id ?: ('CUST-' . $sale->customer_relation->id);
         } elseif (!empty($rawCust) && is_numeric($rawCust)) {
             $foundC = \App\Models\Customer::find($rawCust);
             if ($foundC) {
                 $customerInfo['name']  = $foundC->customer_name;
                 $customerInfo['type']  = $foundC->customer_type ?: 'Customer';
-                $customerInfo['phone'] = $foundC->mobile_no ?: ($foundC->phone ?: '-');
-                $customerInfo['code']  = $foundC->customer_code ?: '-';
+                $customerInfo['phone'] = $foundC->mobile ?: '-';
+                $customerInfo['code']  = $foundC->customer_id ?: ('CUST-' . $foundC->id);
+            }
+        }
+
+        // Safety fallback if still empty or Walk-in Customer
+        if (empty($customerInfo['name']) || $customerInfo['name'] === 'Walk-in Customer') {
+            if (!empty($sale->customer_display_name) && $sale->customer_display_name !== 'Walk-in Customer') {
+                $customerInfo['name'] = $sale->customer_display_name;
             }
         }
 

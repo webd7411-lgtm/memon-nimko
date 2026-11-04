@@ -416,10 +416,13 @@
                         <td class="text-muted pt-2">Cash Received:</td>
                         <td class="text-end pt-2 fw-semibold text-success">Rs. {{ number_format($sale->paid_amount, 2) }}</td>
                     </tr>
-                    @if($sale->due_amount > 0)
+                    @php
+                        $actualRemainingDue = max(0, $netAmount - (float)$sale->paid_amount);
+                    @endphp
+                    @if($actualRemainingDue > 0)
                     <tr>
                         <td class="text-danger">Remaining Due:</td>
-                        <td class="text-end fw-bold text-danger">Rs. {{ number_format($sale->due_amount, 2) }}</td>
+                        <td class="text-end fw-bold text-danger">Rs. {{ number_format($actualRemainingDue, 2) }}</td>
                     </tr>
                     @else
                     <tr>

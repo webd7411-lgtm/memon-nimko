@@ -1076,7 +1076,7 @@ class DistributorPortalController extends Controller
         $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
-        $query = DistributorSale::with('customer')
+        $query = DistributorSale::with(['customer', 'items'])
             ->where('distributor_id', $distributor->id);
 
         if ($request->customer_id) {
@@ -1088,6 +1088,46 @@ class DistributorPortalController extends Controller
         }
 
         $sales = $query->latest('sale_date')->latest('id')->paginate(15);
+
+        // Self-heal any legacy records where discount was not subtracted from grand_total / due_amount
+        foreach ($sales as $s) {
+            if ($s->items && $s->items->count() > 0) {
+                $computedGross = 0;
+                $computedDisc = 0;
+                foreach ($s->items as $it) {
+                    $computedGross += ((float)$it->qty * (float)$it->unit_price);
+                    $computedDisc += (float)($it->discount ?? 0);
+                }
+                $trueNet = max(0, $computedGross - $computedDisc);
+                if ($computedDisc > 0 && abs((float)$s->grand_total - $computedGross) < 0.05) {
+                    $s->grand_total = $trueNet;
+                    $s->discount = $computedDisc;
+                    $s->due_amount = max(0, $trueNet - (float)$s->paid_amount);
+
+                    \DB::table('distributor_sales')->where('id', $s->id)->update([
+                        'discount'    => $computedDisc,
+                        'grand_total' => $trueNet,
+                        'due_amount'  => $s->due_amount,
+                    ]);
+
+                    \DB::table('distributor_customer_ledgers')
+                        ->where('reference_no', $s->invoice_no)
+                        ->where('type', 'sale')
+                        ->update(['debit' => $trueNet]);
+
+                    $cBal = \DB::table('distributor_customer_ledgers')
+                        ->where('distributor_customer_id', $s->distributor_customer_id)
+                        ->selectRaw('COALESCE(SUM(debit), 0) - COALESCE(SUM(credit), 0) as bal')
+                        ->value('bal');
+                    if ($cBal !== null) {
+                        \DB::table('distributor_customers')
+                            ->where('id', $s->distributor_customer_id)
+                            ->update(['current_balance' => (float)$cBal]);
+                    }
+                }
+            }
+        }
+
         $customers = DistributorCustomer::where('distributor_id', $distributor->id)->get();
 
         return view('distributor_panel.sales.index', compact('distributor', 'sales', 'customers'));
