@@ -8,11 +8,11 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.png') }}">
 
-    <!-- Google Fonts -->
+    <!-- Google font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
-    
+
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -63,7 +63,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: 
+            background-image:
                 linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.46)),
                 url('{{ asset("assets/images/memon_nimko_hero.png") }}');
             background-size: cover;
@@ -180,7 +180,7 @@
             color: var(--gold);
             margin-bottom: 1.1rem;
             font-weight: 600;
-            text-shadow: 
+            text-shadow:
                 0 2px 10px rgba(0, 0, 0, 0.95),
                 0 0 20px rgba(0, 0, 0, 0.9);
         }
@@ -199,7 +199,7 @@
             margin-bottom: 1.25rem;
             color: #ffffff;
             letter-spacing: -0.5px;
-            text-shadow: 
+            text-shadow:
                 0 4px 20px rgba(0, 0, 0, 0.95),
                 0 2px 8px rgba(0, 0, 0, 0.9),
                 0 0 35px rgba(0, 0, 0, 0.85);
@@ -219,7 +219,7 @@
             max-width: 650px;
             margin: 0 auto 2.4rem;
             font-weight: 400;
-            text-shadow: 
+            text-shadow:
                 0 3px 15px rgba(0, 0, 0, 0.95),
                 0 1px 6px rgba(0, 0, 0, 0.9);
         }
@@ -246,8 +246,8 @@
             text-decoration: none;
             color: #ffffff;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            box-shadow: 
-                0 12px 35px rgba(0, 0, 0, 0.75), 
+            box-shadow:
+                0 12px 35px rgba(0, 0, 0, 0.75),
                 0 0 25px rgba(128, 0, 0, 0.65);
             border: 1.5px solid rgba(212, 175, 55, 0.45);
             transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -255,8 +255,8 @@
 
         .btn-access:hover {
             transform: translateY(-4px);
-            box-shadow: 
-                0 18px 45px rgba(0, 0, 0, 0.9), 
+            box-shadow:
+                0 18px 45px rgba(0, 0, 0, 0.9),
                 0 0 35px rgba(212, 175, 55, 0.5);
             border-color: var(--gold);
             color: #ffffff;
