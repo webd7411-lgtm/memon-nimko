@@ -50,7 +50,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: 
+  background:
     radial-gradient(circle at 10% 90%, rgba(37, 99, 235, 0.25) 0%, transparent 60%),
     radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.15) 0%, transparent 50%);
   pointer-events: none;
@@ -455,7 +455,7 @@
           <i class="bi bi-diagram-3-fill"></i>
         </div>
         <div>
-          <h2>Chart of Accounts</h2>
+          <h2>Accounts </h2>
           <span class="coa-hero-badge">Expense Heads & Account Control</span>
         </div>
       </div>
