@@ -499,7 +499,7 @@
     {{-- ══════════════════════════════════════════════════════════════ --}}
     <div class="erp-top-header">
       <div class="w-100 w-md-auto mb-1 mb-md-0">
-        <div class="erp-breadcrumb">Memon Nimko Distributor Portal &bull; Route Operations</div>
+        <div class="erp-breadcrumb">ProWave Technologies Distributor Portal &bull; Route Operations</div>
         <h1 class="erp-page-title">
           <span>Distributor Operations Hub</span>
           <div class="d-inline-flex align-items-center gap-1 flex-wrap mt-1 mt-sm-0">

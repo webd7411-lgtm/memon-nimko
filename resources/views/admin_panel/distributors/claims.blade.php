@@ -707,7 +707,7 @@
 
                     <div class="col-12">
                         <label class="form-label small fw-bold text-dark">Description & Justification</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="e.g. Provided 5% discount on 200 cartons of Memon Nimko to wholesale shops as per October promotion scheme."></textarea>
+                        <textarea name="description" class="form-control" rows="2" placeholder="e.g. Provided 5% discount on 200 cartons of stock to wholesale shops as per October promotion scheme."></textarea>
                     </div>
                 </div>
 

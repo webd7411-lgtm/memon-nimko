@@ -190,7 +190,7 @@
 
         <div class="receipt-footer mt-3">
             <p class="mb-0">*** Customer Sale Return Acknowledged ***</p>
-            <p class="text-muted mb-0" style="font-size: 0.7rem;">Software By: {{ sys_setting('software_name', 'Memon Nimko') }}</p>
+            <p class="text-muted mb-0" style="font-size: 0.7rem;">Software By: {{ sys_setting('software_name', 'ProWave Technologies') }}</p>
         </div>
     </div>
 </div>

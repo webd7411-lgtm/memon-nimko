@@ -5,7 +5,7 @@
 
 <style>
     /* ═════════════════════════════════════════════════════════════════════
-       MEMON NIMKO — ENTERPRISE ERP GLOBAL DESIGN SYSTEM
+       PROWAVE TECHNOLOGIES — ENTERPRISE ERP GLOBAL DESIGN SYSTEM
     ═════════════════════════════════════════════════════════════════════ */
     :root {
         --erp-font: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -58,7 +58,7 @@
     }
 
     /* ═════════════════════════════════════════════════════════════════════
-       MEMON NIMKO — FULL-WIDTH ENTERPRISE DARK HEADER (SIDAZ PHARMA STYLE)
+       PROWAVE TECHNOLOGIES — FULL-WIDTH ENTERPRISE DARK HEADER (SIDAZ PHARMA STYLE)
     ═════════════════════════════════════════════════════════════════════ */
     :root {
         --erp-font: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

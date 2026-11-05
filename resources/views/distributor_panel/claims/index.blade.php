@@ -431,7 +431,7 @@
 
                     <div class="col-12">
                         <label class="form-label small fw-bold text-dark">Description & Reason</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="e.g. As per company promo, 5% cash discount was provided to retail shops on 150 cartons of Memon Nimko." required></textarea>
+                        <textarea name="description" class="form-control" rows="2" placeholder="e.g. As per company promo, 5% cash discount was provided to retail shops on 150 cartons of stock." required></textarea>
                     </div>
                 </div>
 

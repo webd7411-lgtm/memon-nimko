@@ -431,7 +431,7 @@
     {{-- ══════════════════════════════════════════════════════════════ --}}
     <div class="erp-top-header">
       <div>
-        <div class="erp-breadcrumb">Memon Nimko ERP &bull; Executive Operations</div>
+        <div class="erp-breadcrumb">ProWave Technologies ERP &bull; Executive Operations</div>
         <h1 class="erp-page-title">
           <span>Enterprise Management Dashboard</span>
           <span class="badge rounded-pill fw-semibold" style="font-size:0.68rem; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;">

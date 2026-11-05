@@ -202,7 +202,7 @@
     <div class="sheet-wrapper">
         {{-- Header --}}
         <div class="header-section">
-            <h1 class="company-name">{{ function_exists('shop_name') ? shop_name() : 'MEMON NIMKO & SWEETS' }}</h1>
+            <h1 class="company-name">{{ function_exists('shop_name') ? shop_name() : 'PROWAVE TECHNOLOGIES' }}</h1>
             <div class="company-subtitle">{{ function_exists('shop_tagline') ? shop_tagline() : 'Quality Bakers & Sweets' }}</div>
             <div class="doc-title">BALANCE SHEET / STATEMENT OF FINANCIAL POSITION</div>
             <div class="meta-info">

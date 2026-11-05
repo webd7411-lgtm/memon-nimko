@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=no">
-    <title>{{ $title ?? 'Distributor Portal' }} — {{ sys_setting('software_name', 'Memon Nimko') }}</title>
+    <title>{{ $title ?? 'Distributor Portal' }} — {{ sys_setting('software_name', 'ProWave Technologies') }}</title>
     
     <!-- Google Fonts: Inter & Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -959,7 +959,7 @@
                     <i class="fas fa-boxes-stacked"></i>
                 </div>
                 <div>
-                    <div class="fw-bold text-white fs-6">{{ sys_setting('software_name', 'Memon Nimko') }}</div>
+                    <div class="fw-bold text-white fs-6">{{ sys_setting('software_name', 'ProWave Technologies') }}</div>
                     <span class="small" style="color: #5eead4; font-size: 0.7rem;">Distributor Portal</span>
                 </div>
             </div>

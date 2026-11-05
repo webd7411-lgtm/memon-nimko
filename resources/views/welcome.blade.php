@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-    <title>{{ sys_setting('software_name', 'Memon Nimko') }} | {{ sys_setting('tagline', 'Sweets & Bakers') }}</title>
+    <title>{{ sys_setting('software_name', 'ProWave Technologies') }} | {{ sys_setting('tagline', 'Sweets & Bakers') }}</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.png') }}">

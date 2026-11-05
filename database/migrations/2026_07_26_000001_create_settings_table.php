@@ -17,7 +17,7 @@ return new class extends Migration
         });
 
         DB::table('settings')->insert([
-            ['key' => 'software_name', 'value' => 'Memon Nimko', 'created_at' => now(), 'updated_at' => now()],
+            ['key' => 'software_name', 'value' => 'ProWave Technologies', 'created_at' => now(), 'updated_at' => now()],
             ['key' => 'software_name_urdu', 'value' => '', 'created_at' => now(), 'updated_at' => now()],
             ['key' => 'address', 'value' => '', 'created_at' => now(), 'updated_at' => now()],
             ['key' => 'phone', 'value' => '', 'created_at' => now(), 'updated_at' => now()],

@@ -64,7 +64,7 @@
 
     <!-- Print Only Header -->
     <div class="print-header mb-4 text-center border-bottom pb-3">
-        <h3 class="fw-bold mb-1">MEMON NIMKO & FOODS</h3>
+        <h3 class="fw-bold mb-1">PROWAVE TECHNOLOGIES</h3>
         <p class="mb-1 text-muted">Retail Customer Statement of Account / Ledger</p>
         <div class="row text-start mt-3">
             <div class="col-6">

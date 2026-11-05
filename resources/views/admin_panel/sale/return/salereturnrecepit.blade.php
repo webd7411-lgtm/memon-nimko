@@ -218,7 +218,7 @@
       @elseif(!empty(sys_setting('tagline')) && strtolower(sys_setting('tagline')) !== 'sweets & bakers')
       <div class="store-info">{{ sys_setting('tagline') }}</div>
       @endif
-      @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default', 'main branch', strtolower(shop_name())]))
+      @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['prowave technologies', 'memon nimko', 'default', 'main branch', strtolower(shop_name())]))
       <div class="store-info" style="font-weight: 700; text-transform: uppercase;">{{ $receiptBranch->name }}</div>
       @endif
       @if(!empty($branchAddress) && strtolower(trim($branchAddress)) !== 'head office')

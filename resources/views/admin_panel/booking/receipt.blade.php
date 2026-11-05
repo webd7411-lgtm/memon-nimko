@@ -266,7 +266,7 @@
       <img src="{{ asset('assets/images/logo_thermal.png') }}" alt="Logo" style="max-height: 55px; margin-top: 0; padding-top: 0; margin-bottom: 4px; filter: contrast(180%); image-rendering: -webkit-optimize-contrast; display: block; margin-left: auto; margin-right: auto;">
       <div class="store-name">{{ shop_name() }}</div>
       <div class="store-info">{{ shop_tagline() }}</div>
-      @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['memon nimko', 'default']))
+      @if(!empty($receiptBranch?->name) && !in_array(strtolower(trim($receiptBranch->name)), ['prowave technologies', 'memon nimko', 'default']))
       <div class="store-info" style="font-weight: 700; text-transform: uppercase;">{{ $receiptBranch->name }}</div>
       @endif
       <div class="store-info">{{ $branchAddress }}</div>

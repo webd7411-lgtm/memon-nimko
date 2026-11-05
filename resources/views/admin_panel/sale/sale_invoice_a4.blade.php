@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Invoice #{{ $sale->invoice_no }} — {{ sys_setting('software_name', 'Memon Nimko') }}</title>
+    <title>Invoice #{{ $sale->invoice_no }} — {{ sys_setting('software_name', 'ProWave Technologies') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -143,7 +143,7 @@
                 <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 70px; max-width: 150px; object-fit: contain;">
             @endif
             <div>
-                <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.5px;">{{ shop_name() ?: sys_setting('software_name', 'Memon Nimko') }}</h3>
+                <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.5px;">{{ shop_name() ?: sys_setting('software_name', 'ProWave Technologies') }}</h3>
                 <div class="text-muted small fw-semibold">{{ shop_tagline() }}</div>
                 <div class="text-muted small">{{ $branchAddress }}</div>
                 <div class="text-muted small"><strong>Phone:</strong> {{ $branchPhone }}</div>
