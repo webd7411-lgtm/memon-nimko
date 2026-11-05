@@ -1076,16 +1076,44 @@ class DistributorPortalController extends Controller
         $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
-        $query = DistributorSale::with(['customer', 'items'])
+        $query = DistributorSale::with(['customer', 'items', 'booker'])
             ->where('distributor_id', $distributor->id);
 
-        if ($request->customer_id) {
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function($q) use ($s) {
+                $q->where('invoice_no', 'like', "%{$s}%")
+                  ->orWhereHas('customer', function($cq) use ($s) {
+                      $cq->where('shop_name', 'like', "%{$s}%")
+                         ->orWhere('owner_name', 'like', "%{$s}%")
+                         ->orWhere('phone', 'like', "%{$s}%");
+                  });
+            });
+        }
+
+        if ($request->filled('customer_id')) {
             $query->where('distributor_customer_id', $request->customer_id);
         }
 
-        if ($request->start_date && $request->end_date) {
-            $query->whereBetween('sale_date', [$request->start_date, $request->end_date]);
+        if ($request->filled('payment_type') && $request->payment_type !== 'all') {
+            $query->where('payment_type', $request->payment_type);
         }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('sale_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->whereDate('sale_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->whereDate('sale_date', '<=', $request->end_date);
+        }
+
+        // Summary stats across the filtered scope
+        $stats = [
+            'total_sales'     => (float) (clone $query)->sum('grand_total'),
+            'total_paid'      => (float) (clone $query)->sum('paid_amount'),
+            'total_due'       => (float) (clone $query)->sum('due_amount'),
+            'total_invoices'  => (int) (clone $query)->count(),
+        ];
 
         $sales = $query->latest('sale_date')->latest('id')->paginate(15);
 
@@ -1130,7 +1158,7 @@ class DistributorPortalController extends Controller
 
         $customers = DistributorCustomer::where('distributor_id', $distributor->id)->get();
 
-        return view('distributor_panel.sales.index', compact('distributor', 'sales', 'customers'));
+        return view('distributor_panel.sales.index', compact('distributor', 'sales', 'customers', 'stats'));
     }
 
     /**

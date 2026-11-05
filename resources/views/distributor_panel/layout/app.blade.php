@@ -524,6 +524,51 @@
                 font-size: 0.85rem;
             }
         }
+
+        /* ─── Systematic Bootstrap 5 Pagination Fix ─── */
+        .pagination {
+            margin-bottom: 0;
+            gap: 3px;
+            align-items: center;
+        }
+        .pagination .page-item .page-link {
+            color: #0f766e;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px !important;
+            padding: 5px 12px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.4;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            text-decoration: none;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #0f766e !important;
+            border-color: #0f766e !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(15, 118, 110, 0.35);
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #94a3b8;
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
+        }
+        .pagination .page-item .page-link:hover {
+            background-color: #f0fdfa;
+            border-color: #14b8a6;
+            color: #0f766e;
+        }
+        .pagination svg,
+        nav[role="navigation"] svg {
+            width: 14px !important;
+            height: 14px !important;
+            max-width: 14px !important;
+            max-height: 14px !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+        }
     </style>
     @yield('styles')
 </head>
@@ -1054,7 +1099,7 @@
     <footer class="portal-footer">
         <div class="container-fluid px-2 px-md-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div>
-                © {{ date('Y') }} <strong>{{ sys_setting('software_name', 'Memon Nimko') }}</strong> — Enterprise Distributor Management
+                © {{ date('Y') }} <strong>ProWave Technologies</strong> — Enterprise Distributor Management
             </div>
             <div class="d-flex align-items-center gap-2">
                 @if($navDistributor)
