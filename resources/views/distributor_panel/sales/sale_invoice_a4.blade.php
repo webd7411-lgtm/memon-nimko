@@ -209,7 +209,7 @@
             @endif
             <div>
                 <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.5px;">{{ $distributor->name }}</h3>
-                <div class="text-muted small fw-semibold">Authorized Distributor — {{ sys_setting('software_name', 'Memon Nimko') }}</div>
+                <div class="text-muted small fw-semibold">Authorized Distributor</div>
                 <div class="text-muted small">{{ $distAddress }}</div>
                 <div class="text-muted small"><strong>Phone:</strong> {{ $distPhone }}</div>
             </div>
