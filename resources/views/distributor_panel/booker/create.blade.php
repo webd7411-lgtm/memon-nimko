@@ -281,11 +281,12 @@
                 <table class="table bk-table align-middle" id="bookingTable">
                     <thead>
                         <tr>
-                            <th style="width: 45%;">Product &amp; Variant</th>
-                            <th style="width: 15%;" class="text-center">Available Stock</th>
-                            <th style="width: 15%;" class="text-center">Booking Qty</th>
+                            <th style="width: 36%;">Product &amp; Variant</th>
+                            <th style="width: 12%;" class="text-center">Available Stock</th>
+                            <th style="width: 12%;" class="text-center">Booking Qty</th>
+                            <th style="width: 14%;" class="text-center"><i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)</th>
                             <th style="width: 12%;" class="text-end">Unit Price</th>
-                            <th style="width: 13%;" class="text-end">Subtotal</th>
+                            <th style="width: 14%;" class="text-end">Subtotal</th>
                             <th style="width: 40px;"></th>
                         </tr>
                     </thead>
@@ -302,6 +303,9 @@
                             </td>
                             <td>
                                 <input type="number" step="any" min="0.01" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
+                            </td>
+                            <td>
+                                <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer" name="trade_offer[]" value="0" placeholder="0" title="Free / Trade Offer Qty">
                             </td>
                             <td>
                                 <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>
@@ -360,6 +364,11 @@
                     <div class="d-flex justify-content-between py-2 border-bottom">
                         <span class="text-secondary">Total Quantity:</span>
                         <strong id="lblTotalQty">0</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-secondary"><i class="fas fa-gift text-success me-1"></i> Trade Offer (Free):</span>
+                        <strong id="lblTotalTradeOffer" class="text-success">0</strong>
                     </div>
 
                     <div class="d-flex justify-content-between py-2 border-bottom">
@@ -597,6 +606,7 @@ $(document).ready(function() {
     function calculateGrandTotal() {
         let totalItems = 0;
         let totalQty = 0;
+        let totalTradeOffer = 0;
         let subtotal = 0;
 
         $('#bookingTableBody tr').each(function() {
@@ -604,8 +614,10 @@ $(document).ready(function() {
             if (pId) {
                 totalItems++;
                 const q = parseFloat($(this).find('.row-qty').val()) || 0;
+                const to = parseFloat($(this).find('.row-trade-offer').val()) || 0;
                 const p = parseFloat($(this).find('.row-price').val()) || 0;
                 totalQty += q;
+                totalTradeOffer += to;
                 subtotal += (q * p);
             }
         });
@@ -630,6 +642,7 @@ $(document).ready(function() {
 
         $('#lblTotalItems').text(totalItems);
         $('#lblTotalQty').text(totalQty.toFixed(1));
+        $('#lblTotalTradeOffer').text(totalTradeOffer > 0 ? ('+' + totalTradeOffer.toFixed(1) + ' Free') : '0');
         $('#lblSubtotal').text('Rs ' + subtotal.toLocaleString('en-US', {minimumFractionDigits: 2}));
         $('#lblGrandTotal').text('Rs ' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2}));
     }
@@ -658,6 +671,9 @@ $(document).ready(function() {
                 </td>
                 <td>
                     <input type="number" step="any" min="0.01" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
+                </td>
+                <td>
+                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer" name="trade_offer[]" value="0" placeholder="0" title="Free / Trade Offer Qty">
                 </td>
                 <td>
                     <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>
