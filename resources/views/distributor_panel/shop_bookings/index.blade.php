@@ -216,6 +216,10 @@
                                     </button>
 
                                     @if($b->status === 'booked')
+                                        <a href="{{ route('distributor.shop_bookings.edit', $b->id) }}" class="btn btn-warning text-dark fw-semibold" title="Edit Booking">
+                                            <i class="fas fa-edit me-1"></i> Edit
+                                        </a>
+
                                         <button type="button" class="btn btn-success btn-deliver-modal" data-id="{{ $b->id }}" data-no="{{ $b->booking_no }}" data-total="{{ $b->grand_total }}" data-shop="{{ $b->customer->shop_name ?? 'Shop' }}" data-type="{{ $b->payment_type ?? 'cash' }}" title="Convert to Sale & Deliver">
                                             <i class="fas fa-truck-fast me-1"></i> Deliver
                                         </button>
@@ -293,6 +297,7 @@
                             <tr>
                                 <th>Product / Item</th>
                                 <th class="text-center">Booked Qty</th>
+                                <th class="text-center"><i class="fas fa-gift text-success me-1"></i> Trade Offer</th>
                                 <th class="text-center">Van Stock Status</th>
                                 <th class="text-end">Unit Price</th>
                                 <th class="text-end">Subtotal</th>
@@ -308,8 +313,15 @@
                     <strong>Booker Notes:</strong> <span id="dtlNotes"></span>
                 </div>
             </div>
-            <div class="modal-footer border-0 py-2">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer border-0 py-2 d-flex justify-content-between">
+                <div>
+                    <a href="#" id="dtlEditBtn" class="btn btn-warning text-dark fw-bold rounded-pill px-3" style="display:none;">
+                        <i class="fas fa-edit me-1"></i> Edit This Booking
+                    </a>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -418,6 +430,12 @@ $(document).ready(function() {
                         $('#dtlNotesContainer').hide();
                     }
 
+                    if (b.status === 'booked') {
+                        $('#dtlEditBtn').attr('href', "{{ url('/distributor-portal/shop-bookings') }}/" + b.id + "/edit").show();
+                    } else {
+                        $('#dtlEditBtn').hide();
+                    }
+
                     let rows = '';
                     b.items.forEach(it => {
                         const pName = it.product ? it.product.item_name : 'Item #' + it.product_id;
@@ -428,10 +446,16 @@ $(document).ready(function() {
                             ? `<span class="badge bg-success-subtle text-success border border-success-subtle">${check.available} Available</span>`
                             : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Shortage: ${check.available} in Van</span>`;
 
+                        const toVal = parseFloat(it.trade_offer || 0);
+                        const tradeBadge = toVal > 0 
+                            ? `<span class="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold">+${toVal.toFixed(1)} Free</span>` 
+                            : `<span class="text-muted">-</span>`;
+
                         rows += `
                             <tr>
                                 <td><strong>${pName}</strong>${vName}</td>
                                 <td class="text-center fw-bold">${parseFloat(it.qty).toFixed(1)}</td>
+                                <td class="text-center">${tradeBadge}</td>
                                 <td class="text-center">${stockBadge}</td>
                                 <td class="text-end">Rs ${parseFloat(it.unit_price).toFixed(2)}</td>
                                 <td class="text-end fw-bold">Rs ${parseFloat(it.subtotal).toFixed(2)}</td>
