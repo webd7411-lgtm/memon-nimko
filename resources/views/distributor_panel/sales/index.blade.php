@@ -193,7 +193,7 @@
                             @endif
                         </td>
                         <td>
-                            <span class="text-dark fw-semibold">{{ CarbonCarbon::parse($sale->sale_date)->format('d M, Y') }}</span>
+                            <span class="text-dark fw-semibold">{{ \Carbon\Carbon::parse($sale->sale_date)->format('d M, Y') }}</span>
                             @if($sale->created_at)
                                 <div class="text-muted" style="font-size: 0.72rem;">{{ $sale->created_at->timezone(config('app.timezone', 'Asia/Karachi'))->format('h:i A') }}</div>
                             @endif
