@@ -36,6 +36,11 @@ class DistributorSale extends Model
         return $this->belongsTo(User::class, 'booker_user_id');
     }
 
+    public function claim()
+    {
+        return $this->belongsTo(DistributorClaim::class, 'claim_id');
+    }
+
     public static function generateInvoiceNo()
     {
         $last = self::latest('id')->first();

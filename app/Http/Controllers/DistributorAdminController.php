@@ -1814,7 +1814,7 @@ class DistributorAdminController extends Controller
         $expenseAccounts = Account::where('status', 1)->orderBy('title')->get();
         $products = Product::select('id', 'item_name', 'price', 'wholesale_price')->orderBy('item_name')->get();
 
-        $query = DistributorClaim::with(['distributor', 'items.product', 'expenseHead', 'expenseAccount', 'approver', 'submitter'])
+        $query = DistributorClaim::with(['distributor', 'sales.customer', 'items.product', 'expenseHead', 'expenseAccount', 'approver', 'submitter'])
             ->latest('id');
 
         if ($request->filled('distributor_id')) {
@@ -1847,6 +1847,53 @@ class DistributorAdminController extends Controller
     /**
      * Record a new claim directly from Admin Panel on behalf of a distributor.
      */
+
+    /**
+     * AJAX endpoint: Calculate unclaimed retail discounts for a distributor & date range.
+     */
+    public function calculateDiscountForClaim(Request $request)
+    {
+        $request->validate([
+            'distributor_id' => 'required|exists:distributors,id',
+            'from_date'      => 'required|date',
+            'to_date'        => 'required|date|after_or_equal:from_date',
+        ]);
+
+        $sales = DistributorSale::where('distributor_id', $request->distributor_id)
+            ->whereBetween('sale_date', [$request->from_date, $request->to_date])
+            ->where('discount', '>', 0)
+            ->whereNull('claim_id')
+            ->with('customer:id,shop_name,owner_name,phone,approved_discount')
+            ->orderBy('sale_date', 'asc')
+            ->get();
+
+        $totalDiscount = (float) $sales->sum('discount');
+        $totalSubtotal = (float) $sales->sum('subtotal');
+
+        $salesList = $sales->map(function ($s) {
+            return [
+                'id'          => $s->id,
+                'invoice_no'  => $s->invoice_no,
+                'sale_date'   => $s->sale_date ? \Carbon\Carbon::parse($s->sale_date)->format('d M Y') : '-',
+                'shop_name'   => $s->customer->shop_name ?? 'Retail Shop',
+                'owner_name'  => $s->customer->owner_name ?? '',
+                'phone'       => $s->customer->phone ?? '',
+                'approved_pct'=> (float)($s->customer->approved_discount ?? 0),
+                'subtotal'    => (float) $s->subtotal,
+                'discount'    => (float) $s->discount,
+                'grand_total' => (float) $s->grand_total,
+            ];
+        });
+
+        return response()->json([
+            'status'         => true,
+            'count'          => $sales->count(),
+            'total_discount' => $totalDiscount,
+            'total_subtotal' => $totalSubtotal,
+            'sales'          => $salesList,
+        ]);
+    }
+
     public function storeClaim(Request $request)
     {
         $request->validate([

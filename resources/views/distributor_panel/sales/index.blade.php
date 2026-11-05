@@ -54,10 +54,13 @@
         </div>
 
         <div class="col-12 col-sm-6 col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #10b981 !important;">
-                <span class="text-secondary small fw-bold text-uppercase">Cash Collected</span>
-                <h3 class="fw-bolder mb-0 text-success">Rs {{ number_format($stats['total_paid'] ?? 0, 0) }}</h3>
-                <small class="text-muted">Received at billing / dispatch</small>
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #d97706 !important;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-secondary small fw-bold text-uppercase">Total Discount Given</span>
+                    <a href="{{ route('distributor.claims.index') }}" class="badge bg-white text-dark text-decoration-none shadow-xs" style="font-size: 0.68rem;">Claim Discount &rarr;</a>
+                </div>
+                <h3 class="fw-bolder mb-0 text-warning-emphasis">Rs {{ number_format($stats['total_discount'] ?? 0, 0) }}</h3>
+                <small class="text-muted fw-semibold">Unclaimed: <strong class="text-success">Rs {{ number_format($stats['unclaimed_discount'] ?? 0, 0) }}</strong></small>
             </div>
         </div>
 

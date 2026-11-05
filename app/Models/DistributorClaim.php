@@ -13,6 +13,8 @@ class DistributorClaim extends Model
 
     protected $casts = [
         'claim_date'      => 'date',
+        'from_date'       => 'date',
+        'to_date'         => 'date',
         'approved_at'     => 'datetime',
         'total_amount'    => 'float',
         'approved_amount' => 'float',
@@ -24,6 +26,14 @@ class DistributorClaim extends Model
     public function distributor()
     {
         return $this->belongsTo(Distributor::class);
+    }
+
+    /**
+     * Relationship: Linked secondary sales invoices that generated the claimed discounts
+     */
+    public function sales()
+    {
+        return $this->hasMany(DistributorSale::class, 'claim_id');
     }
 
     /**

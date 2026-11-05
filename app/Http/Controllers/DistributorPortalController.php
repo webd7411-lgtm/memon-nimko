@@ -634,7 +634,7 @@ class DistributorPortalController extends Controller
                 'phone'             => $request->phone,
                 'area'              => $request->area,
                 'address'           => $request->address,
-                'approved_discount' => $approvedDiscount,
+                'approved_discount' => 0.00, // Only Company Head Office can assign/approve shop discount
                 'opening_balance'   => $openingBalance,
                 'current_balance'   => $openingBalance,
                 'status'            => 'active',
@@ -881,28 +881,20 @@ class DistributorPortalController extends Controller
                 $totalLineDiscount += (float)($itemRow['discount'] ?? 0);
             }
 
-            $submittedDiscount = (float) ($request->discount ?? 0);
-            $submittedExtraCost = (float) ($request->total_extra_cost ?? 0);
-            $extraDiscount = (float) ($request->extra_discount ?? 0);
-
-            // If extra_discount is not explicitly passed, check if submitted discount exceeds line discounts
-            if ($extraDiscount <= 0) {
-                if ($submittedDiscount > $totalLineDiscount) {
-                    $extraDiscount = $submittedDiscount - $totalLineDiscount;
-                } elseif ($submittedExtraCost > $totalLineDiscount) {
-                    $extraDiscount = $submittedExtraCost - $totalLineDiscount;
-                }
-            }
-
-            $discount = $totalLineDiscount + $extraDiscount;
-
+            // Strict enforcement of Company Approved Discount (%) for the customer/shop
+            // Distributor / Booker cannot give more or less discount than company approved percentage!
             $approvedPct = (float) ($customer->approved_discount ?? 0);
-            if (Auth::user()->usertype === 'order_booker' || $request->filled('booker_user_id')) {
-                $maxAllowedDiscount = round(($subtotal * $approvedPct) / 100, 2);
-                if ($discount > ($maxAllowedDiscount + 0.05)) {
-                    throw new \Exception("Discount exceeds the approved limit for this shop! Maximum approved discount is {$approvedPct}% (Rs. " . number_format($maxAllowedDiscount, 2) . "). You entered Rs. " . number_format($discount, 2) . ".");
-                }
+            $exactDiscount = round(($subtotal * $approvedPct) / 100, 2);
+            $discount = $exactDiscount;
+
+            // Recalculate line discounts to strictly match approved percentage
+            foreach ($itemsData as &$itRow) {
+                $lineGross = (float)($itRow['subtotal'] ?? 0);
+                $itRow['discount'] = round(($lineGross * $approvedPct) / 100, 2);
+                $itRow['discount_type'] = 'percent';
+                $itRow['discount_val'] = $approvedPct;
             }
+            unset($itRow);
             $grandTotal = max(0, $subtotal - $discount);
 
             $inputPaid = 0;
@@ -1076,7 +1068,7 @@ class DistributorPortalController extends Controller
         $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
-        $query = DistributorSale::with(['customer', 'items', 'booker'])
+        $query = DistributorSale::with(['customer', 'items', 'booker', 'claim'])
             ->where('distributor_id', $distributor->id);
 
         if ($request->filled('search')) {
@@ -1109,10 +1101,12 @@ class DistributorPortalController extends Controller
 
         // Summary stats across the filtered scope
         $stats = [
-            'total_sales'     => (float) (clone $query)->sum('grand_total'),
-            'total_paid'      => (float) (clone $query)->sum('paid_amount'),
-            'total_due'       => (float) (clone $query)->sum('due_amount'),
-            'total_invoices'  => (int) (clone $query)->count(),
+            'total_sales'        => (float) (clone $query)->sum('grand_total'),
+            'total_paid'         => (float) (clone $query)->sum('paid_amount'),
+            'total_due'          => (float) (clone $query)->sum('due_amount'),
+            'total_invoices'     => (int) (clone $query)->count(),
+            'total_discount'     => (float) (clone $query)->sum('discount'),
+            'unclaimed_discount' => (float) (clone $query)->whereNull('claim_id')->where('discount', '>', 0)->sum('discount'),
         ];
 
         $sales = $query->latest('sale_date')->latest('id')->paginate(15);

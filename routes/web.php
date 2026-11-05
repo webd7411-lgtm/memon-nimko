@@ -488,6 +488,7 @@ Route::middleware('auth')->group(function () {
 
         // Claims / Secondary Discounts / Damage Stock / Freight
         Route::get('/claims', [DistributorAdminController::class, 'claims'])->name('claims')->middleware('permission:Distributor Claims');
+        Route::get('/claims/calculate-discount', [DistributorAdminController::class, 'calculateDiscountForClaim'])->name('claims.calculate_discount')->middleware('permission:Distributor Claims');
         Route::post('/claims/store', [DistributorAdminController::class, 'storeClaim'])->name('claims.store')->middleware('permission:Create Distributor Claim');
         Route::post('/claims/{id}/approve', [DistributorAdminController::class, 'approveClaim'])->name('claims.approve')->middleware('permission:Approve Distributor Claim');
         Route::post('/claims/{id}/reject', [DistributorAdminController::class, 'rejectClaim'])->name('claims.reject')->middleware('permission:Reject Distributor Claim');
@@ -550,6 +551,7 @@ Route::middleware('auth')->group(function () {
         // Claims to Company (Trade Schemes, Damage Stock, Freight)
         Route::get('/claims', [DistributorPortalController::class, 'claims'])->name('claims.index');
         Route::post('/claims/store', [DistributorPortalController::class, 'storeClaim'])->name('claims.store');
+        Route::get('/claims/calculate-discount', [DistributorPortalController::class, 'calculateDiscountForClaim'])->name('claims.calculate_discount');
 
         // Order Bookers Management (Distributor manages his bookers)
         Route::get('/bookers', [DistributorPortalController::class, 'bookersList'])->name('bookers.index');

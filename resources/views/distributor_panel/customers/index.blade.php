@@ -210,11 +210,14 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
+                                <label class="form-label fw-semibold small text-dark mb-1">
+                                    <i class="fas fa-lock text-muted me-1"></i> Company Approved Discount (%)
+                                </label>
                                 <div class="input-group input-group-sm">
-                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
-                                    <span class="input-group-text fw-bold">%</span>
+                                    <input type="text" class="form-control bg-light text-muted fw-bold" value="0.00%" readonly disabled>
+                                    <span class="input-group-text bg-light text-muted"><i class="fas fa-lock"></i></span>
                                 </div>
+                                <div class="form-text small" style="font-size: 0.72rem;">Company Head Office assigns and approves discount for this shop.</div>
                             </div>
 
                             <div class="mb-2">
@@ -310,11 +313,14 @@
                             </div>
 
                             <div class="mb-2">
-                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
+                                <label class="form-label fw-semibold small text-dark mb-1">
+                                    <i class="fas fa-lock text-warning me-1"></i> Company Approved Discount (%)
+                                </label>
                                 <div class="input-group input-group-sm">
-                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($cust->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
-                                    <span class="input-group-text fw-bold">%</span>
+                                    <input type="text" class="form-control bg-light fw-bold text-dark" value="{{ (float)($cust->approved_discount ?? 0) }}%" readonly disabled>
+                                    <span class="input-group-text bg-light text-muted"><i class="fas fa-lock"></i></span>
                                 </div>
+                                <div class="form-text small" style="font-size: 0.72rem;">Strictly locked: Only Company Head Office can modify the approved discount for this shop.</div>
                             </div>
                         </div>
                     </div>

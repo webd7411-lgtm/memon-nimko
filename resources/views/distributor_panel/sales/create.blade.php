@@ -1031,6 +1031,7 @@
                                 <i class="fas fa-undo"></i>
                             </button>
                         </div>
+                        <div id="custDiscountAlert" class="mt-1" style="display:none;"></div>
                     </div>
                 </div>
 
@@ -1529,9 +1530,17 @@ $(document).ready(function() {
         const origPrice  = item ? (parseFloat(item.original_price || item.price || 0)) : price;
         const tradeOffer = item ? (parseFloat(item.trade_offer || 0)) : 0;
 
-        // Default discount is 0 with percent (%) mode
-        const discVal    = item ? (parseFloat(item.disc_val || item.disc || 0)) : 0;
-        const discType   = item ? (item.disc_type || 'percent') : 'percent';
+        // Enforce company approved discount if customer is selected
+        const $selectedCust = $('#customerSelect').find(':selected');
+        const custSelectedVal = $('#customerSelect').val();
+        const hasActiveCust = custSelectedVal && custSelectedVal !== 'Walk-in Customer';
+        const approvedCustPct = hasActiveCust ? parseFloat($selectedCust.data('approved-discount') || 0) : 0;
+
+        const discVal    = hasActiveCust ? approvedCustPct : (item ? (parseFloat(item.disc_val || item.disc || 0)) : 0);
+        const discType   = hasActiveCust ? 'percent' : (item ? (item.disc_type || 'percent') : 'percent');
+        const isDiscLocked = hasActiveCust ? 'readonly' : '';
+        const discLockClass = hasActiveCust ? 'bg-light text-success fw-bold' : '';
+        const discBtnLockStyle = hasActiveCust ? 'pointer-events: none; opacity: 0.75;' : '';
 
         let calcDisc = 0;
         if (hasItem) {
@@ -1579,8 +1588,8 @@ $(document).ready(function() {
                 </td>
                 <td class="excel-cell excel-disc-cell">
                     <div class="ss-disc-wrap">
-                        <input type="number" step="any" min="0" class="ss-excel-input text-end row-disc-val" value="${discVal}">
-                        <button type="button" class="ss-disc-toggle-btn ${discType === 'percent' ? 'btn-pct' : 'btn-pkr'}" data-type="${discType}" title="Click to toggle % / PKR">${discType === 'percent' ? '%' : 'PKR'}</button>
+                        <input type="number" step="any" min="0" ${isDiscLocked} class="ss-excel-input text-end row-disc-val ${discLockClass}" value="${discVal.toFixed(2)}">
+                        <button type="button" class="ss-disc-toggle-btn ${discType === 'percent' ? 'btn-pct' : 'btn-pkr'}" style="${discBtnLockStyle}" data-type="${discType}" title="${hasActiveCust ? 'Locked by Company' : 'Click to toggle % / PKR'}">${discType === 'percent' ? '%' : 'PKR'}</button>
                         <input type="hidden" name="disc_type[]" class="row-disc-type" value="${discType}">
                         <input type="hidden" name="item_disc[]" class="row-disc-amount" value="${calcDisc.toFixed(2)}">
                     </div>
@@ -1780,8 +1789,18 @@ $(document).ready(function() {
     function recalculateRow($row) {
         const qty      = parseFloat($row.find('.row-qty').val()) || 0;
         const price    = parseFloat($row.find('.row-price').val()) || 0;
-        const discVal  = parseFloat($row.find('.row-disc-val').val()) || 0;
-        const discType = $row.find('.row-disc-type').val() || 'percent';
+        const $selected = $('#customerSelect').find(':selected');
+        const custVal = $('#customerSelect').val();
+        let discVal  = parseFloat($row.find('.row-disc-val').val()) || 0;
+        let discType = $row.find('.row-disc-type').val() || 'percent';
+
+        if (custVal && custVal !== 'Walk-in Customer') {
+            const approvedPct = parseFloat($selected.data('approved-discount') || 0);
+            discVal = approvedPct;
+            discType = 'percent';
+            $row.find('.row-disc-val').val(approvedPct.toFixed(2));
+            $row.find('.row-disc-type').val('percent');
+        }
 
         let calculatedDisc = 0;
         if (discType === 'percent') {
@@ -2484,8 +2503,54 @@ $(document).ready(function() {
         });
     }
 
-    $('#customerSelect').on('change', updateCustomerBadge);
+    function enforceCustomerApprovedDiscount() {
+        const $selected = $('#customerSelect').find(':selected');
+        const val = $('#customerSelect').val();
+        const hasCustomer = val && val !== 'Walk-in Customer';
+        const approvedPct = hasCustomer ? parseFloat($selected.data('approved-discount') || 0) : 0;
+
+        if (hasCustomer) {
+            $('#custDiscountAlert').show().html(
+                `<div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill ${approvedPct > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border'}" style="font-size: 0.75rem; font-weight: 600;">
+                    <i class="fas fa-lock me-1"></i> Company Approved Discount: <strong>${approvedPct.toFixed(2)}%</strong> (Locked)
+                </div>`
+            );
+        } else {
+            $('#custDiscountAlert').hide();
+        }
+
+        // Apply and lock on every existing row in the grid
+        $('#saleGridBody tr.ss-grid-row').each(function() {
+            const $row = $(this);
+            const $discVal = $row.find('.row-disc-val');
+            const $discType = $row.find('.row-disc-type');
+            const $toggleBtn = $row.find('.ss-disc-toggle-btn');
+
+            if (hasCustomer) {
+                $discVal.val(approvedPct.toFixed(2)).prop('readonly', true).addClass('bg-light text-success fw-bold');
+                $discType.val('percent');
+                $toggleBtn.text('%').removeClass('btn-pkr').addClass('btn-pct').css({'pointer-events': 'none', 'opacity': '0.75'}).attr('title', 'Locked by Company');
+            } else {
+                $discVal.prop('readonly', false).removeClass('bg-light text-success fw-bold');
+                $toggleBtn.css({'pointer-events': 'auto', 'opacity': '1'});
+            }
+            recalculateRow($row);
+        });
+
+        // Also lock extra discount
+        if (hasCustomer) {
+            $('#extraDiscountInput').val(0).prop('readonly', true).addClass('bg-light text-muted');
+        } else {
+            $('#extraDiscountInput').prop('readonly', false).removeClass('bg-light text-muted');
+        }
+    }
+
+    $('#customerSelect').on('change select2:select', function() {
+        updateCustomerBadge();
+        enforceCustomerApprovedDiscount();
+    });
     updateCustomerBadge();
+    enforceCustomerApprovedDiscount();
 
     // Hotkey F1 to open customer selection
     $(document).on('keydown', function(e) {
