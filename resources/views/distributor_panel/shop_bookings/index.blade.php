@@ -394,7 +394,7 @@ $(document).ready(function() {
             type: "GET",
             dataType: "json",
             beforeSend: function() {
-                $('#dtlItemsBody').html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin fs-4"></i> Loading items...</td></tr>');
+                $('#dtlItemsBody').html('<tr><td colspan="6" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin fs-4"></i> Loading items...</td></tr>');
                 modal.modal('show');
             },
             success: function(res) {
@@ -443,7 +443,7 @@ $(document).ready(function() {
                 }
             },
             error: function() {
-                $('#dtlItemsBody').html('<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load booking details.</td></tr>');
+                $('#dtlItemsBody').html('<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load booking details.</td></tr>');
             }
         });
     });

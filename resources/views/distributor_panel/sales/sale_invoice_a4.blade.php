@@ -201,18 +201,11 @@
 <div class="invoice-card">
     <!-- Header -->
     <div class="invoice-header d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-3">
-            @if(file_exists(public_path('assets/images/logo_print.png')))
-                <img src="{{ asset('assets/images/logo_print.png') }}" alt="Logo" style="max-height: 70px; max-width: 150px; object-fit: contain;">
-            @elseif(file_exists(public_path('assets/images/logo.png')))
-                <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="max-height: 70px; max-width: 150px; object-fit: contain;">
-            @endif
-            <div>
-                <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.5px;">{{ $distributor->name }}</h3>
-                <div class="text-muted small fw-semibold">Authorized Distributor</div>
-                <div class="text-muted small">{{ $distAddress }}</div>
-                <div class="text-muted small"><strong>Phone:</strong> {{ $distPhone }}</div>
-            </div>
+        <div>
+            <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.5px;">{{ $distributor->name }}</h3>
+            <div class="text-muted small fw-semibold">Authorized Distributor</div>
+            <div class="text-muted small">{{ $distAddress }}</div>
+            <div class="text-muted small"><strong>Phone:</strong> {{ $distPhone }}</div>
         </div>
 
         <div class="text-end">

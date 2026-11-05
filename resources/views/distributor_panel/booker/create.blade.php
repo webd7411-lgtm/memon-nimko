@@ -634,7 +634,7 @@ $(document).ready(function() {
         $('#lblGrandTotal').text('Rs ' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2}));
     }
 
-    $(document).on('input', '.row-qty, .row-price', function() {
+    $(document).on('input', '.row-qty, .row-price, .row-trade-offer', function() {
         calculateRow($(this).closest('tr'));
     });
 

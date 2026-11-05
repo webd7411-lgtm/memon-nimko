@@ -2015,21 +2015,23 @@ class DistributorPortalController extends Controller
             foreach ($request->product_id as $index => $pId) {
                 if (empty($pId)) continue;
                 $qty = (float) ($request->qty[$index] ?? 0);
+                $tradeOffer = (float) ($request->trade_offer[$index] ?? 0);
                 $price = (float) ($request->unit_price[$index] ?? 0);
                 $variantId = $request->variant_id[$index] ?? null;
 
-                if ($qty <= 0) continue;
+                if ($qty <= 0 && $tradeOffer <= 0) continue;
 
                 $lineSubtotal = $qty * $price;
                 $subtotal += $lineSubtotal;
                 $totalQty += $qty;
 
                 $itemsData[] = [
-                    'product_id' => $pId,
-                    'variant_id' => $variantId,
-                    'qty'        => $qty,
-                    'unit_price' => $price,
-                    'subtotal'   => $lineSubtotal,
+                    'product_id'  => $pId,
+                    'variant_id'  => $variantId,
+                    'qty'         => $qty,
+                    'trade_offer' => $tradeOffer,
+                    'unit_price'  => $price,
+                    'subtotal'    => $lineSubtotal,
                 ];
             }
 
@@ -2065,12 +2067,13 @@ class DistributorPortalController extends Controller
 
             foreach ($itemsData as $it) {
                 DistributorShopBookingItem::create([
-                    'booking_id' => $booking->id,
-                    'product_id' => $it['product_id'],
-                    'variant_id' => $it['variant_id'],
-                    'qty'        => $it['qty'],
-                    'unit_price' => $it['unit_price'],
-                    'subtotal'   => $it['subtotal'],
+                    'booking_id'  => $booking->id,
+                    'product_id'  => $it['product_id'],
+                    'variant_id'  => $it['variant_id'],
+                    'qty'         => $it['qty'],
+                    'trade_offer' => $it['trade_offer'] ?? 0,
+                    'unit_price'  => $it['unit_price'],
+                    'subtotal'    => $it['subtotal'],
                 ]);
             }
 
@@ -2191,7 +2194,7 @@ class DistributorPortalController extends Controller
             ->where('distributor_id', $distributor->id)
             ->findOrFail($id);
 
-        // Check stock availability for each item
+        // Check stock availability for each item (Purchased Qty + Free Trade Offer)
         $stockCheck = [];
         $canDeliver = true;
         foreach ($booking->items as $item) {
@@ -2200,11 +2203,14 @@ class DistributorPortalController extends Controller
                 ->when($item->variant_id, fn($q) => $q->where('variant_id', $item->variant_id))
                 ->first();
             $avail = $st ? (float)$st->qty : 0;
+            $neededQty = (float)$item->qty + (float)($item->trade_offer ?? 0);
             $stockCheck[$item->id] = [
-                'available' => $avail,
-                'is_ok'     => $avail >= (float)$item->qty,
+                'available'   => $avail,
+                'needed'      => $neededQty,
+                'trade_offer' => (float)($item->trade_offer ?? 0),
+                'is_ok'       => $avail >= $neededQty,
             ];
-            if ($avail < (float)$item->qty) {
+            if ($avail < $neededQty) {
                 $canDeliver = false;
             }
         }
@@ -2239,20 +2245,22 @@ class DistributorPortalController extends Controller
         try {
             $customer = $booking->customer;
 
-            // 1. Verify and deduct stock for all items
+            // 1. Verify and deduct stock for all items (Qty + Free Trade Offer)
             foreach ($booking->items as $item) {
                 $distStock = DistributorStock::where('distributor_id', $distributor->id)
                     ->where('product_id', $item->product_id)
                     ->when($item->variant_id, fn($q) => $q->where('variant_id', $item->variant_id))
                     ->first();
 
-                if (!$distStock || (float)$distStock->qty < (float)$item->qty) {
+                $neededQty = (float)$item->qty + (float)($item->trade_offer ?? 0);
+
+                if (!$distStock || (float)$distStock->qty < $neededQty) {
                     $prodName = Product::find($item->product_id)->item_name ?? 'Item';
                     $avail = $distStock ? (float)$distStock->qty : 0;
-                    throw new \Exception("Insufficient stock in your custody for '{$prodName}'. Available: {$avail}, Booked: {$item->qty}. Please replenish stock first.");
+                    throw new \Exception("Insufficient stock in your custody for '{$prodName}'. Available: {$avail}, Required (Qty + Trade Offer): {$neededQty}. Please replenish stock first.");
                 }
 
-                $distStock->qty = (float)$distStock->qty - (float)$item->qty;
+                $distStock->qty = (float)$distStock->qty - $neededQty;
                 $distStock->save();
             }
 
@@ -2363,6 +2371,171 @@ class DistributorPortalController extends Controller
         ]);
 
         return back()->with('success', "Booking #{$booking->booking_no} has been cancelled.");
+    }
+
+    /**
+     * Edit shop booking interface (for Distributor and Order Booker).
+     */
+    public function editShopBooking($id)
+    {
+        $distributor = $this->getDistributor();
+        $user = Auth::user();
+
+        $booking = DistributorShopBooking::with(['items.product.unit', 'items.variant', 'customer', 'booker'])
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        if ($user && $user->usertype === 'order_booker' && $booking->booker_user_id != $user->id) {
+            return redirect()->route('distributor.booker.my_bookings')->with('error', 'You can only edit your own booked orders.');
+        }
+
+        if ($booking->status === 'delivered') {
+            $dest = ($user && $user->usertype === 'order_booker') ? 'distributor.booker.my_bookings' : 'distributor.shop_bookings.index';
+            return redirect()->route($dest)->with('error', 'Cannot edit a booking that has already been delivered and converted to a sale.');
+        }
+
+        if ($booking->status === 'cancelled') {
+            $dest = ($user && $user->usertype === 'order_booker') ? 'distributor.booker.my_bookings' : 'distributor.shop_bookings.index';
+            return redirect()->route($dest)->with('error', 'Cannot edit a cancelled booking.');
+        }
+
+        // Retail shops assigned to this distributor
+        $customers = DistributorCustomer::where('distributor_id', $distributor->id)
+            ->where('status', 'active')
+            ->orderBy('shop_name')
+            ->get();
+
+        // Products catalog
+        $products = Product::with(['unit', 'variants', 'category_relation'])
+            ->orderBy('item_name')
+            ->get();
+
+        // Stock availability map for indicators
+        $stockMap = DistributorStock::where('distributor_id', $distributor->id)
+            ->get()
+            ->keyBy(function($st) {
+                return $st->product_id . '_' . ($st->variant_id ?? 0);
+            });
+
+        $isBookerUser = ($user && $user->usertype === 'order_booker');
+
+        return view('distributor_panel.shop_bookings.edit', compact('distributor', 'booking', 'customers', 'products', 'stockMap', 'isBookerUser'));
+    }
+
+    /**
+     * Update shop booking details.
+     */
+    public function updateShopBooking(Request $request, $id)
+    {
+        $distributor = $this->getDistributor();
+        $user = Auth::user();
+
+        $booking = DistributorShopBooking::with('items')
+            ->where('distributor_id', $distributor->id)
+            ->findOrFail($id);
+
+        $destRoute = ($user && $user->usertype === 'order_booker') ? 'distributor.booker.my_bookings' : 'distributor.shop_bookings.index';
+
+        if ($user && $user->usertype === 'order_booker' && $booking->booker_user_id != $user->id) {
+            return redirect()->route('distributor.booker.my_bookings')->with('error', 'You can only edit your own booked orders.');
+        }
+
+        if ($booking->status === 'delivered') {
+            return redirect()->route($destRoute)->with('error', 'Cannot edit a booking that has already been delivered.');
+        }
+
+        if ($booking->status === 'cancelled') {
+            return redirect()->route($destRoute)->with('error', 'Cannot edit a cancelled booking.');
+        }
+
+        $request->validate([
+            'distributor_customer_id' => 'required|exists:distributor_customers,id',
+            'payment_type'            => 'nullable|in:cash,credit',
+            'product_id'              => 'required|array|min:1',
+            'qty'                     => 'required|array|min:1',
+            'unit_price'              => 'required|array|min:1',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $customer = DistributorCustomer::where('distributor_id', $distributor->id)
+                ->findOrFail($request->distributor_customer_id);
+
+            $subtotal = 0;
+            $totalQty = 0;
+            $itemsData = [];
+
+            foreach ($request->product_id as $index => $pId) {
+                if (empty($pId)) continue;
+                $qty = (float) ($request->qty[$index] ?? 0);
+                $tradeOffer = (float) ($request->trade_offer[$index] ?? 0);
+                $price = (float) ($request->unit_price[$index] ?? 0);
+                $variantId = $request->variant_id[$index] ?? null;
+
+                if ($qty <= 0 && $tradeOffer <= 0) continue;
+
+                $lineSubtotal = $qty * $price;
+                $subtotal += $lineSubtotal;
+                $totalQty += $qty;
+
+                $itemsData[] = [
+                    'product_id'  => $pId,
+                    'variant_id'  => $variantId,
+                    'qty'         => $qty,
+                    'trade_offer' => $tradeOffer,
+                    'unit_price'  => $price,
+                    'subtotal'    => $lineSubtotal,
+                ];
+            }
+
+            if (empty($itemsData)) {
+                throw new \Exception('Please add at least one product with quantity to update the booking.');
+            }
+
+            $discount = (float) ($request->discount ?? 0);
+            $approvedPct = (float) ($customer->approved_discount ?? 0);
+            $maxAllowedDiscount = round(($subtotal * $approvedPct) / 100, 2);
+
+            if ($discount > ($maxAllowedDiscount + 0.05)) {
+                throw new \Exception("Discount exceeds the approved limit for this shop! This shop is approved for maximum {$approvedPct}% discount (Max: Rs. " . number_format($maxAllowedDiscount, 2) . "). You entered Rs. " . number_format($discount, 2) . ".");
+            }
+
+            $grandTotal = max(0, $subtotal - $discount);
+
+            $booking->update([
+                'distributor_customer_id' => $customer->id,
+                'booking_date'            => $request->booking_date ?? $booking->booking_date,
+                'payment_type'            => $request->payment_type ?? 'cash',
+                'total_items'             => count($itemsData),
+                'total_qty'               => $totalQty,
+                'subtotal'                => $subtotal,
+                'discount'                => $discount,
+                'grand_total'             => $grandTotal,
+                'notes'                   => $request->notes,
+            ]);
+
+            // Sync items: delete old items and recreate updated items
+            $booking->items()->delete();
+
+            foreach ($itemsData as $it) {
+                DistributorShopBookingItem::create([
+                    'booking_id'  => $booking->id,
+                    'product_id'  => $it['product_id'],
+                    'variant_id'  => $it['variant_id'],
+                    'qty'         => $it['qty'],
+                    'trade_offer' => $it['trade_offer'] ?? 0,
+                    'unit_price'  => $it['unit_price'],
+                    'subtotal'    => $it['subtotal'],
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route($destRoute)->with('success', "Booking #{$booking->booking_no} has been updated successfully!");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Failed to update booking: ' . $e->getMessage());
+        }
     }
 
     // =========================================================================

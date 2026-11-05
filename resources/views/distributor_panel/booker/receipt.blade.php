@@ -174,7 +174,12 @@
                                 <br><small>({{ $it->variant->size_label ?: $it->variant->variant_name }})</small>
                             @endif
                         </td>
-                        <td style="text-align: center;">{{ number_format($it->qty, 1) }}</td>
+                        <td style="text-align: center;">
+                            {{ number_format($it->qty, 1) }}
+                            @if(!empty($it->trade_offer) && (float)$it->trade_offer > 0)
+                                <div style="font-size: 11px; color: #16a34a; font-weight: bold;">+{{ (float)$it->trade_offer }} Free</div>
+                            @endif
+                        </td>
                         <td style="text-align: right;">{{ number_format($it->unit_price, 2) }}</td>
                         <td style="text-align: right;">{{ number_format($it->subtotal, 2) }}</td>
                     </tr>

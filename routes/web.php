@@ -562,10 +562,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/booker/store', [DistributorPortalController::class, 'storeShopBooking'])->name('booker.store');
         Route::get('/booker/my-bookings', [DistributorPortalController::class, 'myShopBookings'])->name('booker.my_bookings');
         Route::get('/booker/booking/{id}', [DistributorPortalController::class, 'showShopBookingReceipt'])->name('booker.receipt');
+        Route::get('/booker/booking/{id}/edit', [DistributorPortalController::class, 'editShopBooking'])->name('booker.edit');
+        Route::post('/booker/booking/{id}/update', [DistributorPortalController::class, 'updateShopBooking'])->name('booker.update');
 
         // Distributor View & Deliver of Shop Bookings
         Route::get('/shop-bookings', [DistributorPortalController::class, 'shopBookingsList'])->name('shop_bookings.index');
         Route::get('/shop-bookings/{id}', [DistributorPortalController::class, 'showShopBookingDetails'])->name('shop_bookings.show');
+        Route::get('/shop-bookings/{id}/edit', [DistributorPortalController::class, 'editShopBooking'])->name('shop_bookings.edit');
+        Route::post('/shop-bookings/{id}/update', [DistributorPortalController::class, 'updateShopBooking'])->name('shop_bookings.update');
         Route::post('/shop-bookings/{id}/deliver', [DistributorPortalController::class, 'deliverShopBooking'])->name('shop_bookings.deliver');
         Route::post('/shop-bookings/{id}/cancel', [DistributorPortalController::class, 'cancelShopBooking'])->name('shop_bookings.cancel');
     });

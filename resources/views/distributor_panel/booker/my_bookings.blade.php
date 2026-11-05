@@ -133,6 +133,11 @@
                                 <a href="{{ route('distributor.booker.receipt', $b->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" title="Print Booking Slip">
                                     <i class="fas fa-print"></i> Slip
                                 </a>
+                                @if($b->status === 'booked')
+                                    <a href="{{ route('distributor.booker.edit', $b->id) }}" class="btn btn-sm btn-outline-warning rounded-pill px-2.5 ms-1" title="Edit Booking">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                @endif
                             </td>
                         </tr>
                     @empty
