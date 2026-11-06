@@ -164,6 +164,73 @@
 }
 .fcc-row-item:last-child { border-bottom: none; }
 .fcc-row-label { color: #475569; font-weight: 500; }
+.bs-row-badge {
+    font-size: 0.72rem;
+    padding: 0.18rem 0.52rem;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: #334155;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+    border: 1px solid #cbd5e1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+}
+.bs-row-badge:hover {
+    background: #0f766e;
+    color: #ffffff;
+    border-color: #0f766e;
+}
+.bs-row-badge i {
+    font-size: 0.68rem;
+}
+.modal-header .modal-title {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 1.05rem !important;
+    letter-spacing: 0.3px;
+}
+.modal-header .btn-close {
+    filter: brightness(0) invert(1) !important;
+    opacity: 0.85;
+}
+.modal-header .btn-close:hover {
+    opacity: 1;
+}
+.fcc-modal-table th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    background: #f1f5f9 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    padding: 0.65rem 0.75rem;
+}
+.fcc-modal-table td {
+    font-size: 0.85rem;
+    vertical-align: middle;
+    padding: 0.6rem 0.75rem;
+    color: #0f172a !important;
+    font-weight: 500;
+}
+.fcc-modal-table .text-muted {
+    color: #334155 !important;
+}
+.fcc-search-box {
+    border-radius: 8px;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid #94a3b8;
+    color: #0f172a;
+    font-weight: 500;
+}
+.fcc-search-box:focus {
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+}
 .fcc-row-val { font-weight: 700; color: #0f172a; }
 
 /* Print styling */
@@ -405,37 +472,61 @@
                     </div>
                 </div>
 
-                <!-- Sub-Asset Rows -->
+                <!-- Sub-Asset Rows with Detail Badges -->
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-money-bill-wave text-success me-2"></i> Cash in Hand (Cash Registers & Drawers)</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-money-bill-wave text-success me-2"></i> Cash in Hand (Cash Registers & Drawers)
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#cashDetailModal"><i class="fas fa-eye"></i> Details</span>
+                    </span>
                     <span class="fcc-row-val" id="rowCashInHand">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-university text-primary me-2"></i> Bank Account Balances</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-university text-primary me-2"></i> Bank Account Balances
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#bankDetailModal"><i class="fas fa-university"></i> View Banks</span>
+                    </span>
                     <span class="fcc-row-val" id="rowBankBalances">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-box text-warning me-2"></i> Finished Goods Stock Value</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-box text-warning me-2"></i> Finished Goods Stock Value
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#stockModal"><i class="fas fa-boxes"></i> Stock Value</span>
+                    </span>
                     <span class="fcc-row-val" id="rowFinishedGoods">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-seedling text-info me-2"></i> Raw Materials Live Stock Value</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-seedling text-info me-2"></i> Raw Materials Live Stock Value
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#rawStockModal"><i class="fas fa-leaf"></i> RM Stock</span>
+                    </span>
                     <span class="fcc-row-val" id="rowRawMaterials">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-users text-primary me-2"></i> Direct Customers Receivable</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-users text-primary me-2"></i> Direct Customers Receivable
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#customersModal"><i class="fas fa-user-friends"></i> <span id="badgeCustCount">0</span> Customers</span>
+                    </span>
                     <span class="fcc-row-val" id="rowCustomerReceivable">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-user-tie text-teal me-2" style="color: #0f766e;"></i> Distributor Receivable (Owed to Company)</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-user-tie text-teal me-2" style="color: #0f766e;"></i> Distributor Receivable (Owed to Company)
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#distributorsModal"><i class="fas fa-truck-loading"></i> <span id="badgeDistCount">0</span> Distributors</span>
+                    </span>
                     <span class="fcc-row-val" id="rowDistributorReceivable">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-store text-info me-2"></i> Market / Retail Shop Receivables (Field)</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-store text-info me-2"></i> Market / Retail Shop Receivables (Field)
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#retailShopsModal"><i class="fas fa-store-alt"></i> <span id="badgeShopsCount">0</span> Shops</span>
+                    </span>
                     <span class="fcc-row-val" id="rowMarketReceivable">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-building text-secondary me-2"></i> Fixed Assets (Plant, Vehicles, Equipment)</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-building text-secondary me-2"></i> Fixed Assets (Plant, Vehicles, Equipment)
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#assetsModal"><i class="fas fa-clipboard-list"></i> Asset Register</span>
+                    </span>
                     <span class="fcc-row-val" id="rowFixedAssets">Rs. 0.00</span>
                 </div>
             </div>
@@ -454,15 +545,24 @@
                 </div>
 
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-truck text-danger me-2"></i> Vendor / Supplier Payables (Accounts Payable)</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-truck text-danger me-2"></i> Vendor / Supplier Payables (Accounts Payable)
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#vendorsModal"><i class="fas fa-file-invoice-dollar"></i> <span id="badgeVendCount">0</span> Vendors</span>
+                    </span>
                     <span class="fcc-row-val text-danger" id="rowVendorPayables">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-hand-holding-heart text-warning me-2"></i> Distributor Credit Advances / Credit Notes</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-hand-holding-heart text-warning me-2"></i> Distributor Credit Advances / Credit Notes
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#distAdvancesModal"><i class="fas fa-handshake"></i> <span id="badgeAdvCount">0</span> Advances</span>
+                    </span>
                     <span class="fcc-row-val text-danger" id="rowDistributorAdvances">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-receipt text-warning me-2"></i> Pending Claims (Unapproved Claims)</span>
+                    <span class="fcc-row-label">
+                        <i class="fas fa-receipt text-warning me-2"></i> Pending Claims (Unapproved Claims)
+                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#claimsModal"><i class="fas fa-exclamation-circle"></i> <span id="badgeClaimsCount">0</span> Claims</span>
+                    </span>
                     <span class="fcc-row-val text-danger" id="rowPendingClaims">Rs. 0.00</span>
                 </div>
             </div>
@@ -550,6 +650,447 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- DETAIL MODALS (360 EXECUTIVE DRILL-DOWN) -->
+
+<!-- 1. Cash in Hand Modal -->
+<div class="modal fade" id="cashDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-money-bill-wave text-success me-2"></i> Cash in Hand (Registers & Cash Accounts)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="p-3 rounded-3 border bg-light">
+              <span class="text-muted small d-block">Till / Register Counter Cash</span>
+              <h4 class="fw-bold text-success mb-0" id="modalCounterCash">Rs. 0.00</h4>
+              <small class="text-muted">Net sales cash collected minus cash paid out</small>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-3 rounded-3 border bg-light">
+              <span class="text-muted small d-block">Chart of Accounts Cash Accounts</span>
+              <h4 class="fw-bold text-primary mb-0" id="modalAccountCash">Rs. 0.00</h4>
+              <small class="text-muted">Opening balance in Cash in Hand heads</small>
+            </div>
+          </div>
+        </div>
+        <h6 class="fw-bold text-dark mb-3">Cash Accounts Breakdown</h6>
+        <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Account Title</th>
+                <th>Account Code</th>
+                <th class="text-end">Balance</th>
+              </tr>
+            </thead>
+            <tbody id="cashTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted">Total Cash in Hand: <strong class="text-dark" id="modalTotalCashFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Bank Accounts Modal -->
+<div class="modal fade" id="bankDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-university text-primary me-2"></i> Bank Account Balances
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Account Title</th>
+                <th>Bank Name</th>
+                <th>Code</th>
+                <th class="text-end">Opening</th>
+                <th class="text-end text-success">+ Inflow</th>
+                <th class="text-end text-danger">- Outflow</th>
+                <th class="text-end">Current Balance</th>
+              </tr>
+            </thead>
+            <tbody id="bankTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted">Total Bank Funds: <strong class="text-primary" id="modalTotalBankFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Finished Goods Stock Modal -->
+<div class="modal fade" id="stockModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-boxes text-warning me-2"></i> Finished Goods Stock Valuation
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccStockSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search finished product name, variant or code...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product & Variant</th>
+                <th>Code</th>
+                <th>Category</th>
+                <th class="text-end">Stock Qty</th>
+                <th>Unit</th>
+                <th class="text-end">Valuation Cost</th>
+                <th class="text-end">Total Valuation</th>
+              </tr>
+            </thead>
+            <tbody id="stockTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalStockItemsCount">0</span> items in stock | Total Valuation: <strong class="text-warning-emphasis" id="modalTotalStockFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Raw Materials Live Stock Modal -->
+<div class="modal fade" id="rawStockModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-seedling text-info me-2"></i> Raw Materials Live Stock Valuation
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccRawStockSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search raw material name or code...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Material Name</th>
+                <th>Material Code</th>
+                <th class="text-end">Stock Qty</th>
+                <th>Unit</th>
+                <th class="text-end">Last Purchase Cost</th>
+                <th class="text-end">Total Valuation</th>
+              </tr>
+            </thead>
+            <tbody id="rawStockTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalRawItemsCount">0</span> materials | Total RM Value: <strong class="text-info" id="modalTotalRawFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Direct Customers Receivable Modal -->
+<div class="modal fade" id="customersModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-users text-primary me-2"></i> Direct Customers Receivable (Sundry Debtors)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccCustSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search customer name or phone...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Customer Name</th>
+                <th>Phone</th>
+                <th class="text-end">Receivable Balance</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="customersTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalCustCountFooter">0</span> Customers | Total: <strong class="text-primary" id="modalTotalCustFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. Distributor Receivable Modal -->
+<div class="modal fade" id="distributorsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-user-tie text-teal me-2" style="color: #0f766e;"></i> Distributor Receivable (Owed to Company)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccDistSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search distributor name, code or area...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Code</th>
+                <th>Distributor Name</th>
+                <th>Area</th>
+                <th>Phone</th>
+                <th class="text-end">Receivable Balance</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="distributorsTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalDistCountFooter">0</span> Distributors | Total: <strong class="text-teal" style="color: #0f766e;" id="modalTotalDistFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 7. Market / Retail Shop Receivables Modal -->
+<div class="modal fade" id="retailShopsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-store text-info me-2"></i> Market / Retail Shop Receivables (Field Outlets)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccShopSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search shop name, owner or distributor...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Shop / Outlet Name</th>
+                <th>Owner Name</th>
+                <th>Distributor</th>
+                <th>Area</th>
+                <th>Phone</th>
+                <th class="text-end">Balance Due</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="retailShopsTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalShopsCountFooter">0</span> Retail Outlets | Total: <strong class="text-info" id="modalTotalShopsFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 8. Fixed Assets Register Modal -->
+<div class="modal fade" id="assetsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-building text-secondary me-2"></i> Fixed Assets Register
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccAssetSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search asset name or code...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Asset Code</th>
+                <th>Asset Name</th>
+                <th>Category</th>
+                <th class="text-end">Purchase Cost</th>
+                <th class="text-end">Current Book Value</th>
+                <th class="text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody id="assetsTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalAssetsCountFooter">0</span> Assets | Total Valuation: <strong class="text-secondary" id="modalTotalAssetsFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 9. Vendor / Supplier Payables Modal -->
+<div class="modal fade" id="vendorsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-truck text-danger me-2"></i> Vendor / Supplier Payables (Accounts Payable)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccVendSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search vendor name or phone...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Vendor / Supplier Name</th>
+                <th>Phone</th>
+                <th class="text-end">Payable Amount</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="vendorsTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalVendCountFooter">0</span> Vendors | Total Obligation: <strong class="text-danger" id="modalTotalVendFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 10. Distributor Advances Modal -->
+<div class="modal fade" id="distAdvancesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-hand-holding-heart text-warning me-2"></i> Distributor Credit Advances / Credit Notes
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccAdvSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search distributor...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Code</th>
+                <th>Distributor Name</th>
+                <th>Area</th>
+                <th>Phone</th>
+                <th class="text-end">Advance Balance</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="distAdvancesTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalAdvCountFooter">0</span> Distributors | Total Advance: <strong class="text-warning-emphasis" id="modalTotalAdvFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 11. Pending Claims Modal -->
+<div class="modal fade" id="claimsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-white mb-0">
+          <i class="fas fa-receipt text-warning me-2"></i> Pending Distributor Claims (Unapproved)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="text" id="fccClaimSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search claim no or distributor...">
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Claim No</th>
+                <th>Distributor</th>
+                <th>Claim Date</th>
+                <th>Type</th>
+                <th class="text-end">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="claimsTableBody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><span id="modalClaimsCountFooter">0</span> Claims | Total: <strong class="text-warning-emphasis" id="modalTotalClaimsFooter">Rs. 0.00</strong></span>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -673,6 +1214,264 @@ function loadFinancialSnapshot() {
             document.getElementById('eqNetWorth').innerText = formatCurrency(res.curr_bs.net_worth);
             document.getElementById('eqNetInvested').innerText = formatCurrency(res.curr_bs.equity_breakdown.net_invested_capital);
             document.getElementById('eqRetainedEarnings').innerText = formatCurrency(res.curr_bs.equity_breakdown.retained_earnings);
+
+            // ==========================================
+            // POPULATE DETAIL DRILL-DOWN MODALS & BADGES
+            // ==========================================
+            var bs = res.curr_bs || {};
+            var inv = bs.inventory || {};
+            var rec = bs.receivables || {};
+            var pay = bs.payables || {};
+
+            // 1. Badge counters
+            if (document.getElementById('badgeCustCount')) {
+                document.getElementById('badgeCustCount').innerText = (rec.customers_list || []).length;
+            }
+            if (document.getElementById('badgeDistCount')) {
+                document.getElementById('badgeDistCount').innerText = (rec.distributors_list || []).length;
+            }
+            if (document.getElementById('badgeShopsCount')) {
+                document.getElementById('badgeShopsCount').innerText = (rec.market_shops_list || []).length;
+            }
+            if (document.getElementById('badgeVendCount')) {
+                document.getElementById('badgeVendCount').innerText = (pay.vendors_list || []).length;
+            }
+            if (document.getElementById('badgeAdvCount')) {
+                document.getElementById('badgeAdvCount').innerText = (pay.advances_list || []).length;
+            }
+            if (document.getElementById('badgeClaimsCount')) {
+                document.getElementById('badgeClaimsCount').innerText = (pay.claims_list || []).length;
+            }
+
+            // 2. Cash Modal
+            var cashDet = bs.cash_details || {};
+            if (document.getElementById('modalCounterCash')) {
+                document.getElementById('modalCounterCash').innerText = formatCurrency(cashDet.counter_cash || 0);
+            }
+            if (document.getElementById('modalAccountCash')) {
+                var accCashSum = (cashDet.accounts || []).reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0);
+                document.getElementById('modalAccountCash').innerText = formatCurrency(accCashSum);
+            }
+            if (document.getElementById('modalTotalCashFooter')) {
+                document.getElementById('modalTotalCashFooter').innerText = formatCurrency(bs.cash_in_hand || 0);
+            }
+            var cashHtml = '';
+            (cashDet.accounts || []).forEach(function(ca, idx) {
+                cashHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td class="fw-semibold text-dark">${ca.title || '-'}</td>
+                    <td><span class="badge bg-light text-muted border">${ca.code || '-'}</span></td>
+                    <td class="text-end fw-bold text-success">${formatCurrency(ca.balance)}</td>
+                </tr>`;
+            });
+            if (!cashHtml) cashHtml = '<tr><td colspan="4" class="text-center text-muted py-3">No cash accounts found</td></tr>';
+            if (document.getElementById('cashTableBody')) document.getElementById('cashTableBody').innerHTML = cashHtml;
+
+            // 3. Bank Modal
+            var bankHtml = '';
+            (bs.bank_details || []).forEach(function(ba, idx) {
+                bankHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td class="fw-semibold text-dark">${ba.title || '-'}</td>
+                    <td>${ba.bank_name || '-'}</td>
+                    <td><span class="badge bg-light text-muted border">${ba.code || '-'}</span></td>
+                    <td class="text-end text-muted">${formatCurrency(ba.opening_balance)}</td>
+                    <td class="text-end text-success">+ ${formatCurrency(ba.inflow)}</td>
+                    <td class="text-end text-danger">- ${formatCurrency(ba.outflow)}</td>
+                    <td class="text-end fw-bold text-primary">${formatCurrency(ba.current_balance)}</td>
+                </tr>`;
+            });
+            if (!bankHtml) bankHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No bank accounts configured</td></tr>';
+            if (document.getElementById('bankTableBody')) document.getElementById('bankTableBody').innerHTML = bankHtml;
+            if (document.getElementById('modalTotalBankFooter')) document.getElementById('modalTotalBankFooter').innerText = formatCurrency(bs.bank_balances || 0);
+
+            // 4. Finished Goods Stock Modal
+            var stockItems = inv.finished_items || [];
+            var stockHtml = '';
+            stockItems.forEach(function(it, idx) {
+                stockHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td class="fw-semibold text-dark">${it.name}</td>
+                    <td><span class="badge bg-light text-muted border">${it.code || '-'}</span></td>
+                    <td><span class="badge bg-secondary-subtle text-secondary">${it.category || 'General'}</span></td>
+                    <td class="text-end fw-bold">${it.qty}</td>
+                    <td>${it.unit}</td>
+                    <td class="text-end text-muted">${formatCurrency(it.unit_cost)}</td>
+                    <td class="text-end fw-bold text-warning-emphasis">${formatCurrency(it.total_val)}</td>
+                </tr>`;
+            });
+            if (!stockHtml) stockHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No physical finished stock recorded</td></tr>';
+            if (document.getElementById('stockTableBody')) document.getElementById('stockTableBody').innerHTML = stockHtml;
+            if (document.getElementById('modalStockItemsCount')) document.getElementById('modalStockItemsCount').innerText = stockItems.length;
+            if (document.getElementById('modalTotalStockFooter')) document.getElementById('modalTotalStockFooter').innerText = formatCurrency(inv.finished_goods || 0);
+
+            // 5. Raw Materials Stock Modal
+            var rawItems = inv.raw_items || [];
+            var rawHtml = '';
+            rawItems.forEach(function(rm, idx) {
+                rawHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td class="fw-semibold text-dark">${rm.name}</td>
+                    <td><span class="badge bg-light text-muted border">${rm.code || '-'}</span></td>
+                    <td class="text-end fw-bold">${rm.qty}</td>
+                    <td>${rm.unit}</td>
+                    <td class="text-end text-muted">${formatCurrency(rm.unit_cost)}</td>
+                    <td class="text-end fw-bold text-info">${formatCurrency(rm.total_val)}</td>
+                </tr>`;
+            });
+            if (!rawHtml) rawHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No raw materials in stock</td></tr>';
+            if (document.getElementById('rawStockTableBody')) document.getElementById('rawStockTableBody').innerHTML = rawHtml;
+            if (document.getElementById('modalRawItemsCount')) document.getElementById('modalRawItemsCount').innerText = rawItems.length;
+            if (document.getElementById('modalTotalRawFooter')) document.getElementById('modalTotalRawFooter').innerText = formatCurrency(inv.raw_materials || 0);
+
+            // 6. Direct Customers Modal
+            var custList = rec.customers_list || [];
+            var custHtml = '';
+            custList.forEach(function(c, idx) {
+                custHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td class="fw-semibold text-dark">${c.name}</td>
+                    <td>${c.phone || '-'}</td>
+                    <td class="text-end fw-bold text-primary">${formatCurrency(c.balance)}</td>
+                    <td class="text-center">
+                        <a href="${c.ledger_url}" target="_blank" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:0.75rem;">
+                            <i class="fas fa-book me-1"></i> Ledger
+                        </a>
+                    </td>
+                </tr>`;
+            });
+            if (!custHtml) custHtml = '<tr><td colspan="5" class="text-center text-muted py-3">No direct customer balances pending</td></tr>';
+            if (document.getElementById('customersTableBody')) document.getElementById('customersTableBody').innerHTML = custHtml;
+            if (document.getElementById('modalCustCountFooter')) document.getElementById('modalCustCountFooter').innerText = custList.length;
+            if (document.getElementById('modalTotalCustFooter')) document.getElementById('modalTotalCustFooter').innerText = formatCurrency(rec.direct_customers || 0);
+
+            // 7. Distributors Modal
+            var distList = rec.distributors_list || [];
+            var distHtml = '';
+            distList.forEach(function(d, idx) {
+                distHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td><span class="badge bg-light text-muted border">${d.code || '-'}</span></td>
+                    <td class="fw-semibold text-dark">${d.name}</td>
+                    <td>${d.area || '-'}</td>
+                    <td>${d.phone || '-'}</td>
+                    <td class="text-end fw-bold text-teal" style="color: #0f766e;">${formatCurrency(d.balance)}</td>
+                    <td class="text-center">
+                        <a href="${d.ledger_url}" target="_blank" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size:0.75rem;">
+                            <i class="fas fa-book-open me-1"></i> Ledger
+                        </a>
+                    </td>
+                </tr>`;
+            });
+            if (!distHtml) distHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No distributor balances pending</td></tr>';
+            if (document.getElementById('distributorsTableBody')) document.getElementById('distributorsTableBody').innerHTML = distHtml;
+            if (document.getElementById('modalDistCountFooter')) document.getElementById('modalDistCountFooter').innerText = distList.length;
+            if (document.getElementById('modalTotalDistFooter')) document.getElementById('modalTotalDistFooter').innerText = formatCurrency(rec.distributors || 0);
+
+            // 8. Market / Retail Shops Modal
+            var shopList = rec.market_shops_list || [];
+            var shopHtml = '';
+            shopList.forEach(function(s, idx) {
+                shopHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td class="fw-semibold text-dark">${s.shop_name}</td>
+                    <td>${s.owner_name || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${s.distributor_name || 'Direct'}</span></td>
+                    <td>${s.area || '-'}</td>
+                    <td>${s.phone || '-'}</td>
+                    <td class="text-end fw-bold text-info">${formatCurrency(s.balance)}</td>
+                    <td class="text-center">
+                        <a href="${s.ledger_url}" target="_blank" class="btn btn-xs btn-outline-info py-0 px-2" style="font-size:0.75rem;">
+                            <i class="fas fa-book me-1"></i> Ledger
+                        </a>
+                    </td>
+                </tr>`;
+            });
+            if (!shopHtml) shopHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No retail outlet receivables</td></tr>';
+            if (document.getElementById('retailShopsTableBody')) document.getElementById('retailShopsTableBody').innerHTML = shopHtml;
+            if (document.getElementById('modalShopsCountFooter')) document.getElementById('modalShopsCountFooter').innerText = shopList.length;
+            if (document.getElementById('modalTotalShopsFooter')) document.getElementById('modalTotalShopsFooter').innerText = formatCurrency(rec.market_shops || 0);
+
+            // 9. Fixed Assets Modal
+            var assetList = bs.fixed_assets_list || [];
+            var assetHtml = '';
+            assetList.forEach(function(a, idx) {
+                assetHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td><span class="badge bg-light text-muted border">${a.code || '-'}</span></td>
+                    <td class="fw-semibold text-dark">${a.name}</td>
+                    <td>${a.category || '-'}</td>
+                    <td class="text-end text-muted">${formatCurrency(a.purchase_cost)}</td>
+                    <td class="text-end fw-bold text-dark">${formatCurrency(a.current_value)}</td>
+                    <td class="text-center"><span class="badge bg-success-subtle text-success">${a.status || 'Active'}</span></td>
+                </tr>`;
+            });
+            if (!assetHtml) assetHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No fixed assets registered</td></tr>';
+            if (document.getElementById('assetsTableBody')) document.getElementById('assetsTableBody').innerHTML = assetHtml;
+            if (document.getElementById('modalAssetsCountFooter')) document.getElementById('modalAssetsCountFooter').innerText = assetList.length;
+            if (document.getElementById('modalTotalAssetsFooter')) document.getElementById('modalTotalAssetsFooter').innerText = formatCurrency(bs.fixed_assets || 0);
+
+            // 10. Vendors Modal
+            var vendList = pay.vendors_list || [];
+            var vendHtml = '';
+            vendList.forEach(function(v, idx) {
+                vendHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td class="fw-semibold text-dark">${v.name}</td>
+                    <td>${v.phone || '-'}</td>
+                    <td class="text-end fw-bold text-danger">${formatCurrency(v.balance)}</td>
+                    <td class="text-center">
+                        <a href="${v.ledger_url}" target="_blank" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size:0.75rem;">
+                            <i class="fas fa-book me-1"></i> Ledger
+                        </a>
+                    </td>
+                </tr>`;
+            });
+            if (!vendHtml) vendHtml = '<tr><td colspan="5" class="text-center text-muted py-3">No supplier payables outstanding</td></tr>';
+            if (document.getElementById('vendorsTableBody')) document.getElementById('vendorsTableBody').innerHTML = vendHtml;
+            if (document.getElementById('modalVendCountFooter')) document.getElementById('modalVendCountFooter').innerText = vendList.length;
+            if (document.getElementById('modalTotalVendFooter')) document.getElementById('modalTotalVendFooter').innerText = formatCurrency(pay.vendors || 0);
+
+            // 11. Distributor Advances Modal
+            var advList = pay.advances_list || [];
+            var advHtml = '';
+            advList.forEach(function(ad, idx) {
+                advHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td><span class="badge bg-light text-muted border">${ad.code || '-'}</span></td>
+                    <td class="fw-semibold text-dark">${ad.name}</td>
+                    <td>${ad.area || '-'}</td>
+                    <td>${ad.phone || '-'}</td>
+                    <td class="text-end fw-bold text-warning-emphasis">${formatCurrency(ad.balance)}</td>
+                    <td class="text-center">
+                        <a href="${ad.ledger_url}" target="_blank" class="btn btn-xs btn-outline-warning py-0 px-2" style="font-size:0.75rem;">
+                            <i class="fas fa-book me-1"></i> Ledger
+                        </a>
+                    </td>
+                </tr>`;
+            });
+            if (!advHtml) advHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No distributor advance credits</td></tr>';
+            if (document.getElementById('distAdvancesTableBody')) document.getElementById('distAdvancesTableBody').innerHTML = advHtml;
+            if (document.getElementById('modalAdvCountFooter')) document.getElementById('modalAdvCountFooter').innerText = advList.length;
+            if (document.getElementById('modalTotalAdvFooter')) document.getElementById('modalTotalAdvFooter').innerText = formatCurrency(pay.distributor_advances || 0);
+
+            // 12. Claims Modal
+            var claimsList = pay.claims_list || [];
+            var claimsHtml = '';
+            claimsList.forEach(function(clm, idx) {
+                claimsHtml += `<tr>
+                    <td>${idx + 1}</td>
+                    <td><span class="badge bg-light text-dark border fw-bold">${clm.claim_no || '-'}</span></td>
+                    <td class="fw-semibold">${clm.distributor_name}</td>
+                    <td>${clm.claim_date}</td>
+                    <td><span class="badge bg-warning-subtle text-warning-emphasis">${clm.type_label}</span></td>
+                    <td class="text-end fw-bold text-danger">${formatCurrency(clm.amount)}</td>
+                </tr>`;
+            });
+            if (!claimsHtml) claimsHtml = '<tr><td colspan="6" class="text-center text-muted py-3">No pending claims</td></tr>';
+            if (document.getElementById('claimsTableBody')) document.getElementById('claimsTableBody').innerHTML = claimsHtml;
+            if (document.getElementById('modalClaimsCountFooter')) document.getElementById('modalClaimsCountFooter').innerText = claimsList.length;
+            if (document.getElementById('modalTotalClaimsFooter')) document.getElementById('modalTotalClaimsFooter').innerText = formatCurrency(pay.claims || 0);
         })
         .catch(err => {
             if (refreshIcon) refreshIcon.classList.remove('fa-spin');
@@ -680,7 +1479,30 @@ function loadFinancialSnapshot() {
         });
 }
 
+// Live search in drill-down modals
+function setupModalSearch(inputId, tableBodyId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener('keyup', function() {
+        const query = this.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#' + tableBodyId + ' tr');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    setupModalSearch('fccStockSearch', 'stockTableBody');
+    setupModalSearch('fccRawStockSearch', 'rawStockTableBody');
+    setupModalSearch('fccCustSearch', 'customersTableBody');
+    setupModalSearch('fccDistSearch', 'distributorsTableBody');
+    setupModalSearch('fccShopSearch', 'retailShopsTableBody');
+    setupModalSearch('fccAssetSearch', 'assetsTableBody');
+    setupModalSearch('fccVendSearch', 'vendorsTableBody');
+    setupModalSearch('fccAdvSearch', 'distAdvancesTableBody');
+    setupModalSearch('fccClaimSearch', 'claimsTableBody');
     loadFinancialSnapshot();
 });
 </script>
