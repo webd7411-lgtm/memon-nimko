@@ -1412,6 +1412,10 @@
                 <span class="label">Card / Bank</span>
                 <span class="val" id="mdlCard">PKR 0</span>
               </div>
+              <div class="erp-calc-item" id="mdlTradeOfferBox" style="display: none;">
+                <span class="label text-warning-emphasis"><i class="bi bi-gift-fill me-1"></i> Trade Offer Expense</span>
+                <span class="val text-warning fw-bold" id="mdlTradeOfferVal">PKR 0</span>
+              </div>
             </div>
 
             <div class="erp-net-banner">
@@ -1814,6 +1818,17 @@ $(document).ready(function() {
                     $('#mdlCard').text(cardText);
 
                     $('#mdlNet').text('PKR ' + formatNumber(fin.net || 0));
+
+                    if (fin.trade_offer_amount > 0) {
+                        $('#mdlTradeOfferBox').show();
+                        var toHtml = 'PKR ' + formatNumber(fin.trade_offer_amount);
+                        if (fin.trade_offer_voucher_evid) {
+                            toHtml += ' <span class="badge bg-warning text-dark border ms-1" title="Automated Company Expense Voucher"><i class="bi bi-receipt"></i> ' + esc(fin.trade_offer_voucher_evid) + '</span>';
+                        }
+                        $('#mdlTradeOfferVal').html(toHtml);
+                    } else {
+                        $('#mdlTradeOfferBox').hide();
+                    }
 
                     // Action Button URLs
                     var urls = s.urls || {};
