@@ -8,6 +8,7 @@ use App\Models\DistributorOrder;
 use App\Models\DistributorOrderItem;
 use App\Models\DistributorStock;
 use App\Models\DistributorCustomer;
+use App\Models\DistributorCustomerTier;
 use App\Models\DistributorCustomerLedger;
 use App\Models\DistributorSale;
 use App\Models\DistributorSaleItem;
@@ -581,7 +582,7 @@ class DistributorPortalController extends Controller
         $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
-        $query = DistributorCustomer::where('distributor_id', $distributor->id);
+        $query = DistributorCustomer::with('tier')->where('distributor_id', $distributor->id);
 
         if ($request->search) {
             $search = $request->search;
@@ -828,7 +829,9 @@ class DistributorPortalController extends Controller
             foreach ($request->product_id as $index => $productId) {
                 if (empty($productId)) continue;
                 $qty = (float) ($request->qty[$index] ?? 0);
-                $tradeOffer = (float) ($request->trade_offer[$index] ?? 0);
+                // Plan 1: Company strictly enforces trade offer scheme. Distributor cannot give more or less!
+                $expectedTO = $customer->calculateTradeOffer($qty);
+                $tradeOffer = $expectedTO;
                 $price = (float) ($request->unit_price[$index] ?? $request->price[$index] ?? 0);
                 $variantId = $request->variant_id[$index] ?? null;
 
@@ -883,7 +886,7 @@ class DistributorPortalController extends Controller
 
             // Strict enforcement of Company Approved Discount (%) for the customer/shop
             // Distributor / Booker cannot give more or less discount than company approved percentage!
-            $approvedPct = (float) ($customer->approved_discount ?? 0);
+            $approvedPct = (float) $customer->effective_discount;
             $exactDiscount = round(($subtotal * $approvedPct) / 100, 2);
             $discount = $exactDiscount;
 
@@ -2037,7 +2040,9 @@ class DistributorPortalController extends Controller
             foreach ($request->product_id as $index => $pId) {
                 if (empty($pId)) continue;
                 $qty = (float) ($request->qty[$index] ?? 0);
-                $tradeOffer = (float) ($request->trade_offer[$index] ?? 0);
+                // Plan 1: Company strictly enforces trade offer scheme for booking
+                $expectedTO = $customer->calculateTradeOffer($qty);
+                $tradeOffer = $expectedTO;
                 $price = (float) ($request->unit_price[$index] ?? 0);
                 $variantId = $request->variant_id[$index] ?? null;
 
@@ -2062,7 +2067,9 @@ class DistributorPortalController extends Controller
             }
 
             $discount = (float) ($request->discount ?? 0);
-            $approvedPct = (float) ($customer->approved_discount ?? 0);
+            $approvedPct = (float) $customer->effective_discount;
+            $exactDiscount = round(($subtotal * $approvedPct) / 100, 2);
+            $discount = $exactDiscount; // Force exact company approved discount
             $maxAllowedDiscount = round(($subtotal * $approvedPct) / 100, 2);
 
             if ($discount > ($maxAllowedDiscount + 0.05)) {
@@ -2572,13 +2579,24 @@ class DistributorPortalController extends Controller
         $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
+        // Self-heal/sync discount on distributor_sales from items if needed
+        $unhealedSales = DistributorSale::where('distributor_id', $distributor->id)
+            ->where(function($q) {
+                $q->whereNull('discount')->orWhere('discount', '<=', 0);
+            })
+            ->with('items')
+            ->get();
+        foreach ($unhealedSales as $us) {
+            $sumDisc = (float) $us->items->sum('discount');
+            if ($sumDisc > 0) {
+                $us->update(['discount' => $sumDisc]);
+            }
+        }
+
         $query = DistributorClaim::where('distributor_id', $distributor->id)
-            ->with(['items.product', 'approver'])
+            ->with(['sales.customer', 'approver'])
             ->latest('id');
 
-        if ($request->filled('claim_type')) {
-            $query->where('claim_type', $request->claim_type);
-        }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -2594,16 +2612,89 @@ class DistributorPortalController extends Controller
         $pendingAmount = DistributorClaim::where('distributor_id', $distributor->id)->where('status', 'pending')->sum('total_amount');
         $approvedAmount = DistributorClaim::where('distributor_id', $distributor->id)->where('status', 'approved')->sum('approved_amount');
 
-        // Products for itemized damage / scheme picker
-        $products = Product::select('id', 'item_name', 'price', 'wholesale_price')->orderBy('item_name')->get();
+        // Discount tracking
+        $totalDiscountGiven = (float) DistributorSale::where('distributor_id', $distributor->id)->sum('discount');
+        $unclaimedDiscount = (float) DistributorSale::where('distributor_id', $distributor->id)->whereNull('claim_id')->where('discount', '>', 0)->sum('discount');
 
         return view('distributor_panel.claims.index', compact(
-            'distributor', 'claims', 'totalClaimsCount', 'pendingCount', 'pendingAmount', 'approvedAmount', 'products'
+            'distributor', 'claims', 'totalClaimsCount', 'pendingCount', 'pendingAmount', 'approvedAmount',
+            'totalDiscountGiven', 'unclaimedDiscount'
         ));
     }
 
     /**
-     * Submit a new claim to Company / Head Office.
+     * AJAX endpoint: Calculate unclaimed retail discounts for a date range.
+     */
+    public function calculateDiscountForClaim(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date'   => 'required|date',
+        ]);
+
+        $fromDate = $request->from_date;
+        $toDate = $request->to_date;
+        if ($fromDate > $toDate) {
+            $tmp = $fromDate;
+            $fromDate = $toDate;
+            $toDate = $tmp;
+        }
+
+        // Self-heal/sync discount from items if any
+        $unhealed = DistributorSale::where('distributor_id', $distributor->id)
+            ->whereBetween('sale_date', [$fromDate, $toDate])
+            ->where(function($q) {
+                $q->whereNull('discount')->orWhere('discount', '<=', 0);
+            })
+            ->with('items')
+            ->get();
+        foreach ($unhealed as $uh) {
+            $sd = (float) $uh->items->sum('discount');
+            if ($sd > 0) {
+                $uh->update(['discount' => $sd]);
+            }
+        }
+
+        $sales = DistributorSale::where('distributor_id', $distributor->id)
+            ->whereBetween('sale_date', [$fromDate, $toDate])
+            ->where('discount', '>', 0)
+            ->whereNull('claim_id')
+            ->with('customer:id,shop_name,owner_name,phone,approved_discount')
+            ->orderBy('sale_date', 'asc')
+            ->get();
+
+        $totalDiscount = (float) $sales->sum('discount');
+        $totalSubtotal = (float) $sales->sum('subtotal');
+
+        $salesList = $sales->map(function ($s) {
+            return [
+                'id'          => $s->id,
+                'invoice_no'  => $s->invoice_no,
+                'sale_date'   => $s->sale_date ? \Carbon\Carbon::parse($s->sale_date)->format('d M Y') : '-',
+                'shop_name'   => $s->customer->shop_name ?? 'Retail Shop',
+                'owner_name'  => $s->customer->owner_name ?? '',
+                'phone'       => $s->customer->phone ?? '',
+                'approved_pct'=> (float)($s->customer->approved_discount ?? 0),
+                'subtotal'    => (float) $s->subtotal,
+                'discount'    => (float) $s->discount,
+                'grand_total' => (float) $s->grand_total,
+            ];
+        });
+
+        return response()->json([
+            'status'         => true,
+            'count'          => $sales->count(),
+            'total_discount' => $totalDiscount,
+            'total_subtotal' => $totalSubtotal,
+            'sales'          => $salesList,
+        ]);
+    }
+
+    /**
+     * Submit a new retail discount claim to Company / Head Office.
      */
     public function storeClaim(Request $request)
     {
@@ -2611,16 +2702,49 @@ class DistributorPortalController extends Controller
         $distributor = $this->getDistributor();
 
         $request->validate([
-            'claim_type'      => 'required|string|in:trade_discount,damage_stock,freight,target_incentive,other',
-            'claim_date'      => 'required|date',
-            'total_amount'    => 'required|numeric|min:0.01',
-            'settlement_type' => 'required|in:credit_note,stock_replacement',
-            'attachment'      => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'description'     => 'nullable|string',
+            'from_date'   => 'required|date',
+            'to_date'     => 'required|date',
+            'attachment'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'description' => 'nullable|string',
         ]);
+
+        $fromDate = $request->from_date;
+        $toDate = $request->to_date;
+        if ($fromDate > $toDate) {
+            $tmp = $fromDate;
+            $fromDate = $toDate;
+            $toDate = $tmp;
+        }
 
         DB::beginTransaction();
         try {
+            // Self-heal/sync discount from items if any
+            $unhealed = DistributorSale::where('distributor_id', $distributor->id)
+                ->whereBetween('sale_date', [$fromDate, $toDate])
+                ->where(function($q) {
+                    $q->whereNull('discount')->orWhere('discount', '<=', 0);
+                })
+                ->with('items')
+                ->get();
+            foreach ($unhealed as $uh) {
+                $sd = (float) $uh->items->sum('discount');
+                if ($sd > 0) {
+                    $uh->update(['discount' => $sd]);
+                }
+            }
+
+            $sales = DistributorSale::where('distributor_id', $distributor->id)
+                ->whereBetween('sale_date', [$fromDate, $toDate])
+                ->where('discount', '>', 0)
+                ->whereNull('claim_id')
+                ->get();
+
+            if ($sales->isEmpty() || (float)$sales->sum('discount') <= 0) {
+                return back()->with('error', "No unclaimed retail shop discounts found between {$fromDate} and {$toDate}.");
+            }
+
+            $totalDiscount = (float) $sales->sum('discount');
+
             $attachmentPath = null;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
@@ -2638,43 +2762,27 @@ class DistributorPortalController extends Controller
             $claim = DistributorClaim::create([
                 'claim_no'        => $claimNo,
                 'distributor_id'  => $distributor->id,
-                'claim_type'      => $request->claim_type,
-                'claim_date'      => $request->claim_date,
-                'total_amount'    => (float) $request->total_amount,
+                'claim_type'      => 'trade_discount',
+                'claim_date'      => now()->toDateString(),
+                'from_date'       => $fromDate,
+                'to_date'         => $toDate,
+                'total_amount'    => $totalDiscount,
                 'approved_amount' => 0.00,
-                'settlement_type' => $request->settlement_type,
+                'settlement_type' => 'credit_note',
                 'status'          => 'pending',
                 'attachment'      => $attachmentPath,
-                'description'     => $request->description,
+                'description'     => $request->description ?: "Retail discount claim for {$sales->count()} shop bills from {$fromDate} to {$toDate}.",
                 'submitted_by'    => Auth::id(),
             ]);
 
-            // Save line items if provided
-            if ($request->has('items') && is_array($request->items)) {
-                foreach ($request->items as $item) {
-                    if (!empty($item['product_id']) || !empty($item['qty'])) {
-                        $qty = (float)($item['qty'] ?? 1);
-                        $rate = (float)($item['unit_rate'] ?? 0);
-                        DistributorClaimItem::create([
-                            'distributor_claim_id' => $claim->id,
-                            'product_id'           => !empty($item['product_id']) ? $item['product_id'] : null,
-                            'variant_id'           => !empty($item['variant_id']) ? $item['variant_id'] : null,
-                            'batch_no'             => $item['batch_no'] ?? null,
-                            'qty'                  => $qty,
-                            'unit_rate'            => $rate,
-                            'subtotal'             => (float)($item['subtotal'] ?? ($qty * $rate)),
-                            'reason'               => $item['reason'] ?? null,
-                        ]);
-                    }
-                }
-            }
+            // Link sales to this claim
+            DistributorSale::whereIn('id', $sales->pluck('id'))->update(['claim_id' => $claim->id]);
 
             DB::commit();
-            return back()->with('success', "Claim #{$claimNo} of Rs. " . number_format($request->total_amount, 2) . " submitted successfully to Head Office for verification!");
+            return back()->with('success', "Claim #{$claimNo} of Rs. " . number_format($totalDiscount, 2) . " for {$sales->count()} shop bills submitted successfully to Head Office for verification!");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error submitting claim: ' . $e->getMessage());
         }
     }
-
 }

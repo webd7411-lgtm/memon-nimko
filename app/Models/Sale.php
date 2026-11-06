@@ -68,6 +68,11 @@ class Sale extends Model
         return $this->belongsTo(Customer::class, 'customer', 'id');
     }
 
+    public function tradeOfferVoucher()
+    {
+        return $this->belongsTo(ExpenseVoucher::class, 'trade_offer_voucher_id');
+    }
+
     public function product_relation()
     {
         return $this->belongsTo(Product::class, 'product', 'id');

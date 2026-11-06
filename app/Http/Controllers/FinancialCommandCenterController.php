@@ -12,6 +12,7 @@ use App\Models\DistributorStock;
 use App\Models\ExpenseVoucher;
 use App\Models\PaymentVoucher;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\RawMaterial;
 use App\Models\ReceiptsVoucher;
 use App\Models\Sale;
@@ -19,6 +20,7 @@ use App\Models\Vendor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class FinancialCommandCenterController extends Controller
 {
@@ -33,7 +35,7 @@ class FinancialCommandCenterController extends Controller
 
     /**
      * Compute and return financial snapshot comparison via AJAX.
-     * Compares "Current Period" (e.g. Today) vs "Baseline Period" (e.g. Yesterday).
+     * Compares "Current Period" vs "Baseline Period".
      */
     public function fetchSnapshot(Request $request)
     {
@@ -90,7 +92,7 @@ class FinancialCommandCenterController extends Controller
                 break;
         }
 
-        // 1. Compute Period Metrics (P&L: Sales, Expenses, Net Profit for that period)
+        // 1. Compute Period Metrics (P&L: Sales, Returns, Net Revenue, COGS, Expenses, Net Profit)
         $currPL = $this->calculatePeriodPL($currStart, $currEnd, $branchId);
         $basePL = $this->calculatePeriodPL($baseStart, $baseEnd, $branchId);
 
@@ -98,10 +100,11 @@ class FinancialCommandCenterController extends Controller
         $currEquityMovements = $this->calculateEquityMovements($currStart, $currEnd, $branchId);
         $baseEquityMovements = $this->calculateEquityMovements($baseStart, $baseEnd, $branchId);
         $cumulativeEquity   = $this->calculateCumulativeEquity($currEnd, $branchId);
+        $baseCumulativeEq   = $this->calculateCumulativeEquity($baseEnd, $branchId);
 
         // 3. Compute Cumulative Balance Sheet & Net Worth AS OF Current vs AS OF Baseline
         $currBS = $this->calculateCumulativeBalanceSheet($currEnd, $branchId, $cumulativeEquity);
-        $baseBS = $this->calculateCumulativeBalanceSheet($baseEnd, $branchId, $this->calculateCumulativeEquity($baseEnd, $branchId));
+        $baseBS = $this->calculateCumulativeBalanceSheet($baseEnd, $branchId, $baseCumulativeEq);
 
         // 4. Compute Delta Comparison Indicators
         $comparison = [
@@ -109,18 +112,18 @@ class FinancialCommandCenterController extends Controller
                 'current'  => $currLabel,
                 'baseline' => $baseLabel,
             ],
-            'net_worth' => $this->buildDeltaItem($currBS['net_worth'], $baseBS['net_worth'], 'currency'),
-            'total_assets' => $this->buildDeltaItem($currBS['total_assets'], $baseBS['total_assets'], 'currency'),
-            'total_liabilities' => $this->buildDeltaItem($currBS['total_liabilities'], $baseBS['total_liabilities'], 'currency', true),
-            'sales' => $this->buildDeltaItem($currPL['total_sales'], $basePL['total_sales'], 'currency'),
-            'expenses' => $this->buildDeltaItem($currPL['total_expenses'], $basePL['total_expenses'], 'currency', true),
-            'net_profit' => $this->buildDeltaItem($currPL['net_profit'], $basePL['net_profit'], 'currency'),
-            'capital_injected' => $this->buildDeltaItem($currEquityMovements['injections'], $baseEquityMovements['injections'], 'currency'),
+            'net_worth'          => $this->buildDeltaItem($currBS['net_worth'], $baseBS['net_worth'], 'currency'),
+            'total_assets'       => $this->buildDeltaItem($currBS['total_assets'], $baseBS['total_assets'], 'currency'),
+            'total_liabilities'  => $this->buildDeltaItem($currBS['total_liabilities'], $baseBS['total_liabilities'], 'currency', true),
+            'sales'              => $this->buildDeltaItem($currPL['net_revenue'], $basePL['net_revenue'], 'currency'),
+            'expenses'           => $this->buildDeltaItem($currPL['total_expenses'], $basePL['total_expenses'], 'currency', true),
+            'net_profit'         => $this->buildDeltaItem($currPL['net_profit'], $basePL['net_profit'], 'currency'),
+            'capital_injected'   => $this->buildDeltaItem($currEquityMovements['injections'], $baseEquityMovements['injections'], 'currency'),
             'drawings_withdrawn' => $this->buildDeltaItem($currEquityMovements['drawings'], $baseEquityMovements['drawings'], 'currency', true),
-            'cash_and_bank' => $this->buildDeltaItem($currBS['cash_and_bank'], $baseBS['cash_and_bank'], 'currency'),
-            'inventory_value' => $this->buildDeltaItem($currBS['inventory']['total'], $baseBS['inventory']['total'], 'currency'),
-            'receivables' => $this->buildDeltaItem($currBS['receivables']['total'], $baseBS['receivables']['total'], 'currency'),
-            'payables' => $this->buildDeltaItem($currBS['payables']['total'], $baseBS['payables']['total'], 'currency', true),
+            'cash_and_bank'      => $this->buildDeltaItem($currBS['cash_and_bank'], $baseBS['cash_and_bank'], 'currency'),
+            'inventory_value'    => $this->buildDeltaItem($currBS['inventory']['total'], $baseBS['inventory']['total'], 'currency'),
+            'receivables'        => $this->buildDeltaItem($currBS['receivables']['total'], $baseBS['receivables']['total'], 'currency'),
+            'payables'           => $this->buildDeltaItem($currBS['payables']['total'], $baseBS['payables']['total'], 'currency', true),
         ];
 
         // 5. Quick Liquidity & Health Indicators
@@ -159,11 +162,8 @@ class FinancialCommandCenterController extends Controller
     private function calculateEquityMovements(string $startDate, string $endDate, $branchId): array
     {
         $isAll = ($branchId === 'all');
-
-        // Capital Injections (Receipt Vouchers linked to Equity / Capital accounts or narrations)
-        $rvQ = DB::table('receipts_vouchers')
-            ->whereBetween('entry_date', [$startDate, $endDate]);
-        if (!$isAll) $rvQ->where('branch_id', $branchId);
+        $startDT = $startDate . ' 00:00:00';
+        $endDT   = $endDate   . ' 23:59:59';
 
         // Find equity/capital heads
         $equityHeadIds = DB::table('account_heads')
@@ -180,6 +180,17 @@ class FinancialCommandCenterController extends Controller
             ->pluck('id')
             ->toArray();
 
+        // Capital Injections (Receipt Vouchers linked to Equity / Capital accounts or narrations)
+        $rvQ = DB::table('receipts_vouchers')
+            ->where(function($q) use ($startDT, $endDT, $startDate, $endDate) {
+                $q->whereBetween('entry_date', [$startDate, $endDate])
+                  ->orWhereBetween('receipt_date', [$startDate, $endDate])
+                  ->orWhereBetween('created_at', [$startDT, $endDT]);
+            });
+        if (!$isAll && Schema::hasColumn('receipts_vouchers', 'branch_id')) {
+            $rvQ->where('branch_id', $branchId);
+        }
+
         $vouchers = $rvQ->get();
         $injectionsTotal = 0;
         $injectionsList = [];
@@ -189,7 +200,6 @@ class FinancialCommandCenterController extends Controller
             if (in_array($v->type, $equityHeadIds) || in_array($v->party_id, $equityAccIds)) {
                 $isEquity = true;
             } else {
-                // Check remarks or narration
                 $narrText = strtolower($v->remarks ?? '');
                 if (str_contains($narrText, 'capital') || str_contains($narrText, 'invest') || str_contains($narrText, 'outsource') || str_contains($narrText, 'loan')) {
                     $isEquity = true;
@@ -201,19 +211,15 @@ class FinancialCommandCenterController extends Controller
                 $injectionsTotal += $amt;
                 $injectionsList[] = [
                     'id'          => $v->id,
-                    'rvid'        => $v->rvid,
-                    'date'        => $v->entry_date ?? $v->receipt_date,
+                    'rvid'        => $v->rvid ?? ('RV-' . $v->id),
+                    'date'        => $v->entry_date ?? $v->receipt_date ?? substr($v->created_at, 0, 10),
                     'amount'      => $amt,
                     'remarks'     => $v->remarks ?: 'Capital Injection / Outsource Fund',
                 ];
             }
         }
 
-        // Drawings / Outsource Payments (Payment Vouchers linked to Drawings / Owner Withdrawal)
-        $pvQ = DB::table('payment_vouchers')
-            ->whereBetween('entry_date', [$startDate, $endDate]);
-        if (!$isAll) $pvQ->where('branch_id', $branchId);
-
+        // Drawings (Payment Vouchers linked to Drawings / Owner Personal Withdrawals)
         $drawingsHeadIds = DB::table('account_heads')
             ->where('name', 'like', '%Drawing%')
             ->orWhere('name', 'like', '%Withdrawal%')
@@ -228,6 +234,16 @@ class FinancialCommandCenterController extends Controller
             ->pluck('id')
             ->toArray();
 
+        $pvQ = DB::table('payment_vouchers')
+            ->where(function($q) use ($startDT, $endDT, $startDate, $endDate) {
+                $q->whereBetween('entry_date', [$startDate, $endDate])
+                  ->orWhereBetween('receipt_date', [$startDate, $endDate])
+                  ->orWhereBetween('created_at', [$startDT, $endDT]);
+            });
+        if (!$isAll && Schema::hasColumn('payment_vouchers', 'branch_id')) {
+            $pvQ->where('branch_id', $branchId);
+        }
+
         $pvtVouchers = $pvQ->get();
         $drawingsTotal = 0;
         $drawingsList = [];
@@ -238,7 +254,7 @@ class FinancialCommandCenterController extends Controller
                 $isDrawing = true;
             } else {
                 $narrText = strtolower($pv->remarks ?? '');
-                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'outsource')) {
+                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'owner')) {
                     $isDrawing = true;
                 }
             }
@@ -248,8 +264,8 @@ class FinancialCommandCenterController extends Controller
                 $drawingsTotal += $amt;
                 $drawingsList[] = [
                     'id'          => $pv->id,
-                    'pvid'        => $pv->pvid,
-                    'date'        => $pv->entry_date ?? $pv->receipt_date,
+                    'pvid'        => $pv->pvid ?? ('PV-' . $pv->id),
+                    'date'        => $pv->entry_date ?? $pv->receipt_date ?? substr($pv->created_at, 0, 10),
                     'amount'      => $amt,
                     'remarks'     => $pv->remarks ?: 'Owner Personal Withdrawal / Return of Capital',
                 ];
@@ -273,6 +289,7 @@ class FinancialCommandCenterController extends Controller
     private function calculateCumulativeEquity(string $asOfDate, $branchId): array
     {
         $isAll = ($branchId === 'all');
+        $endDT = $asOfDate . ' 23:59:59';
 
         $equityHeadIds = DB::table('account_heads')
             ->where('name', 'like', '%Equity%')
@@ -288,8 +305,14 @@ class FinancialCommandCenterController extends Controller
             ->pluck('id')
             ->toArray();
 
-        $rvQ = DB::table('receipts_vouchers')->where('entry_date', '<=', $asOfDate);
-        if (!$isAll) $rvQ->where('branch_id', $branchId);
+        $rvQ = DB::table('receipts_vouchers')
+            ->where(function($q) use ($asOfDate, $endDT) {
+                $q->where('entry_date', '<=', $asOfDate)
+                  ->orWhere('created_at', '<=', $endDT);
+            });
+        if (!$isAll && Schema::hasColumn('receipts_vouchers', 'branch_id')) {
+            $rvQ->where('branch_id', $branchId);
+        }
 
         $totalInjected = 0;
         foreach ($rvQ->get() as $v) {
@@ -321,8 +344,14 @@ class FinancialCommandCenterController extends Controller
             ->pluck('id')
             ->toArray();
 
-        $pvQ = DB::table('payment_vouchers')->where('entry_date', '<=', $asOfDate);
-        if (!$isAll) $pvQ->where('branch_id', $branchId);
+        $pvQ = DB::table('payment_vouchers')
+            ->where(function($q) use ($asOfDate, $endDT) {
+                $q->where('entry_date', '<=', $asOfDate)
+                  ->orWhere('created_at', '<=', $endDT);
+            });
+        if (!$isAll && Schema::hasColumn('payment_vouchers', 'branch_id')) {
+            $pvQ->where('branch_id', $branchId);
+        }
 
         $totalWithdrawn = 0;
         foreach ($pvQ->get() as $pv) {
@@ -331,7 +360,7 @@ class FinancialCommandCenterController extends Controller
                 $isDrawing = true;
             } else {
                 $narrText = strtolower($pv->remarks ?? '');
-                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'outsource')) {
+                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'owner')) {
                     $isDrawing = true;
                 }
             }
@@ -350,7 +379,7 @@ class FinancialCommandCenterController extends Controller
     }
 
     /**
-     * Compute Period-Specific Profit & Loss (Sales, COGS, Expenses, Net Profit).
+     * Compute Period-Specific Profit & Loss (Sales, Deductions, COGS, Expenses, Net Profit).
      */
     private function calculatePeriodPL(string $startDate, string $endDate, $branchId): array
     {
@@ -358,36 +387,135 @@ class FinancialCommandCenterController extends Controller
         $endDT   = $endDate   . ' 23:59:59';
         $isAll   = ($branchId === 'all');
 
-        // Direct Sales Revenue
-        $directSalesQ = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT]);
+        // 1. Direct Sales & Returns (Retail Counter & Direct Customers)
+        $directSalesQ = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT])
+            ->where(function ($q) {
+                $q->whereNull('customer')
+                  ->orWhere(function($sub) {
+                      $sub->where('customer', 'not like', 'dist_%')
+                          ->where('customer', 'not like', 'dc_%');
+                  });
+            });
         if (!$isAll) $directSalesQ->where('branch_id', $branchId);
-        $directSales = (float) $directSalesQ->sum(DB::raw('COALESCE(total_net, total_bill_amount)'));
+        $directGrossSales = (float) $directSalesQ->sum(DB::raw('COALESCE(total_net, total_bill_amount)'));
 
-        // Distributor Sales Revenue
-        $distSalesQ = DB::table('distributor_sales')->whereBetween('sale_date', [$startDate, $endDate]);
-        $distSales = (float) $distSalesQ->sum('grand_total');
+        $directReturnsQ = DB::table('sales_returns')->whereBetween('created_at', [$startDT, $endDT])
+            ->where(function ($q) {
+                $q->whereNull('customer')
+                  ->orWhere(function($sub) {
+                      $sub->where('customer', 'not like', 'dist_%')
+                          ->where('customer', 'not like', 'dc_%');
+                  });
+            });
+        if (!$isAll) $directReturnsQ->where('branch_id', $branchId);
+        $directReturns = (float) $directReturnsQ->sum('total_net');
+        $netDirectSales = max(0, $directGrossSales - $directReturns);
 
-        $totalSales = $directSales + $distSales;
+        // 2. Primary Distributor Dispatches & Returns (Company -> Distributor Network)
+        $distDispatchesQ = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT])
+            ->where(function ($q) {
+                $q->where('customer', 'like', 'dist_%')
+                  ->orWhere('customer', 'like', 'dc_%');
+            });
+        if (!$isAll) $distDispatchesQ->where('branch_id', $branchId);
+        $distGrossDispatches = (float) $distDispatchesQ->sum(DB::raw('COALESCE(total_net, total_bill_amount)'));
 
-        // Purchases in this period
-        $purchQ = DB::table('purchases')->whereBetween('purchase_date', [$startDate, $endDate]);
-        if (!$isAll) $purchQ->where('branch_id', $branchId);
-        $purchasesCost = (float) $purchQ->sum('net_amount');
+        $distDispatchReturnsQ = DB::table('sales_returns')->whereBetween('created_at', [$startDT, $endDT])
+            ->where(function ($q) {
+                $q->where('customer', 'like', 'dist_%')
+                  ->orWhere('customer', 'like', 'dc_%');
+            });
+        if (!$isAll) $distDispatchReturnsQ->where('branch_id', $branchId);
+        $distDispatchReturns = (float) $distDispatchReturnsQ->sum('total_net');
+        $netDistDispatches = max(0, $distGrossDispatches - $distDispatchReturns);
 
-        $rmPurchQ = DB::table('raw_material_purchases')->whereBetween('date', [$startDate, $endDate]);
-        if (!$isAll) $rmPurchQ->where('branch_id', $branchId);
-        $rmPurchasesCost = (float) $rmPurchQ->sum('total_cost');
+        // 3. Secondary Market Sales (Distributors -> Market Retail Stores)
+        $secSalesQ = DB::table('distributor_sales')->whereBetween('sale_date', [$startDate, $endDate]);
+        $secondarySales = (float) $secSalesQ->sum('grand_total');
 
-        // Cost of Goods Sold estimate (Standard markup 70% of revenue or actual purchases)
-        $cogs = min($totalSales * 0.70, ($purchasesCost + $rmPurchasesCost));
-        if ($cogs <= 0 && $totalSales > 0) {
-            $cogs = $totalSales * 0.65;
+        $secReturnsQ = DB::table('distributor_sales_returns')->whereBetween('created_at', [$startDT, $endDT]);
+        $secondaryReturns = (float) $secReturnsQ->sum('net_return_amount');
+        $netSecondarySales = max(0, $secondarySales - $secondaryReturns);
+
+        // Overall Company Gross & Net Turnover
+        $totalGrossSales = $directGrossSales + $distGrossDispatches;
+        $totalReturns    = $directReturns + $distDispatchReturns;
+        $netRevenue      = max(0, $totalGrossSales - $totalReturns);
+
+        // 4. Calculate COGS item-by-item from sold items in this period
+        $allPeriodSalesQ = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT]);
+        if (!$isAll) $allPeriodSalesQ->where('branch_id', $branchId);
+        $allPeriodSales = $allPeriodSalesQ->select('product', 'variant_id', 'qty')->get();
+
+        $variants = DB::table('product_variants')->get()->keyBy('id');
+        $products = DB::table('products')->get()->keyBy('id');
+
+        $totalCogs = 0;
+        foreach ($allPeriodSales as $s) {
+            $pids = explode(',', $s->product ?? '');
+            $vids = explode(',', $s->variant_id ?? '');
+            $qtys = explode(',', $s->qty ?? '');
+
+            foreach ($pids as $idx => $pid) {
+                $pid = trim($pid);
+                if (!$pid || !is_numeric($pid)) continue;
+                $vid = trim($vids[$idx] ?? '0');
+                $qty = (float)($qtys[$idx] ?? 0);
+
+                $cost = 0;
+                if ($vid && isset($variants[$vid]) && (float)$variants[$vid]->cost_price > 0) {
+                    $cost = (float)$variants[$vid]->cost_price;
+                } elseif (isset($products[$pid])) {
+                    $firstV = DB::table('product_variants')->where('product_id', $pid)->first();
+                    if ($firstV && (float)$firstV->cost_price > 0) {
+                        $cost = (float)$firstV->cost_price;
+                    } elseif (isset($variants[$vid]) && (float)$variants[$vid]->price > 0) {
+                        $cost = (float)$variants[$vid]->price * 0.70;
+                    }
+                }
+                $totalCogs += ($qty * $cost);
+            }
         }
-        $grossProfit = max(0, $totalSales - $cogs);
 
-        // Operating Expenses in this period
-        $expQ = DB::table('expense_vouchers')->whereBetween('created_at', [$startDT, $endDT]);
-        if (!$isAll && \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
+        // Adjust COGS for returned goods
+        $returnItemsQ = DB::table('sales_returns')->whereBetween('created_at', [$startDT, $endDT]);
+        if (!$isAll) $returnItemsQ->where('branch_id', $branchId);
+        $returnItems = $returnItemsQ->select('product', 'variant_id', 'qty')->get();
+
+        $returnCostReduction = 0;
+        foreach ($returnItems as $r) {
+            $pids = explode(',', $r->product ?? '');
+            $vids = explode(',', $r->variant_id ?? '');
+            $qtys = explode(',', $r->qty ?? '');
+            foreach ($pids as $idx => $pid) {
+                $pid = trim($pid);
+                if (!$pid || !is_numeric($pid)) continue;
+                $vid = trim($vids[$idx] ?? '0');
+                $qty = (float)($qtys[$idx] ?? 0);
+                $cost = (isset($variants[$vid]) && (float)$variants[$vid]->cost_price > 0) ? (float)$variants[$vid]->cost_price : 0;
+                $returnCostReduction += ($qty * $cost);
+            }
+        }
+        $cogs = max(0, $totalCogs - $returnCostReduction);
+
+        // Fallback estimate if no item cost configured
+        if ($cogs <= 0 && $netRevenue > 0) {
+            $cogs = $netRevenue * 0.65;
+        }
+
+        $grossProfit = max(0, $netRevenue - $cogs);
+
+        // 5. Operating Expenses in period (excluding stock write-off adjustments)
+        $expQ = DB::table('expense_vouchers')
+            ->where(function($q) use ($startDT, $endDT, $startDate, $endDate) {
+                $q->whereBetween('created_at', [$startDT, $endDT])
+                  ->orWhereBetween('date', [$startDate, $endDate]);
+            })
+            ->where(function($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', 0);
+            });
+
+        if (!$isAll && Schema::hasColumn('expense_vouchers', 'branch_id')) {
             $expQ->where('branch_id', $branchId);
         }
         $totalExpenses = (float) $expQ->sum('total_amount');
@@ -396,15 +524,22 @@ class FinancialCommandCenterController extends Controller
         $netProfit = $grossProfit - $totalExpenses;
 
         return [
-            'direct_sales'    => $directSales,
-            'dist_sales'      => $distSales,
-            'total_sales'     => $totalSales,
-            'purchases_cost'  => $purchasesCost + $rmPurchasesCost,
-            'cogs'            => $cogs,
-            'gross_profit'    => $grossProfit,
-            'total_expenses'  => $totalExpenses,
-            'net_profit'      => $netProfit,
-            'net_margin_pct'  => $totalSales > 0 ? round(($netProfit / $totalSales) * 100, 1) : 0,
+            'direct_sales'            => $directGrossSales,
+            'direct_returns'          => $directReturns,
+            'net_direct_sales'        => $netDirectSales,
+            'dist_sales'              => $distGrossDispatches,
+            'dist_returns'            => $distDispatchReturns,
+            'net_dist_sales'          => $netDistDispatches,
+            'secondary_market_sales'  => $netSecondarySales,
+            'total_gross_sales'       => $totalGrossSales,
+            'total_returns'           => $totalReturns,
+            'total_sales'             => $netRevenue, // Standard alias for total net sales
+            'net_revenue'             => $netRevenue,
+            'cogs'                    => $cogs,
+            'gross_profit'            => $grossProfit,
+            'total_expenses'          => $totalExpenses,
+            'net_profit'              => $netProfit,
+            'net_margin_pct'          => $netRevenue > 0 ? round(($netProfit / $netRevenue) * 100, 1) : 0,
         ];
     }
 
@@ -422,7 +557,8 @@ class FinancialCommandCenterController extends Controller
             ->where('accounts.status', 1)
             ->where(function($q) {
                 $q->where('account_heads.name', 'like', '%Cash%')
-                  ->orWhere('accounts.title', 'like', '%Cash%');
+                  ->orWhere('accounts.title', 'like', '%Cash%')
+                  ->orWhere('accounts.head_id', 2);
             });
         $accountCashOpening = (float) $cashAccountsQ->sum('accounts.opening_balance');
 
@@ -430,7 +566,70 @@ class FinancialCommandCenterController extends Controller
         if (!$isAll) $salesCashQ->where('branch_id', $branchId);
         $totalSalesCash = (float) $salesCashQ->sum(DB::raw('COALESCE(cash, 0) - COALESCE(`change`, 0)'));
 
-        $totalCash = max(0, $accountCashOpening + $totalSalesCash);
+        $salesReturnCashQ = DB::table('sales_returns')->where('created_at', '<=', $endDT);
+        if (!$isAll) $salesReturnCashQ->where('branch_id', $branchId);
+        $totalSalesReturnCash = (float) $salesReturnCashQ->sum('cash');
+
+        $custCashQ = DB::table('customer_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
+            })
+            ->where(function($q) {
+                $q->where('payment_method', 'Cash')->orWhere('cash', '>', 0);
+            });
+        if (!$isAll && Schema::hasColumn('customer_payments', 'branch_id')) {
+            $custCashQ->where('branch_id', $branchId);
+        }
+        $custCashInflow = (float) $custCashQ->sum(DB::raw('CASE WHEN cash > 0 THEN cash ELSE amount END'));
+
+        $distCashInflow = (float) DB::table('distributor_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where('status', 'approved')
+            ->where(function($q) {
+                $q->whereNull('notes')->orWhere('notes', 'not like', '%Payment on Sale Invoice%');
+            })
+            ->where('payment_method', 'Cash')
+            ->sum('amount');
+
+        $vendCashQ = DB::table('vendor_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
+            })
+            ->where(function($q) {
+                $q->where('payment_method', 'Cash')->orWhere('cash', '>', 0);
+            });
+        if (!$isAll && Schema::hasColumn('vendor_payments', 'branch_id')) {
+            $vendCashQ->where('branch_id', $branchId);
+        }
+        $vendCashOutflow = (float) $vendCashQ->sum(DB::raw('CASE WHEN cash > 0 THEN cash ELSE amount END'));
+
+        $cashAccIds = DB::table('accounts')
+            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+            ->where(function($q) {
+                $q->where('account_heads.name', 'like', '%Cash%')
+                  ->orWhere('accounts.title', 'like', '%Cash%')
+                  ->orWhere('accounts.head_id', 2);
+            })
+            ->pluck('accounts.id')
+            ->toArray();
+
+        $expenseCashQ = DB::table('expense_vouchers')
+            ->where('created_at', '<=', $endDT)
+            ->where(function($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', 0);
+            })
+            ->where(function($q) use ($cashAccIds) {
+                $q->whereIn('party_id', $cashAccIds)
+                  ->orWhereNull('party_id');
+            });
+        if (!$isAll && Schema::hasColumn('expense_vouchers', 'branch_id')) {
+            $expenseCashQ->where('branch_id', $branchId);
+        }
+        $expenseCashOutflow = (float) $expenseCashQ->sum('total_amount');
+
+        $totalCash = max(0, $accountCashOpening + $totalSalesCash - $totalSalesReturnCash + $custCashInflow + $distCashInflow - $vendCashOutflow - $expenseCashOutflow);
 
         // 2. BANK BALANCES
         $bankAccountsQ = DB::table('accounts')
@@ -443,26 +642,80 @@ class FinancialCommandCenterController extends Controller
             });
         $accountBankOpening = (float) $bankAccountsQ->sum('accounts.opening_balance');
 
-        $custBankInflow = (float) DB::table('customer_payments')
-            ->where('payment_date', '<=', $asOfDate)
-            ->whereNotNull('card_account_id')
-            ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
+        $salesCardQ = DB::table('sales')->where('created_at', '<=', $endDT);
+        if (!$isAll) $salesCardQ->where('branch_id', $branchId);
+        $totalSalesCard = (float) $salesCardQ->sum('card');
 
-        $vendorBankOutflow = (float) DB::table('vendor_payments')
-            ->where('payment_date', '<=', $asOfDate)
-            ->whereNotNull('card_account_id')
-            ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
+        $salesReturnCardQ = DB::table('sales_returns')->where('created_at', '<=', $endDT);
+        if (!$isAll) $salesReturnCardQ->where('branch_id', $branchId);
+        $totalSalesReturnCard = (float) $salesReturnCardQ->sum('card');
 
-        $totalBank = max(0, $accountBankOpening + $custBankInflow - $vendorBankOutflow);
+        $custBankQ = DB::table('customer_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where(function($q) {
+                $q->whereNotNull('card_account_id')->orWhere('payment_method', 'Card')->orWhere('card', '>', 0);
+            })
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
+            });
+        if (!$isAll && Schema::hasColumn('customer_payments', 'branch_id')) {
+            $custBankQ->where('branch_id', $branchId);
+        }
+        $custBankInflow = (float) $custBankQ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
+
+        $distBankInflow = (float) DB::table('distributor_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where('status', 'approved')
+            ->where(function($q) {
+                $q->whereNotNull('account_id')->orWhere('payment_method', 'Card')->orWhereNotNull('bank_name');
+            })
+            ->where(function($q) {
+                $q->whereNull('notes')->orWhere('notes', 'not like', '%Payment on Sale Invoice%');
+            })
+            ->sum('amount');
+
+        $vendBankQ = DB::table('vendor_payments')
+            ->where('payment_date', '<=', $asOfDate)
+            ->where(function($q) {
+                $q->whereNotNull('card_account_id')->orWhere('payment_method', 'Card')->orWhere('card', '>', 0);
+            })
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
+            });
+        if (!$isAll && Schema::hasColumn('vendor_payments', 'branch_id')) {
+            $vendBankQ->where('branch_id', $branchId);
+        }
+        $vendBankOutflow = (float) $vendBankQ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
+
+        $bankAccIds = DB::table('accounts')
+            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+            ->where(function($q) {
+                $q->where('account_heads.name', 'like', '%Bank%')
+                  ->orWhere('accounts.title', 'like', '%Bank%')
+                  ->orWhere('accounts.head_id', 1);
+            })
+            ->pluck('accounts.id')
+            ->toArray();
+
+        $expenseBankQ = DB::table('expense_vouchers')
+            ->where('created_at', '<=', $endDT)
+            ->whereIn('party_id', $bankAccIds);
+        if (!$isAll && Schema::hasColumn('expense_vouchers', 'branch_id')) {
+            $expenseBankQ->where('branch_id', $branchId);
+        }
+        $expenseBankOutflow = (float) $expenseBankQ->sum('total_amount');
+
+        $totalBank = max(0, $accountBankOpening + $totalSalesCard - $totalSalesReturnCard + $custBankInflow + $distBankInflow - $vendBankOutflow - $expenseBankOutflow);
         $cashAndBank = $totalCash + $totalBank;
 
         // 3. INVENTORY VALUE
-        // A. Finished Goods Stock (Stocks table * Product Price)
+        // A. Finished Goods Stock (Stocks table * variant cost/price)
         $fgValQ = DB::table('stocks')
             ->join('products', 'products.id', '=', 'stocks.product_id')
+            ->leftJoin('product_variants', 'product_variants.id', '=', 'stocks.variant_id')
             ->where('stocks.qty', '>', 0);
         if (!$isAll) $fgValQ->where('stocks.branch_id', $branchId);
-        $finishedGoodsValue = (float) $fgValQ->sum(DB::raw('stocks.qty * COALESCE(products.price, 0)'));
+        $finishedGoodsValue = (float) $fgValQ->sum(DB::raw('stocks.qty * COALESCE(NULLIF(product_variants.cost_price, 0), NULLIF(product_variants.price, 0), NULLIF(products.price, 0), 0)'));
 
         // B. Raw Materials Live Stock
         $rawMaterialValue = 0;
@@ -480,17 +733,12 @@ class FinancialCommandCenterController extends Controller
             $rawMaterialValue = 0;
         }
 
-        // C. Distributor Field / Van Custody Stock
-        $fieldStockValue = (float) DB::table('distributor_stocks')
-            ->where('qty', '>', 0)
-            ->selectRaw('SUM(qty * avg_price) as val')
-            ->value('val');
+        // Total Internal Inventory Value (Finished Goods + Raw Materials)
+        $totalInventoryValue = $finishedGoodsValue + $rawMaterialValue;
 
-        $totalInventoryValue = $finishedGoodsValue + $rawMaterialValue + $fieldStockValue;
-
-        // 4. ACCOUNTS RECEIVABLE (Direct Customers + Distributors)
+        // 4. ACCOUNTS RECEIVABLE (Direct Customers + Distributors + Market Retail Shops)
         $custRecQ = DB::table('customers');
-        if (!$isAll && \Illuminate\Support\Facades\Schema::hasColumn('customers', 'branch_id')) {
+        if (!$isAll && Schema::hasColumn('customers', 'branch_id')) {
             $custRecQ->where('branch_id', $branchId);
         }
         $customersList = $custRecQ->select('id', 'opening_balance')->get();
@@ -518,15 +766,29 @@ class FinancialCommandCenterController extends Controller
             }
         }
 
+        // Distributors where balance > 0 (They owe company money)
         $distReceivable = (float) DB::table('distributors')
             ->where('status', 'active')
+            ->where('current_balance', '>', 0)
             ->sum('current_balance');
 
-        $totalReceivable = max(0, $custReceivable + $distReceivable);
+        // Distributor advances / credit notes where balance < 0 (Company owes distributor credit)
+        $distPayableAdvance = (float) abs(DB::table('distributors')
+            ->where('status', 'active')
+            ->where('current_balance', '<', 0)
+            ->sum('current_balance'));
+
+        // Market / Retail Shop receivables (distributor_customers)
+        $marketReceivable = (float) DB::table('distributor_customers')
+            ->where('status', 'active')
+            ->where('current_balance', '>', 0)
+            ->sum('current_balance');
+
+        $totalReceivable = $custReceivable + $distReceivable + $marketReceivable;
 
         // 5. FIXED ASSETS
         $assetsQ = Asset::whereNull('deleted_at')->where('status', '!=', 'disposed');
-        if (!$isAll && \Illuminate\Support\Facades\Schema::hasColumn('assets', 'branch_id')) {
+        if (!$isAll && Schema::hasColumn('assets', 'branch_id')) {
             $assetsQ->where('branch_id', $branchId);
         }
         $totalFixedAssets = (float) $assetsQ->sum(DB::raw('COALESCE(current_value, purchase_cost)'));
@@ -568,7 +830,7 @@ class FinancialCommandCenterController extends Controller
             ->where('status', 'pending')
             ->sum('total_amount');
 
-        $totalLiabilities = max(0, $totalPayables + $claimsPayable);
+        $totalLiabilities = max(0, $totalPayables + $distPayableAdvance + $claimsPayable);
 
         // 7. NET WORTH = TOTAL ASSETS - TOTAL LIABILITIES
         $netWorth = $totalAssets - $totalLiabilities;
@@ -583,21 +845,22 @@ class FinancialCommandCenterController extends Controller
             'inventory'          => [
                 'finished_goods' => $finishedGoodsValue,
                 'raw_materials'  => $rawMaterialValue,
-                'field_custody'  => $fieldStockValue,
                 'total'          => $totalInventoryValue,
             ],
             'receivables'        => [
                 'direct_customers' => $custReceivable,
                 'distributors'     => $distReceivable,
+                'market_shops'     => $marketReceivable,
                 'total'            => $totalReceivable,
             ],
             'fixed_assets'       => $totalFixedAssets,
             'current_assets'     => $currentAssets,
             'total_assets'       => $totalAssets,
             'payables'           => [
-                'vendors' => $totalPayables,
-                'claims'  => $claimsPayable,
-                'total'   => $totalLiabilities,
+                'vendors'              => $totalPayables,
+                'distributor_advances' => $distPayableAdvance,
+                'claims'               => $claimsPayable,
+                'total'                => $totalLiabilities,
             ],
             'total_liabilities'  => $totalLiabilities,
             'net_worth'          => $netWorth,
@@ -616,7 +879,6 @@ class FinancialCommandCenterController extends Controller
         $diff = $current - $baseline;
         $pct  = ($baseline != 0) ? round(($diff / abs($baseline)) * 100, 1) : ($current != 0 ? 100.0 : 0.0);
 
-        $isPositive = $diff > 0;
         $isGood = $invertDirection ? ($diff <= 0) : ($diff >= 0);
 
         return [

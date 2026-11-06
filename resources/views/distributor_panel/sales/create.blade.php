@@ -1015,7 +1015,7 @@
                                     @if(isset($customers) && $customers->count() > 0)
                                         <option value="" disabled selected>-- Select Retail Shop / Customer --</option>
                                         @foreach($customers as $c)
-                                            <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}" data-approved-discount="{{ (float)($c->approved_discount ?? 0) }}">
+                                            <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}" data-approved-discount="{{ (float)$c->effective_discount }}" data-to-buy="{{ (float)$c->effective_trade_offer_buy_qty }}" data-to-free="{{ (float)$c->effective_trade_offer_free_qty }}" data-tier="{{ $c->tier?->name ?? 'Standard Retailer' }}" data-scheme-label="{{ $c->scheme_label }}">
                                                 🏪 {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
                                             </option>
                                         @endforeach
@@ -1172,7 +1172,7 @@
                                         <input type="number" step="any" min="0" name="price[]" class="ss-excel-input text-end row-price" value="0.00" data-orig-price="0">
                                     </td>
                                     <td class="excel-cell">
-                                        <input type="number" step="any" min="0" name="trade_offer[]" class="ss-excel-input text-center row-trade-offer" value="" placeholder="0" title="Trade Offer (Free Qty)">
+                                        <input type="number" step="any" min="0" readonly name="trade_offer[]" class="ss-excel-input text-center row-trade-offer bg-light text-primary fw-bold" value="" placeholder="0" title="Auto-calculated & Locked by Company Policy">
                                     </td>
                                     <td class="excel-cell excel-disc-cell">
                                         <div class="ss-disc-wrap">
@@ -1513,6 +1513,29 @@ $(document).ready(function() {
     const MIN_BLANK_ROWS = 8;
     let rowCounter = $('#saleGridBody tr.ss-grid-row').length || 8;
 
+    
+    // --- HELPER: GET CURRENT ACTIVE CUSTOMER TIER & POLICY ---
+    function getCurrentCustomerPolicy() {
+        const $selectedCust = $('#customerSelect').find(':selected');
+        const custVal = $('#customerSelect').val();
+        const hasActive = Boolean(custVal && custVal !== 'Walk-in Customer');
+        const approvedPct = hasActive ? parseFloat($selectedCust.data('approved-discount') || 0) : 0;
+        const toBuy = hasActive ? parseFloat($selectedCust.data('to-buy') || 0) : 0;
+        const toFree = hasActive ? parseFloat($selectedCust.data('to-free') || 0) : 0;
+        const tierName = hasActive ? ($selectedCust.data('tier') || 'Standard Retailer') : '';
+        const schemeLabel = hasActive ? ($selectedCust.data('scheme-label') || 'No Scheme') : '';
+
+        return {
+            $selectedCust: $selectedCust,
+            hasActive: hasActive,
+            approvedPct: approvedPct,
+            toBuy: toBuy,
+            toFree: toFree,
+            tierName: tierName,
+            schemeLabel: schemeLabel
+        };
+    }
+
     function createRowHtml(item) {
         rowCounter++;
         const id         = item ? (item.product_id || item.id || '') : '';
@@ -1528,15 +1551,21 @@ $(document).ready(function() {
         const pcs        = item ? (item.pcs || item.unit_type || 'piece') : 'piece';
         const price      = item ? (parseFloat(item.price || 0)) : 0;
         const origPrice  = item ? (parseFloat(item.original_price || item.price || 0)) : price;
-        const tradeOffer = item ? (parseFloat(item.trade_offer || 0)) : 0;
 
-        // Enforce company approved discount if customer is selected
-        const $selectedCust = $('#customerSelect').find(':selected');
-        const custSelectedVal = $('#customerSelect').val();
-        const hasActiveCust = custSelectedVal && custSelectedVal !== 'Walk-in Customer';
-        const approvedCustPct = hasActiveCust ? parseFloat($selectedCust.data('approved-discount') || 0) : 0;
+        const custPolicy = getCurrentCustomerPolicy();
+        const hasActiveCust = custPolicy.hasActive;
+        const toBuy = custPolicy.toBuy;
+        const toFree = custPolicy.toFree;
+        let tradeOffer = 0;
+        if (hasActiveCust && toBuy > 0 && toFree > 0 && qty >= toBuy) {
+            tradeOffer = Math.floor(qty / toBuy) * toFree;
+        } else if (item && item.trade_offer) {
+            tradeOffer = parseFloat(item.trade_offer);
+        }
+        const isToLocked = hasActiveCust ? 'readonly' : '';
+        const toLockClass = hasActiveCust ? 'bg-light text-primary fw-bold' : '';
 
-        const discVal    = hasActiveCust ? approvedCustPct : (item ? (parseFloat(item.disc_val || item.disc || 0)) : 0);
+        const discVal    = hasActiveCust ? custPolicy.approvedPct : (item ? (parseFloat(item.disc_val || item.disc || 0)) : 0);
         const discType   = hasActiveCust ? 'percent' : (item ? (item.disc_type || 'percent') : 'percent');
         const isDiscLocked = hasActiveCust ? 'readonly' : '';
         const discLockClass = hasActiveCust ? 'bg-light text-success fw-bold' : '';
@@ -1584,7 +1613,7 @@ $(document).ready(function() {
                     <input type="number" step="any" min="0" name="price[]" class="ss-excel-input text-end row-price" value="${price.toFixed(2)}" data-orig-price="${origPrice}">
                 </td>
                 <td class="excel-cell">
-                    <input type="number" step="any" min="0" name="trade_offer[]" class="ss-excel-input text-center row-trade-offer" value="${tradeOffer > 0 ? tradeOffer : ''}" placeholder="0" title="Trade Offer (Free Qty)">
+                    <input type="number" step="any" min="0" ${isToLocked} name="trade_offer[]" class="ss-excel-input text-center row-trade-offer ${toLockClass}" value="${tradeOffer > 0 ? tradeOffer : ''}" placeholder="0" title="${hasActiveCust ? 'Scheme Locked by Company' : 'Trade Offer (Free Qty)'}">
                 </td>
                 <td class="excel-cell excel-disc-cell">
                     <div class="ss-disc-wrap">
@@ -1693,9 +1722,20 @@ $(document).ready(function() {
         const pcs        = item ? (item.pcs || item.unit_type || 'piece') : 'piece';
         const price      = item ? (parseFloat(item.price || 0)) : 0;
         const origPrice  = item ? (parseFloat(item.original_price || item.price || 0)) : price;
-        const tradeOffer = item ? (parseFloat(item.trade_offer || 0)) : 0;
-        const discVal    = item ? (parseFloat(item.disc_val || item.disc || 0)) : 0;
-        const discType   = item ? (item.disc_type || 'percent') : 'percent';
+
+        const custPolicy = getCurrentCustomerPolicy();
+        const hasActiveCust = custPolicy.hasActive;
+        const toBuy = custPolicy.toBuy;
+        const toFree = custPolicy.toFree;
+        let tradeOffer = 0;
+        if (hasActiveCust && toBuy > 0 && toFree > 0 && qty >= toBuy) {
+            tradeOffer = Math.floor(qty / toBuy) * toFree;
+        } else if (item && item.trade_offer) {
+            tradeOffer = parseFloat(item.trade_offer);
+        }
+
+        const discVal  = hasActiveCust ? custPolicy.approvedPct : (item ? (parseFloat(item.disc_val || item.disc || 0)) : 0);
+        const discType = hasActiveCust ? 'percent' : (item ? (item.disc_type || 'percent') : 'percent');
 
         $row.find('.row-product-id').val(id);
         $row.find('.row-variant-id').val(variantId);
@@ -1713,7 +1753,13 @@ $(document).ready(function() {
 
         $row.find('.row-price').val(price.toFixed(2)).data('orig-price', origPrice);
         $row.find('.row-trade-offer').val(tradeOffer > 0 ? tradeOffer : '');
-        $row.find('.row-disc-val').val(discVal);
+        if (hasActiveCust) {
+            $row.find('.row-trade-offer').prop('readonly', true).addClass('bg-light text-primary fw-bold');
+            $row.find('.row-disc-val').val(discVal.toFixed(2)).prop('readonly', true).addClass('bg-light text-success fw-bold');
+        } else {
+            $row.find('.row-trade-offer').prop('readonly', false).removeClass('bg-light text-primary fw-bold');
+            $row.find('.row-disc-val').val(discVal).prop('readonly', false).removeClass('bg-light text-success fw-bold');
+        }
         $row.find('.row-disc-type').val(discType);
 
         const $btn = $row.find('.ss-disc-toggle-btn');
@@ -1789,17 +1835,33 @@ $(document).ready(function() {
     function recalculateRow($row) {
         const qty      = parseFloat($row.find('.row-qty').val()) || 0;
         const price    = parseFloat($row.find('.row-price').val()) || 0;
-        const $selected = $('#customerSelect').find(':selected');
-        const custVal = $('#customerSelect').val();
+        const pid      = $row.find('.row-product-id').val();
+        const policy   = getCurrentCustomerPolicy();
+
+        // 1. Strict Trade Offer (T.O) Calculation & Lock (Plan 1)
+        let freeUnits = 0;
+        if (policy.hasActive && policy.toBuy > 0 && policy.toFree > 0 && qty >= policy.toBuy) {
+            freeUnits = Math.floor(qty / policy.toBuy) * policy.toFree;
+        }
+        const $toInput = $row.find('.row-trade-offer');
+        $toInput.val(freeUnits > 0 ? freeUnits : 0)
+                .prop('readonly', true)
+                .addClass('bg-light text-primary fw-bold')
+                .attr('title', policy.hasActive ? 'Scheme Locked by Company: ' + policy.schemeLabel : 'Trade Offer');
+
+        // 2. Strict Discount Calculation & Lock
         let discVal  = parseFloat($row.find('.row-disc-val').val()) || 0;
         let discType = $row.find('.row-disc-type').val() || 'percent';
 
-        if (custVal && custVal !== 'Walk-in Customer') {
-            const approvedPct = parseFloat($selected.data('approved-discount') || 0);
-            discVal = approvedPct;
+        if (policy.hasActive) {
+            discVal = policy.approvedPct;
             discType = 'percent';
-            $row.find('.row-disc-val').val(approvedPct.toFixed(2));
+            $row.find('.row-disc-val').val(discVal.toFixed(2)).prop('readonly', true).addClass('bg-light text-success fw-bold');
             $row.find('.row-disc-type').val('percent');
+            $row.find('.ss-disc-toggle-btn').text('%').removeClass('btn-pkr').addClass('btn-pct').css({'pointer-events': 'none', 'opacity': '0.75'}).attr('title', 'Locked by Company');
+        } else {
+            $row.find('.row-disc-val').prop('readonly', false).removeClass('bg-light text-success fw-bold');
+            $row.find('.ss-disc-toggle-btn').css({'pointer-events': 'auto', 'opacity': '1'});
         }
 
         let calculatedDisc = 0;
@@ -2409,6 +2471,9 @@ $(document).ready(function() {
     }
 
     // CLICK ITEM IN FLOATING DROPDOWN -> JUMP TO QTY DIRECTLY!
+    $(document).on('mousedown', '.ss-prod-item', function(e) {
+        e.preventDefault(); // Prevents input blur before click
+    });
     $(document).on('click', '.ss-prod-item', function(e) {
         e.stopPropagation();
         if (!activeRow || !activeRow.length) return;
@@ -2504,15 +2569,18 @@ $(document).ready(function() {
     }
 
     function enforceCustomerApprovedDiscount() {
-        const $selected = $('#customerSelect').find(':selected');
-        const val = $('#customerSelect').val();
-        const hasCustomer = val && val !== 'Walk-in Customer';
-        const approvedPct = hasCustomer ? parseFloat($selected.data('approved-discount') || 0) : 0;
+        const policy = getCurrentCustomerPolicy();
 
-        if (hasCustomer) {
+        if (policy.hasActive) {
             $('#custDiscountAlert').show().html(
-                `<div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill ${approvedPct > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border'}" style="font-size: 0.75rem; font-weight: 600;">
-                    <i class="fas fa-lock me-1"></i> Company Approved Discount: <strong>${approvedPct.toFixed(2)}%</strong> (Locked)
+                `<div class="d-inline-flex flex-wrap align-items-center gap-2 px-2.5 py-1 rounded-3 bg-light border shadow-xs" style="font-size: 0.75rem; font-weight: 600;">
+                    <span class="badge bg-primary text-white"><i class="fas fa-layer-group me-1"></i> Tier: ${policy.tierName}</span>
+                    <span class="badge ${policy.approvedPct > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border'}">
+                        <i class="fas fa-lock me-1"></i> Discount: <strong>${policy.approvedPct.toFixed(2)}%</strong> (Locked)
+                    </span>
+                    <span class="badge ${policy.toBuy > 0 ? 'bg-info-subtle text-info-emphasis border border-info-subtle' : 'bg-light text-muted border'}">
+                        <i class="fas fa-gift me-1"></i> Scheme: <strong>${policy.schemeLabel}</strong> (Locked)
+                    </span>
                 </div>`
             );
         } else {
@@ -2521,24 +2589,11 @@ $(document).ready(function() {
 
         // Apply and lock on every existing row in the grid
         $('#saleGridBody tr.ss-grid-row').each(function() {
-            const $row = $(this);
-            const $discVal = $row.find('.row-disc-val');
-            const $discType = $row.find('.row-disc-type');
-            const $toggleBtn = $row.find('.ss-disc-toggle-btn');
-
-            if (hasCustomer) {
-                $discVal.val(approvedPct.toFixed(2)).prop('readonly', true).addClass('bg-light text-success fw-bold');
-                $discType.val('percent');
-                $toggleBtn.text('%').removeClass('btn-pkr').addClass('btn-pct').css({'pointer-events': 'none', 'opacity': '0.75'}).attr('title', 'Locked by Company');
-            } else {
-                $discVal.prop('readonly', false).removeClass('bg-light text-success fw-bold');
-                $toggleBtn.css({'pointer-events': 'auto', 'opacity': '1'});
-            }
-            recalculateRow($row);
+            recalculateRow($(this));
         });
 
         // Also lock extra discount
-        if (hasCustomer) {
+        if (policy.hasActive) {
             $('#extraDiscountInput').val(0).prop('readonly', true).addClass('bg-light text-muted');
         } else {
             $('#extraDiscountInput').prop('readonly', false).removeClass('bg-light text-muted');

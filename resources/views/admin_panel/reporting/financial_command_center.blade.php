@@ -230,11 +230,19 @@
             <div class="col-12 col-md-5 custom-dates-row d-none">
                 <div class="row g-1">
                     <div class="col-6">
-                        <label class="form-label small fw-bold text-muted mb-1">Current End Date</label>
-                        <input type="date" name="curr_end_date" id="curr_end_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                        <label class="form-label small fw-bold text-muted mb-0" style="font-size:0.75rem;">Current Start</label>
+                        <input type="date" name="curr_start_date" id="curr_start_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
                     </div>
                     <div class="col-6">
-                        <label class="form-label small fw-bold text-muted mb-1">Baseline End Date</label>
+                        <label class="form-label small fw-bold text-muted mb-0" style="font-size:0.75rem;">Current End</label>
+                        <input type="date" name="curr_end_date" id="curr_end_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="col-6 mt-1">
+                        <label class="form-label small fw-bold text-muted mb-0" style="font-size:0.75rem;">Baseline Start</label>
+                        <input type="date" name="base_start_date" id="base_start_date" class="form-control form-control-sm" value="{{ date('Y-m-d', strtotime('-1 day')) }}">
+                    </div>
+                    <div class="col-6 mt-1">
+                        <label class="form-label small fw-bold text-muted mb-0" style="font-size:0.75rem;">Baseline End</label>
                         <input type="date" name="base_end_date" id="base_end_date" class="form-control form-control-sm" value="{{ date('Y-m-d', strtotime('-1 day')) }}">
                     </div>
                 </div>
@@ -270,7 +278,7 @@
         </div>
     </div>
 
-    <!-- Top 5 Master Executive KPI Cards (Including Outsource Fund Movement) -->
+    <!-- Top 5 Master Executive KPI Cards -->
     <div class="row g-3 mb-4">
         <!-- 1. Net Worth (Owner's Equity) -->
         <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
@@ -287,11 +295,11 @@
         <!-- 2. Total Period Sales -->
         <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
             <div class="fcc-kpi-card" style="border-left: 4px solid #3b82f6 !important;">
-                <div class="fcc-kpi-title">Period Sales Revenue</div>
+                <div class="fcc-kpi-title">Period Net Revenue</div>
                 <div class="fcc-kpi-value text-primary" id="kpiSales">Rs. 0.00</div>
                 <div class="d-flex align-items-center justify-content-between mt-2">
                     <span class="fcc-delta-pill" id="deltaSales"><i class="fas fa-minus"></i> 0%</span>
-                    <span class="text-muted" style="font-size: 0.72rem;">Direct + Dist Sales</span>
+                    <span class="text-muted" style="font-size: 0.72rem;">Gross Sales - Returns</span>
                 </div>
             </div>
         </div>
@@ -333,7 +341,7 @@
         </div>
     </div>
 
-    <!-- OWNER'S CAPITAL & DRAWINGS BANNER (NEW FEATURE FOR OUTSOURCE INJECTIONS & PERSONAL WITHDRAWALS) -->
+    <!-- OWNER'S CAPITAL & DRAWINGS BANNER -->
     <div class="fcc-panel" style="border: 1px solid #ddd6fe; background: #faf5ff;">
         <div class="fcc-panel-hdr border-bottom-0 pb-0 mb-3">
             <div>
@@ -423,6 +431,10 @@
                     <span class="fcc-row-val" id="rowDistributorReceivable">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
+                    <span class="fcc-row-label"><i class="fas fa-store text-info me-2"></i> Market / Retail Shop Receivables (Field)</span>
+                    <span class="fcc-row-val" id="rowMarketReceivable">Rs. 0.00</span>
+                </div>
+                <div class="fcc-row-item">
                     <span class="fcc-row-label"><i class="fas fa-building text-secondary me-2"></i> Fixed Assets (Plant, Vehicles, Equipment)</span>
                     <span class="fcc-row-val" id="rowFixedAssets">Rs. 0.00</span>
                 </div>
@@ -446,7 +458,11 @@
                     <span class="fcc-row-val text-danger" id="rowVendorPayables">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label"><i class="fas fa-receipt text-warning me-2"></i> Pending Claims / Customer Credit Notes</span>
+                    <span class="fcc-row-label"><i class="fas fa-hand-holding-heart text-warning me-2"></i> Distributor Credit Advances / Credit Notes</span>
+                    <span class="fcc-row-val text-danger" id="rowDistributorAdvances">Rs. 0.00</span>
+                </div>
+                <div class="fcc-row-item">
+                    <span class="fcc-row-label"><i class="fas fa-receipt text-warning me-2"></i> Pending Claims (Unapproved Claims)</span>
                     <span class="fcc-row-val text-danger" id="rowPendingClaims">Rs. 0.00</span>
                 </div>
             </div>
@@ -472,8 +488,16 @@
                     <span class="fcc-row-label">Distributor Dispatched Sales</span>
                     <span class="fcc-row-val text-dark" id="plDistSales">Rs. 0.00</span>
                 </div>
+                <div class="fcc-row-item">
+                    <span class="fcc-row-label text-muted" style="font-size:0.83rem;">Distributor Market Sales (Retailers)</span>
+                    <span class="fcc-row-val text-muted" style="font-size:0.83rem;" id="plSecondarySales">Rs. 0.00</span>
+                </div>
+                <div class="fcc-row-item text-danger">
+                    <span class="fcc-row-label text-danger">Less: Sales Returns & Refunds</span>
+                    <span class="fcc-row-val text-danger" id="plSalesReturns">- Rs. 0.00</span>
+                </div>
                 <div class="fcc-row-item bg-light rounded px-2">
-                    <span class="fcc-row-label fw-bold text-dark">Gross Revenue</span>
+                    <span class="fcc-row-label fw-bold text-dark">Net Sales Turnover</span>
                     <span class="fcc-row-val fw-bold text-dark" id="plTotalRevenue">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item text-danger">
@@ -481,7 +505,7 @@
                     <span class="fcc-row-val text-danger" id="plCOGS">- Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
-                    <span class="fcc-row-label fw-semibold text-dark">Gross Margin</span>
+                    <span class="fcc-row-label fw-semibold text-dark">Gross Margin / Profit</span>
                     <span class="fcc-row-val fw-bold text-success" id="plGrossProfit">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item text-danger">
@@ -587,7 +611,7 @@ function loadFinancialSnapshot() {
 
             // Top KPI Cards
             document.getElementById('kpiNetWorth').innerText = formatCurrency(res.curr_bs.net_worth);
-            document.getElementById('kpiSales').innerText = formatCurrency(res.curr_pl.total_sales);
+            document.getElementById('kpiSales').innerText = formatCurrency(res.curr_pl.net_revenue ?? res.curr_pl.total_sales);
             document.getElementById('kpiExpenses').innerText = formatCurrency(res.curr_pl.total_expenses);
             document.getElementById('kpiNetProfit').innerText = formatCurrency(res.curr_pl.net_profit);
 
@@ -615,17 +639,29 @@ function loadFinancialSnapshot() {
             document.getElementById('rowRawMaterials').innerText = formatCurrency(res.curr_bs.inventory.raw_materials);
             document.getElementById('rowCustomerReceivable').innerText = formatCurrency(res.curr_bs.receivables.direct_customers);
             document.getElementById('rowDistributorReceivable').innerText = formatCurrency(res.curr_bs.receivables.distributors);
+            if (document.getElementById('rowMarketReceivable')) {
+                document.getElementById('rowMarketReceivable').innerText = formatCurrency(res.curr_bs.receivables.market_shops);
+            }
             document.getElementById('rowFixedAssets').innerText = formatCurrency(res.curr_bs.fixed_assets);
 
             // Liabilities Details
             document.getElementById('totalLiabilitiesVal').innerText = formatCurrency(res.curr_bs.total_liabilities);
             document.getElementById('rowVendorPayables').innerText = formatCurrency(res.curr_bs.payables.vendors);
+            if (document.getElementById('rowDistributorAdvances')) {
+                document.getElementById('rowDistributorAdvances').innerText = formatCurrency(res.curr_bs.payables.distributor_advances);
+            }
             document.getElementById('rowPendingClaims').innerText = formatCurrency(res.curr_bs.payables.claims);
 
             // P&L Breakdown
             document.getElementById('plDirectSales').innerText = formatCurrency(res.curr_pl.direct_sales);
             document.getElementById('plDistSales').innerText = formatCurrency(res.curr_pl.dist_sales);
-            document.getElementById('plTotalRevenue').innerText = formatCurrency(res.curr_pl.total_sales);
+            if (document.getElementById('plSecondarySales')) {
+                document.getElementById('plSecondarySales').innerText = formatCurrency(res.curr_pl.secondary_market_sales);
+            }
+            if (document.getElementById('plSalesReturns')) {
+                document.getElementById('plSalesReturns').innerText = '- ' + formatCurrency(res.curr_pl.total_returns);
+            }
+            document.getElementById('plTotalRevenue').innerText = formatCurrency(res.curr_pl.net_revenue ?? res.curr_pl.total_sales);
             document.getElementById('plCOGS').innerText = '- ' + formatCurrency(res.curr_pl.cogs);
             document.getElementById('plGrossProfit').innerText = formatCurrency(res.curr_pl.gross_profit);
             document.getElementById('plExpenses').innerText = '- ' + formatCurrency(res.curr_pl.total_expenses);

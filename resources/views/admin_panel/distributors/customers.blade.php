@@ -49,6 +49,23 @@
         align-items: center;
         gap: 4px;
     }
+
+    .btn-tier-policy {
+        background: #ffffff !important;
+        color: #1e293b !important;
+        border: 1.5px solid #cbd5e1 !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+    .btn-tier-policy:hover, .btn-tier-policy:focus {
+        background: #0f766e !important;
+        color: #ffffff !important;
+        border-color: #0f766e !important;
+    }
+    .btn-tier-policy:hover i, .btn-tier-policy:focus i {
+        color: #ffffff !important;
+    }
+
 </style>
 
 <div class="container-fluid dist-module-container">
@@ -68,6 +85,11 @@
             </span>
         </div>
         <div>
+            <button type="button" class="btn btn-tier-policy dist-btn-action shadow-sm me-2"
+                    style="padding: 6px 14px !important;"
+                    data-bs-toggle="modal" data-bs-target="#manageTiersModal">
+                <i class="fas fa-layer-group text-primary" style="font-size: 0.72rem;"></i> Customer Tiers & Policy Schemes
+            </button>
             <button type="button" class="btn text-white dist-btn-action shadow-sm"
                     style="background: linear-gradient(135deg, #0f766e, #0d9488); border: 1px solid #14b8a6; padding: 6px 14px !important;"
                     data-bs-toggle="modal" data-bs-target="#addRetailCustomerModal">
@@ -390,6 +412,13 @@
                 @endif
                 <div class="text-muted"><i class="fas fa-phone-alt me-1"></i> Phone: <span class="text-dark">{{ $c->phone ?: 'â€”' }}</span></div>
                 <div class="text-muted"><i class="fas fa-map-marker-alt me-1"></i> Area: <span class="text-dark">{{ $c->area ?: 'General' }}</span></div>
+                <div class="mt-1.5 d-flex flex-wrap gap-1">
+                    <span class="badge bg-primary-subtle text-primary border px-1.5 py-0.5" style="font-size: 0.68rem;">{{ $c->tier?->name ?? 'Standard' }}</span>
+                    <span class="badge bg-success-subtle text-success border px-1.5 py-0.5" style="font-size: 0.68rem;">{{ (float)$c->effective_discount }}% Disc</span>
+                    @if($c->effective_trade_offer_buy_qty > 0)
+                    <span class="badge bg-info-subtle text-info-emphasis border px-1.5 py-0.5" style="font-size: 0.68rem;">{{ $c->scheme_label }}</span>
+                    @endif
+                </div>
             </div>
 
             <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-2">
@@ -509,11 +538,47 @@
                                 <input type="text" name="address" class="form-control form-control-sm" placeholder="Optional physical location address">
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="0.00" placeholder="e.g. 5 or 10">
-                                    <span class="input-group-text fw-bold">%</span>
+                            <!-- Customer Tier & Schemes (Plan 1) -->
+                            <div class="mb-3 p-3 rounded-3 border" style="background: #f8fafc; border-color: #e2e8f0 !important;">
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold small text-dark mb-1">
+                                        <i class="fas fa-layer-group text-primary me-1"></i> Customer Category / Pricing Tier <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="tier_id" id="add_tier_id" class="form-select form-select-sm customer-tier-select" data-prefix="add" style="border: 1.5px solid #0f766e; font-weight: 600;">
+                                        <option value="">-- Direct / Custom Assignment --</option>
+                                        @foreach($tiers ?? [] as $t)
+                                        <option value="{{ $t->id }}"
+                                                data-discount="{{ (float)$t->discount_percentage }}"
+                                                data-to-buy="{{ (float)$t->trade_offer_buy_qty }}"
+                                                data-to-free="{{ (float)$t->trade_offer_free_qty }}">
+                                            {{ $t->name }} &bull; ({{ (float)$t->discount_percentage }}% Disc | {{ $t->scheme_label }})
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text text-muted" style="font-size: 0.71rem;">
+                                        Tier select karne se Company Discount % aur Trade Offer khud bakhud fill ho jayenge.
+                                    </div>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold small text-dark mb-1">Company Approved Discount (%)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" id="add_approved_discount" class="form-control fw-bold text-success" value="0.00" placeholder="e.g. 5">
+                                            <span class="input-group-text fw-bold">%</span>
+                                        </div>
+                                        <span class="text-muted" style="font-size: 0.7rem;">Distributor na is se zyada de sakta he na kam</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small text-dark mb-1">Scheme: Buy Qty</label>
+                                        <input type="number" step="0.01" min="0" name="trade_offer_buy_qty" id="add_to_buy" class="form-control form-control-sm fw-bold" value="0" placeholder="e.g. 12">
+                                        <span class="text-muted" style="font-size: 0.7rem;">Khareedari Qty</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small text-dark mb-1">Free Qty (T.O)</label>
+                                        <input type="number" step="0.01" min="0" name="trade_offer_free_qty" id="add_to_free" class="form-control form-control-sm fw-bold text-primary" value="0" placeholder="e.g. 1">
+                                        <span class="text-muted" style="font-size: 0.7rem;">Muft item Qty</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -625,11 +690,44 @@
                                 <input type="text" name="address" class="form-control form-control-sm" value="{{ $c->address }}" placeholder="Optional address">
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold small text-dark mb-1">Approved Discount Limit (%) for Order Booker</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" step="0.01" min="0" max="100" name="approved_discount" class="form-control" value="{{ (float)($c->approved_discount ?? 0) }}" placeholder="e.g. 5 or 10">
-                                    <span class="input-group-text fw-bold">%</span>
+                            <!-- Customer Tier & Schemes (Plan 1) -->
+                            <div class="mb-3 p-3 rounded-3 border" style="background: #f8fafc; border-color: #e2e8f0 !important;">
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold small text-dark mb-1">
+                                        <i class="fas fa-layer-group text-primary me-1"></i> Customer Category / Pricing Tier <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="tier_id" id="edit_{{ $c->id }}_tier_id" class="form-select form-select-sm customer-tier-select" data-prefix="edit_{{ $c->id }}" style="border: 1.5px solid #0f766e; font-weight: 600;">
+                                        <option value="">-- Direct / Custom Assignment --</option>
+                                        @foreach($tiers ?? [] as $t)
+                                        <option value="{{ $t->id }}" {{ ($c->tier_id == $t->id) ? 'selected' : '' }}
+                                                data-discount="{{ (float)$t->discount_percentage }}"
+                                                data-to-buy="{{ (float)$t->trade_offer_buy_qty }}"
+                                                data-to-free="{{ (float)$t->trade_offer_free_qty }}">
+                                            {{ $t->name }} &bull; ({{ (float)$t->discount_percentage }}% Disc | {{ $t->scheme_label }})
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text text-muted" style="font-size: 0.71rem;">
+                                        Tier change karne se Discount aur Scheme policy auto update hogi.
+                                    </div>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold small text-dark mb-1">Company Approved Discount (%)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" step="0.01" min="0" max="100" name="approved_discount" id="edit_{{ $c->id }}_approved_discount" class="form-control fw-bold text-success" value="{{ (float)$c->effective_discount }}" placeholder="e.g. 5">
+                                            <span class="input-group-text fw-bold">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small text-dark mb-1">Scheme: Buy Qty</label>
+                                        <input type="number" step="0.01" min="0" name="trade_offer_buy_qty" id="edit_{{ $c->id }}_to_buy" class="form-control form-control-sm fw-bold" value="{{ (float)$c->effective_trade_offer_buy_qty }}" placeholder="e.g. 12">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small text-dark mb-1">Free Qty (T.O)</label>
+                                        <input type="number" step="0.01" min="0" name="trade_offer_free_qty" id="edit_{{ $c->id }}_to_free" class="form-control form-control-sm fw-bold text-primary" value="{{ (float)$c->effective_trade_offer_free_qty }}" placeholder="e.g. 1">
+                                    </div>
                                 </div>
                             </div>
 
@@ -823,6 +921,28 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+
+    // Handle Customer Tier Selection change (auto fill discount & trade offer)
+    $(document).on('change', '.customer-tier-select', function() {
+        const prefix = $(this).data('prefix');
+        const selected = $(this).find(':selected');
+        if (!selected || !selected.val()) return;
+
+        const disc = selected.data('discount');
+        const toBuy = selected.data('to-buy');
+        const toFree = selected.data('to-free');
+
+        if (disc !== undefined && disc !== null) {
+            $('#' + prefix + '_approved_discount').val(parseFloat(disc).toFixed(2));
+        }
+        if (toBuy !== undefined && toBuy !== null) {
+            $('#' + prefix + '_to_buy').val(parseFloat(toBuy));
+        }
+        if (toFree !== undefined && toFree !== null) {
+            $('#' + prefix + '_to_free').val(parseFloat(toFree));
+        }
+    });
+
         const distributorsData = @json($distributorsJson);
 
         function populateBookers(distId, selectElem, selectedBookerId = null) {
@@ -875,5 +995,155 @@
         });
     });
 </script>
+
+
+<!-- ==========================================
+     MANAGE CUSTOMER TIERS & SCHEMES MODAL
+=========================================== -->
+<div class="modal fade" id="manageTiersModal" tabindex="-1" aria-labelledby="manageTiersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header py-3 px-4 text-white" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-white text-dark d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                        <i class="fas fa-layer-group text-primary"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0 text-white" id="manageTiersModalLabel" style="font-size: 0.96rem;">
+                            Customer Pricing Tiers & Company Schemes (Plan 1)
+                        </h6>
+                        <span class="text-white-50 small" style="font-size: 0.72rem;">
+                            Company assigns fixed discount % and trade offer ratio. Distributor cannot give more or less.
+                        </span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <!-- Existing Tiers List -->
+                <h6 class="fw-bold text-dark mb-2" style="font-size: 0.84rem;">
+                    <i class="fas fa-list me-1 text-primary"></i> Active Company Tiers
+                </h6>
+                <div class="table-responsive bg-white rounded-3 border mb-4">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.8rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tier Name</th>
+                                <th>Fixed Discount %</th>
+                                <th>Trade Offer (Scheme)</th>
+                                <th>Description</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($tiers ?? [] as $tier)
+                            <tr>
+                                <td class="fw-bold text-dark">
+                                    <i class="fas fa-tag text-primary me-1"></i> {{ $tier->name }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success border px-2 py-1">
+                                        {{ (float)$tier->discount_percentage }}%
+                                    </span>
+                                </td>
+                                <td>
+                                    @if($tier->trade_offer_buy_qty > 0 && $tier->trade_offer_free_qty > 0)
+                                    <span class="badge bg-info-subtle text-info-emphasis border px-2 py-1">
+                                        Buy {{ (float)$tier->trade_offer_buy_qty }} Get {{ (float)$tier->trade_offer_free_qty }} Free
+                                    </span>
+                                    @else
+                                    <span class="text-muted small">No Free Item</span>
+                                    @endif
+                                </td>
+                                <td class="text-muted small">{{ $tier->description ?: 'N/A' }}</td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-0.5"
+                                            data-bs-toggle="collapse" data-bs-target="#editTierCollapse{{ $tier->id }}">
+                                        <i class="fas fa-pen me-1"></i> Edit Policy
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="editTierCollapse{{ $tier->id }}">
+                                <td colspan="5" class="bg-light p-3 border-top">
+                                    <form action="{{ route('admin.distributors.customer_tiers.update', $tier->id) }}" method="POST">
+                                        @csrf
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-3">
+                                                <label class="form-label small fw-bold mb-1">Tier Name</label>
+                                                <input type="text" name="name" class="form-control form-control-sm" value="{{ $tier->name }}" required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small fw-bold mb-1">Discount %</label>
+                                                <input type="number" step="0.01" min="0" max="100" name="discount_percentage" class="form-control form-control-sm" value="{{ (float)$tier->discount_percentage }}" required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small fw-bold mb-1">Buy Qty</label>
+                                                <input type="number" step="0.01" min="0" name="trade_offer_buy_qty" class="form-control form-control-sm" value="{{ (float)$tier->trade_offer_buy_qty }}">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small fw-bold mb-1">Free Qty</label>
+                                                <input type="number" step="0.01" min="0" name="trade_offer_free_qty" class="form-control form-control-sm" value="{{ (float)$tier->trade_offer_free_qty }}">
+                                            </div>
+                                            <div class="col-md-3 d-flex gap-2">
+                                                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 w-100">
+                                                    <i class="fas fa-save me-1"></i> Update
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="5" class="text-center py-3 text-muted">No pricing tiers defined.</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add New Tier Card -->
+                <div class="card border rounded-3 p-3 bg-white">
+                    <h6 class="fw-bold text-dark mb-2" style="font-size: 0.84rem;">
+                        <i class="fas fa-plus-circle text-success me-1"></i> Add New Customer Pricing Tier
+                    </h6>
+                    <form action="{{ route('admin.distributors.customer_tiers.store') }}" method="POST">
+                        @csrf
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Tier Name *</label>
+                                <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Mart & Bakers" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Discount % *</label>
+                                <input type="number" step="0.01" min="0" max="100" name="discount_percentage" class="form-control form-control-sm" placeholder="e.g. 4.5" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold mb-1">T.O: Buy Qty</label>
+                                <input type="number" step="0.01" min="0" name="trade_offer_buy_qty" class="form-control form-control-sm" placeholder="e.g. 12" value="0">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Free Qty (T.O)</label>
+                                <input type="number" step="0.01" min="0" name="trade_offer_free_qty" class="form-control form-control-sm" placeholder="e.g. 1" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Description</label>
+                                <input type="text" name="description" class="form-control form-control-sm" placeholder="Optional notes">
+                            </div>
+                            <div class="col-12 text-end mt-2">
+                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">
+                                    <i class="fas fa-plus me-1"></i> Save New Pricing Tier
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-3">
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection

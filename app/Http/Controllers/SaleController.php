@@ -13,6 +13,9 @@ use Illuminate\Http\Request;
 
 use App\Models\CustomerLedger;
 use App\Models\ProductBooking;
+use App\Models\ExpenseVoucher;
+use App\Models\AccountHead;
+use App\Models\Account;
 use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
@@ -1949,6 +1952,10 @@ class SaleController extends Controller
                 }
             }
 
+            if ($action === 'sale' && $model instanceof \App\Models\Sale) {
+                $this->syncTradeOfferExpenseVoucher($model, $combined_trade_offers, $combined_prices);
+            }
+
             DB::commit();
 
             // Redirect logic
@@ -2248,6 +2255,10 @@ class SaleController extends Controller
             }
 
             $sale->save();
+
+            if ($action === 'sale') {
+                $this->syncTradeOfferExpenseVoucher($sale, $combined_trade_offers, $combined_prices);
+            }
 
             DB::commit();
 
@@ -3059,7 +3070,7 @@ class SaleController extends Controller
      */
     public function saleDetails($id)
     {
-        $sale = Sale::with(['user', 'branch', 'customer_relation', 'cardAccount'])->findOrFail($id);
+        $sale = Sale::with(['user', 'branch', 'customer_relation', 'cardAccount', 'tradeOfferVoucher'])->findOrFail($id);
 
         $prodIds = array_filter(array_map('trim', explode(',', $sale->product ?? '')));
         $variantIds = array_filter(array_map('trim', explode(',', $sale->variant_id ?? '')));
@@ -3287,6 +3298,9 @@ class SaleController extends Controller
                     'card'             => (float)($sale->card ?: 0),
                     'card_account'     => $sale->cardAccount ? $sale->cardAccount->title : null,
                     'change'           => (float)($sale->change ?: 0),
+                    'trade_offer_amount' => (float)($sale->trade_offer_amount ?: 0),
+                    'trade_offer_voucher_evid' => $sale->tradeOfferVoucher ? $sale->tradeOfferVoucher->evid : null,
+                    'trade_offer_voucher_id'   => $sale->trade_offer_voucher_id,
                 ],
                 'totals_summary' => [
                     'total_sold_qty'     => $totalSoldQty,
@@ -3970,6 +3984,7 @@ class SaleController extends Controller
             $sale->card_account_id     = $newCardAccountId;
             $sale->change              = $request->change;
             $sale->total_items         = $total_items;
+            $sale->trade_offer         = implode(',', $combined_trade_offers);
             $sale->save();
 
             // Also sync distributor payment if linked
@@ -4059,6 +4074,8 @@ class SaleController extends Controller
                     }
                 }
             }
+
+            $this->syncTradeOfferExpenseVoucher($sale, $combined_trade_offers, $combined_prices);
 
             DB::commit();
 
@@ -4429,5 +4446,146 @@ class SaleController extends Controller
             'customerType' => $customerType,
             'customerPhone' => $customerPhone,
         ]);
+    }
+
+    /**
+     * Automatically create, update, or reverse an Expense Voucher for Trade Offer (free goods)
+     * under AccountHead "Trade Promotion & Market Discounts" and Account "Trade Promotion & Retail Schemes Expense".
+     *
+     * @param \App\Models\Sale $sale
+     * @param array $tradeOffers
+     * @param array $prices
+     * @return void
+     */
+    public function syncTradeOfferExpenseVoucher(\App\Models\Sale $sale, array $tradeOffers = [], array $prices = [])
+    {
+        try {
+            if (empty($tradeOffers)) {
+                $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
+            }
+            if (empty($prices)) {
+                $prices = !empty($sale->per_price) ? explode(',', $sale->per_price) : [];
+            }
+
+            $totalTradeOfferAmount = 0.0;
+            foreach ($tradeOffers as $idx => $toQty) {
+                $to = floatval($toQty);
+                $pr = isset($prices[$idx]) ? floatval($prices[$idx]) : 0.0;
+                if ($to > 0 && $pr > 0) {
+                    $totalTradeOfferAmount += ($to * $pr);
+                }
+            }
+            $totalTradeOfferAmount = round($totalTradeOfferAmount, 2);
+
+            // 1. Locate or create Head: Trade Promotion & Market Discounts
+            $head = \App\Models\AccountHead::firstOrCreate(
+                ['name' => 'Trade Promotion & Market Discounts'],
+                ['status' => 1]
+            );
+
+            // 2. Locate or create Account: Trade Promotion & Retail Schemes Expense
+            $expenseAccount = \App\Models\Account::where('account_code', 'ACC-CLAIM-TRADE-01')->first();
+            if (!$expenseAccount) {
+                $expenseAccount = \App\Models\Account::create([
+                    'head_id'         => $head->id,
+                    'account_code'    => 'ACC-CLAIM-TRADE-01',
+                    'title'           => 'Trade Promotion & Retail Schemes Expense',
+                    'opening_balance' => 0.00,
+                    'status'          => 1,
+                ]);
+            } else {
+                if ($expenseAccount->head_id != $head->id) {
+                    $expenseAccount->head_id = $head->id;
+                    $expenseAccount->save();
+                }
+            }
+
+            // Customer Name
+            $customerName = 'Walk-in Customer';
+            $rawCust = (string)($sale->customer ?? '');
+            if (str_starts_with($rawCust, 'dist_')) {
+                $distId = (int)str_replace('dist_', '', $rawCust);
+                $dist = \App\Models\Distributor::find($distId);
+                if ($dist) $customerName = $dist->name . ' (Distributor)';
+            } elseif (str_starts_with($rawCust, 'booker_')) {
+                $bookerId = (int)str_replace('booker_', '', $rawCust);
+                $booker = \App\Models\Distributor::find($bookerId);
+                if ($booker) $customerName = $booker->name . ' (Order Booker)';
+            } elseif (str_starts_with($rawCust, 'dc_')) {
+                $dcId = (int)str_replace('dc_', '', $rawCust);
+                $dc = \App\Models\DistributorCustomer::find($dcId);
+                if ($dc) $customerName = ($dc->shop_name ?: $dc->owner_name) . ' (Retail Shop)';
+            } elseif (is_numeric($rawCust)) {
+                $c = \App\Models\Customer::find($rawCust);
+                if ($c) $customerName = $c->customer_name;
+            } elseif (!empty($rawCust) && $rawCust !== 'Walk-in Customer') {
+                $customerName = $rawCust;
+            }
+
+            $voucherId = $sale->trade_offer_voucher_id;
+            $voucher = $voucherId ? \App\Models\ExpenseVoucher::find($voucherId) : null;
+
+            if ($totalTradeOfferAmount > 0) {
+                $remarkText = "Auto Expense: Trade Offer Free Goods on Invoice #{$sale->invoice_no} ({$customerName})";
+                $saleDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
+
+                if ($voucher) {
+                    // Adjust difference in account balance
+                    $oldAmount = (float)$voucher->total_amount;
+                    $diff = $totalTradeOfferAmount - $oldAmount;
+                    if ($diff != 0) {
+                        $expenseAccount->opening_balance = (float)$expenseAccount->opening_balance + $diff;
+                        $expenseAccount->save();
+                    }
+
+                    $voucher->update([
+                        'date'         => $saleDate,
+                        'type'         => (string)$head->id,
+                        'party_id'     => (string)$expenseAccount->id,
+                        'remarks'      => [$remarkText],
+                        'amount'       => [(string)$totalTradeOfferAmount],
+                        'total_amount' => $totalTradeOfferAmount,
+                    ]);
+                } else {
+                    $evid = method_exists(\App\Models\ExpenseVoucher::class, 'generateInvoiceNo')
+                        ? \App\Models\ExpenseVoucher::generateInvoiceNo()
+                        : 'EV-' . date('Ymd') . '-' . rand(1000, 9999);
+
+                    $voucher = \App\Models\ExpenseVoucher::create([
+                        'evid'         => $evid,
+                        'user_id'      => auth()->id() ?: 1,
+                        'branch_id'    => $sale->branch_id ?: (function_exists('active_branch_id') ? active_branch_id() : null),
+                        'entry_date'   => now(),
+                        'date'         => $saleDate,
+                        'type'         => (string)$head->id,
+                        'party_id'     => (string)$expenseAccount->id,
+                        'remarks'      => [$remarkText],
+                        'amount'       => [(string)$totalTradeOfferAmount],
+                        'total_amount' => $totalTradeOfferAmount,
+                    ]);
+
+                    $expenseAccount->opening_balance = (float)$expenseAccount->opening_balance + $totalTradeOfferAmount;
+                    $expenseAccount->save();
+
+                    $sale->trade_offer_voucher_id = $voucher->id;
+                }
+
+                $sale->trade_offer_amount = $totalTradeOfferAmount;
+                $sale->saveQuietly();
+            } else {
+                // If previously there was a voucher but now trade offer is 0
+                if ($voucher) {
+                    $oldAmount = (float)$voucher->total_amount;
+                    $expenseAccount->opening_balance = max(0, (float)$expenseAccount->opening_balance - $oldAmount);
+                    $expenseAccount->save();
+                    $voucher->delete();
+                }
+                $sale->trade_offer_voucher_id = null;
+                $sale->trade_offer_amount = 0.00;
+                $sale->saveQuietly();
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Trade offer expense voucher sync failed: ' . $e->getMessage());
+        }
     }
 }

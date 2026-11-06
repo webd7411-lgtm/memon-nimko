@@ -12,7 +12,8 @@ use App\Models\DistributorPayment;
 use App\Models\Account;
 use App\Models\AccountHead;
 use App\Models\DistributorSale;
-use App\Models\DistributorCustomer;
+use App\Models\DistributorCustomer;
+use App\Models\DistributorCustomerTier;
 use App\Models\DistributorCustomerLedger;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -1424,7 +1425,7 @@ class DistributorAdminController extends Controller
      */
     public function customers(Request $request)
     {
-        $query = DistributorCustomer::with(['distributor', 'booker'])
+        $query = DistributorCustomer::with(['distributor', 'booker', 'tier'])
             ->withCount(['sales', 'ledgers']);
 
         if ($request->filled('distributor_id')) {
@@ -1480,13 +1481,16 @@ class DistributorAdminController extends Controller
         }])->where('status', 'active')->orderBy('name')->get();
         $accounts = Account::where('status', 1)->with('head')->orderBy('title')->get();
 
-        return view('admin_panel.distributors.customers', compact(
-            'customers',
-            'distributors',
-            'accounts',
-            'totalCustomers',
-            'totalMarketDue',
-            'customersWithDueCount'
+        $tiers = DistributorCustomerTier::orderBy('id', 'asc')->get();
+
+        return view('admin_panel.distributors.customers', compact(
+            'customers',
+            'distributors',
+            'accounts',
+            'tiers',
+            'totalCustomers',
+            'totalMarketDue',
+            'customersWithDueCount'
         ));
     }
 
@@ -1557,7 +1561,10 @@ class DistributorAdminController extends Controller
             'area'              => 'nullable|string|max:100',
             'address'           => 'nullable|string',
             'opening_balance'   => 'nullable|numeric|min:0',
-            'approved_discount' => 'nullable|numeric|min:0|max:100',
+            'approved_discount' => 'nullable|numeric|min:0|max:100',
+            'tier_id'           => 'nullable|exists:distributor_customer_tiers,id',
+            'trade_offer_buy_qty' => 'nullable|numeric|min:0',
+            'trade_offer_free_qty'=> 'nullable|numeric|min:0',
         ]);
 
         $openingBalance = (float) ($request->opening_balance ?? 0);
@@ -1565,18 +1572,27 @@ class DistributorAdminController extends Controller
 
         DB::beginTransaction();
         try {
-            $customer = DistributorCustomer::create([
-                'distributor_id'    => $request->distributor_id,
-                'booker_user_id'    => $request->booker_user_id ?: null,
-                'shop_name'         => $request->shop_name,
-                'owner_name'        => $request->owner_name,
-                'phone'             => $request->phone,
-                'area'              => $request->area,
-                'address'           => $request->address,
-                'approved_discount' => $approvedDiscount,
-                'opening_balance'   => $openingBalance,
-                'current_balance'   => $openingBalance,
-                'status'            => 'active',
+            $tierId = $request->tier_id ?: null;
+            $tier = $tierId ? DistributorCustomerTier::find($tierId) : null;
+            $finalDiscount = $request->filled('approved_discount') ? (float)$request->approved_discount : ($tier ? (float)$tier->discount_percentage : 0);
+            $toBuy = $request->filled('trade_offer_buy_qty') ? (float)$request->trade_offer_buy_qty : ($tier ? (float)$tier->trade_offer_buy_qty : 0);
+            $toFree = $request->filled('trade_offer_free_qty') ? (float)$request->trade_offer_free_qty : ($tier ? (float)$tier->trade_offer_free_qty : 0);
+
+            $customer = DistributorCustomer::create([
+                'distributor_id'       => $request->distributor_id,
+                'booker_user_id'       => $request->booker_user_id ?: null,
+                'tier_id'              => $tierId,
+                'shop_name'            => $request->shop_name,
+                'owner_name'           => $request->owner_name,
+                'phone'                => $request->phone,
+                'area'                 => $request->area,
+                'address'              => $request->address,
+                'approved_discount'    => $finalDiscount,
+                'trade_offer_buy_qty'  => $toBuy,
+                'trade_offer_free_qty' => $toFree,
+                'opening_balance'      => $openingBalance,
+                'current_balance'      => $openingBalance,
+                'status'               => 'active',
             ]);
 
             if ($openingBalance > 0) {
@@ -1616,8 +1632,11 @@ class DistributorAdminController extends Controller
             'phone'             => 'nullable|string|max:20',
             'area'              => 'nullable|string|max:100',
             'address'           => 'nullable|string',
-            'approved_discount' => 'nullable|numeric|min:0|max:100',
-            'status'            => 'nullable|string|in:active,inactive',
+            'approved_discount' => 'nullable|numeric|min:0|max:100',
+            'tier_id'           => 'nullable|exists:distributor_customer_tiers,id',
+            'trade_offer_buy_qty' => 'nullable|numeric|min:0',
+            'trade_offer_free_qty'=> 'nullable|numeric|min:0',
+            'status'            => 'nullable|string|in:active,inactive',
         ]);
 
         $customer->update([
@@ -2138,4 +2157,58 @@ class DistributorAdminController extends Controller
 
         return back()->with('success', "Claim deleted successfully.");
     }
-}
+
+    /**
+     * Store new Customer Tier with discount % & trade offer scheme
+     */
+    public function storeCustomerTier(Request $request)
+    {
+        $request->validate([
+            'name'                => 'required|string|max:100',
+            'discount_percentage' => 'required|numeric|min:0|max:100',
+            'trade_offer_buy_qty' => 'nullable|numeric|min:0',
+            'trade_offer_free_qty'=> 'nullable|numeric|min:0',
+            'description'         => 'nullable|string|max:255',
+        ]);
+
+        DistributorCustomerTier::create([
+            'name'                => $request->name,
+            'discount_percentage' => (float)$request->discount_percentage,
+            'trade_offer_buy_qty' => (float)($request->trade_offer_buy_qty ?? 0),
+            'trade_offer_free_qty'=> (float)($request->trade_offer_free_qty ?? 0),
+            'description'         => $request->description,
+            'status'              => 'active',
+        ]);
+
+        return back()->with('success', "Customer Tier '{$request->name}' created successfully with assigned discount & trade offer policy!");
+    }
+
+    /**
+     * Update Customer Tier policy
+     */
+    public function updateCustomerTier(Request $request, $id)
+    {
+        $tier = DistributorCustomerTier::findOrFail($id);
+
+        $request->validate([
+            'name'                => 'required|string|max:100',
+            'discount_percentage' => 'required|numeric|min:0|max:100',
+            'trade_offer_buy_qty' => 'nullable|numeric|min:0',
+            'trade_offer_free_qty'=> 'nullable|numeric|min:0',
+            'description'         => 'nullable|string|max:255',
+            'status'              => 'nullable|in:active,inactive',
+        ]);
+
+        $tier->update([
+            'name'                => $request->name,
+            'discount_percentage' => (float)$request->discount_percentage,
+            'trade_offer_buy_qty' => (float)($request->trade_offer_buy_qty ?? 0),
+            'trade_offer_free_qty'=> (float)($request->trade_offer_free_qty ?? 0),
+            'description'         => $request->description,
+            'status'              => $request->status ?? 'active',
+        ]);
+
+        return back()->with('success', "Customer Tier '{$tier->name}' policy updated successfully!");
+    }
+
+}

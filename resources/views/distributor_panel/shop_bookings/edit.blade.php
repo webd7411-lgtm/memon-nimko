@@ -189,7 +189,7 @@
                             <option value="{{ $c->id }}" 
                                     {{ $booking->distributor_customer_id == $c->id ? 'selected' : '' }}
                                     data-balance="{{ (float)$c->current_balance }}"
-                                    data-approved-discount="{{ (float)($c->approved_discount ?? 0) }}"
+                                    data-approved-discount="{{ (float)$c->effective_discount }}" data-to-buy="{{ (float)$c->effective_trade_offer_buy_qty }}" data-to-free="{{ (float)$c->effective_trade_offer_free_qty }}" data-tier="{{ $c->tier?->name ?? 'Standard Retailer' }}" data-scheme-label="{{ $c->scheme_label }}"
                                     data-phone="{{ $c->phone ?: 'N/A' }}"
                                     data-owner="{{ $c->owner_name ?: 'N/A' }}"
                                     data-area="{{ $c->area ?: 'N/A' }}"
@@ -366,7 +366,7 @@
                                     <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
                                 </td>
                                 <td>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer" name="trade_offer[]" value="0" placeholder="0" title="Free scheme / Trade offer units">
+                                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated & Locked by Company">
                                 </td>
                                 <td>
                                     <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>
@@ -546,6 +546,8 @@ $(document).ready(function() {
     });
 
     let currentShopApprovedDiscountPct = parseFloat($('#distributor_customer_id').find('option:selected').data('approved-discount')) || 0;
+    let currentShopToBuy = parseFloat($('#distributor_customer_id').find('option:selected').data('to-buy')) || 0;
+    let currentShopToFree = parseFloat($('#distributor_customer_id').find('option:selected').data('to-free')) || 0;
 
     // LIVE PREVIOUS BALANCE & APPROVED DISCOUNT ON SHOP SELECTION
     $('#distributor_customer_id').on('change', function() {
@@ -566,6 +568,8 @@ $(document).ready(function() {
         const shopPhone = selectedOpt.data('phone') || '-';
         const shopArea  = selectedOpt.data('area')  || 'General';
         currentShopApprovedDiscountPct = parseFloat(selectedOpt.data('approved-discount')) || 0;
+        currentShopToBuy = parseFloat(selectedOpt.data('to-buy')) || 0;
+        currentShopToFree = parseFloat(selectedOpt.data('to-free')) || 0;
 
         $('#lblShopName').text(shopName);
         $('#lblShopOwner').text(shopOwner);
@@ -739,7 +743,7 @@ $(document).ready(function() {
                     <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
                 </td>
                 <td>
-                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer" name="trade_offer[]" value="0" placeholder="0" title="Free scheme / Trade offer units">
+                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated & Locked by Company">
                 </td>
                 <td>
                     <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>

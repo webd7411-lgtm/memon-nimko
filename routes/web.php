@@ -477,6 +477,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/customers/{id}/delete', [DistributorAdminController::class, 'destroyCustomer'])->name('customers.destroy')->middleware('permission:Delete Distributor Customer');
         Route::get('/customers/{id}/ledger', [DistributorAdminController::class, 'customerLedger'])->name('customers.ledger')->middleware('permission:Distributor Customer Ledger');
         Route::post('/customers/{id}/payment', [DistributorAdminController::class, 'storeCustomerPayment'])->name('customers.payment.store');
+        Route::post('/customer-tiers/store', [DistributorAdminController::class, 'storeCustomerTier'])->name('customer_tiers.store')->middleware('permission:Distributor Customers');
+        Route::post('/customer-tiers/{id}/update', [DistributorAdminController::class, 'updateCustomerTier'])->name('customer_tiers.update')->middleware('permission:Distributor Customers');
 
         // Payments / Collections & Approvals
         Route::get('/payments', [DistributorAdminController::class, 'payments'])->name('payments')->middleware('permission:Distributor Payments');
