@@ -1639,16 +1639,25 @@ class DistributorAdminController extends Controller
             'status'            => 'nullable|string|in:active,inactive',
         ]);
 
-        $customer->update([
-            'distributor_id'    => $request->distributor_id,
-            'booker_user_id'    => $request->booker_user_id ?: null,
-            'shop_name'         => $request->shop_name,
-            'owner_name'        => $request->owner_name,
-            'phone'             => $request->phone,
-            'area'              => $request->area,
-            'address'           => $request->address,
-            'approved_discount' => (float) ($request->approved_discount ?? 0),
-            'status'            => $request->status ?? 'active',
+        $tierId = $request->filled('tier_id') ? $request->tier_id : null;
+        $tier = $tierId ? DistributorCustomerTier::find($tierId) : null;
+        $approvedDiscount = $request->filled('approved_discount') ? (float)$request->approved_discount : ($tier ? (float)$tier->discount_percentage : 0);
+        $toBuy = $request->filled('trade_offer_buy_qty') ? (float)$request->trade_offer_buy_qty : ($tier ? (float)$tier->trade_offer_buy_qty : 0);
+        $toFree = $request->filled('trade_offer_free_qty') ? (float)$request->trade_offer_free_qty : ($tier ? (float)$tier->trade_offer_free_qty : 0);
+
+        $customer->update([
+            'distributor_id'       => $request->distributor_id,
+            'booker_user_id'       => $request->booker_user_id ?: null,
+            'tier_id'              => $tierId,
+            'shop_name'            => $request->shop_name,
+            'owner_name'           => $request->owner_name,
+            'phone'                => $request->phone,
+            'area'                 => $request->area,
+            'address'              => $request->address,
+            'approved_discount'    => $approvedDiscount,
+            'trade_offer_buy_qty'  => $toBuy,
+            'trade_offer_free_qty' => $toFree,
+            'status'               => $request->status ?? 'active',
         ]);
 
         return back()->with('success', "Customer '{$customer->shop_name}' details updated successfully!");

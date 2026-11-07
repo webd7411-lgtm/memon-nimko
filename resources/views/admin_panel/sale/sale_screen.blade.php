@@ -1054,7 +1054,7 @@
                                     @if(isset($distributorCustomers) && $distributorCustomers->count() > 0)
                                         <optgroup label="🏪 MARKET / RETAIL SHOPS">
                                             @foreach($distributorCustomers as $dc)
-                                                <option value="dc_{{ $dc->id }}" data-type="distributor_customer" {{ (isset($sale) && $sale->customer === "dc_" . $dc->id) ? "selected" : "" }} data-phone="{{ $dc->phone }}" data-balance="{{ (float)$dc->current_balance }}">
+                                                <option value="dc_{{ $dc->id }}" data-type="distributor_customer" {{ (isset($sale) && $sale->customer === "dc_" . $dc->id) ? "selected" : "" }} data-phone="{{ $dc->phone }}" data-balance="{{ (float)$dc->current_balance }}" data-approved-discount="{{ (float)$dc->effective_discount }}" data-to-buy="{{ (float)$dc->effective_trade_offer_buy_qty }}" data-to-free="{{ (float)$dc->effective_trade_offer_free_qty }}" data-tier="{{ $dc->tier?->name ?? 'Standard Retailer' }}" data-scheme-label="{{ $dc->scheme_label }}">
                                                     🏪 {{ $dc->shop_name }} ({{ $dc->owner_name }}) {{ $dc->area ? '- ' . $dc->area : '' }}
                                                 </option>
                                             @endforeach
@@ -1069,6 +1069,7 @@
                                 <i class="fas fa-undo"></i>
                             </button>
                         </div>
+                        <div id="custDiscountAlert" class="mt-1" style="display: none;"></div>
                     </div>
                 </div>
 
@@ -1485,6 +1486,29 @@ $(document).ready(function() {
     const MIN_BLANK_ROWS = 8;
     let rowCounter = 0;
 
+    // --- HELPER: GET CURRENT ACTIVE CUSTOMER TIER & POLICY ---
+    function getCurrentCustomerPolicy() {
+        const $selectedCust = $('#customerSelect').find(':selected');
+        const custVal = $('#customerSelect').val();
+        const hasActive = Boolean(custVal && custVal !== 'Walk-in Customer');
+        const approvedPct = hasActive ? parseFloat($selectedCust.data('approved-discount') || 0) : 0;
+        const toBuy = hasActive ? parseFloat($selectedCust.data('to-buy') || 0) : 0;
+        const toFree = hasActive ? parseFloat($selectedCust.data('to-free') || 0) : 0;
+        const tierName = hasActive ? ($selectedCust.data('tier') || '') : '';
+        const schemeLabel = hasActive ? ($selectedCust.data('scheme-label') || 'No Scheme') : '';
+
+        return {
+            $selectedCust: $selectedCust,
+            hasActive: hasActive,
+            hasPolicy: hasActive && (approvedPct > 0 || (toBuy > 0 && toFree > 0)),
+            approvedPct: approvedPct,
+            toBuy: toBuy,
+            toFree: toFree,
+            tierName: tierName,
+            schemeLabel: schemeLabel
+        };
+    }
+
     function createRowHtml(item) {
         rowCounter++;
         const id         = item ? (item.product_id || item.id || '') : '';
@@ -1500,11 +1524,25 @@ $(document).ready(function() {
         const pcs        = item ? (item.pcs || item.unit_type || 'piece') : 'piece';
         const price      = item ? (parseFloat(item.price || 0)) : 0;
         const origPrice  = item ? (parseFloat(item.original_price || item.price || 0)) : price;
-        const tradeOffer = item ? (parseFloat(item.trade_offer || 0)) : 0;
 
-        // Default discount is 0 with percent (%) mode
-        const discVal    = item ? (parseFloat(item.disc_val || item.disc || 0)) : 0;
-        const discType   = item ? (item.disc_type || 'percent') : 'percent';
+        const custPolicy = (typeof getCurrentCustomerPolicy === 'function') ? getCurrentCustomerPolicy() : { approvedPct: 0, toBuy: 0, toFree: 0 };
+
+        let tradeOffer = 0;
+        if (item && item.trade_offer !== undefined && item.trade_offer !== null && item.trade_offer !== '') {
+            tradeOffer = parseFloat(item.trade_offer || 0);
+        } else if (hasItem && custPolicy.toBuy > 0 && custPolicy.toFree > 0 && qty >= custPolicy.toBuy) {
+            tradeOffer = Math.floor(qty / custPolicy.toBuy) * custPolicy.toFree;
+        }
+
+        // Default discount: if explicit in item use it, otherwise auto-apply customer's assigned discount
+        let discVal    = 0;
+        let discType   = item ? (item.disc_type || 'percent') : 'percent';
+        if (item && (item.disc_val !== undefined || item.disc !== undefined)) {
+            discVal = parseFloat(item.disc_val || item.disc || 0);
+        } else if (hasItem && custPolicy.approvedPct > 0) {
+            discVal = custPolicy.approvedPct;
+            discType = 'percent';
+        }
 
         let calcDisc = 0;
         if (hasItem) {
@@ -1657,9 +1695,26 @@ $(document).ready(function() {
         const pcs        = item ? (item.pcs || item.unit_type || 'piece') : 'piece';
         const price      = item ? (parseFloat(item.price || 0)) : 0;
         const origPrice  = item ? (parseFloat(item.original_price || item.price || 0)) : price;
-        const tradeOffer = item ? (parseFloat(item.trade_offer || 0)) : 0;
-        const discVal    = item ? (parseFloat(item.disc_val || item.disc || 0)) : 0;
-        const discType   = item ? (item.disc_type || 'percent') : 'percent';
+
+        const custPolicy = getCurrentCustomerPolicy();
+
+        // Trade offer: if explicit in item use it; otherwise auto-calculate from customer scheme
+        let tradeOffer = 0;
+        if (item && item.trade_offer !== undefined && item.trade_offer !== null && item.trade_offer !== '') {
+            tradeOffer = parseFloat(item.trade_offer || 0);
+        } else if (custPolicy.toBuy > 0 && custPolicy.toFree > 0 && qty >= custPolicy.toBuy) {
+            tradeOffer = Math.floor(qty / custPolicy.toBuy) * custPolicy.toFree;
+        }
+
+        // Discount: if explicit in item (> 0) use it; otherwise auto-apply customer's assigned discount %
+        let discVal = 0;
+        let discType = (item && item.disc_type) ? item.disc_type : 'percent';
+        if (item && (item.disc_val !== undefined || item.disc !== undefined) && parseFloat(item.disc_val || item.disc || 0) > 0) {
+            discVal = parseFloat(item.disc_val || item.disc || 0);
+        } else if (custPolicy.approvedPct > 0) {
+            discVal = custPolicy.approvedPct;
+            discType = 'percent';
+        }
 
         $row.find('.row-product-id').val(id);
         $row.find('.row-variant-id').val(variantId);
@@ -1676,8 +1731,8 @@ $(document).ready(function() {
         stockBadge.text(stock).removeClass('text-success text-danger text-muted').addClass(stock > 0 ? 'text-success' : 'text-danger');
 
         $row.find('.row-price').val(price.toFixed(2)).data('orig-price', origPrice);
-        $row.find('.row-trade-offer').val(tradeOffer > 0 ? tradeOffer : '');
-        $row.find('.row-disc-val').val(discVal);
+        $row.find('.row-trade-offer').val(tradeOffer > 0 ? tradeOffer : '').data('manual-override', false);
+        $row.find('.row-disc-val').val(discVal).data('manual-override', false);
         $row.find('.row-disc-type').val(discType);
 
         const $btn = $row.find('.ss-disc-toggle-btn');
@@ -1744,8 +1799,32 @@ $(document).ready(function() {
         recalculateRow($row);
     });
 
-    // --- ROW INPUT CHANGES ---
-    $(document).on('input change', '.row-qty, .row-price, .row-trade-offer, .row-disc-val', function() {
+    // --- ROW INPUT CHANGES & MANUAL OVERRIDE PRESERVATION ---
+    $(document).on('input', '.row-trade-offer', function() {
+        $(this).data('manual-override', true);
+    });
+
+    $(document).on('input', '.row-disc-val', function() {
+        $(this).data('manual-override', true);
+    });
+
+    $(document).on('input change', '.row-qty', function() {
+        const $row = $(this).closest('tr.ss-grid-row');
+        const pid = $row.find('.row-product-id').val();
+        if (pid) {
+            const policy = getCurrentCustomerPolicy();
+            const $toInput = $row.find('.row-trade-offer');
+            // If customer has a trade offer scheme and user hasn't explicitly overridden T.O manually on this row:
+            if (policy.toBuy > 0 && policy.toFree > 0 && !$toInput.data('manual-override')) {
+                const qty = parseFloat($(this).val()) || 0;
+                const freeUnits = (qty >= policy.toBuy) ? Math.floor(qty / policy.toBuy) * policy.toFree : 0;
+                $toInput.val(freeUnits > 0 ? freeUnits : '');
+            }
+        }
+        recalculateRow($row);
+    });
+
+    $(document).on('input change', '.row-price, .row-trade-offer, .row-disc-val', function() {
         const $row = $(this).closest('tr.ss-grid-row');
         recalculateRow($row);
     });
@@ -2013,7 +2092,16 @@ $(document).ready(function() {
         if (existingRow) {
             const $qtyInput = existingRow.find('.row-qty');
             const currentQty = parseFloat($qtyInput.val()) || 0;
-            $qtyInput.val(currentQty + 1);
+            const newQty = currentQty + 1;
+            $qtyInput.val(newQty);
+
+            const policy = getCurrentCustomerPolicy();
+            const $toInput = existingRow.find('.row-trade-offer');
+            if (policy.toBuy > 0 && policy.toFree > 0 && !$toInput.data('manual-override')) {
+                const freeUnits = (newQty >= policy.toBuy) ? Math.floor(newQty / policy.toBuy) * policy.toFree : 0;
+                $toInput.val(freeUnits > 0 ? freeUnits : '');
+            }
+
             recalculateRow(existingRow);
             existingRow.addClass('table-success');
             setTimeout(() => existingRow.removeClass('table-success'), 600);
@@ -2439,6 +2527,72 @@ $(document).ready(function() {
         }
     }
 
+    function applyCustomerPolicy(isInitialLoad = false) {
+        const policy = getCurrentCustomerPolicy();
+
+        if (policy.hasPolicy) {
+            let pillsHtml = `<div class="d-inline-flex flex-wrap align-items-center gap-2 px-2.5 py-1 rounded-2 bg-white border shadow-xs" style="font-size: 0.72rem; font-weight: 600;">`;
+            if (policy.tierName) {
+                pillsHtml += `<span class="badge bg-primary text-white"><i class="fas fa-layer-group me-1"></i> Tier: ${policy.tierName}</span>`;
+            }
+            if (policy.approvedPct > 0) {
+                pillsHtml += `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fas fa-percentage me-1"></i> Assigned Disc: <strong>${policy.approvedPct.toFixed(2)}%</strong> (Auto-applied)</span>`;
+            }
+            if (policy.toBuy > 0 && policy.toFree > 0) {
+                pillsHtml += `<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fas fa-gift me-1"></i> Scheme: <strong>${policy.schemeLabel}</strong> (Auto-calc)</span>`;
+            }
+            pillsHtml += `<span class="text-muted small fw-normal ms-1"><i class="fas fa-pen me-1 text-primary"></i> Company can edit / change anytime</span></div>`;
+            $('#custDiscountAlert').show().html(pillsHtml);
+        } else {
+            $('#custDiscountAlert').hide().empty();
+        }
+
+        // If in edit mode on initial page load, do NOT overwrite saved items from DB
+        if (isInitialLoad && window.IS_EDIT_MODE) {
+            return;
+        }
+
+        // Apply discount and trade offer to all existing filled rows in the grid
+        let anyRowUpdated = false;
+        $('#saleGridBody tr.ss-grid-row').each(function() {
+            const $row = $(this);
+            const pid = $row.find('.row-product-id').val();
+            if (!pid) return;
+
+            const qty = parseFloat($row.find('.row-qty').val()) || 0;
+
+            if (policy.hasPolicy) {
+                // 1. Discount: auto-apply customer's assigned discount %
+                if (policy.approvedPct > 0) {
+                    $row.find('.row-disc-val').val(policy.approvedPct).data('manual-override', false);
+                    $row.find('.row-disc-type').val('percent');
+                    const $btn = $row.find('.ss-disc-toggle-btn');
+                    $btn.text('%').removeClass('btn-pkr').addClass('btn-pct').attr('title', 'Switch to PKR');
+                }
+
+                // 2. Trade Offer (T.O): auto-calculate based on scheme
+                if (policy.toBuy > 0 && policy.toFree > 0) {
+                    const freeUnits = (qty >= policy.toBuy) ? Math.floor(qty / policy.toBuy) * policy.toFree : 0;
+                    $row.find('.row-trade-offer').val(freeUnits > 0 ? freeUnits : '').data('manual-override', false);
+                }
+            } else {
+                // When switched away to Walk-in or non-policy customer, reset auto-applied values
+                $row.find('.row-trade-offer').val('').data('manual-override', false);
+                $row.find('.row-disc-val').val(0).data('manual-override', false);
+                $row.find('.row-disc-type').val('percent');
+                const $btn = $row.find('.ss-disc-toggle-btn');
+                $btn.text('%').removeClass('btn-pkr').addClass('btn-pct').attr('title', 'Switch to PKR');
+            }
+
+            recalculateRow($row);
+            anyRowUpdated = true;
+        });
+
+        if (anyRowUpdated) {
+            recalculateTotals();
+        }
+    }
+
     if ($.fn.select2) {
         $('#customerSelect').select2({
             placeholder: "Search Customer / Booker / Distributor...",
@@ -2446,17 +2600,22 @@ $(document).ready(function() {
             dropdownAutoWidth: true
         });
 
-        // When selection made, update badge & move focus to barcode scanner
+        // When selection made, update badge & apply policy & move focus to barcode scanner
         $('#customerSelect').on('select2:select', function() {
             updateCustomerBadge();
+            applyCustomerPolicy();
             setTimeout(function() {
                 $('#barcodeScanner').focus();
             }, 60);
         });
     }
 
-    $('#customerSelect').on('change', updateCustomerBadge);
+    $('#customerSelect').on('change', function() {
+        updateCustomerBadge();
+        applyCustomerPolicy();
+    });
     updateCustomerBadge();
+    applyCustomerPolicy(true);
 
     // Hotkey F1 to open customer selection
     $(document).on('keydown', function(e) {

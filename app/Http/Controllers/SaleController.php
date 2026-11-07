@@ -405,7 +405,7 @@ class SaleController extends Controller
         $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
 
         // 🔹 Fetch Market Retail Customers (distributor_customers)
-        $distributorCustomers = \App\Models\DistributorCustomer::where('status', 'active')
+        $distributorCustomers = \App\Models\DistributorCustomer::with('tier')->where('status', 'active')
             ->orderBy('shop_name')
             ->get();
 
@@ -3541,7 +3541,7 @@ class SaleController extends Controller
         $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
 
         // 5. Fetch Market Retail Customers
-        $distributorCustomers = \App\Models\DistributorCustomer::where('status', 'active')
+        $distributorCustomers = \App\Models\DistributorCustomer::with('tier')->where('status', 'active')
             ->orderBy('shop_name')
             ->get();
 

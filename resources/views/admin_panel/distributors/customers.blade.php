@@ -281,10 +281,24 @@
                                         {{ $c->shop_name }}
                                     </a>
                                     <div class="text-muted small">Prop: {{ $c->owner_name ?: 'N/A' }}</div>
-                                    <div class="mt-1">
-                                        <span class="badge rounded-pill {{ ($c->approved_discount ?? 0) > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border' }} px-2 py-0.5" style="font-size: 0.7rem;">
-                                            <i class="fas fa-percentage me-1"></i> Discount Limit: {{ (float)($c->approved_discount ?? 0) }}%
+                                    <div class="mt-1 d-flex flex-wrap align-items-center gap-1">
+                                        @if($c->tier)
+                                        <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style="font-size: 0.7rem;">
+                                            <i class="fas fa-layer-group me-1"></i> Tier: {{ $c->tier->name }}
                                         </span>
+                                        @endif
+                                        <span class="badge rounded-pill {{ (float)$c->effective_discount > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border' }} px-2 py-0.5" style="font-size: 0.7rem;">
+                                            <i class="fas fa-percentage me-1"></i> Discount Limit: {{ (float)$c->effective_discount }}%
+                                        </span>
+                                        @if($c->effective_trade_offer_buy_qty > 0 && $c->effective_trade_offer_free_qty > 0)
+                                        <span class="badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-0.5" style="font-size: 0.7rem;">
+                                            <i class="fas fa-gift me-1"></i> Trade Offer: {{ $c->scheme_label }}
+                                        </span>
+                                        @else
+                                        <span class="badge rounded-pill bg-light text-muted border px-2 py-0.5" style="font-size: 0.7rem;">
+                                            <i class="fas fa-gift me-1"></i> Trade Offer: No Scheme
+                                        </span>
+                                        @endif
                                     </div>
                                 </div>
                             </div>

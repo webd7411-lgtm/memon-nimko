@@ -83,9 +83,23 @@
                             <div class="fw-bold text-dark fs-6">{{ $cust->shop_name }}</div>
                             <span class="text-muted small">Prop: {{ $cust->owner_name ?: 'N/A' }}</span>
                             <div class="mt-1 d-flex flex-wrap gap-1">
-                                <span class="badge rounded-pill {{ ($cust->approved_discount ?? 0) > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border' }} px-2 py-0.5" style="font-size: 0.7rem;">
-                                    <i class="fas fa-percentage me-1"></i> Discount Limit: {{ (float)($cust->approved_discount ?? 0) }}%
+                                @if($cust->tier)
+                                <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style="font-size: 0.7rem;">
+                                    <i class="fas fa-layer-group me-1"></i> Tier: {{ $cust->tier->name }}
                                 </span>
+                                @endif
+                                <span class="badge rounded-pill {{ (float)$cust->effective_discount > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border' }} px-2 py-0.5" style="font-size: 0.7rem;">
+                                    <i class="fas fa-percentage me-1"></i> Discount Limit: {{ (float)$cust->effective_discount }}%
+                                </span>
+                                @if($cust->effective_trade_offer_buy_qty > 0 && $cust->effective_trade_offer_free_qty > 0)
+                                <span class="badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-0.5" style="font-size: 0.7rem;">
+                                    <i class="fas fa-gift me-1"></i> Trade Offer: {{ $cust->scheme_label }}
+                                </span>
+                                @else
+                                <span class="badge rounded-pill bg-light text-muted border px-2 py-0.5" style="font-size: 0.7rem;">
+                                    <i class="fas fa-gift me-1"></i> Trade Offer: No Scheme
+                                </span>
+                                @endif
                                 @if($cust->booker)
                                 <span class="badge rounded-pill border px-2 py-0.5" style="background: rgba(15, 118, 110, 0.1); color: #0f766e; border-color: rgba(15, 118, 110, 0.25) !important; font-size: 0.7rem;">
                                     <i class="fas fa-user-tie me-1"></i> Booker: {{ $cust->booker->name }}
