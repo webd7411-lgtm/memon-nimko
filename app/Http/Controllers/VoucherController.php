@@ -61,6 +61,11 @@ class VoucherController extends Controller
             }
 
             // Attach new properties to the object
+            if ($voucher->type === 'distributor') {
+                $dist = DB::table('distributors')->where('id', $voucher->party_id)->first();
+                $typeLabel = 'Distributor';
+                $partyName = $dist ? ($dist->name . ' (' . $dist->code . ')') : '-';
+            }
             $voucher->type_label = $typeLabel;
             $voucher->party_name = $partyName;
         }
@@ -72,7 +77,20 @@ class VoucherController extends Controller
     {
         $narrations = \App\Models\Narration::where('expense_head', 'Receipts Voucher')
             ->pluck('narration', 'id');
-        $AccountHeads = AccountHead::get();
+        $AccountHeads = AccountHead::where('status', 1)
+            ->where(function($q) {
+                $q->where('type', 'Asset')
+                  ->orWhere(function($sub) {
+                      $sub->where('type', '!=', 'Expense')
+                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
+                  })
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('type')
+                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
+                  });
+            })
+            ->orderBy('id')
+            ->get();
 
         // Last RVID nikalna
         $lastVoucher = \App\Models\ReceiptsVoucher::latest('id')->first();
@@ -455,7 +473,20 @@ class VoucherController extends Controller
     {
         $narrations = \App\Models\Narration::where('expense_head', 'Payment voucher')
             ->pluck('narration', 'id');
-        $AccountHeads = AccountHead::get();
+        $AccountHeads = AccountHead::where('status', 1)
+            ->where(function($q) {
+                $q->where('type', 'Asset')
+                  ->orWhere(function($sub) {
+                      $sub->where('type', '!=', 'Expense')
+                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
+                  })
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('type')
+                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
+                  });
+            })
+            ->orderBy('id')
+            ->get();
 
         // Last RVID nikalna
         $lastVoucher = \App\Models\PaymentVoucher::latest('id')->first();
@@ -584,6 +615,23 @@ class VoucherController extends Controller
                         'closing_balance'  => $amount,
                     ]);
                 }
+            } elseif ($request->vendor_type === 'distributor') {
+                $distributor = \App\Models\Distributor::find($request->vendor_id);
+                if ($distributor) {
+                    $newBalance = (float) $distributor->current_balance + $amount;
+                    \App\Models\DistributorLedger::create([
+                        'distributor_id' => $distributor->id,
+                        'date'           => $request->receipt_date ?? now()->toDateString(),
+                        'type'           => 'payment_out',
+                        'reference_no'   => $pvid,
+                        'description'    => 'Payment Voucher #' . $pvid . ($request->remarks ? '. Remarks: ' . $request->remarks : ''),
+                        'debit'          => $amount,
+                        'credit'         => 0,
+                        'balance'        => $newBalance,
+                        'created_by'     => auth()->id(),
+                    ]);
+                    $distributor->update(['current_balance' => $newBalance]);
+                }
             } else {
                 // agar vendor_type me account head/account ki id ayi
                 $account = Account::find($request->vendor_id);
@@ -637,6 +685,11 @@ class VoucherController extends Controller
                 $partyName = $walkin->customer_name ?? '-';
             }
 
+            if ($voucher->type === 'distributor') {
+                $dist = DB::table('distributors')->where('id', $voucher->party_id)->first();
+                $typeLabel = 'Distributor';
+                $partyName = $dist ? ($dist->name . ' (' . $dist->code . ')') : '-';
+            }
             $voucher->type_label = $typeLabel;
             $voucher->party_name = $partyName;
         }
@@ -716,6 +769,16 @@ class VoucherController extends Controller
                 ->where('id', $voucher->party_id)
                 ->where('customer_type', 'Walking Customer')
                 ->first();
+        } elseif ($voucher->type === 'distributor') {
+            $dist = DB::table('distributors')->where('id', $voucher->party_id)->first();
+            if ($dist) {
+                $party = (object)[
+                    'name'    => $dist->name . ' (' . $dist->code . ')',
+                    'address' => $dist->address ?: ($dist->area . ', ' . $dist->city),
+                    'phone'   => $dist->phone ?? '—',
+                ];
+                $previousBalance = $dist->current_balance ?? 0;
+            }
         }
 
         return view('admin_panel.vochers.payment_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
@@ -736,7 +799,7 @@ class VoucherController extends Controller
                   });
             })
             ->get();
-        $accounts = Account::where('status', 1)->with('head')->get();
+        $accounts = Account::whereNull('distributor_id')->where('status', 1)->with('head')->get();
 
         // Last RVID nikalna
         $lastVoucher = \App\Models\ExpenseVoucher::latest('id')->first();
@@ -879,8 +942,8 @@ class VoucherController extends Controller
                   });
             })
             ->get();
-        $accounts = \App\Models\Account::where('status', 1)->with('head')->get();
-        $accountsMap = \App\Models\Account::pluck('title', 'id');
+        $accounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->get();
+        $accountsMap = \App\Models\Account::whereNull('distributor_id')->pluck('title', 'id');
         $lastVoucher = \App\Models\ExpenseVoucher::latest('id')->first();
         $nextId = $lastVoucher ? $lastVoucher->id + 1 : 1;
         $nextRvid = 'EVID-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
@@ -909,7 +972,7 @@ class VoucherController extends Controller
             $decoded = json_decode($rowAccountIds, true);
             $rowAccountIds = is_array($decoded) ? $decoded : [];
         }
-        $accountsMap = \App\Models\Account::pluck('title', 'id');
+        $accountsMap = \App\Models\Account::whereNull('distributor_id')->pluck('title', 'id');
 
         // ✅ Build rows (Remarks + Account + Amount)
         $rows = [];

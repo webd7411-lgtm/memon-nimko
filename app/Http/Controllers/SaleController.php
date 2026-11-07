@@ -369,7 +369,7 @@ class SaleController extends Controller
         $Customer = $customerQuery->get();
         $categories = \App\Models\Category::orderBy('name')->get();
         $tables = \App\Models\Table::orderBy('table_name')->get();
-        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
         return view('admin_panel.sale.add_sale', compact('Customer', 'categories', 'tables', 'bankAccounts'));
     }
 
@@ -494,7 +494,7 @@ class SaleController extends Controller
             }
         }
 
-        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
         $tables = \App\Models\Table::orderBy('table_name')->get();
 
         return view('admin_panel.sale.sale_screen', compact(
@@ -2626,7 +2626,7 @@ class SaleController extends Controller
             ];
         }
 
-        $bankAccounts = \App\Models\Account::where('status', 1)->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->orderBy('title')->get();
 
         return view('admin_panel.sale.return.create', [
             'sale' => $sale,
@@ -3701,7 +3701,7 @@ class SaleController extends Controller
             ];
         }
 
-        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
         $tables = \App\Models\Table::orderBy('table_name')->get();
 
         return view('admin_panel.sale.sale_screen', compact(

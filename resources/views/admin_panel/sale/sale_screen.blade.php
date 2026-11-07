@@ -1246,9 +1246,13 @@
                         <!-- Primary default payment row -->
                         <div class="ss-pm-row" data-index="0">
                             <select class="ss-pm-select pm-account-select" name="payment_account[]">
-                                <option value="cash" selected>Cash in hand</option>
                                 @foreach($bankAccounts as $acc)
-                                    <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+                                    <option value="{{ $acc->id }}" 
+                                            data-code="{{ $acc->account_code }}"
+                                            data-is-cash="{{ ($acc->account_code === 'ACC-CASH-01' || ($acc->head && stripos($acc->head->name, 'cash') !== false) || stripos($acc->title, 'cash') !== false) ? '1' : '0' }}"
+                                            {{ ($acc->account_code === 'ACC-CASH-01' || stripos($acc->title, 'cash counter') !== false) ? 'selected' : '' }}>
+                                        {{ $acc->title }}
+                                    </option>
                                 @endforeach
                             </select>
                             <input type="number" step="any" min="0" class="ss-pm-input pm-amount-input" name="payment_amount[]" placeholder="0.00" value="0.00">
@@ -1912,11 +1916,13 @@ $(document).ready(function() {
         let cardAccId = '';
 
         $('#paymentMethodsContainer .ss-pm-row').each(function() {
+            const $opt = $(this).find('.pm-account-select option:selected');
             const accType = $(this).find('.pm-account-select').val();
+            const isCash = $opt.data('is-cash') == '1' || accType === 'cash';
             const amt = parseFloat($(this).find('.pm-amount-input').val()) || 0;
             totalPaid += amt;
 
-            if (accType === 'cash') {
+            if (isCash) {
                 cashPaid += amt;
             } else {
                 cardPaid += amt;
@@ -1962,13 +1968,13 @@ $(document).ready(function() {
 
         let bankOptions = '';
         @foreach($bankAccounts as $acc)
-            bankOptions += `<option value="{{ $acc->id }}">{{ $acc->title }}</option>`;
+            bankOptions += `<option value="{{ $acc->id }}" data-code="{{ $acc->account_code }}" data-is-cash="{{ ($acc->account_code === 'ACC-CASH-01' || ($acc->head && stripos($acc->head->name, 'cash') !== false) || stripos($acc->title, 'cash') !== false) ? '1' : '0' }}">{{ addslashes($acc->title) }}</option>`;
         @endforeach
 
         const html = `
             <div class="ss-pm-row" data-index="${rowCount}">
                 <select class="ss-pm-select pm-account-select" name="payment_account[]">
-                    ${bankOptions || '<option value="cash">Cash in hand</option>'}
+                    ${bankOptions}
                 </select>
                 <input type="number" step="any" min="0" class="ss-pm-input pm-amount-input" name="payment_amount[]" placeholder="0.00" value="${remaining.toFixed(2)}">
                 <button type="button" class="ss-pm-remove" title="Remove Account">✕</button>
@@ -2907,13 +2913,15 @@ $(document).ready(function() {
         $('#customerSelect').val('Walk-in Customer').trigger('change');
         $('#saleDateInput').val("{{ date('Y-m-d') }}");
 
+        let defaultOptionsHtml = '';
+        @foreach($bankAccounts as $acc)
+            defaultOptionsHtml += `<option value="{{ $acc->id }}" data-code="{{ $acc->account_code }}" data-is-cash="{{ ($acc->account_code === 'ACC-CASH-01' || ($acc->head && stripos($acc->head->name, 'cash') !== false) || stripos($acc->title, 'cash') !== false) ? '1' : '0' }}" {{ ($acc->account_code === 'ACC-CASH-01' || stripos($acc->title, 'cash counter') !== false) ? 'selected' : '' }}>{{ addslashes($acc->title) }}</option>`;
+        @endforeach
+
         $('#paymentMethodsContainer').html(`
             <div class="ss-pm-row" data-index="0">
                 <select class="ss-pm-select pm-account-select" name="payment_account[]">
-                    <option value="cash" selected>Cash in hand</option>
-                    @foreach($bankAccounts as $acc)
-                        <option value="{{ $acc->id }}">{{ $acc->title }}</option>
-                    @endforeach
+                    ${defaultOptionsHtml}
                 </select>
                 <input type="number" step="any" min="0" class="ss-pm-input pm-amount-input" name="payment_amount[]" placeholder="0.00" value="0.00">
             </div>

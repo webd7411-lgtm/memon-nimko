@@ -250,7 +250,7 @@ class CustomerController extends Controller
         }
         $customers = $customerQuery->get();
 
-        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
 
         return view('admin_panel.customers.customer_payments', compact('payments', 'customers', 'bankAccounts'));
     }
@@ -377,7 +377,7 @@ class CustomerController extends Controller
         }
         $customers = $customerQuery->get();
 
-        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
 
         // Get current ledger balance
         $ledger = CustomerLedger::where('customer_id', $payment->customer_id)->latest()->first();

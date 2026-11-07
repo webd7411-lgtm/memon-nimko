@@ -131,7 +131,7 @@ class VendorController extends Controller
         $payments = $query->get();
 
         $vendors = Vendor::all();
-        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
 
         return view('admin_panel.vendors.vendor_payments', compact('payments', 'vendors', 'bankAccounts'));
     }
@@ -232,7 +232,7 @@ class VendorController extends Controller
     {
         $payment = VendorPayment::with(['vendor', 'cardAccount'])->findOrFail($id);
         $vendors = Vendor::all();
-        $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
         
         // Get current ledger balance
         $ledger = VendorLedger::where('vendor_id', $payment->vendor_id)->first();

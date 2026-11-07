@@ -174,6 +174,7 @@ class FinancialCommandCenterController extends Controller
             ->toArray();
 
         $equityAccIds = DB::table('accounts')
+            ->whereNull('distributor_id')
             ->whereIn('head_id', $equityHeadIds)
             ->orWhere('title', 'like', '%Capital%')
             ->orWhere('title', 'like', '%Investment%')
@@ -228,6 +229,7 @@ class FinancialCommandCenterController extends Controller
             ->toArray();
 
         $drawingsAccIds = DB::table('accounts')
+            ->whereNull('distributor_id')
             ->whereIn('head_id', $drawingsHeadIds)
             ->orWhere('title', 'like', '%Drawing%')
             ->orWhere('title', 'like', '%Personal%')
@@ -299,6 +301,7 @@ class FinancialCommandCenterController extends Controller
             ->toArray();
 
         $equityAccIds = DB::table('accounts')
+            ->whereNull('distributor_id')
             ->whereIn('head_id', $equityHeadIds)
             ->orWhere('title', 'like', '%Capital%')
             ->orWhere('title', 'like', '%Investment%')
@@ -338,6 +341,7 @@ class FinancialCommandCenterController extends Controller
             ->toArray();
 
         $drawingsAccIds = DB::table('accounts')
+            ->whereNull('distributor_id')
             ->whereIn('head_id', $drawingsHeadIds)
             ->orWhere('title', 'like', '%Drawing%')
             ->orWhere('title', 'like', '%Personal%')
@@ -556,6 +560,7 @@ class FinancialCommandCenterController extends Controller
         $cashAccountsQ = DB::table('accounts')
             ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
+            ->whereNull('accounts.distributor_id')
             ->where(function($q) {
                 $q->where('account_heads.name', 'like', '%Cash%')
                   ->orWhere('accounts.title', 'like', '%Cash%')
@@ -609,6 +614,7 @@ class FinancialCommandCenterController extends Controller
 
         $cashAccIds = DB::table('accounts')
             ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+            ->whereNull('accounts.distributor_id')
             ->where(function($q) {
                 $q->where('account_heads.name', 'like', '%Cash%')
                   ->orWhere('accounts.title', 'like', '%Cash%')
@@ -650,6 +656,7 @@ class FinancialCommandCenterController extends Controller
         $bankAccountsQ = DB::table('accounts')
             ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
+            ->whereNull('accounts.distributor_id')
             ->where(function($q) {
                 $q->where('account_heads.name', 'like', '%Bank%')
                   ->orWhere('accounts.title', 'like', '%Bank%')

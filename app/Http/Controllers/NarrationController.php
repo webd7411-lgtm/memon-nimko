@@ -138,7 +138,7 @@ class NarrationController extends Controller
 
     public function getAccountsByHead($headId)
     {
-        $accounts = Account::where('head_id', $headId)->where('status', 1)->get();
+        $accounts = Account::where('head_id', $headId)->whereNull('distributor_id')->where('status', 1)->get();
         return response()->json($accounts);
     }
 }

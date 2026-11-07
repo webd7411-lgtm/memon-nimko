@@ -374,7 +374,7 @@
 
         @php
             if (!isset($bankAccounts)) {
-                $bankAccounts = \App\Models\Account::where('status', 1)->with('head')->orderBy('title')->get();
+                $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
             }
         @endphp
 

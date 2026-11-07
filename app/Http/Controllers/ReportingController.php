@@ -2752,7 +2752,7 @@ class ReportingController extends Controller
     public function expense_vocher(Request $request)
     {
         $accountHeads = \App\Models\AccountHead::where('status', 1)->get();
-        $accounts     = \App\Models\Account::where('status', 1)->get();
+        $accounts     = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->get();
 
         $vouchers = collect();
         $grandTotal = 0;

@@ -752,7 +752,7 @@ table.pvf-table tfoot th {
                                         @endforeach
                                         <option value="vendor">Vendor</option>
                                         <option value="customer">Customer</option>
-                                        <option value="walkin">Walk-in Customer</option>
+                                        <option value="distributor">Distributor</option>
                                     </select>
                                 </td>
                                 <td data-label="Beneficiary Party">
@@ -851,7 +851,7 @@ table.pvf-table tfoot th {
         $telInput.val('');
         $vendorSelect.empty().append('<option disabled selected>Loading...</option>');
 
-        if (type === 'vendor' || type === 'customer' || type === 'walkin') {
+        if (type === 'vendor' || type === 'customer' || type === 'distributor') {
             $.get('{{ route("party.list") }}?type=' + type, function(data) {
                 $vendorSelect.empty().append('<option disabled selected>Select Party</option>');
                 data.forEach(function(item) {
@@ -965,7 +965,7 @@ table.pvf-table tfoot th {
                     @endforeach
                     <option value="vendor">Vendor</option>
                     <option value="customer">Customer</option>
-                    <option value="walkin">Walk-in Customer</option>
+                    <option value="distributor">Distributor</option>
                 </select>
             </td>
             <td data-label="Beneficiary Party">
