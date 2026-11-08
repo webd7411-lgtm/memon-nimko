@@ -19,6 +19,9 @@
             <p class="mb-0 text-white-50 small">Owner: {{ $customer->owner_name ?? 'N/A' }} • Phone: {{ $customer->phone ?? '—' }} • Area: {{ $customer->area ?? 'General' }}</p>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('distributor.customer_payments.index') }}" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <i class="fas fa-receipt me-1"></i> All Collections
+            </a>
             <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="window.print()">
                 <i class="fas fa-print me-1"></i> Print
             </button>
@@ -107,7 +110,13 @@
                             @endif
                         </td>
                         <td>
+                            @if($entry->type === 'payment_received')
+                            <a href="{{ route('distributor.customer_payments.receipt', $entry->id) }}" target="_blank" class="badge rounded-pill text-decoration-none px-2 py-1" style="background: #f1f5f9; color: #0f766e; border: 1px solid #cbd5e1; font-family: monospace;" title="Print Receipt">
+                                <i class="fas fa-print me-1"></i> {{ $entry->reference_no ?: ('REC-' . $entry->id) }}
+                            </a>
+                            @else
                             <span class="font-monospace text-muted small">{{ $entry->reference_no ?: '—' }}</span>
+                            @endif
                         </td>
                         <td>
                             <div class="text-dark">{{ $entry->description }}</div>
@@ -212,8 +221,42 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
+                        <select name="payment_method" id="ledgerPaymentMethod" class="form-select rounded-3" onchange="toggleLedgerChequeFields()">
+                            <option value="cash" selected>Cash in Hand</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="bank_transfer">Bank Transfer / Online</option>
+                        </select>
+                    </div>
+
+                    <div id="ledgerChequeFields" class="p-3 mb-3 rounded-3 bg-light border d-none">
+                        <div class="small fw-bold text-teal mb-2"><i class="fas fa-money-check me-1"></i> Cheque Particulars</div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Cheque Number</label>
+                                <input type="text" name="cheque_no" class="form-control form-control-sm rounded-2" placeholder="e.g. 12345678">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Bank Name</label>
+                                <input type="text" name="cheque_bank" class="form-control form-control-sm rounded-2" placeholder="e.g. HBL / Meezan">
+                            </div>
+                            <div class="col-12 mt-2">
+                                <label class="form-label small fw-semibold">Cheque Date</label>
+                                <input type="date" name="cheque_date" class="form-control form-control-sm rounded-2" value="{{ date('Y-m-d') }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Remarks / Receipt Note</label>
                         <textarea name="notes" rows="2" class="form-control" placeholder="Optional notes..."></textarea>
+                    </div>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="redirect_to_receipt" value="1" id="ledgerPrintReceiptCheck" checked>
+                        <label class="form-check-label small text-muted" for="ledgerPrintReceiptCheck">
+                            <i class="fas fa-print me-1 text-teal"></i> Open printable receipt immediately after saving
+                        </label>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -226,4 +269,16 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleLedgerChequeFields() {
+    const method = document.getElementById('ledgerPaymentMethod').value;
+    const chequeDiv = document.getElementById('ledgerChequeFields');
+    if (method === 'cheque') {
+        chequeDiv.classList.remove('d-none');
+    } else {
+        chequeDiv.classList.add('d-none');
+    }
+}
+</script>
 @endsection

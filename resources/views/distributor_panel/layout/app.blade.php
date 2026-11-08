@@ -789,6 +789,7 @@
                         <!-- 5. Bookings & Retail (Dropdown) -->
                         @php
                             $isBookingsActive = request()->routeIs('distributor.customers.*') 
+                                || request()->routeIs('distributor.customer_payments.*')
                                 || request()->routeIs('distributor.shop_bookings.*') 
                                 || request()->routeIs('distributor.booker.create') 
                                 || request()->routeIs('distributor.bookers.*');
@@ -808,6 +809,17 @@
                                         <div>
                                             <div class="portal-dd-title">Retail Customers</div>
                                             <div class="portal-dd-desc">Customer master, ledgers & balances</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="portal-dropdown-item {{ request()->routeIs('distributor.customer_payments.*') ? 'active' : '' }}" href="{{ route('distributor.customer_payments.index') }}">
+                                        <div class="portal-dd-icon bg-success-subtle text-success">
+                                            <i class="fas fa-hand-holding-usd"></i>
+                                        </div>
+                                        <div>
+                                            <div class="portal-dd-title">Customer Collections</div>
+                                            <div class="portal-dd-desc">Date-wise recoveries & payment ledger</div>
                                         </div>
                                     </a>
                                 </li>
@@ -1031,6 +1043,11 @@
                     <li class="nav-item">
                         <a href="{{ route('distributor.customers.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.customers.*') ? 'active' : '' }} text-white w-100 py-2">
                             <i class="fas fa-store me-2"></i> Retail Customers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('distributor.customer_payments.index') }}" class="portal-nav-link {{ request()->routeIs('distributor.customer_payments.*') ? 'active' : '' }} text-white w-100 py-2">
+                            <i class="fas fa-hand-holding-usd me-2 text-success"></i> Customer Collections
                         </a>
                     </li>
                     <li class="nav-item">

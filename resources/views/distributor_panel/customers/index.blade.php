@@ -19,6 +19,9 @@
             <p class="mb-0 text-white-50 small">Manage your shop accounts, customer ledgers, and credit limits</p>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('distributor.customer_payments.index') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 py-2 shadow-sm fw-bold">
+                <i class="fas fa-hand-holding-usd me-1"></i> Customer Collections (Date-wise)
+            </a>
             <button type="button" class="btn btn-sm btn-teal rounded-pill px-3 py-2 shadow-sm fw-bold"
                     data-bs-toggle="modal" data-bs-target="#addCustomerModal">
                 <i class="fas fa-plus me-1"></i> + Add New Retailer

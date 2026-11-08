@@ -979,26 +979,48 @@ class DistributorAdminController extends Controller
     /**
      * Central audit view of secondary market sales made by distributors.
      */
-    public function secondarySales(Request $request)
-    {
-        $query = DistributorSale::with(['distributor', 'customer', 'items.product']);
-
-        if ($request->distributor_id) {
-            $query->where('distributor_id', $request->distributor_id);
-        }
-
-        if ($request->start_date && $request->end_date) {
-            $query->whereBetween('sale_date', [$request->start_date, $request->end_date]);
-        }
-
-        $sales = $query->latest('sale_date')->latest('id')->paginate(20);
-        $distributors = Distributor::where('status', 'active')->get();
-
-        $totalMarketSales = DistributorSale::sum('grand_total');
-        $totalMarketCollected = DistributorSale::sum('paid_amount');
-        $totalMarketDue = DistributorSale::sum('due_amount');
-
-        return view('admin_panel.distributors.secondary_sales', compact('sales', 'distributors', 'totalMarketSales', 'totalMarketCollected', 'totalMarketDue'));
+    public function secondarySales(Request $request)
+    {
+        $query = DistributorSale::with(['distributor', 'customer', 'items.product', 'items.variant']);
+
+        if ($request->filled('distributor_id')) {
+            $query->where('distributor_id', $request->distributor_id);
+        }
+
+        if ($request->filled('month')) {
+            $carbonMonth = \Carbon\Carbon::parse($request->month . '-01');
+            $query->whereBetween('sale_date', [
+                $carbonMonth->copy()->startOfMonth()->format('Y-m-d'),
+                $carbonMonth->copy()->endOfMonth()->format('Y-m-d')
+            ]);
+        } elseif ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('sale_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->whereDate('sale_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->whereDate('sale_date', '<=', $request->end_date);
+        }
+
+        $filteredSaleIds = (clone $query)->pluck('id');
+
+        $totalMarketSales = (float) (clone $query)->sum('grand_total');
+        $totalMarketCollected = (float) (clone $query)->sum('paid_amount');
+        $totalMarketDue = (float) (clone $query)->sum('due_amount');
+        $totalTradeOfferPcs = (float) \App\Models\DistributorSaleItem::whereIn('distributor_sale_id', $filteredSaleIds)->sum('trade_offer');
+        $totalSoldPcs = (float) \App\Models\DistributorSaleItem::whereIn('distributor_sale_id', $filteredSaleIds)->sum('qty');
+
+        $sales = $query->latest('sale_date')->latest('id')->paginate(20)->withQueryString();
+        $distributors = Distributor::where('status', 'active')->orderBy('name')->get();
+
+        return view('admin_panel.distributors.secondary_sales', compact(
+            'sales',
+            'distributors',
+            'totalMarketSales',
+            'totalMarketCollected',
+            'totalMarketDue',
+            'totalTradeOfferPcs',
+            'totalSoldPcs'
+        ));
     }
 
     /**

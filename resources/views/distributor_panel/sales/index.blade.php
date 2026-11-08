@@ -79,13 +79,24 @@
                 <small class="text-muted">Sales receipts recorded</small>
             </div>
         </div>
+
+        <div class="col-12 col-sm-6 col-md-3 mt-2 mt-md-0">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #2563eb !important;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-secondary small fw-bold text-uppercase">Trade Offer Given</span>
+                    <span class="badge bg-primary text-white rounded-pill px-2 py-0.5" style="font-size: 0.68rem;"><i class="fas fa-gift me-1"></i>Free</span>
+                </div>
+                <h3 class="fw-bolder mb-0 text-primary">{{ number_format($stats['total_trade_offer'] ?? 0) }} Pcs</h3>
+                <small class="text-muted fw-semibold">Total free scheme pcs delivered</small>
+            </div>
+        </div>
     </div>
 
     <!-- Systematic Filter Bar -->
     <div class="card border-0 shadow-sm rounded-4 mb-3">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('distributor.sales.index') }}" class="row g-2 align-items-end">
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label class="form-label small fw-bold text-muted mb-1">Search</label>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
@@ -113,6 +124,11 @@
                         <option value="credit" {{ request('payment_type') === 'credit' ? 'selected' : '' }}>Credit</option>
                         <option value="partial" {{ request('payment_type') === 'partial' ? 'selected' : '' }}>Partial</option>
                     </select>
+                </div>
+
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold text-muted mb-1">Month Filter</label>
+                    <input type="month" name="month" value="{{ request('month') }}" class="form-control form-control-sm" title="Filter by Month">
                 </div>
 
                 <div class="col-6 col-md-1">
@@ -145,7 +161,8 @@
                         <th style="width: 20%;">Retail Customer</th>
                         <th style="width: 13%;">Staff / Booker</th>
                         <th style="width: 12%;">Date &amp; Time</th>
-                        <th style="width: 10%;" class="text-center">Mode</th>
+                        <th style="width: 8%;" class="text-center">Mode</th>
+                        <th style="width: 9%;" class="text-center">T.O (Free)</th>
                         <th style="width: 10%;" class="text-end">Total Amount</th>
                         <th style="width: 10%;" class="text-end">Cash Paid</th>
                         <th style="width: 11%;" class="text-end">Due Balance</th>
@@ -201,6 +218,18 @@
                                 <div class="text-muted" style="font-size: 0.72rem;">{{ $sale->created_at->timezone(config('app.timezone', 'Asia/Karachi'))->format('h:i A') }}</div>
                             @endif
                         </td>
+                        @php
+                            $rowTO = (float) $sale->items->sum('trade_offer');
+                        @endphp
+                        <td class="text-center">
+                            @if($rowTO > 0)
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill fw-bold" style="font-size: 0.74rem;">
+                                    <i class="fas fa-gift me-1"></i>+{{ number_format($rowTO) }} Free
+                                </span>
+                            @else
+                                <span class="text-muted" style="font-size: 0.75rem;">-</span>
+                            @endif
+                        </td>
                         <td class="text-center">
                             @if($sale->payment_type === 'cash')
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill fw-bold" style="font-size: 0.74rem;">
@@ -249,7 +278,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center py-5 text-muted">
+                        <td colspan="10" class="text-center py-5 text-muted">
                             <i class="fas fa-receipt fa-3x mb-3 text-secondary opacity-50 d-block"></i>
                             <h5 class="fw-semibold">No Sales Invoices Found</h5>
                             <p class="small text-secondary mb-3">No sales match the specified filters or date criteria.</p>

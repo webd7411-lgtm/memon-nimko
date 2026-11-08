@@ -1172,7 +1172,7 @@
                                         <input type="number" step="any" min="0" name="price[]" class="ss-excel-input text-end row-price" value="0.00" data-orig-price="0">
                                     </td>
                                     <td class="excel-cell">
-                                        <input type="number" step="any" min="0" readonly name="trade_offer[]" class="ss-excel-input text-center row-trade-offer bg-light text-primary fw-bold" value="" placeholder="0" title="Auto-calculated & Locked by Company Policy">
+                                        <input type="number" step="any" min="0" name="trade_offer[]" class="ss-excel-input text-center row-trade-offer" value="" placeholder="0" title="Trade Offer (Free Pcs)">
                                     </td>
                                     <td class="excel-cell excel-disc-cell">
                                         <div class="ss-disc-wrap">
@@ -1557,13 +1557,11 @@ $(document).ready(function() {
         const toBuy = custPolicy.toBuy;
         const toFree = custPolicy.toFree;
         let tradeOffer = 0;
-        if (hasActiveCust && toBuy > 0 && toFree > 0 && qty >= toBuy) {
-            tradeOffer = Math.floor(qty / toBuy) * toFree;
-        } else if (item && item.trade_offer) {
+        if (item && item.trade_offer !== undefined && item.trade_offer !== null && item.trade_offer !== '') {
             tradeOffer = parseFloat(item.trade_offer);
+        } else if (hasActiveCust && toBuy > 0 && toFree > 0 && qty >= toBuy) {
+            tradeOffer = Math.floor(qty / toBuy) * toFree;
         }
-        const isToLocked = hasActiveCust ? 'readonly' : '';
-        const toLockClass = hasActiveCust ? 'bg-light text-primary fw-bold' : '';
 
         const discVal    = hasActiveCust ? custPolicy.approvedPct : (item ? (parseFloat(item.disc_val || item.disc || 0)) : 0);
         const discType   = hasActiveCust ? 'percent' : (item ? (item.disc_type || 'percent') : 'percent');
@@ -1613,7 +1611,7 @@ $(document).ready(function() {
                     <input type="number" step="any" min="0" name="price[]" class="ss-excel-input text-end row-price" value="${price.toFixed(2)}" data-orig-price="${origPrice}">
                 </td>
                 <td class="excel-cell">
-                    <input type="number" step="any" min="0" ${isToLocked} name="trade_offer[]" class="ss-excel-input text-center row-trade-offer ${toLockClass}" value="${tradeOffer > 0 ? tradeOffer : ''}" placeholder="0" title="${hasActiveCust ? 'Scheme Locked by Company' : 'Trade Offer (Free Qty)'}">
+                    <input type="number" step="any" min="0" name="trade_offer[]" class="ss-excel-input text-center row-trade-offer" value="${tradeOffer > 0 ? tradeOffer : ''}" placeholder="0" title="Trade Offer (Free Pcs)">
                 </td>
                 <td class="excel-cell excel-disc-cell">
                     <div class="ss-disc-wrap">
@@ -1728,10 +1726,10 @@ $(document).ready(function() {
         const toBuy = custPolicy.toBuy;
         const toFree = custPolicy.toFree;
         let tradeOffer = 0;
-        if (hasActiveCust && toBuy > 0 && toFree > 0 && qty >= toBuy) {
-            tradeOffer = Math.floor(qty / toBuy) * toFree;
-        } else if (item && item.trade_offer) {
+        if (item && item.trade_offer !== undefined && item.trade_offer !== null && item.trade_offer !== '') {
             tradeOffer = parseFloat(item.trade_offer);
+        } else if (hasActiveCust && toBuy > 0 && toFree > 0 && qty >= toBuy) {
+            tradeOffer = Math.floor(qty / toBuy) * toFree;
         }
 
         const discVal  = hasActiveCust ? custPolicy.approvedPct : (item ? (parseFloat(item.disc_val || item.disc || 0)) : 0);
@@ -1752,9 +1750,8 @@ $(document).ready(function() {
         stockBadge.text(stock).removeClass('text-success text-danger text-muted').addClass(stock > 0 ? 'text-success' : 'text-danger');
 
         $row.find('.row-price').val(price.toFixed(2)).data('orig-price', origPrice);
-        $row.find('.row-trade-offer').val(tradeOffer > 0 ? tradeOffer : '');
+        $row.find('.row-trade-offer').data('user-edited', false).val(tradeOffer > 0 ? tradeOffer : '').prop('readonly', false).removeAttr('readonly').removeClass('bg-light text-primary fw-bold');
         if (hasActiveCust) {
-            $row.find('.row-trade-offer').prop('readonly', true).addClass('bg-light text-primary fw-bold');
             $row.find('.row-disc-val').val(discVal.toFixed(2)).prop('readonly', true).addClass('bg-light text-success fw-bold');
         } else {
             $row.find('.row-trade-offer').prop('readonly', false).removeClass('bg-light text-primary fw-bold');
@@ -1827,6 +1824,10 @@ $(document).ready(function() {
     });
 
     // --- ROW INPUT CHANGES ---
+    $(document).on('input change', '.row-trade-offer', function() {
+        $(this).data('user-edited', true);
+    });
+
     $(document).on('input change', '.row-qty, .row-price, .row-trade-offer, .row-disc-val', function() {
         const $row = $(this).closest('tr.ss-grid-row');
         recalculateRow($row);
@@ -1838,16 +1839,16 @@ $(document).ready(function() {
         const pid      = $row.find('.row-product-id').val();
         const policy   = getCurrentCustomerPolicy();
 
-        // 1. Strict Trade Offer (T.O) Calculation & Lock (Plan 1)
-        let freeUnits = 0;
-        if (policy.hasActive && policy.toBuy > 0 && policy.toFree > 0 && qty >= policy.toBuy) {
-            freeUnits = Math.floor(qty / policy.toBuy) * policy.toFree;
-        }
+        // 1. Trade Offer (T.O) Calculation (Distributor can edit freely)
         const $toInput = $row.find('.row-trade-offer');
-        $toInput.val(freeUnits > 0 ? freeUnits : 0)
-                .prop('readonly', true)
-                .addClass('bg-light text-primary fw-bold')
-                .attr('title', policy.hasActive ? 'Scheme Locked by Company: ' + policy.schemeLabel : 'Trade Offer');
+        $toInput.prop('readonly', false).removeAttr('readonly').removeClass('bg-light');
+        if ($toInput.data('user-edited') !== true) {
+            let freeUnits = 0;
+            if (policy.hasActive && policy.toBuy > 0 && policy.toFree > 0 && qty >= policy.toBuy) {
+                freeUnits = Math.floor(qty / policy.toBuy) * policy.toFree;
+            }
+            $toInput.val(freeUnits > 0 ? freeUnits : '');
+        }
 
         // 2. Strict Discount Calculation & Lock
         let discVal  = parseFloat($row.find('.row-disc-val').val()) || 0;
@@ -2579,7 +2580,7 @@ $(document).ready(function() {
                         <i class="fas fa-lock me-1"></i> Discount: <strong>${policy.approvedPct.toFixed(2)}%</strong> (Locked)
                     </span>
                     <span class="badge ${policy.toBuy > 0 ? 'bg-info-subtle text-info-emphasis border border-info-subtle' : 'bg-light text-muted border'}">
-                        <i class="fas fa-gift me-1"></i> Scheme: <strong>${policy.schemeLabel}</strong> (Locked)
+                        <i class="fas fa-gift me-1"></i> Scheme: <strong>${policy.schemeLabel}</strong> (Editable)
                     </span>
                 </div>`
             );

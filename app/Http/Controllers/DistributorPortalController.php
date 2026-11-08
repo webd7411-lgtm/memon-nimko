@@ -829,9 +829,8 @@ class DistributorPortalController extends Controller
             foreach ($request->product_id as $index => $productId) {
                 if (empty($productId)) continue;
                 $qty = (float) ($request->qty[$index] ?? 0);
-                // Plan 1: Company strictly enforces trade offer scheme. Distributor cannot give more or less!
-                $expectedTO = $customer->calculateTradeOffer($qty);
-                $tradeOffer = $expectedTO;
+                // Distributor can adjust trade offer freely (increase, decrease, set to 0, or accept scheme)
+                $tradeOffer = max(0, (float) ($request->trade_offer[$index] ?? 0));
                 $price = (float) ($request->unit_price[$index] ?? $request->price[$index] ?? 0);
                 $variantId = $request->variant_id[$index] ?? null;
 
@@ -1094,13 +1093,22 @@ class DistributorPortalController extends Controller
             $query->where('payment_type', $request->payment_type);
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
+        if ($request->filled('month')) {
+            $carbonMonth = \Carbon\Carbon::parse($request->month . '-01');
+            $query->whereBetween('sale_date', [
+                $carbonMonth->copy()->startOfMonth()->format('Y-m-d'),
+                $carbonMonth->copy()->endOfMonth()->format('Y-m-d')
+            ]);
+        } elseif ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('sale_date', [$request->start_date, $request->end_date]);
         } elseif ($request->filled('start_date')) {
             $query->whereDate('sale_date', '>=', $request->start_date);
         } elseif ($request->filled('end_date')) {
             $query->whereDate('sale_date', '<=', $request->end_date);
         }
+
+        $filteredSaleIds = (clone $query)->pluck('id');
+        $totalTradeOfferPcs = (float) \App\Models\DistributorSaleItem::whereIn('distributor_sale_id', $filteredSaleIds)->sum('trade_offer');
 
         // Summary stats across the filtered scope
         $stats = [
@@ -1110,6 +1118,7 @@ class DistributorPortalController extends Controller
             'total_invoices'     => (int) (clone $query)->count(),
             'total_discount'     => (float) (clone $query)->sum('discount'),
             'unclaimed_discount' => (float) (clone $query)->whereNull('claim_id')->where('discount', '>', 0)->sum('discount'),
+            'total_trade_offer'  => $totalTradeOfferPcs,
         ];
 
         $sales = $query->latest('sale_date')->latest('id')->paginate(15);
@@ -1440,18 +1449,163 @@ class DistributorPortalController extends Controller
     }
 
     /**
-     * Record cash collected from retail customer.
+     * Display date-wise customer payments / collection report & management.
      */
-    public function storeCustomerPayment(Request $request, $id)
+    public function customerPaymentsList(Request $request)
+    {
+        $this->enforceBookerRestriction();
+        $distributor = $this->getDistributor();
+
+        $startDate = $request->start_date ?: now()->startOfMonth()->format('Y-m-d');
+        $endDate = $request->end_date ?: now()->format('Y-m-d');
+
+        $query = DistributorCustomerLedger::with(['customer.booker', 'account', 'creator'])
+            ->where('distributor_id', $distributor->id)
+            ->where('type', 'payment_received');
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        } elseif ($startDate) {
+            $query->where('date', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->where('date', '<=', $endDate);
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('distributor_customer_id', $request->customer_id);
+        }
+
+        if ($request->filled('account_id')) {
+            $query->where('account_id', $request->account_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('reference_no', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->where('shop_name', 'like', "%{$search}%")
+                         ->orWhere('owner_name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Summary metrics
+        $filteredTotal = (float) (clone $query)->sum('credit');
+        $filteredCount = (int) (clone $query)->count();
+
+        $todayTotal = (float) DistributorCustomerLedger::where('distributor_id', $distributor->id)
+            ->where('type', 'payment_received')
+            ->whereDate('date', now()->format('Y-m-d'))
+            ->sum('credit');
+
+        $monthTotal = (float) DistributorCustomerLedger::where('distributor_id', $distributor->id)
+            ->where('type', 'payment_received')
+            ->whereBetween('date', [now()->startOfMonth()->format('Y-m-d'), now()->endOfMonth()->format('Y-m-d')])
+            ->sum('credit');
+
+        $allTimeTotal = (float) DistributorCustomerLedger::where('distributor_id', $distributor->id)
+            ->where('type', 'payment_received')
+            ->sum('credit');
+
+        $payments = $query->orderBy('date', 'desc')->orderBy('id', 'desc')->paginate(25)->appends($request->all());
+
+        // Dropdown data
+        $customers = DistributorCustomer::where('distributor_id', $distributor->id)->orderBy('shop_name')->get();
+        $accounts = Account::where('status', 1)->where('distributor_id', $distributor->id)->orderBy('title')->get();
+
+        return view('distributor_panel.customers.payments_list', compact(
+            'distributor',
+            'payments',
+            'filteredTotal',
+            'filteredCount',
+            'todayTotal',
+            'monthTotal',
+            'allTimeTotal',
+            'customers',
+            'accounts',
+            'startDate',
+            'endDate'
+        ));
+    }
+
+    /**
+     * Show/print receipt for a specific customer payment collection.
+     */
+    public function customerPaymentReceipt($id)
     {
         $distributor = $this->getDistributor();
-        $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($id);
+        $payment = DistributorCustomerLedger::with(['customer.booker', 'account', 'creator'])
+            ->where('distributor_id', $distributor->id)
+            ->where('type', 'payment_received')
+            ->findOrFail($id);
+
+        return view('distributor_panel.customers.payment_receipt', compact('distributor', 'payment'));
+    }
+
+    /**
+     * Delete/Reverse a customer payment entry.
+     */
+    public function destroyCustomerPayment($id)
+    {
+        $distributor = $this->getDistributor();
+        $entry = DistributorCustomerLedger::where('distributor_id', $distributor->id)
+            ->where('type', 'payment_received')
+            ->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($entry->distributor_customer_id);
+            $amount = (float) $entry->credit;
+
+            // Reverse customer balance (add back amount)
+            $customer->current_balance = (float)$customer->current_balance + $amount;
+            $customer->save();
+
+            // Reverse account balance if associated
+            if ($entry->account_id) {
+                $account = Account::where('distributor_id', $distributor->id)->find($entry->account_id);
+                if ($account) {
+                    $account->opening_balance = (float)$account->opening_balance - $amount;
+                    $account->save();
+                }
+            }
+
+            $entry->delete();
+
+            DB::commit();
+            return back()->with('success', "Payment receipt #{$entry->reference_no} reversed successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error reversing payment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Record cash or cheque collected from retail customer.
+     */
+    public function storeCustomerPayment(Request $request, $id = null)
+    {
+        $distributor = $this->getDistributor();
+        $customerId = $id ?: ($request->distributor_customer_id ?: $request->customer_id);
+
+        if (!$customerId) {
+            return back()->with('error', 'Please select a valid customer.');
+        }
+
+        $customer = DistributorCustomer::where('distributor_id', $distributor->id)->findOrFail($customerId);
 
         $request->validate([
-            'amount'     => 'required|numeric|min:0.01',
-            'date'       => 'required|date',
-            'account_id' => 'required|exists:accounts,id',
-            'notes'      => 'nullable|string',
+            'amount'         => 'required|numeric|min:0.01',
+            'date'           => 'required|date',
+            'account_id'     => 'required|exists:accounts,id',
+            'payment_method' => 'nullable|string|max:50',
+            'cheque_no'      => 'nullable|string|max:100',
+            'cheque_bank'    => 'nullable|string|max:100',
+            'cheque_date'    => 'nullable|date',
+            'notes'          => 'nullable|string|max:1000',
         ]);
 
         // Security check: ensure account belongs strictly to this distributor
@@ -1465,19 +1619,26 @@ class DistributorPortalController extends Controller
         try {
             $newBalance = (float) $customer->current_balance - $amount;
 
-            $desc = "Payment collection (Deposited into: {$account->title})";
-            if ($request->notes) {
-                $desc .= ". Notes: {$request->notes}";
+            $method = $request->payment_method ?: 'cash';
+            $methodLabel = ucfirst($method);
+            if (strtolower($method) === 'cheque' && $request->filled('cheque_no')) {
+                $methodLabel = "Cheque (#{$request->cheque_no}" . ($request->filled('cheque_bank') ? " - {$request->cheque_bank}" : "") . ($request->filled('cheque_date') ? " dt: {$request->cheque_date}" : "") . ")";
+            }
+
+            $desc = "Payment collection via {$methodLabel} (Account: {$account->title})";
+            if ($request->filled('notes')) {
+                $desc .= ". Notes: " . $request->notes;
             }
 
             $lastRec = DistributorCustomerLedger::where('type', 'payment_received')->latest('id')->first();
             $nextRecId = $lastRec ? ($lastRec->id + 1) : 1;
             $recNo = 'REC-' . str_pad($nextRecId, 4, '0', STR_PAD_LEFT);
 
-            DistributorCustomerLedger::create([
+            $ledger = DistributorCustomerLedger::create([
                 'distributor_customer_id' => $customer->id,
                 'distributor_id'          => $distributor->id,
                 'account_id'              => $account->id,
+                'created_by'              => Auth::id(),
                 'date'                    => $request->date,
                 'type'                    => 'payment_received',
                 'reference_no'            => $recNo,
@@ -1494,7 +1655,13 @@ class DistributorPortalController extends Controller
             $account->save();
 
             DB::commit();
-            return back()->with('success', "Payment of Rs. " . number_format($amount, 2) . " received and deposited into '{$account->title}'!");
+
+            if ($request->filled('redirect_to_receipt') && $request->boolean('redirect_to_receipt')) {
+                return redirect()->route('distributor.customer_payments.receipt', $ledger->id)
+                    ->with('success', "Payment of Rs. " . number_format($amount, 2) . " received successfully! Receipt #{$recNo}");
+            }
+
+            return back()->with('success', "Payment of Rs. " . number_format($amount, 2) . " received and deposited into '{$account->title}'! Receipt #{$recNo}");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error recording payment: ' . $e->getMessage());
@@ -2040,9 +2207,8 @@ class DistributorPortalController extends Controller
             foreach ($request->product_id as $index => $pId) {
                 if (empty($pId)) continue;
                 $qty = (float) ($request->qty[$index] ?? 0);
-                // Plan 1: Company strictly enforces trade offer scheme for booking
-                $expectedTO = $customer->calculateTradeOffer($qty);
-                $tradeOffer = $expectedTO;
+                // Distributor can adjust trade offer freely for booking
+                $tradeOffer = max(0, (float) ($request->trade_offer[$index] ?? 0));
                 $price = (float) ($request->unit_price[$index] ?? 0);
                 $variantId = $request->variant_id[$index] ?? null;
 

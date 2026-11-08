@@ -516,6 +516,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/orders/{id}/delete', [DistributorPortalController::class, 'destroyOrder'])->name('orders.destroy');
         
         // Customers (Retail Shops)
+        Route::get('/customer-payments', [DistributorPortalController::class, 'customerPaymentsList'])->name('customer_payments.index');
+        Route::post('/customer-payments/store', [DistributorPortalController::class, 'storeCustomerPayment'])->name('customer_payments.store');
+        Route::get('/customer-payments/receipt/{id}', [DistributorPortalController::class, 'customerPaymentReceipt'])->name('customer_payments.receipt');
+        Route::delete('/customer-payments/{id}/delete', [DistributorPortalController::class, 'destroyCustomerPayment'])->name('customer_payments.destroy');
         Route::get('/customers', [DistributorPortalController::class, 'myCustomers'])->name('customers.index');
         Route::post('/customers/store', [DistributorPortalController::class, 'storeCustomer'])->name('customers.store');
         Route::post('/customers/{id}/update', [DistributorPortalController::class, 'updateCustomer'])->name('customers.update');
