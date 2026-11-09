@@ -672,7 +672,6 @@ table.rvf-table tfoot th {
                             @endforeach
                             <option value="vendor">Vendor</option>
                             <option value="customer">Customer</option>
-                            <option value="walkin">Walk-in Customer</option>
                             <option value="distributor">Distributor</option>
                         </select>
                     </div>
@@ -732,22 +731,8 @@ table.rvf-table tfoot th {
                         <tbody>
                             <tr>
                                 <td data-label="Narration / Detail">
-                                    <div class="narration-wrapper">
-                                        <input type="hidden" name="narration_text[]" class="narrationTextHidden">
-                                        <select name="narration_id[]" class="rvf-input narrationSelect">
-                                            <option value="">-- Select Detail --</option>
-                                            <option value="new" style="font-weight: 700; color: #059669;">➕ Type New Detail / Manual</option>
-                                            @foreach($narrations as $id => $name)
-                                             <option value="{{ $id }}">{{ $name }}</option>
-                                            @endforeach
-                                        </select>
-                                        <div class="narrationInputWrap mt-1" style="display:none;">
-                                            <div class="input-group">
-                                                <input type="text" class="rvf-input narrationInput" placeholder="Type new detail...">
-                                                <button type="button" class="btn btn-sm btn-outline-success btnCancelNewNarr" title="Back to dropdown"><i class="bi bi-x-lg"></i></button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <input type="hidden" name="narration_id[]" value="new">
+                                    <input type="text" name="narration_text[]" class="rvf-input narrationInput" placeholder="Enter narration / detail..." list="narrationSuggestions" autocomplete="off">
                                 </td>
                                 <td data-label="Reference #">
                                     <input name="reference_no[]" type="text" class="rvf-input" placeholder="Ref#">
@@ -807,6 +792,12 @@ table.rvf-table tfoot th {
                     </div>
                 </div>
 
+            
+                <datalist id="narrationSuggestions">
+                    @foreach($narrations as $id => $name)
+                    <option value="{{ $name }}"></option>
+                    @endforeach
+                </datalist>
             </form>
         </div>
 
@@ -936,22 +927,8 @@ table.rvf-table tfoot th {
         let newRow = `
         <tr>
             <td data-label="Narration / Detail">
-                <div class="narration-wrapper">
-                    <input type="hidden" name="narration_text[]" class="narrationTextHidden">
-                    <select name="narration_id[]" class="rvf-input narrationSelect">
-                        <option value="">-- Select Detail --</option>
-                        <option value="new" style="font-weight: 700; color: #059669;">➕ Type New Detail / Manual</option>
-                        @foreach($narrations as $id => $name)
-                        <option value="{{ $id }}">{{ $name }}</option>
-                        @endforeach
-                    </select>
-                    <div class="narrationInputWrap mt-1" style="display:none;">
-                        <div class="input-group">
-                            <input type="text" class="rvf-input narrationInput" placeholder="Type new detail...">
-                            <button type="button" class="btn btn-sm btn-outline-success btnCancelNewNarr" title="Back to dropdown"><i class="bi bi-x-lg"></i></button>
-                        </div>
-                    </div>
-                </div>
+                <input type="hidden" name="narration_id[]" value="new">
+                <input type="text" name="narration_text[]" class="rvf-input narrationInput" placeholder="Enter narration / detail..." list="narrationSuggestions" autocomplete="off">
             </td>
             <td data-label="Reference #"><input name="reference_no[]" type="text" class="rvf-input" placeholder="Ref#"></td>
             <td data-label="Account Head">

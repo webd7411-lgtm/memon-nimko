@@ -369,12 +369,48 @@ class SaleController extends Controller
         $Customer = $customerQuery->get();
         $categories = \App\Models\Category::orderBy('name')->get();
         $tables = \App\Models\Table::orderBy('table_name')->get();
-        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = $this->getPaymentAccounts();
         return view('admin_panel.sale.add_sale', compact('Customer', 'categories', 'tables', 'bankAccounts'));
+    }
+
+    /**
+     * Get active payment accounts (Cash and Bank accounts only; excludes Claims, Schemes, and Expense heads).
+     */
+    private function getPaymentAccounts()
+    {
+        return \App\Models\Account::whereNull('distributor_id')
+            ->where('status', 1)
+            ->whereHas('head', function($q) {
+                $q->where(function($sub) {
+                    $sub->where('type', 'Asset')
+                        ->orWhere('name', 'like', '%Bank%')
+                        ->orWhere('name', 'like', '%Cash%');
+                })
+                ->where(function($sub2) {
+                    $sub2->whereNull('type')->orWhere('type', '!=', 'Expense');
+                })
+                ->where('name', 'not like', '%Claim%')
+                ->where('name', 'not like', '%Expense%')
+                ->where('name', 'not like', '%Discount%')
+                ->where('name', 'not like', '%Maintenance%')
+                ->where('name', 'not like', '%sallery%')
+                ->where('name', 'not like', '%salary%');
+            })
+            ->where('account_code', 'not like', 'ACC-CLAIM-%')
+            ->where('title', 'not like', '%Claim%')
+            ->where('title', 'not like', '%Expense%')
+            ->where('title', 'not like', '%Discount%')
+            ->where('title', 'not like', '%Freight%')
+            ->where('title', 'not like', '%Damage%')
+            ->with('head')
+            ->orderBy('head_id', 'desc')
+            ->orderBy('title')
+            ->get();
     }
 
     public function saleScreen()
     {
+        Product::autoSyncVariantStocks();
         $branchId = active_branch_id();
         $customerQuery = Customer::where('status', '!=', 'inactive');
         if (!is_all_branches()) {
@@ -494,7 +530,7 @@ class SaleController extends Controller
             }
         }
 
-        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = $this->getPaymentAccounts();
         $tables = \App\Models\Table::orderBy('table_name')->get();
 
         return view('admin_panel.sale.sale_screen', compact(
@@ -826,19 +862,8 @@ class SaleController extends Controller
             ->whereNull('warehouse_id')
             ->sum('qty');
 
-        $variants = $product->variants->map(function ($v) use ($product, $branchId, $isKg, $totalStock) {
-            if ($isKg) {
-                // For KG products, stock is stored as bulk grams on main product (variant_id IS NULL)
-                $stockQty = (float) $totalStock;
-            } else {
-                // Get real stock from stocks table for this variant
-                $vStock = Stock::where('product_id', $product->id)
-                    ->where('branch_id', $branchId)
-                    ->whereNull('warehouse_id')
-                    ->where('variant_id', $v->id)
-                    ->first();
-                $stockQty = $vStock ? (float) $vStock->qty : 0;
-            }
+        $variants = $product->variants->map(function ($v) use ($product, $branchId) {
+            $stockQty = $product->getBranchStock($v->id, $branchId);
             
             // Check cost price / purchase price
             $costPrice = (float)($v->cost_price ?? 0);
@@ -921,20 +946,8 @@ class SaleController extends Controller
             $product = $variant->product;
             $isKg    = strtolower($product->unit_type ?? '') === 'kg';
 
-            // Calculate stock
-            if ($isKg) {
-                $stock = (float) Stock::where('product_id', $product->id)
-                    ->where('branch_id', $branchId)
-                    ->whereNull('warehouse_id')
-                    ->sum('qty');
-            } else {
-                $vStock = Stock::where('product_id', $product->id)
-                    ->where('branch_id', $branchId)
-                    ->whereNull('warehouse_id')
-                    ->where('variant_id', $variant->id)
-                    ->first();
-                $stock = $vStock ? (float) $vStock->qty : 0;
-            }
+            // Calculate stock consistently using unified method
+            $stock = $product->getBranchStock($variant->id, $branchId);
 
             // Price & discount
             $rawPrice = (float) $variant->price;
@@ -994,10 +1007,6 @@ class SaleController extends Controller
 
         if ($product) {
             $isKg = strtolower($product->unit_type ?? '') === 'kg';
-            $stock = (float) Stock::where('product_id', $product->id)
-                ->where('branch_id', $branchId)
-                ->whereNull('warehouse_id')
-                ->sum('qty');
 
             // If product has variants, pick default or first variant
             $variant = null;
@@ -1005,6 +1014,9 @@ class SaleController extends Controller
                 $variant = $product->variants->firstWhere('is_default', true)
                     ?? $product->variants->first();
             }
+
+            // Calculate stock consistently using unified method
+            $stock = $product->getBranchStock($variant?->id, $branchId);
 
             $rawPrice = $variant ? (float) $variant->price : (float) $product->price;
             $price = $rawPrice;
@@ -1604,13 +1616,18 @@ class SaleController extends Controller
 
                 $vId   = $variant_ids[$index] ?? null;
                 if ($vId === '') $vId = null; // Ensure null strictly for DB
+                $prodModel = $productsMap[$product_id] ?? null;
+                $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
+
+                if (!$isGram && empty($vId) && $prodModel && $prodModel->variants && $prodModel->variants->count() > 0) {
+                    $defaultV = $prodModel->variants->firstWhere('is_default', 1) ?? $prodModel->variants->first();
+                    $vId = $defaultV ? $defaultV->id : null;
+                }
                 $combined_variant_ids[] = $vId;
 
                 // Use pre-fetched stock 
                 // In Memon Nimko POS, we deduct stock for BOTH final sale and save_token
                 $currentBranchId = active_branch_id();
-                $prodModel = $productsMap[$product_id] ?? null;
-                $isGram = $prodModel && strtolower($prodModel->unit_type ?? '') === 'kg';
                 
                 $dbVariantId = $isGram ? null : ($vId ?: null);
                 $totalPhysicalQty = $qty + ($qty > 0 ? $toQty : -$toQty);
@@ -1719,6 +1736,7 @@ class SaleController extends Controller
             } else {
                 // New direct sale
                 $model->cash   = $request->cash ?? 0;
+                $model->cash_account_id = !empty($request->cash_account_id) ? $request->cash_account_id : null;
                 $model->card   = $request->card ?? 0;
                 $model->card_account_id = !empty($request->card_account_id) ? $request->card_account_id : null;
                 $model->change = $request->change ?? 0;
@@ -1758,6 +1776,30 @@ class SaleController extends Controller
             }
 
             $model->save();
+
+            // 💵 Cash Account Update: If payment received in Cash from Chart of Accounts
+            $cashAccount = null;
+            $netCashReceived = max(0, floatval($model->cash ?? 0) - max(0, floatval($model->change ?? 0)));
+            if ($action === 'sale' && $netCashReceived > 0) {
+                $cashAccId = $model->cash_account_id ?: $request->cash_account_id;
+                if (!$cashAccId) {
+                    $defaultCashAcc = \App\Models\Account::whereNull('distributor_id')
+                        ->where(function($q) {
+                            $q->where('account_code', 'ACC-CASH-01')
+                              ->orWhere('title', 'like', '%Cash%');
+                        })->first();
+                    $cashAccId = $defaultCashAcc ? $defaultCashAcc->id : null;
+                }
+                if ($cashAccId) {
+                    $model->cash_account_id = $cashAccId;
+                    $model->save();
+                    $cashAccount = \App\Models\Account::find($cashAccId);
+                    if ($cashAccount) {
+                        $cashAccount->opening_balance = (float)$cashAccount->opening_balance + $netCashReceived;
+                        $cashAccount->save();
+                    }
+                }
+            }
 
             // 💳 Bank Account Update: If payment received into Card / Bank account from Chart of Accounts
             $cardAccount = null;
@@ -2219,11 +2261,31 @@ class SaleController extends Controller
             $sale->total_extradiscount = $request->input('total_extra_cost', $sale->total_extradiscount ?? 0);
             $sale->total_net       = $request->input('total_net', $sale->total_net ?? array_sum($combined_totals));
             $sale->cash            = $request->input('cash', 0);
+            $sale->cash_account_id = $request->input('cash_account_id', null);
             $sale->card            = $request->input('card', 0);
             $sale->card_account_id = $request->input('card_account_id', null);
             $sale->change          = $request->input('change', 0);
             
             if ($action === 'sale') {
+                $netCashPaid = max(0, floatval($request->input('cash', 0)) - max(0, floatval($request->input('change', 0))));
+                $cashAccId = $request->input('cash_account_id', null);
+                if (!$cashAccId && $netCashPaid > 0) {
+                    $defaultCashAcc = \App\Models\Account::whereNull('distributor_id')
+                        ->where(function($q) {
+                            $q->where('account_code', 'ACC-CASH-01')
+                              ->orWhere('title', 'like', '%Cash%');
+                        })->first();
+                    $cashAccId = $defaultCashAcc ? $defaultCashAcc->id : null;
+                }
+                if ($netCashPaid > 0 && $cashAccId) {
+                    $sale->cash_account_id = $cashAccId;
+                    $cashAcc = \App\Models\Account::find($cashAccId);
+                    if ($cashAcc) {
+                        $cashAcc->opening_balance = (float)$cashAcc->opening_balance + $netCashPaid;
+                        $cashAcc->save();
+                    }
+                }
+
                 $cardPaid = floatval($request->input('card', 0));
                 $cardAccountId = $request->input('card_account_id', null);
                 if ($cardPaid > 0 && $cardAccountId && empty($sale->is_account_credited)) {
@@ -2626,7 +2688,7 @@ class SaleController extends Controller
             ];
         }
 
-        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->orderBy('title')->get();
+        $bankAccounts = $this->getPaymentAccounts();
 
         return view('admin_panel.sale.return.create', [
             'sale' => $sale,
@@ -2948,6 +3010,36 @@ class SaleController extends Controller
             $saleReturn->total_items = $total_items;
             $saleReturn->return_note = $request->return_note ?? null;
             $saleReturn->branch_id = $sale->branch_id ?? active_branch_id() ?? 1;
+
+            // 💵 Account Deduction for Return Refunds
+            $refundAmount = floatval($request->cash ?? 0);
+            $selectedAccountId = $request->payment_account;
+            $accToDeduct = null;
+
+            if ($refundAmount > 0) {
+                if (!empty($selectedAccountId) && is_numeric($selectedAccountId)) {
+                    $accToDeduct = \App\Models\Account::whereNull('distributor_id')->find($selectedAccountId);
+                }
+                if (!$accToDeduct) {
+                    if (!empty($sale->cash_account_id)) {
+                        $accToDeduct = \App\Models\Account::find($sale->cash_account_id);
+                    }
+                    if (!$accToDeduct) {
+                        $accToDeduct = \App\Models\Account::whereNull('distributor_id')
+                            ->where(function($q) {
+                                $q->where('account_code', 'ACC-CASH-01')
+                                  ->orWhere('title', 'like', '%Cash%');
+                            })->first();
+                    }
+                }
+
+                if ($accToDeduct) {
+                    $saleReturn->cash_account_id = $accToDeduct->id;
+                    $accToDeduct->opening_balance = (float)$accToDeduct->opening_balance - $refundAmount;
+                    $accToDeduct->save();
+                }
+            }
+
             $saleReturn->save();
 
             // Mark sale status as Returned
@@ -2991,7 +3083,7 @@ class SaleController extends Controller
                         'date'           => $request->return_date ?: now()->toDateString(),
                         'type'           => 'return',
                         'reference_no'   => $sale->invoice_no,
-                        'description'    => "Sale Return #{$saleReturn->id} against Invoice #{$sale->invoice_no}" . ($refundCash > 0 ? " (Refund Paid: Rs. " . number_format($refundCash, 2) . ")" : ""),
+                        'description'    => "Sale Return #{$saleReturn->id} against Invoice #{$sale->invoice_no}" . ($refundCash > 0 ? " (Refund Paid: Rs. " . number_format($refundCash, 2) . ($accToDeduct ? " from {$accToDeduct->title}" : "") . ")" : ""),
                         'debit'          => $refundCash,
                         'credit'         => $netAmount,
                         'balance'        => $newBalance,
@@ -3505,6 +3597,7 @@ class SaleController extends Controller
     }
     public function saleedit($id)
     {
+        Product::autoSyncVariantStocks();
         $sale = Sale::findOrFail($id);
         $branchId = $sale->branch_id ?? active_branch_id();
 
@@ -3652,16 +3745,44 @@ class SaleController extends Controller
 
             $vId = $vIds[$index] ?? null;
             $variant = ($vId && $product) ? $product->variants->firstWhere('id', $vId) : null;
+            if (!$variant && $product && $product->variants && $product->variants->count() > 0) {
+                // If variant not matched by ID, match by size label in name e.g. Protein Bar (30gm)
+                foreach ($product->variants as $pv) {
+                    $lbl = $pv->size_label ?: $pv->variant_name;
+                    if ($lbl && (str_contains($pidOrName, "($lbl)") || str_contains($pidOrName, "- $lbl") || str_contains($pidOrName, $lbl))) {
+                        $variant = $pv;
+                        $vId = $pv->id;
+                        break;
+                    }
+                }
+                if (!$variant) {
+                    $variant = $product->variants->firstWhere('is_default', 1) ?? $product->variants->first();
+                    $vId = $variant?->id;
+                }
+            }
             $sizeLabel = $variant ? ($variant->size_label ?: $variant->variant_name ?: '-') : '-';
             $pName = $product ? $product->item_name : $pidOrName;
             $fullName = ($sizeLabel !== '-') ? ($pName . ' (' . $sizeLabel . ')') : $pName;
 
             $pStock = 0;
             if ($product) {
-                $stockRow = $stockMap->first(function($s) use ($product, $vId) {
-                    return $s->product_id == $product->id && ($vId ? $s->variant_id == $vId : true);
-                });
-                $pStock = $stockRow ? (float)$stockRow->qty : 0;
+                // Match with productsCatalog for 100% stock consistency with new sale and stock report
+                $catEntry = null;
+                if ($vId) {
+                    $catEntry = collect($productsCatalog)->first(function($cp) use ($product, $vId) {
+                        return $cp['product_id'] == $product->id && $cp['variant_id'] == $vId;
+                    });
+                }
+                if (!$catEntry) {
+                    $catEntry = collect($productsCatalog)->first(function($cp) use ($product) {
+                        return $cp['product_id'] == $product->id;
+                    });
+                }
+                if ($catEntry) {
+                    $pStock = (float)($catEntry['stock'] ?? 0);
+                } else {
+                    $pStock = $product->getBranchStock($vId, $branchId);
+                }
             }
 
             $disc = floatval($discounts[$index] ?? 0);
@@ -3701,7 +3822,7 @@ class SaleController extends Controller
             ];
         }
 
-        $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
+        $bankAccounts = $this->getPaymentAccounts();
         $tables = \App\Models\Table::orderBy('table_name')->get();
 
         return view('admin_panel.sale.sale_screen', compact(
@@ -3933,6 +4054,35 @@ class SaleController extends Controller
             $oldCardAccountId = $sale->card_account_id;
             $wasCredited = !empty($sale->is_account_credited);
 
+            $oldCash = max(0, floatval($sale->cash ?? 0) - max(0, floatval($sale->change ?? 0)));
+            $oldCashAccountId = $sale->cash_account_id;
+
+            $newNetCash = max(0, floatval($request->cash ?? 0) - max(0, floatval($request->change ?? 0)));
+            $newCashAccountId = !empty($request->cash_account_id) ? $request->cash_account_id : null;
+            if (!$newCashAccountId && $newNetCash > 0) {
+                $defaultCashAcc = \App\Models\Account::whereNull('distributor_id')
+                    ->where(function($q) {
+                        $q->where('account_code', 'ACC-CASH-01')
+                          ->orWhere('title', 'like', '%Cash%');
+                    })->first();
+                $newCashAccountId = $defaultCashAcc ? $defaultCashAcc->id : null;
+            }
+
+            if ($oldCashAccountId && $oldCash > 0) {
+                $oldCAcc = \App\Models\Account::find($oldCashAccountId);
+                if ($oldCAcc) {
+                    $oldCAcc->opening_balance = (float)$oldCAcc->opening_balance - $oldCash;
+                    $oldCAcc->save();
+                }
+            }
+            if ($newCashAccountId && $newNetCash > 0) {
+                $newCAcc = \App\Models\Account::find($newCashAccountId);
+                if ($newCAcc) {
+                    $newCAcc->opening_balance = (float)$newCAcc->opening_balance + $newNetCash;
+                    $newCAcc->save();
+                }
+            }
+
             $newCard = (float) ($request->card ?? 0);
             $newCardAccountId = !empty($request->card_account_id) ? $request->card_account_id : null;
 
@@ -3980,6 +4130,7 @@ class SaleController extends Controller
             $sale->total_extradiscount = $request->total_extra_cost;
             $sale->total_net           = $request->total_net;
             $sale->cash                = $request->cash;
+            $sale->cash_account_id     = $newCashAccountId;
             $sale->card                = $newCard;
             $sale->card_account_id     = $newCardAccountId;
             $sale->change              = $request->change;

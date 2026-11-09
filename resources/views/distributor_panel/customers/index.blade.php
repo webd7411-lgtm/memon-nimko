@@ -42,13 +42,27 @@
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6">
             <div class="card border-0 shadow-sm rounded-4 p-3 bg-white" style="border-left: 4px solid #0f766e !important;">
-                <span class="text-muted small fw-semibold text-uppercase">Total Retail Accounts</span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small fw-semibold text-uppercase">Total Retail Accounts</span>
+                    @if(request('booker_id'))
+                        <span class="badge rounded-pill border px-2 py-0.5" style="font-size: 0.7rem; background: rgba(15,118,110,0.1); color: #0f766e; border-color: rgba(15,118,110,0.25) !important;">
+                            <i class="fas fa-filter me-1"></i> Filtered by Booker
+                        </span>
+                    @endif
+                </div>
                 <h3 class="fw-bold mb-0 text-dark mt-1">{{ $totalCustomers }}</h3>
             </div>
         </div>
         <div class="col-12 col-sm-6">
             <div class="card border-0 shadow-sm rounded-4 p-3 bg-white" style="border-left: 4px solid #f59e0b !important;">
-                <span class="text-muted small fw-semibold text-uppercase">Market Credit Due from Retailers</span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small fw-semibold text-uppercase">Market Credit Due from Retailers</span>
+                    @if(request('booker_id'))
+                        <span class="badge rounded-pill bg-warning-subtle text-dark border px-2 py-0.5" style="font-size: 0.7rem;">
+                            <i class="fas fa-filter me-1"></i> Filtered Due
+                        </span>
+                    @endif
+                </div>
                 <h3 class="fw-bold mb-0 text-danger mt-1">Rs. {{ number_format($totalReceivable, 2) }}</h3>
             </div>
         </div>
@@ -57,14 +71,48 @@
     <!-- Customers Table -->
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
         <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <h6 class="mb-0 fw-bold text-dark">
-                <i class="fas fa-store me-2 text-teal" style="color: #0f766e;"></i> Registered Retail Stores
-            </h6>
-            <form method="GET" action="{{ route('distributor.customers.index') }}" class="d-flex align-items-center gap-2">
-                <div class="input-group input-group-sm" style="max-width: 260px;">
+            <div class="d-flex align-items-center gap-2">
+                <h6 class="mb-0 fw-bold text-dark">
+                    <i class="fas fa-store me-2 text-teal" style="color: #0f766e;"></i> Registered Retail Stores
+                </h6>
+                @if(request('booker_id') || request('search'))
+                    <span class="badge rounded-pill bg-light text-secondary border px-2 py-1 small">
+                        Showing {{ $customers->total() }} store(s)
+                    </span>
+                @endif
+            </div>
+            <form method="GET" action="{{ route('distributor.customers.index') }}" class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Order Booker Filter -->
+                <div class="input-group input-group-sm" style="min-width: 210px;">
+                    <span class="input-group-text bg-light text-muted border-end-0 rounded-start-pill ps-2.5">
+                        <i class="fas fa-user-tie" style="color: #0f766e;"></i>
+                    </span>
+                    <select name="booker_id" onchange="this.form.submit()" class="form-select form-select-sm border-start-0 rounded-end-pill fw-semibold text-dark">
+                        <option value="">👤 All Order Bookers</option>
+                        @if(isset($bookers))
+                            @foreach($bookers as $b)
+                                <option value="{{ $b->id }}" {{ (string)request('booker_id') === (string)$b->id ? 'selected' : '' }}>
+                                    Booker: {{ $b->name }}
+                                </option>
+                            @endforeach
+                        @endif
+                        <option value="unassigned" {{ request('booker_id') === 'unassigned' ? 'selected' : '' }}>
+                            🚫 Direct / No Booker
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Search Input -->
+                <div class="input-group input-group-sm" style="max-width: 240px;">
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control rounded-start-pill" placeholder="Search shop, phone, area...">
                     <button class="btn btn-outline-secondary rounded-end-pill" type="submit"><i class="fas fa-search"></i></button>
                 </div>
+
+                @if(request('booker_id') || request('search'))
+                    <a href="{{ route('distributor.customers.index') }}" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" title="Reset all filters">
+                        <i class="fas fa-times me-1"></i> Clear
+                    </a>
+                @endif
             </form>
         </div>
 

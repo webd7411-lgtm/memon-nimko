@@ -1036,13 +1036,25 @@
                     @endif
 
                     <div id="paymentMethodsContainer">
+                        <label class="ss-field-group mb-1">
+                            <span style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">
+                                <i class="fas fa-wallet me-1 text-success"></i> Refund Payment Account & Cash
+                            </span>
+                        </label>
                         <div class="ss-pm-row" data-index="0">
                             <select class="ss-pm-select pm-account-select" name="payment_account" id="paymentAccountSelect">
-                                <option value="cash" selected>💵 Cash in hand</option>
-                                @if(isset($bankAccounts))
+                                @if(isset($bankAccounts) && $bankAccounts->count() > 0)
                                     @foreach($bankAccounts as $acc)
-                                        <option value="{{ $acc->id }}">🏦 {{ $acc->title }}</option>
+                                        @if(stripos($acc->account_code, 'CLAIM') !== false || stripos($acc->title, 'claim') !== false || stripos($acc->title, 'expense') !== false || stripos($acc->title, 'damage') !== false || stripos($acc->title, 'freight') !== false || stripos($acc->title, 'discount') !== false || ($acc->head && $acc->head->type === 'Expense'))
+                                            @continue
+                                        @endif
+                                        <option value="{{ $acc->id }}" 
+                                            {{ ($acc->account_code === 'ACC-CASH-01' || stripos($acc->title, 'cash counter') !== false) ? 'selected' : '' }}>
+                                            {{ ($acc->head_id == 2 || stripos($acc->title, 'cash') !== false) ? '💵' : '🏦' }} {{ $acc->title }} ({{ $acc->account_code }}) - Bal: Rs. {{ number_format($acc->opening_balance, 2) }}
+                                        </option>
                                     @endforeach
+                                @else
+                                    <option value="cash" selected>💵 Cash in hand</option>
                                 @endif
                             </select>
                             <input type="number" step="any" min="0" class="ss-pm-input pm-amount-input" name="cash" id="cashInput" placeholder="0.00" value="0.00">

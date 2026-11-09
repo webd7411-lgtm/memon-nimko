@@ -98,6 +98,11 @@ class Sale extends Model
         return $this->hasMany(SalesReturn::class, 'sale_id');
     }
 
+    public function cashAccount()
+    {
+        return $this->belongsTo(Account::class, 'cash_account_id');
+    }
+
     public function cardAccount()
     {
         return $this->belongsTo(Account::class, 'card_account_id');

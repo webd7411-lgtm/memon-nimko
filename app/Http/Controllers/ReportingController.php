@@ -45,7 +45,12 @@ class ReportingController extends Controller
 
         // Check if there is a stock reset timestamp (branch-specific, with backward compatibility)
         $resetTime = null;
-        $branchIdForReset = active_branch_id();
+        // Branch resolution: allow explicit branch_id parameter if supplied
+        $reqBranch = $request->input('branch_id');
+        $isAllBranches = ($reqBranch === 'all') || ($reqBranch === null && is_all_branches());
+        $activeBranchId = $isAllBranches ? null : ($reqBranch ? (int)$reqBranch : active_branch_id());
+
+        $branchIdForReset = $activeBranchId ?: active_branch_id();
         $resetFileName = 'stock_reset_timestamp_' . $branchIdForReset . '.txt';
         if (\Illuminate\Support\Facades\Storage::exists($resetFileName)) {
             $resetTime = trim(\Illuminate\Support\Facades\Storage::get($resetFileName));
@@ -54,7 +59,7 @@ class ReportingController extends Controller
         }
 
         // 1. Get products and their variants
-        $pQuery = Product::with(['variants', 'unit', 'bom.rawMaterial', 'bom.ingredientProduct'])->orderBy('item_name');
+        $pQuery = Product::with(['variants', 'unit', 'bom.rawMaterial', 'bom.ingredientProduct', 'category'])->orderBy('item_name');
 
         $productIdsFilter = [];
         if (is_array($productIdsArr)) {
@@ -159,8 +164,8 @@ class ReportingController extends Controller
             ->whereIn('purchase_items.product_id', $productIds)
             ->whereNull('purchases.warehouse_id')  // ✅ EXCLUDE warehouse purchases
             ->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
-        if (!is_all_branches()) {
-            $purchasesQuery->where('purchases.branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $purchasesQuery->where('purchases.branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $purchasesQuery->where('purchases.created_at', '>=', $resetTime);
@@ -175,8 +180,8 @@ class ReportingController extends Controller
             ->whereNull('production_entries.warehouse_id')
             ->whereDate('production_entries.production_date', '>=', $startDate)
             ->whereDate('production_entries.production_date', '<=', $endDate);
-        if (!is_all_branches()) {
-            $productionsQuery->where('production_entries.branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $productionsQuery->where('production_entries.branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $productionsQuery->where('production_entries.created_at', '>=', $resetTime);
@@ -190,8 +195,8 @@ class ReportingController extends Controller
             ->whereIn('purchase_return_items.product_id', $productIds)
             ->whereNull('purchase_returns.warehouse_id')
             ->whereBetween('purchase_returns.return_date', [$startDate, $endDate]);
-        if (!is_all_branches()) {
-            $purchaseReturnsQuery->where('purchase_returns.branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $purchaseReturnsQuery->where('purchase_returns.branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $purchaseReturnsQuery->where('purchase_returns.created_at', '>=', $resetTime);
@@ -207,8 +212,8 @@ class ReportingController extends Controller
             ->whereNull('pe.warehouse_id')
             ->whereDate('pe.production_date', '>=', $startDate)
             ->whereDate('pe.production_date', '<=', $endDate);
-        if (!is_all_branches()) {
-            $activeBranchId = active_branch_id();
+        if (!$isAllBranches) {
+            // $activeBranchId already set
             $prodUsageQuery->where(function($q) use ($activeBranchId) {
                 $q->where('prmu.branch_id', $activeBranchId)
                   ->orWhere('pe.branch_id', $activeBranchId);
@@ -222,8 +227,8 @@ class ReportingController extends Controller
             ->get();
 
         $currStocksQuery = DB::table('stocks')->whereIn('product_id', $productIds)->whereNull('warehouse_id');
-        if (!is_all_branches()) {
-            $currStocksQuery->where('branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $currStocksQuery->where('branch_id', $activeBranchId);
         }
         $currStocks = $currStocksQuery->select('product_id', 'variant_id', 'qty')->get();
 
@@ -239,8 +244,8 @@ class ReportingController extends Controller
         $hasVariantIdInSales = \Illuminate\Support\Facades\Schema::hasColumn('sales', 'variant_id');
         $hasTradeOfferInSales = \Illuminate\Support\Facades\Schema::hasColumn('sales', 'trade_offer');
         $allSalesQuery = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT])->whereNotNull('product')->select('product', 'qty');
-        if (!is_all_branches()) {
-            $allSalesQuery->where('branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $allSalesQuery->where('branch_id', $activeBranchId);
         }
         if ($hasVariantIdInSales) {
             $allSalesQuery->addSelect('variant_id');
@@ -290,8 +295,8 @@ class ReportingController extends Controller
             ->whereBetween('created_at', [$startDT, $endDT])
             ->whereNotNull('product')
             ->select('id', 'sale_id', 'product', 'qty');
-        if (!is_all_branches()) {
-            $allReturnsQuery->where('branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $allReturnsQuery->where('branch_id', $activeBranchId);
         }
         if ($hasVariantIdInReturns) {
             $allReturnsQuery->addSelect('variant_id');
@@ -420,8 +425,8 @@ class ReportingController extends Controller
             ->whereIn('purchase_items.product_id', $productIds)
             ->whereNull('purchases.warehouse_id')  // ✅ EXCLUDE warehouse purchases (after)
             ->where('purchases.purchase_date', '>', $endDate);
-        if (!is_all_branches()) {
-            $purchAfterQuery->where('purchases.branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $purchAfterQuery->where('purchases.branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $purchAfterQuery->where('purchases.created_at', '>=', $resetTime);
@@ -436,8 +441,8 @@ class ReportingController extends Controller
             ->whereIn('production_entry_items.product_id', $productIds)
             ->whereNull('production_entries.warehouse_id')
             ->whereDate('production_entries.production_date', '>', $endDate);
-        if (!is_all_branches()) {
-            $prodAfterQuery->where('production_entries.branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $prodAfterQuery->where('production_entries.branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $prodAfterQuery->where('production_entries.created_at', '>=', $resetTime);
@@ -452,8 +457,8 @@ class ReportingController extends Controller
             ->whereIn('prmu.ingredient_product_id', $productIds)
             ->whereNull('pe.warehouse_id')
             ->whereDate('pe.production_date', '>', $endDate);
-        if (!is_all_branches()) {
-            $activeBranchId = active_branch_id();
+        if (!$isAllBranches) {
+            // $activeBranchId already set
             $prodUsageAfterQuery->where(function($q) use ($activeBranchId) {
                 $q->where('prmu.branch_id', $activeBranchId)
                   ->orWhere('pe.branch_id', $activeBranchId);
@@ -472,8 +477,8 @@ class ReportingController extends Controller
             ->whereIn('purchase_return_items.product_id', $productIds)
             ->whereNull('purchase_returns.warehouse_id')
             ->where('purchase_returns.return_date', '>', $endDate);
-        if (!is_all_branches()) {
-            $prAfterQuery->where('purchase_returns.branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $prAfterQuery->where('purchase_returns.branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $prAfterQuery->where('purchase_returns.created_at', '>=', $resetTime);
@@ -484,8 +489,8 @@ class ReportingController extends Controller
         $mapPRAft = []; foreach($prAfter as $pr) { $mapPRAft[$pr->product_id . '_0'] = ($mapPRAft[$pr->product_id . '_0'] ?? 0) + $pr->total_qty; }
 
         $allSalesAfterQ = DB::table('sales')->where('created_at', '>', $endDT)->whereNotNull('product')->select('product', 'qty');
-        if (!is_all_branches()) {
-            $allSalesAfterQ->where('branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $allSalesAfterQ->where('branch_id', $activeBranchId);
         }
         if ($hasVariantIdInSales) { $allSalesAfterQ->addSelect('variant_id'); }
         if ($hasTradeOfferInSales) { $allSalesAfterQ->addSelect('trade_offer'); }
@@ -517,8 +522,8 @@ class ReportingController extends Controller
             ->where('created_at', '>', $endDT)
             ->whereNotNull('product')
             ->select('id', 'sale_id', 'product', 'qty');
-        if (!is_all_branches()) {
-            $allRetAfterQ->where('branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $allRetAfterQ->where('branch_id', $activeBranchId);
         }
         if ($hasVariantIdInReturns) {
             $allRetAfterQ->addSelect('variant_id');
@@ -618,16 +623,16 @@ class ReportingController extends Controller
             ->whereIn('sai.product_id', $productIds)
             ->whereNull('sa.warehouse_id')  // ✅ Only branch-level adjustments (exclude warehouse-level)
             ->whereBetween('sa.adjustment_date', [$startDate, $endDate]);
-        if (!is_all_branches()) {
+        if (!$isAllBranches) {
             if ($hasSaBranchId) {
-                $adjInRangeQuery->where(function($q) {
-                    $q->where('sa.branch_id', active_branch_id())
-                      ->orWhere(function($sq) {
-                          $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
+                $adjInRangeQuery->where(function($q) use ($activeBranchId) {
+                    $q->where('sa.branch_id', $activeBranchId)
+                      ->orWhere(function($sq) use ($activeBranchId) {
+                          $sq->whereNull('sa.branch_id')->where('u.branch_id', $activeBranchId);
                       });
                 });
             } else {
-                $adjInRangeQuery->where('u.branch_id', active_branch_id());
+                $adjInRangeQuery->where('u.branch_id', $activeBranchId);
             }
         }
         if ($resetTime) {
@@ -655,16 +660,16 @@ class ReportingController extends Controller
             ->whereIn('sai.product_id', $productIds)
             ->whereNull('sa.warehouse_id')  // ✅ Only branch-level adjustments (exclude warehouse-level)
             ->where('sa.adjustment_date', '>', $endDate);
-        if (!is_all_branches()) {
+        if (!$isAllBranches) {
             if ($hasSaBranchId) {
-                $adjAfterQuery->where(function($q) {
-                    $q->where('sa.branch_id', active_branch_id())
-                      ->orWhere(function($sq) {
-                          $sq->whereNull('sa.branch_id')->where('u.branch_id', active_branch_id());
+                $adjAfterQuery->where(function($q) use ($activeBranchId) {
+                    $q->where('sa.branch_id', $activeBranchId)
+                      ->orWhere(function($sq) use ($activeBranchId) {
+                          $sq->whereNull('sa.branch_id')->where('u.branch_id', $activeBranchId);
                       });
                 });
             } else {
-                $adjAfterQuery->where('u.branch_id', active_branch_id());
+                $adjAfterQuery->where('u.branch_id', $activeBranchId);
             }
         }
         if ($resetTime) {
@@ -696,8 +701,8 @@ class ReportingController extends Controller
                   ->orWhere('from_warehouse_id', 'Shop')
                   ->orWhere('from_warehouse_id', 0);
             });
-        if (!is_all_branches()) {
-            $transferOutQuery->where('branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $transferOutQuery->where('branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $transferOutQuery->where('created_at', '>=', $resetTime);
@@ -737,9 +742,9 @@ class ReportingController extends Controller
         // Stock entering Shop: destination is active branch shop
         $transferInQuery = DB::table('stock_transfers')
             ->where('status', 'completed')
-            ->whereBetween('created_at', [$startDT, $endDT])
-            ->where(function($q) {
-                $activeBranchId = active_branch_id();
+            ->whereBetween('created_at', [$startDT, $endDT]);
+        if (!$isAllBranches) {
+            $transferInQuery->where(function($q) use ($activeBranchId) {
                 $q->where(function($sq) use ($activeBranchId) {
                     $sq->where('transfer_to', 'branch')
                        ->where('to_branch_id', $activeBranchId);
@@ -751,6 +756,7 @@ class ReportingController extends Controller
                        ->whereNull('to_warehouse_id');
                 });
             });
+        }
         if ($resetTime) {
             $transferInQuery->where('created_at', '>=', $resetTime);
         }
@@ -795,8 +801,8 @@ class ReportingController extends Controller
                   ->orWhere('from_warehouse_id', 'Shop')
                   ->orWhere('from_warehouse_id', 0);
             });
-        if (!is_all_branches()) {
-            $transferOutAfterQuery->where('branch_id', active_branch_id());
+        if (!$isAllBranches) {
+            $transferOutAfterQuery->where('branch_id', $activeBranchId);
         }
         if ($resetTime) {
             $transferOutAfterQuery->where('created_at', '>=', $resetTime);
@@ -824,9 +830,9 @@ class ReportingController extends Controller
         // ---- STOCK TRANSFERS (IN) AFTER end_date ----
         $transferInAfterQuery = DB::table('stock_transfers')
             ->where('status', 'completed')
-            ->where('created_at', '>', $endDT)
-            ->where(function($q) {
-                $activeBranchId = active_branch_id();
+            ->where('created_at', '>', $endDT);
+        if (!$isAllBranches) {
+            $transferInAfterQuery->where(function($q) use ($activeBranchId) {
                 $q->where(function($sq) use ($activeBranchId) {
                     $sq->where('transfer_to', 'branch')
                        ->where('to_branch_id', $activeBranchId);
@@ -838,6 +844,7 @@ class ReportingController extends Controller
                        ->whereNull('to_warehouse_id');
                 });
             });
+        }
         if ($resetTime) {
             $transferInAfterQuery->where('created_at', '>=', $resetTime);
         }
@@ -950,6 +957,10 @@ class ReportingController extends Controller
                         'trade_offer'        => $toSold,
                         'sale_return'        => $sReturn,
                         'trade_offer_return' => $toReturn,
+                        'item_type'          => 'fg',
+                        'product_id'         => $p->id,
+                        'variant_id'         => $v->id,
+                        'category'           => $p->category->name ?? 'General',
                         'balance'            => $closingStock,
                         'unit'               => $p->unit->name ?? ($is_kg ? 'KG' : 'PC'),
                     ];
@@ -963,7 +974,11 @@ class ReportingController extends Controller
                         $valPrice = (float)($v->cost_price ?: $v->wholesale_price ?: $v->price ?: $p->wholesale_price ?: $p->price ?: 0);
                     }
 
-                    $grandTotalValue += $closingStock * $valPrice;
+                    $lineVal = ($closingStock > 0) ? ($closingStock * $valPrice) : 0;
+                    $grandTotalValue += $lineVal;
+                    $lastIdx = count($rows) - 1;
+                    $rows[$lastIdx]['val_price'] = $valPrice;
+                    $rows[$lastIdx]['row_value'] = round($lineVal, 2);
                 }
             } else {
                 // Base product only or combined KG product
@@ -1115,6 +1130,10 @@ class ReportingController extends Controller
                     'trade_offer'        => $toSold,
                     'sale_return'        => $sReturn,
                     'trade_offer_return' => $toReturn,
+                    'item_type'          => 'fg',
+                    'product_id'         => $p->id,
+                    'variant_id'         => null,
+                    'category'           => $p->category->name ?? 'General',
                     'balance'            => $closingStock,
                     'unit'               => $p->unit->name ?? ($is_kg ? 'KG' : 'PC'),
                 ];
@@ -1152,9 +1171,13 @@ class ReportingController extends Controller
                 }
 
                 $valuationQty = $is_kg ? ($closingStock / 1000) : $closingStock;
+                $lineVal = ($valuationQty > 0) ? ($valuationQty * $valPrice) : 0;
                 if ($valuationQty > 0) {
-                    $grandTotalValue += $valuationQty * $valPrice;
+                    $grandTotalValue += $lineVal;
                 }
+                $lastIdx = count($rows) - 1;
+                $rows[$lastIdx]['val_price'] = $valPrice;
+                $rows[$lastIdx]['row_value'] = round($lineVal, 2);
             }
         }
 
@@ -1163,7 +1186,7 @@ class ReportingController extends Controller
         // -------------------------------------------------------------
         $rmRows = [];
         $rmGrandTotalValue = 0;
-        $branchIdForRM = is_all_branches() ? null : active_branch_id();
+        $branchIdForRM = $isAllBranches ? null : $activeBranchId;
 
         // Check if we need to load Raw Materials
         if ($itemType === 'rm' || $itemType === 'all') {
@@ -1403,9 +1426,12 @@ class ReportingController extends Controller
         return response()->json([
             'data'             => $finalRows,
             'grand_total'      => $canViewStockValues ? $currentViewValue : 0,
-            'fg_value'         => $canViewStockValues ? $fgGrandTotalValue : 0,
-            'rm_value'         => $canViewStockValues ? $rmGrandTotalValue : 0,
-            'total_value'      => $canViewStockValues ? $totalCombinedValue : 0,
+            'fg_value'         => $fgGrandTotalValue,
+            'rm_value'         => $rmGrandTotalValue,
+            'total_value'      => $totalCombinedValue,
+            'raw_fg_value'     => $fgGrandTotalValue,
+            'raw_rm_value'     => $rmGrandTotalValue,
+            'raw_total_value'  => $totalCombinedValue,
             'total'            => count($finalRows),
             'fg_count'         => count($rows),
             'rm_count'         => count($rmRows),
@@ -3954,8 +3980,8 @@ class ReportingController extends Controller
         $cashAccounts = $cashAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.opening_balance')->get();
         $accountCashOpening = (float)$cashAccounts->sum('opening_balance');
 
-        $counterCashBalance = max(0, ($totalSalesCash + $totalCustCash) - ($totalVendCash + $totalCashExp));
-        $totalCashInHand = $counterCashBalance + $accountCashOpening;
+        $counterCashBalance = 0;
+        $totalCashInHand = max(0, $accountCashOpening);
 
         // ==========================================
         // 2. ASSETS - BANK ACCOUNTS
@@ -4055,119 +4081,74 @@ class ReportingController extends Controller
         usort($customerReceivables, function($a, $b) { return $b['balance'] <=> $a['balance']; });
 
         // ==========================================
-        // 4. ASSETS - INVENTORY / STOCK VALUATION
+        // 4. ASSETS - INVENTORY / STOCK VALUATION (RECONCILED WITH ITEM STOCK REPORT)
         // ==========================================
-        $stocksQ = DB::table('stocks')
-            ->join('products', 'products.id', '=', 'stocks.product_id')
-            ->leftJoin('product_variants', 'product_variants.id', '=', 'stocks.variant_id')
-            ->leftJoin('categories', 'categories.id', '=', 'products.category_id');
-        if (!$isAllBranch) $stocksQ->where('stocks.branch_id', $activeBId);
+        $stockReq = new Request([
+            'item_type'  => 'all',
+            'start_date' => date('Y-m-01', strtotime($asOfDate)),
+            'end_date'   => $asOfDate,
+            'start_time' => '00:00:00',
+            'end_time'   => '23:59:59',
+            'branch_id'  => $branchId,
+        ]);
+        $stockResponse = $this->fetchItemStock($stockReq);
+        $stockData = $stockResponse->getData(true);
 
-        $stocksData = $stocksQ->select(
-            'stocks.product_id',
-            'stocks.variant_id',
-            'stocks.qty',
-            'products.item_name',
-            'products.item_code',
-            'products.price as product_price',
-            'categories.name as category_name',
-            'product_variants.variant_name',
-            'product_variants.cost_price as variant_cost',
-            'product_variants.price as variant_price'
-        )->get();
+        $finishedGoodsValue = (float)($stockData['fg_value'] ?? 0);
+        $rawMaterialValue   = (float)($stockData['rm_value'] ?? 0);
+        $totalInventoryValue = (float)($stockData['total_value'] ?? ($finishedGoodsValue + $rawMaterialValue));
 
-        $latestPurchasePrices = DB::table('purchase_items')
-            ->select('product_id', 'variant_id', 'price')
-            ->orderBy('id', 'desc')
-            ->get()
-            ->keyBy(function($item) {
-                return $item->product_id . '_' . ($item->variant_id ?? 0);
-            });
-
-        $finishedGoodsValue = 0;
         $totalStockQty = 0;
         $categoryStockSummary = [];
         $finishedItems = [];
 
-        foreach ($stocksData as $stk) {
-            $qty = (float)$stk->qty;
+        foreach (($stockData['data'] ?? []) as $row) {
+            if (($row['item_type'] ?? 'fg') === 'rm') continue;
+            $qty = (float)($row['balance'] ?? 0);
             if ($qty <= 0) continue;
+            $displayQty = !empty($row['is_kg']) ? ($qty / 1000) : $qty;
+            $unitCost = (float)($row['val_price'] ?? 0);
+            $lineValue = (float)($row['row_value'] ?? ($displayQty * $unitCost));
 
-            $vKey = $stk->product_id . '_' . ($stk->variant_id ?? 0);
-            $pKey = $stk->product_id . '_0';
-
-            $unitCost = 0;
-            if (isset($latestPurchasePrices[$vKey])) {
-                $unitCost = (float)$latestPurchasePrices[$vKey]->price;
-            } elseif (isset($latestPurchasePrices[$pKey])) {
-                $unitCost = (float)$latestPurchasePrices[$pKey]->price;
-            } elseif (!empty($stk->variant_cost) && (float)$stk->variant_cost > 0) {
-                $unitCost = (float)$stk->variant_cost;
-            } elseif (!empty($stk->variant_price) && (float)$stk->variant_price > 0) {
-                $unitCost = (float)$stk->variant_price * 0.75;
-            } else {
-                $unitCost = (float)($stk->product_price ?? 0) * 0.75;
-            }
-
-            $lineValue = $qty * $unitCost;
-            $finishedGoodsValue += $lineValue;
-            $totalStockQty += $qty;
-
-            $catName = $stk->category_name ?? 'General';
+            $catName = $row['category'] ?? 'General';
             $categoryStockSummary[$catName] = ($categoryStockSummary[$catName] ?? 0) + $lineValue;
+            $totalStockQty += $displayQty;
 
             $finishedItems[] = [
-                'name'      => $stk->item_name . ($stk->variant_name ? ' (' . $stk->variant_name . ')' : ''),
-                'code'      => $stk->item_code,
+                'name'      => $row['item_name'],
+                'code'      => $row['item_code'] ?? '-',
                 'category'  => $catName,
-                'qty'       => $qty,
+                'qty'       => $displayQty,
                 'unit_cost' => $unitCost,
                 'total_val' => $lineValue,
             ];
         }
 
-        // Raw Materials Stock Valuation
-        $rawMaterialValue = 0;
         $rawItems = [];
-        if (\Illuminate\Support\Facades\Schema::hasTable('raw_material_stocks')) {
-            $rawMaterialsList = \App\Models\RawMaterial::with('stocks')->orderBy('name')->get();
+        foreach (($stockData['data'] ?? []) as $row) {
+            if (($row['item_type'] ?? '') !== 'rm') continue;
+            $qty = (float)($row['balance'] ?? 0);
+            if ($qty <= 0) continue;
+            $unitCost = (float)($row['val_price'] ?? 0);
+            $val = (float)($row['row_value'] ?? ($qty * $unitCost));
 
-            foreach ($rawMaterialsList as $rm) {
-                $factor = (float)($rm->conversion_factor ?? 1);
-                if ($factor <= 0) $factor = 1;
-
-                if ($isAllBranch) {
-                    $sQty = $rm->totalStock();
-                } else {
-                    $sQty = $rm->currentStock(null, $activeBId);
-                }
-
-                if ($sQty <= 0) continue;
-
-                $purQty = $factor > 0 ? ($sQty / $factor) : $sQty;
-                $unitCost = (float)$rm->lastPurchaseCost();
-                $val = $purQty * $unitCost;
-                $rawMaterialValue += $val;
-
-                $rawItems[] = [
-                    'name'      => $rm->name,
-                    'code'      => 'RM-' . $rm->id,
-                    'category'  => 'Raw Materials',
-                    'unit'      => $rm->unit ?? 'Unit',
-                    'qty'       => round($purQty, 2) . ' ' . ($rm->unit ?? ''),
-                    'unit_cost' => $unitCost,
-                    'total_val' => $val,
-                ];
-            }
+            $rawItems[] = [
+                'name'      => $row['item_name'],
+                'code'      => $row['item_code'] ?? '-',
+                'category'  => 'Raw Materials',
+                'unit'      => $row['unit'] ?? 'Unit',
+                'qty'       => round($qty, 2) . ' ' . ($row['unit'] ?? ''),
+                'unit_cost' => $unitCost,
+                'total_val' => $val,
+            ];
         }
 
         usort($finishedItems, function($a, $b) { return $b['total_val'] <=> $a['total_val']; });
         usort($rawItems, function($a, $b) { return $b['total_val'] <=> $a['total_val']; });
         $topStockItems = array_merge($finishedItems, $rawItems);
         usort($topStockItems, function($a, $b) { return $b['total_val'] <=> $a['total_val']; });
-        $totalInventoryValue = $finishedGoodsValue + $rawMaterialValue;
 
-        // ==========================================
+// ==========================================
         // 5. ASSETS - FIXED ASSETS
         // ==========================================
         $assetsQ = \App\Models\Asset::whereNull('deleted_at')->where('status', '!=', 'disposed');

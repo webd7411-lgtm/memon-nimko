@@ -374,7 +374,7 @@
 
         @php
             if (!isset($bankAccounts)) {
-                $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
+                $bankAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->whereHas('head', function($q) { $q->where(function($sub) { $sub->where('type', 'Asset')->orWhere('name', 'like', '%Bank%')->orWhere('name', 'like', '%Cash%'); })->where(function($sub2) { $sub2->whereNull('type')->orWhere('type', '!=', 'Expense'); })->where('name', 'not like', '%Claim%')->where('name', 'not like', '%Expense%'); })->where('account_code', 'not like', 'ACC-CLAIM-%')->where('title', 'not like', '%Claim%')->where('title', 'not like', '%Expense%')->with('head')->orderBy('head_id', 'desc')->orderBy('title')->get();
             }
         @endphp
 
@@ -406,6 +406,9 @@
                 <option value="">-- Select Card Account / Machine --</option>
                 @if(isset($bankAccounts) && count($bankAccounts) > 0)
                     @foreach($bankAccounts as $acc)
+                        @if(stripos($acc->account_code, 'CLAIM') !== false || stripos($acc->title, 'claim') !== false || stripos($acc->title, 'expense') !== false || stripos($acc->title, 'damage') !== false || stripos($acc->title, 'freight') !== false || ($acc->head && $acc->head->type === 'Expense'))
+                            @continue
+                        @endif
                         <option value="{{ $acc->id }}">{{ $acc->title }} {{ $acc->head ? '('.$acc->head->name.')' : '' }}</option>
                     @endforeach
                 @else

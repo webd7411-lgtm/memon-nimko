@@ -1013,9 +1013,9 @@
                             <div class="flex-grow-1" style="min-width: 0;">
                                 <select name="distributor_customer_id" id="customerSelect" class="ss-select-control w-100" required>
                                     @if(isset($customers) && $customers->count() > 0)
-                                        <option value="" disabled selected>-- Select Retail Shop / Customer --</option>
+                                        <option value="" disabled {{ !isset($sale) ? 'selected' : '' }}>-- Select Retail Shop / Customer --</option>
                                         @foreach($customers as $c)
-                                            <option value="{{ $c->id }}" data-type="retailer" data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}" data-approved-discount="{{ (float)$c->effective_discount }}" data-to-buy="{{ (float)$c->effective_trade_offer_buy_qty }}" data-to-free="{{ (float)$c->effective_trade_offer_free_qty }}" data-tier="{{ $c->tier?->name ?? 'Standard Retailer' }}" data-scheme-label="{{ $c->scheme_label }}">
+                                            <option value="{{ $c->id }}" data-type="retailer" {{ (isset($sale) && $sale->distributor_customer_id == $c->id) ? 'selected' : '' }} data-phone="{{ $c->phone }}" data-balance="{{ (float)$c->current_balance }}" data-approved-discount="{{ (float)$c->effective_discount }}" data-to-buy="{{ (float)$c->effective_trade_offer_buy_qty }}" data-to-free="{{ (float)$c->effective_trade_offer_free_qty }}" data-tier="{{ $c->tier?->name ?? 'Standard Retailer' }}" data-scheme-label="{{ $c->scheme_label }}">
                                                 🏪 {{ $c->shop_name }} ({{ $c->owner_name ?: 'Shop' }}) {{ $c->area ? '- ' . $c->area : '' }}
                                             </option>
                                         @endforeach
@@ -2536,19 +2536,40 @@ $(document).ready(function() {
         const balance = parseFloat($selected.data('balance') || 0);
 
         if (!val || val === 'Walk-in Customer' || type === 'walkin') {
-            $badge.attr('class', 'badge bg-light text-secondary border').html('<i class="fas fa-user me-1"></i> Walk-in');
+            $badge.attr('class', 'badge bg-light text-secondary border')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                  .html('<i class="fas fa-user me-1"></i> Walk-in');
         } else if (type === 'order_booker') {
-            $badge.attr('class', 'badge bg-warning text-dark border-0 fw-bold').html('<i class="fas fa-motorcycle me-1"></i> Order Booker' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
+            $badge.attr('class', 'badge bg-warning text-dark border-0 fw-bold')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                  .html('<i class="fas fa-motorcycle me-1"></i> Order Booker' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
         } else if (type === 'distributor') {
-            $badge.attr('class', 'badge bg-primary text-white border-0 fw-bold').html('<i class="fas fa-truck me-1"></i> Distributor' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
-        } else if (type === 'distributor_customer') {
-            $badge.attr('class', 'badge bg-info text-dark border-0 fw-bold').html('<i class="fas fa-store me-1"></i> Retail Shop' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
+            $badge.attr('class', 'badge bg-primary text-white border-0 fw-bold')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                  .html('<i class="fas fa-truck me-1"></i> Distributor' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
+        } else if (type === 'retailer' || type === 'distributor_customer') {
+            const dueText = balance > 0 
+                ? ` (Due: Rs. ${balance.toLocaleString()})` 
+                : (balance < 0 ? ` (Adv: Rs. ${Math.abs(balance).toLocaleString()})` : '');
+            $badge.attr('class', 'badge border-0 fw-bold text-white')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 3px 8px; background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important; color: #ffffff !important; box-shadow: 0 2px 6px rgba(15, 118, 110, 0.25);')
+                  .html('<i class="fas fa-store me-1"></i> Retail Shop' + dueText);
         } else if (type === 'customer') {
             const creditAllowed = $selected.data('credit') == '1';
             if (creditAllowed) {
-                $badge.attr('class', 'badge bg-success text-white border-0 fw-bold').html('<i class="fas fa-check-circle me-1"></i> Credit Customer');
+                $badge.attr('class', 'badge bg-success text-white border-0 fw-bold')
+                      .removeAttr('style')
+                      .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                      .html('<i class="fas fa-check-circle me-1"></i> Credit Customer');
             } else {
-                $badge.attr('class', 'badge bg-secondary text-white border-0').html('<i class="fas fa-user-tag me-1"></i> Regular Customer');
+                $badge.attr('class', 'badge bg-secondary text-white border-0')
+                      .removeAttr('style')
+                      .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                      .html('<i class="fas fa-user-tag me-1"></i> Regular Customer');
             }
         }
     }

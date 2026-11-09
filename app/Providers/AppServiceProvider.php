@@ -26,5 +26,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, $ability) {
             return $user->hasRole('super-admin') ? true : null;
         });
+
+        // Automatically sync legacy base stocks into variants without needing terminal commands
+        if (!$this->app->runningInConsole()) {
+            \App\Models\Product::autoSyncVariantStocks();
+        }
     }
 }

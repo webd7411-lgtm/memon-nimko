@@ -13,7 +13,7 @@ class SalesReturn extends Model
         'customer', 'reference', 'product', 'variant_id', 'product_code', 'brand',
         'unit', 'per_price', 'per_discount', 'trade_offer', 'qty', 'per_total',
         'total_amount_Words', 'total_bill_amount', 'total_extradiscount',
-        'total_net', 'cash', 'card', 'change', 'color', 'total_items',
+        'total_net', 'cash', 'cash_account_id', 'card', 'change', 'color', 'total_items',
         'return_note', 'branch_id',
     ];
 

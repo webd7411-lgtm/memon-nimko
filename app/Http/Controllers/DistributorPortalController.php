@@ -582,8 +582,18 @@ class DistributorPortalController extends Controller
         $this->enforceBookerRestriction();
         $distributor = $this->getDistributor();
 
-        $query = DistributorCustomer::with('tier')->where('distributor_id', $distributor->id);
+        $query = DistributorCustomer::with(['tier', 'booker'])->where('distributor_id', $distributor->id);
 
+        // Filter by Order Booker
+        if ($request->filled('booker_id')) {
+            if ($request->booker_id === 'unassigned') {
+                $query->whereNull('booker_user_id');
+            } else {
+                $query->where('booker_user_id', $request->booker_id);
+            }
+        }
+
+        // Search by keyword
         if ($request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -594,10 +604,18 @@ class DistributorPortalController extends Controller
             });
         }
 
-        $customers = $query->latest('id')->paginate(15);
-        $totalCustomers = $customers->total();
-        $totalReceivable = DistributorCustomer::where('distributor_id', $distributor->id)->sum('current_balance');
-        $bookers = User::where('distributor_id', $distributor->id)->where('usertype', 'order_booker')->get();
+        // Dynamic KPI metrics matching the active filter
+        $totalCustomers = (clone $query)->count();
+        $totalReceivable = (clone $query)->sum('current_balance');
+
+        $customers = $query->latest('id')->paginate(15)->appends($request->query());
+        $bookers = User::where('usertype', 'order_booker')
+            ->where(function($q) use ($distributor) {
+                $q->where('distributor_id', $distributor->id)
+                  ->orWhereNull('distributor_id');
+            })
+            ->orderBy('name')
+            ->get();
 
         return view('distributor_panel.customers.index', compact('distributor', 'customers', 'totalCustomers', 'totalReceivable', 'bookers'));
     }
@@ -779,6 +797,20 @@ class DistributorPortalController extends Controller
         // ONLY load distributor's own active accounts (Super Admin accounts are NEVER loaded)
         $bankAccounts = \App\Models\Account::where('status', 1)
             ->where('distributor_id', $distributor->id)
+            ->where(function($q) {
+                $q->whereHas('head', function($h) {
+                    $h->where(function($sub) {
+                        $sub->where('type', 'Asset')
+                            ->orWhere('name', 'like', '%Bank%')
+                            ->orWhere('name', 'like', '%Cash%');
+                    })->where('name', 'not like', '%Claim%')
+                      ->where('name', 'not like', '%Expense%');
+                })->orWhere('title', 'like', '%Cash%')
+                  ->orWhere('title', 'like', '%Bank%');
+            })
+            ->where('account_code', 'not like', '%CLAIM%')
+            ->where('title', 'not like', '%Claim%')
+            ->where('title', 'not like', '%Expense%')
             ->orderBy('title')
             ->get();
         $accountHeads = \App\Models\AccountHead::where('status', 1)->get();
@@ -1221,7 +1253,36 @@ class DistributorPortalController extends Controller
         $returnNo = DistributorSalesReturn::generateReturnNo();
         $accounts = Account::where('status', 1)
             ->where('distributor_id', $distributor->id)
+            ->where(function($q) {
+                $q->whereHas('head', function($h) {
+                    $h->where(function($sub) {
+                        $sub->where('type', 'Asset')
+                            ->orWhere('name', 'like', '%Bank%')
+                            ->orWhere('name', 'like', '%Cash%');
+                    })->where('name', 'not like', '%Claim%')
+                      ->where('name', 'not like', '%Expense%');
+                })->orWhere('title', 'like', '%Cash%')
+                  ->orWhere('title', 'like', '%Bank%');
+            })
+            ->where('account_code', 'not like', '%CLAIM%')
+            ->where('title', 'not like', '%Claim%')
+            ->where('title', 'not like', '%Expense%')
+            ->orderBy('head_id', 'desc')
+            ->orderBy('title')
             ->get();
+        if ($accounts->isEmpty()) {
+            $defaultAcc = Account::firstOrCreate([
+                'distributor_id' => $distributor->id,
+                'title'          => 'Cash in Hand',
+            ], [
+                'head_id'        => 2,
+                'account_code'   => 'D' . $distributor->id . '-CASH-101',
+                'type'           => 'Debit',
+                'status'         => 1,
+                'opening_balance'=> 0,
+            ]);
+            $accounts = collect([$defaultAcc]);
+        }
 
         return view('distributor_panel.returns.create', compact('distributor', 'customers', 'selectedSale', 'stocks', 'returnNo', 'accounts'));
     }
@@ -1363,15 +1424,31 @@ class DistributorPortalController extends Controller
 
             // If cash refund was paid to customer directly:
             if ($refundAmount > 0) {
+                // Deduct refund from distributor's selected account
+                $accToDeduct = null;
+                if (!empty($request->account_id)) {
+                    $accToDeduct = Account::where('distributor_id', $distributor->id)->find($request->account_id);
+                }
+                if (!$accToDeduct) {
+                    $accToDeduct = Account::where('distributor_id', $distributor->id)->first();
+                }
+
+                if ($accToDeduct) {
+                    $accToDeduct->opening_balance = (float)$accToDeduct->opening_balance - $refundAmount;
+                    $accToDeduct->save();
+                    $salesReturn->account_id = $accToDeduct->id;
+                    $salesReturn->save();
+                }
+
                 // If paid in cash, record refund voucher note
                 DistributorCustomerLedger::create([
                     'distributor_customer_id' => $customer->id,
                     'distributor_id'          => $distributor->id,
-                    'account_id'              => $request->account_id ?: null,
+                    'account_id'              => $accToDeduct ? $accToDeduct->id : null,
                     'date'                    => $request->return_date,
                     'type'                    => 'payment_refund',
                     'reference_no'            => 'REF-' . $salesReturn->return_no,
-                    'description'             => "Cash Refund of Rs. " . number_format($refundAmount, 2) . " paid to customer for Return #{$salesReturn->return_no}",
+                    'description'             => "Cash Refund of Rs. " . number_format($refundAmount, 2) . " paid to customer for Return #{$salesReturn->return_no}" . ($accToDeduct ? " (Deducted from: {$accToDeduct->title})" : ""),
                     'debit'                   => 0,
                     'credit'                  => 0,
                     'balance'                 => $newCustBalance,

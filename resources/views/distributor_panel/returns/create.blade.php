@@ -204,19 +204,21 @@
                     </div>
 
                     <!-- Cash Refund Fields (Hidden by default) -->
-                    <div id="cashRefundDiv" style="display: none;" class="p-3 rounded-3 mb-3 bg-light border">
+                    <div id="cashRefundDiv" style="display: none;" class="p-3 rounded-3 mb-3 bg-light border border-danger-subtle">
                         <div class="mb-2">
-                            <label class="form-label fw-semibold small">Cash Refund Amount</label>
-                            <input type="number" step="0.01" min="0" name="refund_amount" id="refundAmountInput" class="form-control" placeholder="0.00">
+                            <label class="form-label fw-semibold small text-danger">Cash Refund Amount (Rs.) *</label>
+                            <input type="number" step="0.01" min="0" name="refund_amount" id="refundAmountInput" class="form-control fw-bold text-danger" placeholder="0.00">
                         </div>
                         <div>
-                            <label class="form-label fw-semibold small">Payment Account</label>
-                            <select name="account_id" class="form-select form-select-sm">
-                                <option value="">-- Cash in Hand --</option>
+                            <label class="form-label fw-semibold small text-dark">Deduct Refund from Account *</label>
+                            <select name="account_id" id="distributorRefundAccountSelect" class="form-select form-select-sm fw-semibold">
                                 @foreach($accounts as $acc)
-                                <option value="{{ $acc->id }}">{{ $acc->title }} ({{ $acc->account_code }})</option>
+                                <option value="{{ $acc->id }}">
+                                    {{ ($acc->head_id == 2 || stripos($acc->title, 'cash') !== false) ? '💵' : '🏦' }} {{ $acc->title }} ({{ $acc->account_code }}) - Bal: Rs. {{ number_format($acc->opening_balance, 2) }}
+                                </option>
                                 @endforeach
                             </select>
+                            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">Refund ki raqam foran is account ke balance se minus ho jayegi.</small>
                         </div>
                     </div>
 
@@ -278,7 +280,7 @@
     </tr>
 </template>
 
-@push('scripts')
+@section('scripts')
 <script>
     function addRow() {
         const tpl = document.getElementById('rowTemplate');
@@ -306,9 +308,18 @@
         const variantId = opt.dataset.variantId || '';
         const variantName = opt.dataset.variantName || 'Standard';
 
-        row.querySelector('.row-price').value = price.toFixed(2);
-        row.querySelector('.row-variant-id').value = variantId;
-        row.querySelector('.row-variant-badge').textContent = variantName;
+        const priceInput = row.querySelector('.row-price');
+        if (priceInput) {
+            priceInput.value = price.toFixed(2);
+        }
+        const variantIdInput = row.querySelector('.row-variant-id');
+        if (variantIdInput) {
+            variantIdInput.value = variantId;
+        }
+        const variantBadge = row.querySelector('.row-variant-badge');
+        if (variantBadge) {
+            variantBadge.textContent = variantName;
+        }
 
         calculateTotals();
     }
@@ -316,14 +327,25 @@
     function calculateTotals() {
         let grandTotal = 0;
         document.querySelectorAll('#returnItemsBody .return-row').forEach(row => {
-            const qty = parseFloat(row.querySelector('.row-qty').value || 0);
-            const price = parseFloat(row.querySelector('.row-price').value || 0);
+            const qtyInput = row.querySelector('.row-qty');
+            const priceInput = row.querySelector('.row-price');
+            const subtotalElem = row.querySelector('.row-subtotal');
+
+            const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+            const price = parseFloat(priceInput ? priceInput.value : 0) || 0;
             const subtotal = qty * price;
-            row.querySelector('.row-subtotal').textContent = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            if (subtotalElem) {
+                subtotalElem.textContent = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
             grandTotal += subtotal;
         });
 
-        document.getElementById('displayTotal').textContent = 'Rs. ' + grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const displayTotalElem = document.getElementById('displayTotal');
+        if (displayTotalElem) {
+            displayTotalElem.textContent = 'Rs. ' + grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
         const refundInput = document.getElementById('refundAmountInput');
         if (refundInput && (!refundInput.value || parseFloat(refundInput.value) > grandTotal)) {
             refundInput.value = grandTotal.toFixed(2);
@@ -333,12 +355,15 @@
     function toggleRefundFields() {
         const mode = document.getElementById('refundModeSelect').value;
         const div = document.getElementById('cashRefundDiv');
-        div.style.display = (mode === 'cash') ? 'block' : 'none';
+        if (div) {
+            div.style.display = (mode === 'cash') ? 'block' : 'none';
+        }
     }
 
     function updateCustomerInfo(select) {
         const opt = select.selectedOptions[0];
         const badge = document.getElementById('customerDueBadge');
+        if (!badge) return;
         if (opt && opt.dataset.balance) {
             const bal = parseFloat(opt.dataset.balance || 0);
             badge.innerHTML = `<span class="badge bg-warning-subtle text-dark border">Outstanding Balance: Rs. ${bal.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>`;
@@ -347,9 +372,22 @@
         }
     }
 
+    // Event delegation on table body so any typing or change immediately recalculates
     document.addEventListener('DOMContentLoaded', () => {
+        const tableBody = document.getElementById('returnItemsBody');
+        if (tableBody) {
+            tableBody.addEventListener('input', (e) => {
+                if (e.target.classList.contains('row-qty') || e.target.classList.contains('row-price')) {
+                    calculateTotals();
+                }
+            });
+            tableBody.addEventListener('change', (e) => {
+                if (e.target.classList.contains('row-qty') || e.target.classList.contains('row-price')) {
+                    calculateTotals();
+                }
+            });
+        }
         calculateTotals();
     });
 </script>
-@endpush
 @endsection

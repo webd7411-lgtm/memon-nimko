@@ -121,14 +121,16 @@ class VoucherController extends Controller
                         $expenseHead = 'Receipts Voucher';
                     }
 
-                    $new = \App\Models\Narration::create([
+                    $new = \App\Models\Narration::firstOrCreate([
                         'expense_head' => $expenseHead,
-                        'narration'    => $manualText,
+                        'narration'    => trim($manualText),
                     ]);
 
-                    $narrationIds[] = (string)$new->id; // store as string → ["7"]
+                    $narrationIds[] = (string)$new->id;
+                } elseif (!empty($narrId) && $narrId !== 'new') {
+                    $narrationIds[] = (string)$narrId;
                 } else {
-                    $narrationIds[] = (string)$narrId; // force string format
+                    $narrationIds[] = '';
                 }
             }
 
@@ -516,14 +518,16 @@ class VoucherController extends Controller
                         $expenseHead = 'Payment voucher';
                     }
 
-                    $new = \App\Models\Narration::create([
+                    $new = \App\Models\Narration::firstOrCreate([
                         'expense_head' => $expenseHead,
-                        'narration'    => $manualText,
+                        'narration'    => trim($manualText),
                     ]);
 
-                    $narrationIds[] = (string)$new->id; // store as string → ["7"]
+                    $narrationIds[] = (string)$new->id;
+                } elseif (!empty($narrId) && $narrId !== 'new') {
+                    $narrationIds[] = (string)$narrId;
                 } else {
-                    $narrationIds[] = (string)$narrId; // force string format
+                    $narrationIds[] = '';
                 }
             }
             $voucherData = [

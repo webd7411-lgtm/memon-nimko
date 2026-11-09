@@ -75,4 +75,13 @@ class ProductVariant extends Model
     {
         return $this->hasMany(ProductRawMaterialBom::class, 'variant_id');
     }
+
+    public function getBranchStock($branchId = null, $warehouseId = null)
+    {
+        $prod = $this->product;
+        if (!$prod) {
+            return (float)($this->stock_qty ?? 0);
+        }
+        return $prod->getBranchStock($this->id, $branchId, $warehouseId);
+    }
 }

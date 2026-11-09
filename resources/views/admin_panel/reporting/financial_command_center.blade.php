@@ -666,18 +666,13 @@
       </div>
       <div class="modal-body p-4">
         <div class="row g-3 mb-4">
-          <div class="col-md-6">
-            <div class="p-3 rounded-3 border bg-light">
-              <span class="text-muted small d-block">Till / Register Counter Cash</span>
-              <h4 class="fw-bold text-success mb-0" id="modalCounterCash">Rs. 0.00</h4>
-              <small class="text-muted">Net sales cash collected minus cash paid out</small>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="p-3 rounded-3 border bg-light">
-              <span class="text-muted small d-block">Chart of Accounts Cash Accounts</span>
-              <h4 class="fw-bold text-primary mb-0" id="modalAccountCash">Rs. 0.00</h4>
-              <small class="text-muted">Opening balance in Cash in Hand heads</small>
+          <div class="col-12">
+            <div class="p-3 rounded-3 border bg-light d-flex justify-content-between align-items-center">
+              <div>
+                <span class="text-muted small d-block">Chart of Accounts — Cash in Hand</span>
+                <small class="text-muted">Total verified cash balance across Cash Accounts</small>
+              </div>
+              <h3 class="fw-bold text-success mb-0" id="modalAccountCash">Rs. 0.00</h3>
             </div>
           </div>
         </div>

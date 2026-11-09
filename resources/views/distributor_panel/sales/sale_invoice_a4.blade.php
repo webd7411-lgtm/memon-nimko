@@ -35,25 +35,51 @@
             margin-bottom: 20px;
         }
 
+        /* Prevent scrollbars from showing on screen or in PDF/print */
+        html, body, .invoice-card, .table-container, .table-responsive, table {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        *::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+
+        .table-container,
+        .table-responsive {
+            overflow: visible !important;
+            overflow-x: visible !important;
+            display: block !important;
+            width: 100% !important;
+        }
+
         .table-invoice {
+            width: 100% !important;
+            table-layout: fixed;
+            border-collapse: collapse;
             border-color: #cbd5e1;
+            margin-bottom: 0 !important;
         }
 
         .table-invoice th {
             background: #f1f5f9;
             text-transform: uppercase;
-            font-size: 0.76rem;
+            font-size: 0.72rem;
             font-weight: 700;
             color: #334155;
-            padding: 7px 10px;
+            padding: 6px 4px;
             border-bottom: 1.5px solid #cbd5e1;
+            white-space: nowrap;
         }
 
         .table-invoice td {
-            padding: 7px 10px;
-            font-size: 0.85rem;
+            padding: 6px 4px;
+            font-size: 0.82rem;
             vertical-align: middle;
             border-color: #e2e8f0;
+            overflow: hidden;
+            word-wrap: break-word;
         }
 
         .table-invoice tbody tr:nth-child(even) {
@@ -75,12 +101,22 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 10mm 12mm 12mm 12mm;
+                margin: 8mm 10mm 10mm 10mm;
             }
-            body {
+            html, body {
                 background: #fff !important;
                 color: #000 !important;
-                font-size: 11pt;
+                font-size: 10pt;
+                overflow: visible !important;
+                scrollbar-width: none !important;
+            }
+            .table-container,
+            .table-responsive {
+                overflow: visible !important;
+                overflow-x: visible !important;
+            }
+            *::-webkit-scrollbar {
+                display: none !important;
             }
             .no-print {
                 display: none !important;
@@ -91,6 +127,11 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 max-width: 100% !important;
+                width: 100% !important;
+            }
+            .table-invoice {
+                width: 100% !important;
+                table-layout: fixed !important;
             }
             .table-invoice th {
                 background: #f1f5f9 !important;
@@ -262,7 +303,7 @@
     </div>
 
     <!-- Items Table -->
-    <div class="table-responsive mb-3">
+    <div class="table-container mb-3">
         <table class="table table-bordered table-invoice align-middle mb-0">
             <thead>
                 <tr>

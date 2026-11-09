@@ -567,7 +567,9 @@ class FinancialCommandCenterController extends Controller
                   ->orWhere('accounts.head_id', 2);
             });
         $cashAccounts = $cashAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.opening_balance')->get();
-        $accountCashOpening = (float) $cashAccounts->sum('opening_balance');
+        $totalCash = max(0, (float) $cashAccounts->sum('opening_balance'));
+        $counterCashBalance = 0;
+        $accountCashOpening = $totalCash;
 
         $salesCashQ = DB::table('sales')->where('created_at', '<=', $endDT);
         if (!$isAll) $salesCashQ->where('branch_id', $branchId);
@@ -639,8 +641,8 @@ class FinancialCommandCenterController extends Controller
         }
         $expenseCashOutflow = (float) $expenseCashQ->sum('total_amount');
 
-        $counterCashBalance = ($totalSalesCash - $totalSalesReturnCash + $custCashInflow + $distCashInflow) - ($vendCashOutflow + $expenseCashOutflow);
-        $totalCash = max(0, $accountCashOpening + $counterCashBalance);
+        $totalCash = max(0, (float) $cashAccounts->sum('opening_balance'));
+        $counterCashBalance = 0;
 
         $cashAccountsDetailed = [];
         foreach ($cashAccounts as $ca) {
@@ -711,200 +713,66 @@ class FinancialCommandCenterController extends Controller
         $totalBank = max(0, $totalBank);
         $cashAndBank = $totalCash + $totalBank;
 
-        // 3. INVENTORY VALUE (MATCHING ITEM STOCK REPORT & BALANCE SHEET VALUATION)
-        // Pre-compute latest purchase prices & BOM production costs
-        $latestPurchasePrices = DB::table('purchase_items')
-            ->select('product_id', 'variant_id', 'price')
-            ->where('price', '>', 0)
-            ->orderBy('id', 'desc')
-            ->get()
-            ->groupBy(function($item) {
-                return $item->product_id . '_' . ($item->variant_id ?? 0);
-            })
-            ->map(function($group) {
-                return (float)$group->first()->price;
-            })
-            ->toArray();
+        // 3. INVENTORY VALUE (EXACT RECONCILIATION WITH ITEM STOCK REPORT & BALANCE SHEET)
+        $stockReq = new Request([
+            'item_type'  => 'all',
+            'start_date' => date('Y-m-01', strtotime($asOfDate)),
+            'end_date'   => $asOfDate,
+            'start_time' => '00:00:00',
+            'end_time'   => '23:59:59',
+            'branch_id'  => $branchId,
+        ]);
 
-        // BOM Recipe cost mapping (Cost of goods manufactured from raw materials)
-        $bomProductCostMap = [];
-        try {
-            $allProducts = Product::with(['bom.rawMaterial', 'bom.ingredientProduct', 'variants', 'unit'])->get();
-            foreach ($allProducts as $pObj) {
-                $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
-                $pBoms = $pObj->bom ?? collect();
-                if ($pBoms->isNotEmpty()) {
-                    $baseBom = $pBoms->whereNull('variant_id');
-                    $baseCost = 0;
-                    foreach ($baseBom as $bItem) {
-                        if ($bItem->rawMaterial) {
-                            $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                            $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                            if ($factor <= 0) $factor = 1;
-                            $baseCost += ((float)$bItem->qty * ($rmCost / $factor));
-                        } elseif ($bItem->ingredientProduct) {
-                            $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                            $baseCost += ((float)$bItem->qty * $ingCost);
-                        }
-                    }
-                    if ($baseCost > 0) {
-                        $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
-                    }
+        $reportingCtrl = app(\App\Http\Controllers\ReportingController::class);
+        $stockResponse = $reportingCtrl->fetchItemStock($stockReq);
+        $stockData = $stockResponse->getData(true);
 
-                    foreach ($pObj->variants as $vObj) {
-                        $vBom = $pBoms->where('variant_id', $vObj->id);
-                        if ($vBom->isNotEmpty()) {
-                            $vCost = 0;
-                            foreach ($vBom as $bItem) {
-                                if ($bItem->rawMaterial) {
-                                    $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                                    $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                                    if ($factor <= 0) $factor = 1;
-                                    $vCost += ((float)$bItem->qty * ($rmCost / $factor));
-                                } elseif ($bItem->ingredientProduct) {
-                                    $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                                    $vCost += ((float)$bItem->qty * $ingCost);
-                                }
-                            }
-                            if ($vCost > 0) {
-                                $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
-                            }
-                        } elseif ($baseCost > 0) {
-                            if ($isObjKg) {
-                                $sizeVal = (float)$vObj->size_value;
-                                if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
-                                    $sizeVal /= 1000;
-                                }
-                                $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
-                            } else {
-                                $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            $bomProductCostMap = [];
-        }
+        $finishedGoodsValue = (float)($stockData['fg_value'] ?? 0);
+        $rawMaterialValue   = (float)($stockData['rm_value'] ?? 0);
+        $totalInventoryValue = (float)($stockData['total_value'] ?? ($finishedGoodsValue + $rawMaterialValue));
 
-        // Finished Goods physical stocks
-        $stocksQ = DB::table('stocks')
-            ->join('products', 'products.id', '=', 'stocks.product_id')
-            ->leftJoin('product_variants', 'product_variants.id', '=', 'stocks.variant_id')
-            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
-            ->where('stocks.qty', '>', 0);
-        if (!$isAll) $stocksQ->where('stocks.branch_id', $branchId);
-
-        $stocksData = $stocksQ->select(
-            'stocks.product_id',
-            'stocks.variant_id',
-            'stocks.qty',
-            'products.item_name',
-            'products.item_code',
-            'products.price as product_price',
-            'products.wholesale_price as product_wholesale_price',
-            'products.unit_type',
-            'categories.name as category_name',
-            'product_variants.variant_name',
-            'product_variants.size_label',
-            'product_variants.size_value',
-            'product_variants.size_unit',
-            'product_variants.cost_price as variant_cost',
-            'product_variants.wholesale_price as variant_wholesale',
-            'product_variants.price as variant_price'
-        )->get();
-
-        $finishedGoodsValue = 0;
+        // Build finished_items array for the modal
         $finishedItems = [];
-
-        foreach ($stocksData as $stk) {
-            $qty = (float)$stk->qty;
+        foreach (($stockData['data'] ?? []) as $row) {
+            if (($row['item_type'] ?? 'fg') === 'rm') continue;
+            $qty = (float)($row['balance'] ?? 0);
             if ($qty <= 0) continue;
+            $displayQty = !empty($row['is_kg']) ? ($qty / 1000) : $qty;
+            $unitCost = (float)($row['val_price'] ?? 0);
+            $lineVal = (float)($row['row_value'] ?? ($displayQty * $unitCost));
 
-            $isKg = strtolower($stk->unit_type ?? '') === 'kg';
-            $displayQty = $qty;
-
-            // If base product is KG and variant_id is null, stocks.qty is stored in grams -> convert to KG
-            if ($isKg && empty($stk->variant_id)) {
-                $displayQty = $qty / 1000;
-            }
-
-            $vKey = $stk->product_id . '_' . ($stk->variant_id ?? 0);
-            $pKey = $stk->product_id . '_0';
-
-            // Valuation price hierarchy:
-            // 1. BOM recipe manufactured cost
-            // 2. Latest purchase price
-            // 3. Variant or Product cost price
-            // 4. Variant/Product wholesale price or 75% of retail price
-            $unitCost = 0;
-            if (isset($bomProductCostMap[$vKey]) && $bomProductCostMap[$vKey] > 0) {
-                $unitCost = (float)$bomProductCostMap[$vKey];
-            } elseif (isset($bomProductCostMap[$pKey]) && $bomProductCostMap[$pKey] > 0) {
-                $unitCost = (float)$bomProductCostMap[$pKey];
-            } elseif (isset($latestPurchasePrices[$vKey]) && $latestPurchasePrices[$vKey] > 0) {
-                $unitCost = (float)$latestPurchasePrices[$vKey];
-            } elseif (isset($latestPurchasePrices[$pKey]) && $latestPurchasePrices[$pKey] > 0) {
-                $unitCost = (float)$latestPurchasePrices[$pKey];
-            } elseif (!empty($stk->variant_cost) && (float)$stk->variant_cost > 0) {
-                $unitCost = (float)$stk->variant_cost;
-            } elseif (!empty($stk->variant_wholesale) && (float)$stk->variant_wholesale > 0) {
-                $unitCost = (float)$stk->variant_wholesale;
-            } elseif (!empty($stk->variant_price) && (float)$stk->variant_price > 0) {
-                $unitCost = (float)$stk->variant_price;
-            } elseif (!empty($stk->product_wholesale_price) && (float)$stk->product_wholesale_price > 0) {
-                $unitCost = (float)$stk->product_wholesale_price;
-            } else {
-                $unitCost = (float)($stk->product_price ?? 0);
-            }
-
-            $lineVal = $displayQty * $unitCost;
-            $finishedGoodsValue += $lineVal;
-
-            $vLabel = $stk->size_label ?: $stk->variant_name;
             $finishedItems[] = [
-                'name'      => $stk->item_name . ($vLabel ? ' (' . $vLabel . ')' : ''),
-                'code'      => $stk->item_code ?? ('PRD-' . $stk->product_id),
-                'category'  => $stk->category_name ?? 'General',
+                'name'      => $row['item_name'],
+                'code'      => $row['item_code'] ?? '-',
+                'category'  => $row['category'] ?? 'General',
                 'qty'       => round($displayQty, 2),
-                'unit'      => $isKg ? 'KG' : 'PC',
+                'unit'      => $row['unit'] ?? (!empty($row['is_kg']) ? 'KG' : 'PC'),
                 'unit_cost' => round($unitCost, 2),
                 'total_val' => round($lineVal, 2),
             ];
         }
         usort($finishedItems, fn($a, $b) => $b['total_val'] <=> $a['total_val']);
 
-        // Raw Materials Live Stock
-        $rawMaterialValue = 0;
+        // Build raw_items array for the modal
         $rawItems = [];
-        try {
-            $rawMaterials = RawMaterial::orderBy('name')->get();
-            foreach ($rawMaterials as $rm) {
-                $factor = (float) ($rm->conversion_factor ?? 1);
-                if ($factor <= 0) $factor = 1;
-                $sQty   = $isAll ? $rm->totalStock() : $rm->currentStock(null, $branchId);
-                if ($sQty <= 0) continue;
-                $purQty   = $factor > 0 ? ($sQty / $factor) : $sQty;
-                $unitCost = (float) $rm->lastPurchaseCost();
-                $lineVal  = $purQty * $unitCost;
-                $rawMaterialValue += $lineVal;
+        foreach (($stockData['data'] ?? []) as $row) {
+            if (($row['item_type'] ?? '') !== 'rm') continue;
+            $qty = (float)($row['balance'] ?? 0);
+            if ($qty <= 0) continue;
+            $unitCost = (float)($row['val_price'] ?? 0);
+            $lineVal = (float)($row['row_value'] ?? ($qty * $unitCost));
 
-                $rawItems[] = [
-                    'id'        => $rm->id,
-                    'name'      => $rm->name,
-                    'code'      => $rm->material_code ?? ('RM-' . str_pad($rm->id, 3, '0', STR_PAD_LEFT)),
-                    'qty'       => round($purQty, 2),
-                    'unit'      => $rm->unit ?? 'Unit',
-                    'unit_cost' => round($unitCost, 2),
-                    'total_val' => round($lineVal, 2),
-                ];
-            }
-            usort($rawItems, fn($a, $b) => $b['total_val'] <=> $a['total_val']);
-        } catch (\Throwable $e) {
-            $rawMaterialValue = 0;
+            $rawItems[] = [
+                'id'        => $row['product_id'] ?? 0,
+                'name'      => $row['item_name'],
+                'code'      => $row['item_code'] ?? '-',
+                'qty'       => round($qty, 2),
+                'unit'      => $row['unit'] ?? 'Unit',
+                'unit_cost' => round($unitCost, 2),
+                'total_val' => round($lineVal, 2),
+            ];
         }
-
-        $totalInventoryValue = $finishedGoodsValue + $rawMaterialValue;
+        usort($rawItems, fn($a, $b) => $b['total_val'] <=> $a['total_val']);
 
         // 4. ACCOUNTS RECEIVABLE (Direct Customers + Distributors + Market Retail Shops)
         $custRecQ = DB::table('customers');

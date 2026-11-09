@@ -981,6 +981,7 @@
         <input type="hidden" name="total_extra_cost" id="inputTotalExtraCost" value="0">
         <input type="hidden" name="total_net" id="inputTotalNet" value="0">
         <input type="hidden" name="cash" id="inputCash" value="0">
+        <input type="hidden" name="cash_account_id" id="inputCashAccountId" value="">
         <input type="hidden" name="card" id="inputCard" value="0">
         <input type="hidden" name="card_account_id" id="inputCardAccountId" value="">
         <input type="hidden" name="change" id="inputChange" value="0">
@@ -1247,6 +1248,9 @@
                         <div class="ss-pm-row" data-index="0">
                             <select class="ss-pm-select pm-account-select" name="payment_account[]">
                                 @foreach($bankAccounts as $acc)
+                                    @if(stripos($acc->account_code, 'CLAIM') !== false || stripos($acc->title, 'claim') !== false || stripos($acc->title, 'expense') !== false || stripos($acc->title, 'damage') !== false || stripos($acc->title, 'freight') !== false || stripos($acc->title, 'discount') !== false || ($acc->head && $acc->head->type === 'Expense'))
+                                        @continue
+                                    @endif
                                     <option value="{{ $acc->id }}" 
                                             data-code="{{ $acc->account_code }}"
                                             data-is-cash="{{ ($acc->account_code === 'ACC-CASH-01' || ($acc->head && stripos($acc->head->name, 'cash') !== false) || stripos($acc->title, 'cash') !== false) ? '1' : '0' }}"
@@ -1912,6 +1916,7 @@ $(document).ready(function() {
 
         let totalPaid = 0;
         let cashPaid = 0;
+        let cashAccId = '';
         let cardPaid = 0;
         let cardAccId = '';
 
@@ -1924,6 +1929,9 @@ $(document).ready(function() {
 
             if (isCash) {
                 cashPaid += amt;
+                if (!cashAccId && accType && accType !== 'cash') {
+                    cashAccId = accType;
+                }
             } else {
                 cardPaid += amt;
                 cardAccId = accType;
@@ -1931,6 +1939,7 @@ $(document).ready(function() {
         });
 
         $('#inputCash').val(cashPaid.toFixed(2));
+        $('#inputCashAccountId').val(cashAccId);
         $('#inputCard').val(cardPaid.toFixed(2));
         $('#inputCardAccountId').val(cardAccId);
 
@@ -1968,6 +1977,9 @@ $(document).ready(function() {
 
         let bankOptions = '';
         @foreach($bankAccounts as $acc)
+            @if(stripos($acc->account_code, 'CLAIM') !== false || stripos($acc->title, 'claim') !== false || stripos($acc->title, 'expense') !== false || stripos($acc->title, 'damage') !== false || stripos($acc->title, 'freight') !== false || stripos($acc->title, 'discount') !== false || ($acc->head && $acc->head->type === 'Expense'))
+                @continue
+            @endif
             bankOptions += `<option value="{{ $acc->id }}" data-code="{{ $acc->account_code }}" data-is-cash="{{ ($acc->account_code === 'ACC-CASH-01' || ($acc->head && stripos($acc->head->name, 'cash') !== false) || stripos($acc->title, 'cash') !== false) ? '1' : '0' }}">{{ addslashes($acc->title) }}</option>`;
         @endforeach
 
@@ -2516,19 +2528,40 @@ $(document).ready(function() {
         const balance = parseFloat($selected.data('balance') || 0);
 
         if (!val || val === 'Walk-in Customer' || type === 'walkin') {
-            $badge.attr('class', 'badge bg-light text-secondary border').html('<i class="fas fa-user me-1"></i> Walk-in');
+            $badge.attr('class', 'badge bg-light text-secondary border')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                  .html('<i class="fas fa-user me-1"></i> Walk-in');
         } else if (type === 'order_booker') {
-            $badge.attr('class', 'badge bg-warning text-dark border-0 fw-bold').html('<i class="fas fa-motorcycle me-1"></i> Order Booker' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
+            $badge.attr('class', 'badge bg-warning text-dark border-0 fw-bold')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                  .html('<i class="fas fa-motorcycle me-1"></i> Order Booker' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
         } else if (type === 'distributor') {
-            $badge.attr('class', 'badge bg-primary text-white border-0 fw-bold').html('<i class="fas fa-truck me-1"></i> Distributor' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
-        } else if (type === 'distributor_customer') {
-            $badge.attr('class', 'badge bg-info text-dark border-0 fw-bold').html('<i class="fas fa-store me-1"></i> Retail Shop' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
+            $badge.attr('class', 'badge bg-primary text-white border-0 fw-bold')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                  .html('<i class="fas fa-truck me-1"></i> Distributor' + (balance > 0 ? ` (Due: Rs. ${balance.toLocaleString()})` : ''));
+        } else if (type === 'distributor_customer' || type === 'retailer') {
+            const dueText = balance > 0 
+                ? ` (Due: Rs. ${balance.toLocaleString()})` 
+                : (balance < 0 ? ` (Adv: Rs. ${Math.abs(balance).toLocaleString()})` : '');
+            $badge.attr('class', 'badge border-0 fw-bold text-white')
+                  .removeAttr('style')
+                  .attr('style', 'font-size: 10px; padding: 3px 8px; background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important; color: #ffffff !important; box-shadow: 0 2px 6px rgba(15, 118, 110, 0.25);')
+                  .html('<i class="fas fa-store me-1"></i> Retail Shop' + dueText);
         } else if (type === 'customer') {
             const creditAllowed = $selected.data('credit') == '1';
             if (creditAllowed) {
-                $badge.attr('class', 'badge bg-success text-white border-0 fw-bold').html('<i class="fas fa-check-circle me-1"></i> Credit Customer');
+                $badge.attr('class', 'badge bg-success text-white border-0 fw-bold')
+                      .removeAttr('style')
+                      .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                      .html('<i class="fas fa-check-circle me-1"></i> Credit Customer');
             } else {
-                $badge.attr('class', 'badge bg-secondary text-white border-0').html('<i class="fas fa-user-tag me-1"></i> Regular Customer');
+                $badge.attr('class', 'badge bg-secondary text-white border-0')
+                      .removeAttr('style')
+                      .attr('style', 'font-size: 10px; padding: 2px 6px;')
+                      .html('<i class="fas fa-user-tag me-1"></i> Regular Customer');
             }
         }
     }
@@ -2915,6 +2948,9 @@ $(document).ready(function() {
 
         let defaultOptionsHtml = '';
         @foreach($bankAccounts as $acc)
+            @if(stripos($acc->account_code, 'CLAIM') !== false || stripos($acc->title, 'claim') !== false || stripos($acc->title, 'expense') !== false || stripos($acc->title, 'damage') !== false || stripos($acc->title, 'freight') !== false || stripos($acc->title, 'discount') !== false || ($acc->head && $acc->head->type === 'Expense'))
+                @continue
+            @endif
             defaultOptionsHtml += `<option value="{{ $acc->id }}" data-code="{{ $acc->account_code }}" data-is-cash="{{ ($acc->account_code === 'ACC-CASH-01' || ($acc->head && stripos($acc->head->name, 'cash') !== false) || stripos($acc->title, 'cash') !== false) ? '1' : '0' }}" {{ ($acc->account_code === 'ACC-CASH-01' || stripos($acc->title, 'cash counter') !== false) ? 'selected' : '' }}>{{ addslashes($acc->title) }}</option>`;
         @endforeach
 

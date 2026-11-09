@@ -644,7 +644,7 @@ table.pvf-table tfoot th {
 
                 {{-- Header Details --}}
                 <div class="pvf-section-title">
-                    <i class="bi bi-info-circle-fill text-danger"></i> Voucher Primary & Source Details
+                    <i class="bi bi-info-circle-fill text-danger"></i> Voucher Primary Details
                 </div>
 
                 <div class="row g-3 mb-4">
@@ -667,23 +667,34 @@ table.pvf-table tfoot th {
                     </div>
 
                     <div class="col-12 col-sm-6 col-md-3">
-                        <label class="pvf-label">Disbursement Account Head</label>
-                        <select name="row_account_head[]" class="pvf-input rowAccountHead" required>
-                            <option value="">Select Account Head</option>
+                        <label class="pvf-label">Payment Type</label>
+                        <select name="vendor_type" class="pvf-input" required>
+                            <option value="">Select Payment Type</option>
                             @foreach($AccountHeads as $head)
                             <option value="{{ $head->id }}">{{ $head->name }}</option>
                             @endforeach
+                            <option value="vendor">Vendor</option>
+                            <option value="customer">Customer</option>
+                            <option value="distributor">Distributor</option>
                         </select>
                     </div>
 
                     <div class="col-12 col-sm-6 col-md-3">
-                        <label class="pvf-label">Disbursement Account (Cash/Bank)</label>
-                        <select name="row_account_id[]" class="pvf-input rowAccountSub" required>
-                            <option value="">Select Account</option>
+                        <label class="pvf-label">Party / Account Title</label>
+                        <select name="vendor_id" class="pvf-input" required>
+                            <option disabled selected>Select Type First</option>
                         </select>
                     </div>
 
-                    <div class="col-12">
+                    <div class="col-12 col-sm-6 col-md-3">
+                        <label class="pvf-label">Phone / Account Code</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-telephone"></i></span>
+                            <input type="text" name="tel" id="tel" class="pvf-input border-start-0" readonly placeholder="Auto-populated">
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-md-9">
                         <label class="pvf-label">General Remarks / Notes</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-chat-left-text"></i></span>
@@ -695,7 +706,7 @@ table.pvf-table tfoot th {
                 {{-- Line Items Table --}}
                 <div class="pvf-section-title d-flex justify-content-between align-items-center">
                     <div>
-                        <i class="bi bi-list-check text-danger"></i> Beneficiary Parties & Amounts
+                        <i class="bi bi-list-check text-danger"></i> Disbursement Accounts & Amounts
                     </div>
                     <button type="button" class="pvf-btn-add-row" id="btnAddRow">
                         <i class="bi bi-plus-circle-fill"></i> Add Line Row
@@ -711,57 +722,36 @@ table.pvf-table tfoot th {
                     <table class="table pvf-table align-middle" id="voucherTable">
                         <thead>
                             <tr>
-                                <th style="width:20%;">Narration / Detail</th>
-                                <th style="width:12%;">Reference#</th>
-                                <th style="width:14%;">Party Type</th>
-                                <th style="width:20%;">Beneficiary Party</th>
-                                <th style="width:12%;">Phone/Code</th>
-                                <th style="width:8%;">Discount</th>
-                                <th style="width:12%;" class="text-end">Amount (PKR)</th>
+                                <th style="width:25%;">Narration / Detail</th>
+                                <th style="width:14%;">Reference#</th>
+                                <th style="width:18%;">Account Head</th>
+                                <th style="width:20%;">Disbursement Account</th>
+                                <th style="width:10%;">Discount</th>
+                                <th style="width:13%;" class="text-end">Amount (PKR)</th>
                                 <th style="width:50px;" class="text-center"><i class="bi bi-trash"></i></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td data-label="Narration / Detail">
-                                    <div class="narration-wrapper">
-                                        <input type="hidden" name="narration_text[]" class="narrationTextHidden">
-                                        <select name="narration_id[]" class="pvf-input narrationSelect">
-                                            <option value="">-- Select Detail --</option>
-                                            <option value="new" style="font-weight: 700; color: #dc2626;">➕ Type New Detail / Manual</option>
-                                            @foreach($narrations as $id => $name)
-                                            <option value="{{ $id }}">{{ $name }}</option>
-                                            @endforeach
-                                        </select>
-                                        <div class="narrationInputWrap mt-1" style="display:none;">
-                                            <div class="input-group">
-                                                <input type="text" class="pvf-input narrationInput" placeholder="Type new detail...">
-                                                <button type="button" class="btn btn-sm btn-outline-danger btnCancelNewNarr" title="Back to dropdown"><i class="bi bi-x-lg"></i></button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <input type="hidden" name="narration_id[]" value="new">
+                                    <input type="text" name="narration_text[]" class="pvf-input narrationInput" placeholder="Enter narration / detail..." list="paymentNarrationSuggestions" autocomplete="off">
                                 </td>
                                 <td data-label="Reference #">
                                     <input name="reference_no[]" type="text" class="pvf-input" placeholder="Ref#">
                                 </td>
-                                <td data-label="Party Type">
-                                    <select name="vendor_type" class="pvf-input vendorTypeSelect" required>
-                                        <option value="">Select Type</option>
+                                <td data-label="Account Head">
+                                    <select name="row_account_head[]" class="pvf-input rowAccountHead" required>
+                                        <option value="">Select Head</option>
                                         @foreach($AccountHeads as $head)
                                         <option value="{{ $head->id }}">{{ $head->name }}</option>
                                         @endforeach
-                                        <option value="vendor">Vendor</option>
-                                        <option value="customer">Customer</option>
-                                        <option value="distributor">Distributor</option>
                                     </select>
                                 </td>
-                                <td data-label="Beneficiary Party">
-                                    <select name="vendor_id" class="pvf-input vendorIdSelect" required>
-                                        <option disabled selected>Select Type First</option>
+                                <td data-label="Disbursement Account">
+                                    <select name="row_account_id[]" class="pvf-input rowAccountSub" required>
+                                        <option value="">Select Account</option>
                                     </select>
-                                </td>
-                                <td data-label="Phone / Code">
-                                    <input type="text" name="tel" class="pvf-input telInput" readonly placeholder="Code">
                                 </td>
                                 <td data-label="Discount">
                                     <input name="discount_value[]" type="number" step="0.01" class="pvf-input text-end discountValue" value="0">
@@ -805,6 +795,12 @@ table.pvf-table tfoot th {
                     </div>
                 </div>
 
+                <datalist id="paymentNarrationSuggestions">
+                    @foreach($narrations as $id => $name)
+                    <option value="{{ $name }}"></option>
+                    @endforeach
+                </datalist>
+
             </form>
         </div>
 
@@ -815,40 +811,14 @@ table.pvf-table tfoot th {
 
 @section('scripts')
 <script>
-    // Narration toggle for custom text
-    $(document).on('change', '.narrationSelect', function() {
-        let $cell = $(this).closest('td');
-        let $wrap = $cell.find('.narrationInputWrap');
-        let $input = $wrap.find('.narrationInput');
-        let $hidden = $cell.find('.narrationTextHidden');
-
-        if ($(this).val() === 'new') {
-            $wrap.show();
-            $input.focus();
-        } else {
-            $wrap.hide();
-            $input.val('');
-            $hidden.val('');
-        }
-    });
-
-    $(document).on('input', '.narrationInput', function() {
-        $(this).closest('td').find('.narrationTextHidden').val($(this).val());
-    });
-
-    $(document).on('click', '.btnCancelNewNarr', function() {
-        let $cell = $(this).closest('td');
-        $cell.find('.narrationSelect').val('').trigger('change');
-    });
-
-    // Party Type change -> fetch parties for that row
-    $(document).on('change', '.vendorTypeSelect', function() {
+    // Party Type change -> fetch parties
+    $(document).on('change', 'select[name="vendor_type"]', function() {
         let type = $(this).val();
-        let $row = $(this).closest('tr');
-        let $vendorSelect = $row.find('.vendorIdSelect');
-        let $telInput = $row.find('.telInput');
+        let $vendorSelect = $('select[name="vendor_id"]');
 
-        $telInput.val('');
+        $('input[name="tel"]').val('');
+        $('#remarks').val('');
+
         $vendorSelect.empty().append('<option disabled selected>Loading...</option>');
 
         if (type === 'vendor' || type === 'customer' || type === 'distributor') {
@@ -873,25 +843,23 @@ table.pvf-table tfoot th {
         }
     });
 
-    $(document).on('change', '.vendorIdSelect', function() {
+    $(document).on('change', 'select[name="vendor_id"]', function() {
         let $selected = $(this).find(':selected');
         let id = $selected.val();
-        let $row = $(this).closest('tr');
-        let type = $row.find('.vendorTypeSelect').val();
-        let $telInput = $row.find('.telInput');
+        let type = $('select[name="vendor_type"]').val();
 
         if (!id) return;
 
         let accountCode = $selected.data('code');
         if (accountCode) {
-            $telInput.val(accountCode);
+            $('input[name="tel"]').val(accountCode);
             return;
         }
 
         if (type) {
             type = type.toLowerCase();
             $.get('{{ route("customers.show", ["id" => "__ID__"]) }}'.replace('__ID__', id) + '?type=' + type, function(d) {
-                $telInput.val(d.mobile || '');
+                $('input[name="tel"]').val(d.mobile || '');
                 if (d.remarks && !$('#remarks').val()) {
                     $('#remarks').val(d.remarks);
                 }
@@ -899,10 +867,10 @@ table.pvf-table tfoot th {
         }
     });
 
-    // Top Header Account Head -> Sub Accounts
+    // Row Account Head -> Sub Accounts
     $(document).on('change', '.rowAccountHead', function() {
         let headId = $(this).val();
-        let $subSelect = $('.rowAccountSub');
+        let $subSelect = $(this).closest('tr').find('.rowAccountSub');
 
         if (!headId) {
             $subSelect.html('<option value="">Select Account</option>');
@@ -939,41 +907,23 @@ table.pvf-table tfoot th {
         let newRow = `
         <tr>
             <td data-label="Narration / Detail">
-                <div class="narration-wrapper">
-                    <input type="hidden" name="narration_text[]" class="narrationTextHidden">
-                    <select name="narration_id[]" class="pvf-input narrationSelect">
-                        <option value="">-- Select Detail --</option>
-                        <option value="new" style="font-weight: 700; color: #dc2626;">➕ Type New Detail / Manual</option>
-                        @foreach($narrations as $id => $name)
-                        <option value="{{ $id }}">{{ $name }}</option>
-                        @endforeach
-                    </select>
-                    <div class="narrationInputWrap mt-1" style="display:none;">
-                        <div class="input-group">
-                            <input type="text" class="pvf-input narrationInput" placeholder="Type new detail...">
-                            <button type="button" class="btn btn-sm btn-outline-danger btnCancelNewNarr" title="Back to dropdown"><i class="bi bi-x-lg"></i></button>
-                        </div>
-                    </div>
-                </div>
+                <input type="hidden" name="narration_id[]" value="new">
+                <input type="text" name="narration_text[]" class="pvf-input narrationInput" placeholder="Enter narration / detail..." list="paymentNarrationSuggestions" autocomplete="off">
             </td>
             <td data-label="Reference #"><input name="reference_no[]" type="text" class="pvf-input" placeholder="Ref#"></td>
-            <td data-label="Party Type">
-                <select name="vendor_type" class="pvf-input vendorTypeSelect" required>
-                    <option value="">Select Type</option>
+            <td data-label="Account Head">
+                <select name="row_account_head[]" class="pvf-input rowAccountHead" required>
+                    <option value="">Select Head</option>
                     @foreach($AccountHeads as $head)
-                    <option value="{{ $head->id }}">{{ $head->name }}</option>
+                        <option value="{{ $head->id }}">{{ $head->name }}</option>
                     @endforeach
-                    <option value="vendor">Vendor</option>
-                    <option value="customer">Customer</option>
-                    <option value="distributor">Distributor</option>
                 </select>
             </td>
-            <td data-label="Beneficiary Party">
-                <select name="vendor_id" class="pvf-input vendorIdSelect" required>
-                    <option disabled selected>Select Type First</option>
+            <td data-label="Disbursement Account">
+                <select name="row_account_id[]" class="pvf-input rowAccountSub" required>
+                    <option value="">Select Account</option>
                 </select>
             </td>
-            <td data-label="Phone / Code"><input type="text" name="tel" class="pvf-input telInput" readonly placeholder="Code"></td>
             <td data-label="Discount"><input name="discount_value[]" type="number" step="0.01" class="pvf-input text-end discountValue" value="0"></td>
             <td data-label="Amount (PKR)"><input name="amount[]" type="number" step="0.01" class="pvf-input text-end fw-bold text-danger amount" placeholder="0.00" required></td>
             <td class="text-center" data-label="Action">
