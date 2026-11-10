@@ -1384,11 +1384,11 @@ class ReportingController extends Controller
                         'unit'               => $m->unit ?? 'Unit',
                         'consumption_unit'   => $m->consumption_unit ?? 'Unit',
                         'conversion_factor'  => $factor,
-                        'initial_stock'      => round($sStart / $factor, 2),
+                        'initial_stock'      => ($factor > 0) ? round($sStart / $factor, 4) : $sStart,
                         'produced'           => 0,
-                        'prod_usage'         => round($uPeriod / $factor, 2), // Used in production
-                        'purchased'          => round($pPeriodPur, 2),
-                        'purchase_return'    => round($rPeriodPur, 2),
+                        'prod_usage'         => ($factor > 0) ? round($uPeriod / $factor, 4) : $uPeriod, // Used in production
+                        'purchased'          => round($pPeriodPur, 4),
+                        'purchase_return'    => round($rPeriodPur, 4),
                         'transfer'           => 0,
                         'transfer_in'        => 0,
                         'adj_increase'       => 0,
@@ -1397,7 +1397,7 @@ class ReportingController extends Controller
                         'trade_offer'        => 0,
                         'sale_return'        => 0,
                         'trade_offer_return' => 0,
-                        'balance'            => round($sEnd / $factor, 2),
+                        'balance'            => ($factor > 0) ? round($sEnd / $factor, 4) : $sEnd,
                         'val_price'          => $purPrice,
                         'row_value'          => round(($sEnd / $factor) * $purPrice, 2),
                     ];
@@ -2187,6 +2187,15 @@ class ReportingController extends Controller
 
         $opening = $initial + $prevSales - $prevPayments + $addBackReturns;
 
+        // 5. Prior Payment Vouchers (Payment Out to customer - Debit / increases balance)
+        $prevPayVouchers = (float) DB::table('payment_vouchers')
+            ->where('type', 'customer')
+            ->where('party_id', $customerId)
+            ->where('receipt_date', '<', $start)
+            ->sum('total_amount');
+
+        $opening += $prevPayVouchers;
+
         // ---------------- FETCH ALL SALE RETURNS FIRST ----------------
         $allSaleReturns = DB::table('sales_returns')
             ->where('customer', $customerId)
@@ -2257,19 +2266,38 @@ class ReportingController extends Controller
                 ];
             });
 
+        // ---------------- PAYMENT VOUCHERS (Payment Out to Customer - Debit) ----------------
+        $paymentOuts = DB::table('payment_vouchers')
+            ->where('type', 'customer')
+            ->where('party_id', $customerId)
+            ->whereBetween('receipt_date', [$start, substr($end, 0, 10)])
+            ->get()
+            ->map(function ($pv) {
+                return [
+                    'date'        => ($pv->receipt_date ?? substr($pv->created_at, 0, 10)) . ' 12:00:00',
+                    'sort_type'   => 4,
+                    'invoice'     => $pv->pvid,
+                    'reference'   => 'Payment Voucher',
+                    'description' => !empty($pv->remarks) ? 'Payment Out: ' . $pv->remarks : 'Payment Out (Paid to Customer)',
+                    'debit'       => (float)$pv->total_amount,
+                    'credit'      => 0,
+                ];
+            });
+
         // ---------------- MERGE + SORT ----------------
         $transactions = collect()
             ->merge($sales)
             ->merge($saleReturns)
             ->merge($payments)
+            ->merge($paymentOuts)
             ->sort(function ($a, $b) {
                 $dateA = strtotime($a['date']);
                 $dateB = strtotime($b['date']);
                 if ($dateA != $dateB) return $dateA <=> $dateB;
 
-                // Sale → Sale Return → Payment
-                $order = [1 => 1, 3 => 2, 2 => 3];
-                return $order[$a['sort_type']] <=> $order[$b['sort_type']];
+                // Sale (1) -> Sale Return (3) -> Payment In (2) -> Payment Out (4)
+                $order = [1 => 1, 3 => 2, 2 => 3, 4 => 4];
+                return ($order[$a['sort_type']] ?? 5) <=> ($order[$b['sort_type']] ?? 5);
             })
             ->values()
             ->all();
@@ -2554,7 +2582,7 @@ class ReportingController extends Controller
     {
         $selectedDate = $request->get('date', Carbon::today()->toDateString());
         $today = $selectedDate;
-        $startDate = $request->get('start_date', Carbon::today()->subDays(30)->toDateString());
+        $startDate = $request->get('start_date');
         $startTime = $request->start_time ?? '00:00';
         $endTime   = $request->end_time   ?? '23:59';
 
@@ -2579,6 +2607,24 @@ class ReportingController extends Controller
         );
 
         $users = \App\Models\User::orderBy('name')->get();
+
+        // 💵 Strictly load all active Company Cash Accounts (excludes distributors and bank accounts)
+        $companyCashAccounts = \App\Models\Account::whereNull('distributor_id')
+            ->where('status', 1)
+            ->where(function($q) {
+                $q->where('head_id', 2)
+                  ->orWhereHas('head', function($h) {
+                      $h->where('name', 'like', '%Cash%');
+                  })
+                  ->orWhere('title', 'like', '%Cash%');
+            })
+            ->where('account_code', 'not like', '%CLAIM%')
+            ->where('title', 'not like', '%Claim%')
+            ->where('title', 'not like', '%Expense%')
+            ->orderBy('id')
+            ->get();
+
+        $selectedAccountId = $request->get('account_id', 'all');
         if ($canViewAllCashbook) {
             $selectedUserId = $request->get('user_id', 'all');
             if ($selectedUserId !== 'all' && !empty($selectedUserId)) {
@@ -2591,28 +2637,50 @@ class ReportingController extends Controller
             $selectedUserId = (string)($currentUser->id ?? 0);
         }
 
-        /* ================= OPENING BALANCE ================= */
-        $prevSalesQ = Sale::where('created_at', '>=', $startDate . ' 00:00:00')
-            ->where('created_at', '<', $startDT);
-        $prevCustQ = CustomerPayment::where('payment_date', '>=', $startDate)
-            ->where('payment_date', '<', $selectedDate)
+        /* ================= OPENING BALANCE (CUMULATIVE HISTORICAL) ================= */
+        // Calculate true historical opening balance up to startDT (no 30-day cutoff unless explicitly requested)
+        $hasCustomStartDate = $request->filled('start_date');
+        $customStartDT = $hasCustomStartDate ? ($request->get('start_date') . ' 00:00:00') : null;
+        $customStartDate = $hasCustomStartDate ? $request->get('start_date') : null;
+
+        $prevSalesQ = Sale::where('created_at', '<', $startDT);
+        if ($customStartDT) $prevSalesQ->where('created_at', '>=', $customStartDT);
+
+        $prevCustQ = CustomerPayment::where('payment_date', '<', $selectedDate)
             ->where(function($q) {
                 $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
             });
-        $prevVendQ = VendorPayment::where('payment_date', '>=', $startDate)
-            ->where('payment_date', '<', $selectedDate)
+        if ($customStartDate) $prevCustQ->where('payment_date', '>=', $customStartDate);
+
+        $prevReturnsQ = \App\Models\SalesReturn::where('created_at', '<', $startDT);
+        if ($customStartDT) $prevReturnsQ->where('created_at', '>=', $customStartDT);
+
+        $prevVendQ = VendorPayment::where('payment_date', '<', $selectedDate)
             ->where(function($q) {
                 $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
             });
-        $prevExpQ = ExpenseVoucher::where('date', '>=', $startDate)
-            ->where('date', '<', $selectedDate)
+        if ($customStartDate) $prevVendQ->where('payment_date', '>=', $customStartDate);
+
+        $prevExpQ = ExpenseVoucher::where('date', '<', $selectedDate)
             ->where(function($q) {
                 $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', false);
+            })
+            ->where(function($q) {
+                $q->whereNull('remarks')
+                  ->orWhere(function($sub) {
+                      $sub->where('remarks', 'not like', '%Credit note%')
+                          ->where('remarks', 'not like', '%Trade Offer%')
+                          ->where('remarks', 'not like', '%Product Trial%')
+                          ->where('remarks', 'not like', '%Sample%')
+                          ->where('remarks', 'not like', '%Stock Adj%');
+                  });
             });
+        if ($customStartDate) $prevExpQ->where('date', '>=', $customStartDate);
 
         if ($selectedBranchId !== 'all') {
             $prevSalesQ->where('branch_id', $selectedBranchId);
             $prevCustQ->where('branch_id', $selectedBranchId);
+            $prevReturnsQ->where('branch_id', $selectedBranchId);
             $prevVendQ->where('branch_id', $selectedBranchId);
             $prevExpQ->where('branch_id', $selectedBranchId);
         }
@@ -2628,16 +2696,35 @@ class ReportingController extends Controller
         $previousSales = $prevSalesQ->get()->sum(function($s) {
             $paid = floatval($s->cash) + floatval($s->card);
             $net = floatval($s->total_net);
-            // If walkin customer or paid >= net, full net is received
             if ($s->customer === 'Walk-in Customer' || $paid >= $net) {
                 return $net;
             }
             return min($net, $paid);
         });
-        $previousCustomerRecoveries = $prevCustQ->sum('amount');
-        $previousVendorPayments = $prevVendQ->sum('amount');
-        $previousExpenses = $prevExpQ->sum('total_amount');
-        $openingBalance = ($previousSales + $previousCustomerRecoveries) - ($previousVendorPayments + $previousExpenses);
+        $previousCustomerRecoveries = (float)$prevCustQ->sum('amount');
+        $previousReturnsCash = (float)$prevReturnsQ->sum('cash');
+        $previousVendorPayments = (float)$prevVendQ->sum('amount');
+        $previousExpenses = (float)$prevExpQ->sum('total_amount');
+
+        // Cash Accounts opening balance from Chart of Accounts
+        $accountCashOpening = 0;
+        if ($selectedUserId === 'all') {
+            $cashAccountsQ = DB::table('accounts')
+                ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+                ->where('accounts.status', 1)
+                ->whereNull('accounts.distributor_id')
+                ->where(function($q) {
+                    $q->where('account_heads.name', 'like', '%Cash%')
+                      ->orWhere('accounts.title', 'like', '%Cash%')
+                      ->orWhere('accounts.head_id', 2);
+                });
+            if ($selectedAccountId !== 'all' && is_numeric($selectedAccountId)) {
+                $cashAccountsQ->where('accounts.id', $selectedAccountId);
+            }
+            $accountCashOpening = (float)$cashAccountsQ->sum('accounts.opening_balance');
+        }
+
+        $openingBalance = $accountCashOpening + ($previousSales + $previousCustomerRecoveries) - ($previousVendorPayments + $previousExpenses + $previousReturnsCash);
 
         /* ================= TODAY'S DATA (with time filter) ================= */
         $salesQ = Sale::with('user')
@@ -2648,6 +2735,8 @@ class ReportingController extends Controller
             ->where(function($q) {
                 $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
             });
+        $returnsQ = \App\Models\SalesReturn::with('user')
+            ->whereBetween('created_at', [$startDT, $endDT]);
         $vendQ = VendorPayment::with(['vendor', 'user'])
             ->whereDate('payment_date', $selectedDate)
             ->where(function($q) {
@@ -2657,11 +2746,22 @@ class ReportingController extends Controller
             ->whereDate('date', $selectedDate)
             ->where(function($q) {
                 $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', false);
+            })
+            ->where(function($q) {
+                $q->whereNull('remarks')
+                  ->orWhere(function($sub) {
+                      $sub->where('remarks', 'not like', '%Credit note%')
+                          ->where('remarks', 'not like', '%Trade Offer%')
+                          ->where('remarks', 'not like', '%Product Trial%')
+                          ->where('remarks', 'not like', '%Sample%')
+                          ->where('remarks', 'not like', '%Stock Adj%');
+                  });
             });
 
         if ($selectedBranchId !== 'all') {
             $salesQ->where('branch_id', $selectedBranchId);
             $custQ->where('branch_id', $selectedBranchId);
+            $returnsQ->where('branch_id', $selectedBranchId);
             $vendQ->where('branch_id', $selectedBranchId);
             $expQ->where('branch_id', $selectedBranchId);
         }
@@ -2673,8 +2773,16 @@ class ReportingController extends Controller
             $expQ->where('user_id', $selectedUserId);
         }
 
+        if ($selectedAccountId !== 'all' && is_numeric($selectedAccountId)) {
+            $salesQ->where('cash_account_id', $selectedAccountId);
+            $returnsQ->where('cash_account_id', $selectedAccountId);
+            $prevSalesQ->where('cash_account_id', $selectedAccountId);
+            $prevReturnsQ->where('cash_account_id', $selectedAccountId);
+        }
+
         $allSales = $salesQ->get();
         $customerRecoveries = $custQ->get();
+        $todayReturns = $returnsQ->get();
         $vendorPayments = $vendQ->get();
         $expenseVouchers = $expQ->get();
 
@@ -2714,7 +2822,8 @@ class ReportingController extends Controller
         }
         $totalVendorPayments = $vendorPayments->sum('amount');
         $totalExpenses = $expenseVouchers->sum('total_amount');
-        $totalPayments = $totalVendorPayments + $totalExpenses;
+        $todayReturnCash = (float)$todayReturns->sum('cash');
+        $totalPayments = $totalVendorPayments + $totalExpenses + $todayReturnCash;
         $closingBalance = $openingBalance + $totalReceipts - $totalPayments;
 
         /* ================= DETAILED ENTRIES ================= */
@@ -2755,7 +2864,13 @@ class ReportingController extends Controller
             }
             $payments[] = ['title' => 'Expense', 'ref' => $ref, 'amount' => $exp->total_amount];
         }
-
+        foreach ($todayReturns as $ret) {
+            $rCash = floatval($ret->cash);
+            if ($rCash > 0) {
+                $ref = 'Return #' . $ret->id . ($ret->invoice_no ? " (Inv #{$ret->invoice_no})" : '');
+                $payments[] = ['title' => 'Sale Return Refund', 'ref' => $ref, 'amount' => $rCash];
+            }
+        }
         $maxRows = max(count($receipts), count($payments));
 
         return view('admin_panel.reporting.CashBook', compact(
@@ -2768,7 +2883,7 @@ class ReportingController extends Controller
             'vendorPayByMethod', 'totalVendorPayments',
             'totalExpenses', 'allSales', 'customerRecoveries', 'vendorPayments', 'expenseVouchers',
             'branches', 'selectedBranchId',
-            'users', 'selectedUserId', 'canViewAllCashbook'
+            'users', 'selectedUserId', 'canViewAllCashbook', 'companyCashAccounts', 'selectedAccountId'
         ));
     }
 
@@ -3382,7 +3497,65 @@ class ReportingController extends Controller
         )->orderBy('created_at', 'asc')->get();
 
         // Pre-fetch reference dictionaries
-        $products = \App\Models\Product::with(['category_relation', 'variants'])->get()->keyBy('id');
+        $products = \App\Models\Product::with(['category_relation', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->get()->keyBy('id');
+
+        // BOM Recipe Manufactured Cost mapping for Profit & Loss
+        $bomProductCostMap = [];
+        foreach ($products as $pObj) {
+            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
+            $pBoms = $pObj->bom ?? collect();
+
+            if ($pBoms->isNotEmpty()) {
+                $baseBom = $pBoms->whereNull('variant_id');
+                $baseCost = 0;
+                foreach ($baseBom as $bItem) {
+                    if ($bItem->rawMaterial) {
+                        $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
+                        $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
+                        if ($factor <= 0) $factor = 1;
+                        $baseCost += ((float)$bItem->qty * ($rmCost / $factor));
+                    } elseif ($bItem->ingredientProduct) {
+                        $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
+                        $baseCost += ((float)$bItem->qty * $ingCost);
+                    }
+                }
+
+                if ($baseCost > 0) {
+                    $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
+                }
+
+                foreach ($pObj->variants as $vObj) {
+                    $vBom = $pBoms->where('variant_id', $vObj->id);
+                    if ($vBom->isNotEmpty()) {
+                        $vCost = 0;
+                        foreach ($vBom as $bItem) {
+                            if ($bItem->rawMaterial) {
+                                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
+                                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
+                                if ($factor <= 0) $factor = 1;
+                                $vCost += ((float)$bItem->qty * ($rmCost / $factor));
+                            } elseif ($bItem->ingredientProduct) {
+                                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
+                                $vCost += ((float)$bItem->qty * $ingCost);
+                            }
+                        }
+                        if ($vCost > 0) {
+                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
+                        }
+                    } elseif ($baseCost > 0) {
+                        if ($isObjKg) {
+                            $sizeVal = (float)$vObj->size_value;
+                            if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
+                                $sizeVal /= 1000;
+                            }
+                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
+                        } else {
+                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
+                        }
+                    }
+                }
+            }
+        }
         $variantsDict = \App\Models\ProductVariant::all()->keyBy('id');
         $categoriesDict = \App\Models\Category::all()->keyBy('id');
         $customersDict = \App\Models\Customer::all()->keyBy('id');
@@ -3486,16 +3659,33 @@ class ReportingController extends Controller
                     if ($vLabel) $pName .= " ({$vLabel})";
                 }
 
-                // Cost Determination
+                // Cost Determination (BOM Recipe Manufactured Cost -> Purchase Price -> Variant Cost -> Wholesale)
                 $unitCost = 0;
-                if (isset($purchasePriceMap[$pid . '_' . $vid]) && $purchasePriceMap[$pid . '_' . $vid] > 0) {
-                    $unitCost = $purchasePriceMap[$pid . '_' . $vid];
-                } elseif (isset($purchasePriceMap[$pid . '_0']) && $purchasePriceMap[$pid . '_0'] > 0) {
-                    $unitCost = $purchasePriceMap[$pid . '_0'];
+                $vKey = $pid . '_' . $vid;
+                $pKey = $pid . '_0';
+
+                if (isset($bomProductCostMap[$vKey]) && $bomProductCostMap[$vKey] > 0) {
+                    $unitCost = (float)$bomProductCostMap[$vKey];
+                } elseif (isset($bomProductCostMap[$pKey]) && $bomProductCostMap[$pKey] > 0) {
+                    if ($p && ($p->unit_type === 'kg') && $vObj) {
+                        $sVal = (float)$vObj->size_value;
+                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
+                            $sVal /= 1000;
+                        }
+                        $unitCost = (float)$bomProductCostMap[$pKey] * ($sVal > 0 ? $sVal : 1);
+                    } else {
+                        $unitCost = (float)$bomProductCostMap[$pKey];
+                    }
+                } elseif (isset($purchasePriceMap[$vKey]) && $purchasePriceMap[$vKey] > 0) {
+                    $unitCost = $purchasePriceMap[$vKey];
+                } elseif (isset($purchasePriceMap[$pKey]) && $purchasePriceMap[$pKey] > 0) {
+                    $unitCost = $purchasePriceMap[$pKey];
                 } elseif ($vObj && $vObj->cost_price > 0) {
                     $unitCost = (float)$vObj->cost_price;
                 } elseif ($p && ($firstV = $p->variants->first()) && $firstV->cost_price > 0) {
                     $unitCost = (float)$firstV->cost_price;
+                } elseif ($p && (float)$p->wholesale_price > 0) {
+                    $unitCost = (float)$p->wholesale_price;
                 }
 
                 $lineCost = $qty * $unitCost;

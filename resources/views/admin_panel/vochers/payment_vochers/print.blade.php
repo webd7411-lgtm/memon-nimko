@@ -299,7 +299,7 @@
       </tr>
       <tr>
         <td class="label">Balance After</td>
-        <td class="value">{{ rtrim(rtrim(number_format((($previousBalance ?? 0) - ($voucher->total_amount ?? 0)),2),'0'),'.') }}</td>
+        <td class="value">{{ rtrim(rtrim(number_format($balanceAfter ?? (($previousBalance ?? 0) + ($voucher->type === 'customer' ? ($voucher->total_amount ?? 0) : -($voucher->total_amount ?? 0))),2),'0'),'.') }}</td>
       </tr>
     </table>
 

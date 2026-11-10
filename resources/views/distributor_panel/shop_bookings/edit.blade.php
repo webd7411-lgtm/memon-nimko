@@ -13,7 +13,13 @@
     --bk-warning: #f59e0b;
     --bk-border: #cbd5e1;
     --bk-card-bg: #ffffff;
-    --bk-radius: 12px;
+    --bk-radius: 16px;
+}
+
+/* Prevent any horizontal overflow on the entire page */
+html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw;
 }
 
 .bk-container {
@@ -21,6 +27,9 @@
     margin: 0 auto;
     padding: 12px 14px 40px 14px;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Card Styling */
@@ -31,6 +40,8 @@
     padding: 18px 20px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     margin-bottom: 16px;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .bk-card-title {
@@ -49,10 +60,11 @@
 .shop-balance-banner {
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     border: 2px dashed #cbd5e1;
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 14px 18px;
     margin-top: 14px;
     transition: all 0.3s ease;
+    word-break: break-word;
 }
 
 .shop-balance-banner.has-due {
@@ -99,40 +111,296 @@
 }
 
 .stock-tag {
-    font-size: 0.72rem;
-    padding: 2px 7px;
+    font-size: 0.75rem;
+    padding: 4px 10px;
     border-radius: 20px;
     font-weight: 600;
+    display: inline-block;
 }
 
-/* Select2 Enhancements */
-.select2-container .select2-selection--single {
-    height: 42px !important;
-    border: 1.5px solid var(--bk-border) !important;
-    border-radius: 8px !important;
-    padding: 6px 12px !important;
+/* Select2 Enhancements & Mobile Guard */
+.select2-container {
+    width: 100% !important;
+    max-width: 100% !important;
 }
+
+.select2-container .select2-selection--single {
+    height: 44px !important;
+    border: 1.5px solid var(--bk-border) !important;
+    border-radius: 10px !important;
+    padding: 7px 12px !important;
+}
+
 .select2-container--default .select2-selection--single .select2-selection__rendered {
     line-height: 28px !important;
     font-size: 14px !important;
     font-weight: 600 !important;
 }
+
 .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 40px !important;
+    height: 42px !important;
 }
 
-/* Responsive tweaks */
-@media (max-width: 768px) {
-    .bk-container { padding: 8px; }
-    .balance-amount-display { font-size: 1.35rem; }
-    .bk-table { font-size: 0.85rem; }
+.select2-dropdown {
+    max-width: 95vw !important;
+    border-radius: 12px !important;
+    border: 1.5px solid var(--bk-primary) !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12) !important;
+    z-index: 99999 !important;
+}
+
+.select2-search--dropdown .select2-search__field {
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+}
+
+/* Sleek Buttons */
+.btn-premium-add {
+    background-color: #f0fdfa;
+    color: #0f766e;
+    border: 1.5px solid #99f6e4;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-premium-add:hover {
+    background-color: #ccfbf1;
+    color: #115e59;
+    border-color: #5eead4;
+}
+
+/* Premium Compact Submit Button */
+.btn-premium-submit {
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 11px 20px;
+    border-radius: 10px;
+    border: none;
+    letter-spacing: 0.2px;
+    box-shadow: 0 3px 10px rgba(15, 118, 110, 0.22);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    width: 100%;
+}
+
+.btn-premium-submit:hover {
+    background: linear-gradient(135deg, #0d9488 0%, #115e59 100%);
+    box-shadow: 0 4px 14px rgba(15, 118, 110, 0.32);
+    transform: translateY(-1px);
+    color: #ffffff;
+}
+
+.btn-premium-submit:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(15, 118, 110, 0.2);
+}
+
+/* Hide mobile-specific elements on desktop */
+.bk-mobile-row-header,
+.bk-mobile-subtotal-strip,
+.item-mobile-label {
+    display: none !important;
+}
+
+/* =========================================================================
+   MOBILE NATIVE APP EXPERIENCE (< 768px)
+   Balanced, Symmetrical 2-Column Boxes with Zero Horizontal Scroll
+   ========================================================================= */
+@media (max-width: 767.98px) {
+    .bk-container {
+        padding: 8px 10px 40px 10px !important;
+    }
+
+    .bk-card {
+        padding: 14px 14px !important;
+        border-radius: 16px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .bk-card-title {
+        font-size: 0.96rem !important;
+        margin-bottom: 10px !important;
+        padding-bottom: 8px !important;
+    }
+
+    .balance-amount-display {
+        font-size: 1.35rem !important;
+    }
+
+    /* Disable horizontal scroll on table wrapper */
+    .table-responsive {
+        overflow-x: visible !important;
+    }
+
+    /* Convert Table elements to Block / Grid for App-like Box rendering */
+    #bookingTable {
+        display: block !important;
+        width: 100% !important;
+        border: none !important;
+        margin-bottom: 0 !important;
+    }
+
+    #bookingTable thead {
+        display: none !important;
+    }
+
+    #bookingTable tbody {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+
+    /* EACH PRODUCT ROW AS AN ELEVATED, BALANCED CARD / BOX */
+    #bookingTable tr.bk-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px 10px !important;
+        background: #ffffff !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        padding: 12px !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    #bookingTable tr.bk-row:focus-within {
+        border-color: #0f766e !important;
+        box-shadow: 0 4px 14px rgba(15, 118, 110, 0.12) !important;
+    }
+
+    /* Grid Cell 1: Product & Variant spans full width (Row 1) */
+    .bk-td-product {
+        grid-column: 1 / -1 !important;
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+        width: 100% !important;
+    }
+
+    /* Grid Cell 2 & 3: Booking Qty (Left) & Unit Price (Right) (Row 2) */
+    .bk-td-qty {
+        grid-column: 1 / 2 !important;
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .bk-td-price {
+        grid-column: 2 / 3 !important;
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    /* Grid Cell 4 & 5: Trade Offer (Left) & Van Stock (Right) (Row 3) */
+    .bk-td-to {
+        grid-column: 1 / 2 !important;
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .bk-td-stock {
+        grid-column: 2 / 3 !important;
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    /* Grid Cell 6: Subtotal Box spans full width (Row 4) */
+    .bk-td-subtotal {
+        grid-column: 1 / -1 !important;
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .bk-td-action {
+        display: none !important;
+    }
+
+    /* Mobile Row Header */
+    .bk-mobile-row-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-bottom: 8px !important;
+        margin-bottom: 10px !important;
+        border-bottom: 1px dashed #e2e8f0 !important;
+    }
+
+    .bk-stock-box-mobile {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 4px 8px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .bk-mobile-subtotal-strip {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%) !important;
+        border: 1px solid #ccfbf1 !important;
+        border-radius: 10px !important;
+        padding: 8px 12px !important;
+        margin-top: 2px !important;
+    }
+
+    .item-mobile-label {
+        display: block !important;
+        font-size: 0.74rem !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
+        margin-bottom: 4px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .bk-item-badge {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #0f766e;
+        background: #f0fdfa;
+        border: 1px solid #ccfbf1;
+        padding: 3px 9px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .row-qty, .row-price, .row-trade-offer {
+        font-size: 0.92rem !important;
+        border-radius: 8px !important;
+        height: 38px !important;
+    }
 }
 </style>
 
 <div class="bk-container">
 
     {{-- Top Notification Banner --}}
-    <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between p-3 mb-3 rounded-3" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #f59e0b !important;">
+    <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between p-3 mb-3 rounded-4" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #f59e0b !important;">
         <div class="d-flex align-items-center gap-2">
             <i class="fas fa-edit fs-4 text-warning"></i>
             <div>
@@ -140,8 +408,8 @@
                 <small class="text-secondary">Modify items, quantities, trade offers (free scheme), prices, discounts or customer before confirming delivery.</small>
             </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-dark font-monospace px-3 py-2 fs-6">{{ $booking->booking_no }}</span>
+        <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+            <span class="badge bg-dark font-monospace px-3 py-1.5 fs-6">{{ $booking->booking_no }}</span>
             <a href="{{ $isBookerUser ? route('distributor.booker.my_bookings') : route('distributor.shop_bookings.index') }}" class="btn btn-sm btn-outline-dark rounded-pill px-3">
                 <i class="fas fa-arrow-left me-1"></i> Back
             </a>
@@ -149,14 +417,14 @@
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
             <i class="fas fa-check-circle me-1"></i> {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
             <i class="fas fa-exclamation-triangle me-1"></i> {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -178,7 +446,7 @@
                 <span>Step 1: Retail Shop &amp; Order Details</span>
             </div>
 
-            <div class="row g-3 align-items-end">
+            <div class="row g-2 g-md-3 align-items-end">
                 <div class="col-12 col-md-5">
                     <label class="form-label fw-bold text-secondary small mb-1">
                         Retail Shop / Customer <span class="text-danger">*</span>
@@ -189,7 +457,11 @@
                             <option value="{{ $c->id }}" 
                                     {{ $booking->distributor_customer_id == $c->id ? 'selected' : '' }}
                                     data-balance="{{ (float)$c->current_balance }}"
-                                    data-approved-discount="{{ (float)$c->effective_discount }}" data-to-buy="{{ (float)$c->effective_trade_offer_buy_qty }}" data-to-free="{{ (float)$c->effective_trade_offer_free_qty }}" data-tier="{{ $c->tier?->name ?? 'Standard Retailer' }}" data-scheme-label="{{ $c->scheme_label }}"
+                                    data-approved-discount="{{ (float)$c->effective_discount }}" 
+                                    data-to-buy="{{ (float)$c->effective_trade_offer_buy_qty }}" 
+                                    data-to-free="{{ (float)$c->effective_trade_offer_free_qty }}" 
+                                    data-tier="{{ $c->tier?->name ?? 'Standard Retailer' }}" 
+                                    data-scheme-label="{{ $c->scheme_label }}"
                                     data-phone="{{ $c->phone ?: 'N/A' }}"
                                     data-owner="{{ $c->owner_name ?: 'N/A' }}"
                                     data-area="{{ $c->area ?: 'N/A' }}"
@@ -225,22 +497,22 @@
             <div id="shopBalanceBanner" class="shop-balance-banner" style="display: block;">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                             <span class="badge bg-dark font-monospace" id="lblShopArea">{{ $booking->customer->area ?? 'General' }}</span>
                             <h5 class="mb-0 fw-bolder text-dark" id="lblShopName">{{ $booking->customer->shop_name ?? 'Selected Shop' }}</h5>
                         </div>
-                        <div class="small text-muted">
+                        <div class="small text-muted mb-1">
                             <i class="fas fa-user me-1"></i> <span id="lblShopOwner">{{ $booking->customer->owner_name ?? '-' }}</span> &bull; 
                             <i class="fas fa-phone me-1"></i> <span id="lblShopPhone">{{ $booking->customer->phone ?? '-' }}</span>
                         </div>
-                        <div class="mt-1">
-                            <span class="badge bg-success-subtle text-success border border-success-subtle" id="badgeApprovedDiscount">
+                        <div>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" id="badgeApprovedDiscount">
                                 <i class="fas fa-percentage me-1"></i> Approved Discount Limit: <strong id="lblApprovedDiscount">{{ (float)($booking->customer->approved_discount ?? 0) }}</strong>%
                             </span>
                         </div>
                     </div>
 
-                    <div class="text-md-end text-start">
+                    <div class="text-md-end text-start mt-2 mt-md-0">
                         @php
                             $initBal = (float)($booking->customer->current_balance ?? 0);
                             $badgeClass = $initBal > 0 ? 'bg-danger text-white' : ($initBal < 0 ? 'bg-info text-white' : 'bg-success text-white');
@@ -256,14 +528,14 @@
             </div>
         </div>
 
-        {{-- STEP 2: PRODUCT SELECTION & BOOKING ITEMS --}}
+        {{-- STEP 2: PRODUCT SELECTION & BOOKING ITEMS (APP BOXES) --}}
         <div class="bk-card">
-            <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
+            <div class="d-flex align-items-center justify-content-between gap-2 border-bottom pb-2 mb-3">
                 <div class="bk-card-title mb-0 border-0 p-0">
                     <i class="fas fa-boxes-stacked text-teal" style="color: #0f766e;"></i>
                     <span>Step 2: Order Booking Items &amp; Trade Offers</span>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-success fw-bold rounded-pill px-3" id="btnAddRow">
+                <button type="button" class="btn btn-premium-add shadow-xs" id="btnAddRow">
                     <i class="fas fa-plus me-1"></i> Add Another Item
                 </button>
             </div>
@@ -303,12 +575,12 @@
                 <table class="table bk-table align-middle" id="bookingTable">
                     <thead>
                         <tr>
-                            <th style="width: 36%;">Product &amp; Variant</th>
-                            <th style="width: 12%;" class="text-center">Available Stock</th>
+                            <th style="width: 32%;">Product &amp; Variant</th>
+                            <th style="width: 14%;" class="text-center">Available Stock</th>
                             <th style="width: 12%;" class="text-center">Booking Qty</th>
-                            <th style="width: 14%;" class="text-center"><i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)</th>
-                            <th style="width: 12%;" class="text-end">Unit Price</th>
-                            <th style="width: 14%;" class="text-end">Subtotal</th>
+                            <th style="width: 13%;" class="text-end">Unit Price</th>
+                            <th style="width: 13%;" class="text-center"><i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)</th>
+                            <th style="width: 12%;" class="text-end">Subtotal</th>
                             <th style="width: 40px;"></th>
                         </tr>
                     </thead>
@@ -320,32 +592,63 @@
                                 $itemOptionsHtml = generateProductOptions($products, $stockMap, $item->product_id, $item->variant_id);
                             @endphp
                             <tr class="bk-row" data-row="{{ $idx }}">
-                                <td>
+                                <td class="bk-td-product">
+                                    <div class="bk-mobile-row-header">
+                                        <span class="bk-item-badge">
+                                            <i class="fas fa-box-open me-1"></i> Item #<span class="item-index-num">{{ $idx + 1 }}</span>
+                                        </span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 btn-remove-row">
+                                            <i class="fas fa-trash-alt me-1"></i> Remove
+                                        </button>
+                                    </div>
+
+                                    <label class="item-mobile-label">Product &amp; Variant <span class="text-danger">*</span></label>
                                     <select class="form-select form-select-sm select2-product product-selector" name="product_id[]" required>
                                         {!! $itemOptionsHtml !!}
                                     </select>
                                     <input type="hidden" name="variant_id[]" class="row-variant-id" value="{{ $item->variant_id ?? '' }}">
                                 </td>
-                                <td class="text-center">
-                                    @if($availStock > 0)
-                                        <span class="stock-tag bg-success-subtle text-success border border-success-subtle stock-display">{{ $availStock }} in Van</span>
-                                    @else
-                                        <span class="stock-tag bg-warning-subtle text-dark border border-warning-subtle stock-display">0 (Out of Stock)</span>
-                                    @endif
+
+                                <td class="bk-td-stock text-center">
+                                    <label class="item-mobile-label"><i class="fas fa-warehouse text-secondary me-1"></i> Van Stock</label>
+                                    <div class="bk-stock-box-mobile">
+                                        @if($availStock > 0)
+                                            <span class="stock-tag bg-success-subtle text-success border border-success-subtle stock-display">{{ $availStock }} in Van</span>
+                                        @else
+                                            <span class="stock-tag bg-warning-subtle text-dark border border-warning-subtle stock-display">0 (Out of Stock)</span>
+                                        @endif
+                                    </div>
                                 </td>
-                                <td>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="{{ (float)$item->qty }}" required>
+
+                                <td class="bk-td-qty">
+                                    <label class="item-mobile-label">Booking Qty <span class="text-danger">*</span></label>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty py-2" name="qty[]" value="{{ (float)$item->qty }}" required>
                                 </td>
-                                <td>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer" name="trade_offer[]" value="{{ (float)($item->trade_offer ?? 0) }}" placeholder="0" title="Free scheme / Trade offer units">
+
+                                <td class="bk-td-price">
+                                    <label class="item-mobile-label">Unit Price (Rs) <span class="text-danger">*</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text d-md-none small">Rs</span>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price py-2" name="unit_price[]" value="{{ (float)$item->unit_price }}" required>
+                                    </div>
                                 </td>
-                                <td>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="{{ (float)$item->unit_price }}" required>
+
+                                <td class="bk-td-to">
+                                    <label class="item-mobile-label">
+                                        <i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)
+                                    </label>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer py-2" name="trade_offer[]" value="{{ (float)($item->trade_offer ?? 0) }}" placeholder="0" title="Free scheme / Trade offer units">
                                 </td>
-                                <td class="text-end">
-                                    <span class="fw-bold row-subtotal text-dark">Rs {{ number_format($item->subtotal, 2) }}</span>
+
+                                <td class="bk-td-subtotal text-end">
+                                    <div class="bk-mobile-subtotal-strip">
+                                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Item Subtotal:</span>
+                                        <span class="fw-bolder fs-6 row-subtotal text-teal" style="color: #0f766e;">Rs {{ number_format($item->subtotal, 2) }}</span>
+                                    </div>
+                                    <span class="fw-bold row-subtotal text-dark d-none d-md-inline">Rs {{ number_format($item->subtotal, 2) }}</span>
                                 </td>
-                                <td class="text-center">
+
+                                <td class="bk-td-action text-center d-none d-md-table-cell">
                                     <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-remove-row" title="Remove item">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
@@ -353,28 +656,52 @@
                             </tr>
                         @empty
                             <tr class="bk-row" data-row="0">
-                                <td>
+                                <td class="bk-td-product">
+                                    <div class="bk-mobile-row-header">
+                                        <span class="bk-item-badge">
+                                            <i class="fas fa-box-open me-1"></i> Item #<span class="item-index-num">1</span>
+                                        </span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 btn-remove-row">
+                                            <i class="fas fa-trash-alt me-1"></i> Remove
+                                        </button>
+                                    </div>
+                                    <label class="item-mobile-label">Product &amp; Variant <span class="text-danger">*</span></label>
                                     <select class="form-select form-select-sm select2-product product-selector" name="product_id[]" required>
                                         {!! $defaultProductOptionsHtml !!}
                                     </select>
                                     <input type="hidden" name="variant_id[]" class="row-variant-id" value="">
                                 </td>
-                                <td class="text-center">
-                                    <span class="stock-tag bg-light text-secondary border stock-display">-</span>
+                                <td class="bk-td-stock text-center">
+                                    <label class="item-mobile-label"><i class="fas fa-warehouse text-secondary me-1"></i> Van Stock</label>
+                                    <div class="bk-stock-box-mobile">
+                                        <span class="stock-tag bg-light text-secondary border stock-display">-</span>
+                                    </div>
                                 </td>
-                                <td>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
+                                <td class="bk-td-qty">
+                                    <label class="item-mobile-label">Booking Qty <span class="text-danger">*</span></label>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty py-2" name="qty[]" value="1" required>
                                 </td>
-                                <td>
-                                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated & Locked by Company">
+                                <td class="bk-td-price">
+                                    <label class="item-mobile-label">Unit Price (Rs) <span class="text-danger">*</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text d-md-none small">Rs</span>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price py-2" name="unit_price[]" value="0" required>
+                                    </div>
                                 </td>
-                                <td>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>
+                                <td class="bk-td-to">
+                                    <label class="item-mobile-label">
+                                        <i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)
+                                    </label>
+                                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary py-2" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated &amp; Locked by Company">
                                 </td>
-                                <td class="text-end">
-                                    <span class="fw-bold row-subtotal text-dark">Rs 0.00</span>
+                                <td class="bk-td-subtotal text-end">
+                                    <div class="bk-mobile-subtotal-strip">
+                                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Item Subtotal:</span>
+                                        <span class="fw-bolder fs-6 row-subtotal text-teal" style="color: #0f766e;">Rs 0.00</span>
+                                    </div>
+                                    <span class="fw-bold row-subtotal text-dark d-none d-md-inline">Rs 0.00</span>
                                 </td>
-                                <td class="text-center">
+                                <td class="bk-td-action text-center d-none d-md-table-cell">
                                     <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-remove-row" title="Remove item">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
@@ -385,16 +712,80 @@
                 </table>
             </div>
 
-            <div class="mt-2 text-start">
-                <button type="button" class="btn btn-sm btn-light border fw-semibold rounded-pill px-3" id="btnAddRowBottom">
-                    <i class="fas fa-plus-circle text-success me-1"></i> Add Another Row
+            <div class="mt-3 text-start">
+                <button type="button" class="btn btn-sm btn-light border fw-semibold rounded-pill px-3 py-2 w-100 w-sm-auto shadow-xs" id="btnAddRowBottom">
+                    <i class="fas fa-plus-circle text-success me-1"></i> + Add Another Item Box
                 </button>
             </div>
         </div>
 
         {{-- STEP 3: BILL SUMMARY & CONFIRMATION --}}
         <div class="row g-3">
-            <div class="col-12 col-md-7">
+            <div class="col-12 col-md-5 order-1 order-md-2">
+                <div class="bk-card h-100">
+                    <div class="bk-card-title">
+                        <i class="fas fa-calculator text-teal" style="color: #0f766e;"></i>
+                        <span>Booking Total Summary</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-secondary small">Total Products:</span>
+                        <strong id="lblTotalItems">{{ $booking->total_items }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-secondary small">Total Quantity:</span>
+                        <strong id="lblTotalQty">{{ number_format($booking->total_qty, 1) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-secondary small"><i class="fas fa-gift text-success me-1"></i> Trade Offer (Free):</span>
+                        <strong id="lblTotalTradeOffer" class="text-success">0</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-secondary small">Subtotal:</span>
+                        <strong id="lblSubtotal">Rs {{ number_format($booking->subtotal, 2) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <span class="text-secondary small">Order Type:</span>
+                        <span id="lblSummaryOrderType" class="badge {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'bg-primary' : 'bg-success' }} text-white px-2.5 py-1 fw-bold font-monospace">
+                            <i class="fas {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'fa-file-invoice-dollar' : 'fa-money-bill-wave' }} me-1"></i>
+                            {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'Order Credit' : 'Order Cash' }}
+                        </span>
+                    </div>
+
+                    <div class="py-2 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <div>
+                                <span class="text-secondary fw-semibold small">Special Discount:</span>
+                                <small class="text-danger d-block" id="lblDiscountCapNote" style="font-size: 0.72rem;">Max Allowed: {{ (float)($booking->customer->approved_discount ?? 0) }}%</small>
+                            </div>
+                            <div style="width: 140px; max-width: 50%;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Rs</span>
+                                    <input type="number" step="any" min="0" class="form-control text-end fw-bold py-1.5" id="txtDiscount" name="discount" value="{{ (float)$booking->discount }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="discountLimitAlert" class="alert alert-warning py-1.5 px-2 my-2 small" style="display: none; font-size: 0.75rem;"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-3 border-bottom mt-2">
+                        <span class="fs-6 fw-bold text-dark">Net Order Value:</span>
+                        <span class="fs-4 fw-bolder text-teal" id="lblGrandTotal" style="color: #0f766e;">Rs {{ number_format($booking->grand_total, 2) }}</span>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-premium-submit" id="btnSubmitBooking">
+                            <i class="fas fa-save me-1.5"></i> Update &amp; Save Booking
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-7 order-2 order-md-1">
                 <div class="bk-card h-100">
                     <div class="bk-card-title">
                         <i class="fas fa-comment-dots text-teal" style="color: #0f766e;"></i>
@@ -407,73 +798,6 @@
                             <i class="fas fa-info-circle text-primary"></i>
                             <span>Changes made here will update the booked demand order. Stock and customer ledger will only be affected when confirmed for delivery.</span>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-5">
-                <div class="bk-card h-100">
-                    <div class="bk-card-title">
-                        <i class="fas fa-calculator text-teal" style="color: #0f766e;"></i>
-                        <span>Booking Total Summary</span>
-                    </div>
-
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                        <span class="text-secondary">Total Products:</span>
-                        <strong id="lblTotalItems">{{ $booking->total_items }}</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                        <span class="text-secondary">Total Quantity:</span>
-                        <strong id="lblTotalQty">{{ number_format($booking->total_qty, 1) }}</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                        <span class="text-secondary"><i class="fas fa-gift text-success me-1"></i> Trade Offer (Free):</span>
-                        <strong id="lblTotalTradeOffer" class="text-success">0</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                        <span class="text-secondary">Subtotal:</span>
-                        <strong id="lblSubtotal">Rs {{ number_format($booking->subtotal, 2) }}</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <span class="text-secondary">Order Type:</span>
-                        <span id="lblSummaryOrderType" class="badge {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'bg-primary' : 'bg-success' }} text-white px-2.5 py-1 fw-bold font-monospace">
-                            <i class="fas {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'fa-file-invoice-dollar' : 'fa-money-bill-wave' }} me-1"></i>
-                            {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'Order Credit' : 'Order Cash' }}
-                        </span>
-                    </div>
-
-                    <div class="py-2 border-bottom">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="text-secondary fw-semibold">Special Discount:</span>
-                                <small class="text-danger d-block" id="lblDiscountCapNote" style="font-size: 0.72rem;">Max Allowed: 0% (Rs 0.00)</small>
-                            </div>
-                            <div class="w-50">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">Rs</span>
-                                    <input type="number" step="any" min="0" class="form-control text-end fw-bold" id="txtDiscount" name="discount" value="{{ (float)$booking->discount }}">
-                                </div>
-                            </div>
-                        </div>
-                        <div id="discountLimitAlert" class="alert alert-warning py-1 px-2 my-2 small" style="display: none; font-size: 0.75rem;"></div>
-                    </div>
-
-                    <div class="d-flex justify-content-between py-3 border-bottom mt-2">
-                        <span class="fs-5 fw-bold text-dark">Net Order Value:</span>
-                        <span class="fs-4 fw-bolder text-teal" id="lblGrandTotal" style="color: #0f766e;">Rs {{ number_format($booking->grand_total, 2) }}</span>
-                    </div>
-
-                    <div class="mt-3 d-flex flex-column gap-2">
-                        <button type="submit" class="btn btn-warning w-100 py-3 fw-bold rounded-3 shadow-sm fs-5 text-dark" id="btnSubmitBooking" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none;">
-                            <i class="fas fa-save me-1"></i> Update Order Booking
-                        </button>
-                        <a href="{{ $isBookerUser ? route('distributor.booker.my_bookings') : route('distributor.shop_bookings.index') }}" class="btn btn-light border py-2 fw-semibold text-secondary">
-                            Cancel &amp; Discard Changes
-                        </a>
                     </div>
                 </div>
             </div>
@@ -494,21 +818,25 @@
 <script>
 $(document).ready(function() {
 
-    // 1. Initialize Shop Select2
+    let currentShopApprovedDiscountPct = {{ (float)($booking->customer->approved_discount ?? 0) }};
+    let currentShopToBuy = {{ (float)($booking->customer->effective_trade_offer_buy_qty ?? 0) }};
+    let currentShopToFree = {{ (float)($booking->customer->effective_trade_offer_free_qty ?? 0) }};
+
+    // Initialize Shop Select2
     $('.select2-shop').select2({
         placeholder: "-- Search & Choose Retail Shop --",
         allowClear: true,
         width: '100%'
     });
 
-    // 2. Initialize Product Select2
+    // Initialize Product Select2
     function formatProductOption(state) {
         if (!state.id) return state.text;
         const text = state.text;
         const lastBracketIndex = text.lastIndexOf(' [');
         if (lastBracketIndex !== -1 && text.endsWith(']')) {
             const mainText = text.substring(0, lastBracketIndex);
-            const stockPart = text.substring(lastBracketIndex + 1); // e.g. "[8 pc]"
+            const stockPart = text.substring(lastBracketIndex + 1);
             return $(`
                 <div class="d-flex justify-content-between align-items-center w-100">
                     <span class="fw-semibold text-dark">${mainText}</span>
@@ -545,17 +873,21 @@ $(document).ready(function() {
         }
     });
 
-    let currentShopApprovedDiscountPct = parseFloat($('#distributor_customer_id').find('option:selected').data('approved-discount')) || 0;
-    let currentShopToBuy = parseFloat($('#distributor_customer_id').find('option:selected').data('to-buy')) || 0;
-    let currentShopToFree = parseFloat($('#distributor_customer_id').find('option:selected').data('to-free')) || 0;
+    function updateRowNumbers() {
+        $('#bookingTableBody tr.bk-row').each(function(idx) {
+            $(this).find('.item-index-num').text(idx + 1);
+        });
+    }
 
-    // LIVE PREVIOUS BALANCE & APPROVED DISCOUNT ON SHOP SELECTION
+    // Shop change handler
     $('#distributor_customer_id').on('change', function() {
         const customerId = $(this).val();
         const banner = $('#shopBalanceBanner');
 
         if (!customerId) {
             currentShopApprovedDiscountPct = 0;
+            currentShopToBuy = 0;
+            currentShopToFree = 0;
             banner.slideUp();
             calculateGrandTotal();
             return;
@@ -577,7 +909,6 @@ $(document).ready(function() {
         $('#lblShopArea').text(shopArea);
         $('#lblApprovedDiscount').text(currentShopApprovedDiscountPct);
 
-        // Fetch Live Credit / Previous Balance from backend
         $.ajax({
             url: "{{ url('/distributor-portal/booker/shop-info') }}/" + customerId,
             type: "GET",
@@ -627,7 +958,7 @@ $(document).ready(function() {
         });
     });
 
-    // Product & Variant Selection Setup
+    // Product Selection Setup
     $(document).on('change', '.product-selector', function() {
         const row = $(this).closest('tr');
         const selectedOpt = $(this).find('option:selected');
@@ -725,33 +1056,57 @@ $(document).ready(function() {
         calculateGrandTotal();
     });
 
-    // Add Row
+    // Add Row (Box Template for Mobile & Desktop)
     function addTableRow() {
         const rowCount = $('#bookingTableBody tr').length;
         const template = `
             <tr class="bk-row" data-row="${rowCount}">
-                <td>
+                <td class="bk-td-product">
+                    <div class="bk-mobile-row-header">
+                        <span class="bk-item-badge">
+                            <i class="fas fa-box-open me-1"></i> Item #<span class="item-index-num">${rowCount + 1}</span>
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 btn-remove-row">
+                            <i class="fas fa-trash-alt me-1"></i> Remove
+                        </button>
+                    </div>
+                    <label class="item-mobile-label">Product &amp; Variant <span class="text-danger">*</span></label>
                     <select class="form-select form-select-sm select2-product product-selector" name="product_id[]" required>
                         {!! addslashes($defaultProductOptionsHtml) !!}
                     </select>
                     <input type="hidden" name="variant_id[]" class="row-variant-id" value="">
                 </td>
-                <td class="text-center">
-                    <span class="stock-tag bg-light text-secondary border stock-display">-</span>
+                <td class="bk-td-stock text-center">
+                    <label class="item-mobile-label"><i class="fas fa-warehouse text-secondary me-1"></i> Van Stock</label>
+                    <div class="bk-stock-box-mobile">
+                        <span class="stock-tag bg-light text-secondary border stock-display">-</span>
+                    </div>
                 </td>
-                <td>
-                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
+                <td class="bk-td-qty">
+                    <label class="item-mobile-label">Booking Qty <span class="text-danger">*</span></label>
+                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty py-2" name="qty[]" value="1" required>
                 </td>
-                <td>
-                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated & Locked by Company">
+                <td class="bk-td-price">
+                    <label class="item-mobile-label">Unit Price (Rs) <span class="text-danger">*</span></label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text d-md-none small">Rs</span>
+                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price py-2" name="unit_price[]" value="0" required>
+                    </div>
                 </td>
-                <td>
-                    <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>
+                <td class="bk-td-to">
+                    <label class="item-mobile-label">
+                        <i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)
+                    </label>
+                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary py-2" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated &amp; Locked by Company">
                 </td>
-                <td class="text-end">
-                    <span class="fw-bold row-subtotal text-dark">Rs 0.00</span>
+                <td class="bk-td-subtotal text-end">
+                    <div class="bk-mobile-subtotal-strip">
+                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Item Subtotal:</span>
+                        <span class="fw-bolder fs-6 row-subtotal text-teal" style="color: #0f766e;">Rs 0.00</span>
+                    </div>
+                    <span class="fw-bold row-subtotal text-dark d-none d-md-inline">Rs 0.00</span>
                 </td>
-                <td class="text-center">
+                <td class="bk-td-action text-center d-none d-md-table-cell">
                     <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-remove-row" title="Remove item">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -762,6 +1117,7 @@ $(document).ready(function() {
         const newRow = $(template);
         $('#bookingTableBody').append(newRow);
         initProductSelect2(newRow.find('.select2-product'));
+        updateRowNumbers();
     }
 
     $('#btnAddRow, #btnAddRowBottom').on('click', function() {
@@ -773,6 +1129,7 @@ $(document).ready(function() {
         if ($('#bookingTableBody tr').length > 1) {
             $(this).closest('tr').remove();
             calculateGrandTotal();
+            updateRowNumbers();
         } else {
             alert('At least one product row is required in the booking.');
         }

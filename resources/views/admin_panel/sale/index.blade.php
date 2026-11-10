@@ -1098,6 +1098,10 @@
           <i class="bi bi-arrow-counterclockwise"></i> Sale Returns
         </a>
 
+        <a href="{{ route('sale.trials') }}" class="sl-btn sl-btn-glass" style="border: 1px solid rgba(251, 191, 36, 0.4); color: #fef08a;">
+          <i class="bi bi-gift-fill text-warning"></i> Product Trials
+        </a>
+
         {{-- Filter Toggle Button with icon --}}
         <button type="button" id="btnToggleFilter" class="sl-btn sl-btn-glass">
           <i class="bi bi-funnel-fill"></i> Filters

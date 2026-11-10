@@ -415,6 +415,7 @@
                                         @endcanany
                                         @can('Sales')
                                         <li><a href="{{ url('sale') }}"><i class="fas fa-file-invoice-dollar"></i> Sales Register</a></li>
+                                        <li><a href="{{ route('sale.trials') }}"><i class="fas fa-gift text-warning"></i> Product Trials / Samples</a></li>
                                         @endcan
                                         @can('Sale Return')
                                         <li><a href="{{ url('sale-returns') }}"><i class="fas fa-hand-holding-usd"></i> Sale Returns</a></li>

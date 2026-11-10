@@ -195,7 +195,7 @@
 
     <div class="line"></div>
     <div class="center bold" style="font-size: 13px; text-transform: uppercase;">
-        {{ $isExchange ? 'SALE EXCHANGE RECEIPT' : 'SALE RECEIPT' }}
+        {{ $isExchange ? 'SALE EXCHANGE RECEIPT' : ($sale->is_trial ? 'PRODUCT TRIAL / SAMPLE SLIP' : 'SALE RECEIPT') }}
     </div>
     <div class="line"></div>
 
@@ -325,7 +325,13 @@
                         @endif
                     </td>
                     <td>{{ number_format($item['price'], 0) }}</td>
-                    <td>{{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif</td>
+                    <td>
+                        @if($qty == 0 && !empty($item['trade_offer']) && $item['trade_offer'] > 0)
+                            <span style="font-weight:bold;">{{ (float)$item['trade_offer'] }} Free (Trial)</span>
+                        @else
+                            {{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif
+                        @endif
+                    </td>
                     <td style="text-align:right;">{{ number_format($item['total'], 0) }}</td>
                 </tr>
                 @endforeach

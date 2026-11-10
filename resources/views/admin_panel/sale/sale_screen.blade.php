@@ -987,6 +987,7 @@
         <input type="hidden" name="change" id="inputChange" value="0">
         <input type="hidden" name="total_items" id="inputTotalItems" value="0">
         <input type="hidden" name="total_pieces" id="inputTotalPieces" value="0">
+        <input type="hidden" name="is_trial" id="inputIsTrial" value="{{ (isset($sale) && $sale->is_trial) ? '1' : '0' }}">
 
         <!-- ==========================================
              TOP CONTROLS BAR: 1. CUSTOMER / BOOKER / DISTRIBUTOR (FIRST), 2. DATE, 3. M.BILL, 4. QUICK PANEL, 5. SAVE
@@ -1004,9 +1005,17 @@
                                     <a href="{{ route('sale.screen') }}" class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" style="font-size: 10px;" title="Exit Edit Mode"><i class="fas fa-plus"></i> New</a>
                                 @endif
                             </label>
-                            <span id="customerTypeBadge" class="badge bg-light text-secondary border" style="font-size: 10px; padding: 2px 6px;">
-                                <i class="fas fa-user me-1"></i> Walk-in
-                            </span>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="form-check form-switch mb-0" title="Product Trial / Free Samples (Give free trade offer pieces without billing)">
+                                    <input class="form-check-input" type="checkbox" id="toggleTrialMode" {{ (isset($sale) && $sale->is_trial) ? 'checked' : '' }} style="cursor: pointer;">
+                                    <label class="form-check-label fw-bold" for="toggleTrialMode" style="cursor: pointer; font-size: 11px; color: #b45309;">
+                                        <i class="fas fa-gift text-warning me-1"></i> Trial Mode
+                                    </label>
+                                </div>
+                                <span id="customerTypeBadge" class="badge bg-light text-secondary border" style="font-size: 10px; padding: 2px 6px;">
+                                    <i class="fas fa-user me-1"></i> Walk-in
+                                </span>
+                            </div>
                         </div>
                         <div class="d-flex gap-1 align-items-center">
                             <div class="flex-grow-1" style="min-width: 0;">
@@ -1876,9 +1885,9 @@ $(document).ready(function() {
             const amount = parseFloat($(this).find('.row-amount').val()) || 0;
 
             // ONLY accumulate for rows where a product is actually selected!
-            if (pid && qty > 0) {
+            if (pid && (qty > 0 || tradeOffer > 0)) {
                 itemCount++;
-                totalQty += qty;
+                totalQty += (qty + tradeOffer);
                 totalAmount += (qty * price);
                 lineDiscount += discAmount;
                 netTotal += amount;
@@ -2844,6 +2853,18 @@ $(document).ready(function() {
         }
     });
 
+    // --- PRODUCT TRIAL TOGGLE ---
+    $('#toggleTrialMode').on('change', function() {
+        const isChecked = $(this).is(':checked');
+        $('#inputIsTrial').val(isChecked ? '1' : '0');
+        if (isChecked) {
+            if (typeof toastr !== 'undefined') {
+                toastr.info('Product Trial Mode Enabled: Enter trial pieces in Trade Offer column with Qty = 0. Net bill will be Rs. 0.');
+            }
+        }
+        recalculateTotals();
+    });
+
     // --- FORM SUBMISSION (TOP SAVE & MAIN SAVE) ---
     $('#btnTopSave').on('click', function() {
         $('#saleScreenForm').submit();
@@ -2854,12 +2875,13 @@ $(document).ready(function() {
 
         // 1. Validation: ensure at least one row has a product selected
         let validRows = 0;
+        const isTrial = $('#toggleTrialMode').is(':checked');
         $('#saleGridBody tr.ss-grid-row').each(function() {
             const pid = $(this).find('.row-product-id').val();
             const qty = parseFloat($(this).find('.row-qty').val()) || 0;
             const tradeOffer = parseFloat($(this).find('.row-trade-offer').val()) || 0;
             const price = parseFloat($(this).find('.row-price').val()) || 0;
-            if (pid && qty > 0 && price > 0) {
+            if (pid && ((qty > 0 && price > 0) || (qty === 0 && tradeOffer > 0) || (isTrial && tradeOffer > 0))) {
                 validRows++;
             }
         });
@@ -2868,7 +2890,7 @@ $(document).ready(function() {
             Swal.fire({
                 icon: 'warning',
                 title: 'Empty Order Items',
-                text: 'Please select at least one product with quantity and price.'
+                text: 'Please select at least one product with quantity or trial/trade offer pieces.'
             });
             return;
         }

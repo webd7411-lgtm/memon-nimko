@@ -274,6 +274,7 @@ Route::middleware('auth')->group(function () {
 
     // Sale Routes
     Route::get('sale', [SaleController::class, 'index'])->name('sale.index')->middleware('permission:Sales');
+    Route::get('sale/trials', [SaleController::class, 'trialsIndex'])->name('sale.trials')->middleware('permission:Sales');
     Route::get('sale/pos', [SaleController::class, 'posSale'])->name('sale.pos')->middleware('permission:Sales|Sale Screen');
     Route::get('sale-screen', [SaleController::class, 'saleScreen'])->name('sale.screen')->middleware('permission:Sales|Sale Screen');
     Route::get('sale/create', [SaleController::class, 'saleScreen'])->name('sale.add')->middleware('permission:Sales|Sale Screen');
@@ -411,6 +412,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [AccountsHeadController::class, 'index'])->name('coa.index');
         Route::get('/sync-sales', [AccountsHeadController::class, 'syncSalesPayments'])->name('coa.sync_sales');
         Route::post('/head', [AccountsHeadController::class, 'storeHead'])->name('coa.head.store');
+        Route::match(['put', 'post'], '/head/{id}', [AccountsHeadController::class, 'updateHead'])->name('coa.head.update');
+        Route::delete('/head/{id}', [AccountsHeadController::class, 'destroyHead'])->name('coa.head.delete');
         Route::post('/account', [AccountsHeadController::class, 'storeAccount'])->name('coa.account.store');
     });
 

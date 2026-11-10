@@ -565,12 +565,35 @@
                                             <i class="fa fa-users me-1"></i> All Users
                                         </span>
                                     @endif
+                                    <span class="badge rounded-pill border px-2.5 py-1" style="font-size: 0.72rem; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.35) !important;">
+                                        <i class="fa fa-shield-alt me-1"></i> Company Cash Only: 
+                                        @if(($selectedAccountId ?? 'all') === 'all')
+                                            All Accounts ({{ isset($companyCashAccounts) ? $companyCashAccounts->pluck('title')->implode(', ') : 'Main Head Office Cash Counter' }})
+                                        @else
+                                            {{ isset($companyCashAccounts) ? ($companyCashAccounts->firstWhere('id', $selectedAccountId)?->title ?? 'Account #' . $selectedAccountId) : 'Cash Account' }}
+                                        @endif
+                                    </span>
                                 </h4>
                             </div>
                         </div>
                     </div>
 
                     <form method="GET" action="{{ route('cashbook') }}" id="dateFilterForm" class="cb-filters">
+                        <div class="cb-fgroup account-col">
+                            <label><i class="fa fa-wallet me-1"></i>Cash Account</label>
+                            <select name="account_id" class="cb-input" onchange="document.getElementById('dateFilterForm').submit()">
+                                <option value="all" {{ ($selectedAccountId ?? 'all') === 'all' ? 'selected' : '' }}>
+                                    💵 All Company Cash Accounts
+                                </option>
+                                @if(isset($companyCashAccounts))
+                                    @foreach($companyCashAccounts as $cAcc)
+                                        <option value="{{ $cAcc->id }}" {{ (string)($selectedAccountId ?? '') === (string)$cAcc->id ? 'selected' : '' }}>
+                                            💵 {{ $cAcc->title }} ({{ $cAcc->account_code }})
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
                         <div class="cb-fgroup branch-col">
                             <label><i class="fa fa-building me-1"></i>Branch</label>
                             <select name="branch_id" class="cb-input" onchange="document.getElementById('dateFilterForm').submit()">

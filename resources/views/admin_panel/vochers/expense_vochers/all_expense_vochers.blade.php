@@ -610,6 +610,62 @@
   .ev-hero .d-flex { gap: .4rem; }
   .ev-table tbody td { font-size: .8rem; }
 }
+
+/* ═══════ TABS STYLING ═══════ */
+.ev-tabs-bar {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid var(--ev-border);
+  border-radius: var(--ev-radius);
+  padding: 0.45rem;
+  box-shadow: var(--ev-shadow);
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.ev-tab-pill {
+  border: none;
+  background: transparent;
+  color: var(--ev-text-sec);
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 0.65rem 1.35rem;
+  border-radius: var(--ev-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ev-tab-pill:hover {
+  background: #f1f5f9;
+  color: var(--ev-text);
+}
+
+.ev-tab-pill.active {
+  background: var(--ev-primary);
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.ev-tab-pill.active .badge {
+  background: #ffffff !important;
+  color: var(--ev-primary) !important;
+}
+
+.ev-head-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
 </style>
 
 <div class="ev-page">
@@ -660,13 +716,38 @@
     </div>
     @endif
 
-    {{-- ═══════ KPI SUMMARY CARDS ═══════ --}}
+    {{-- ═══════ TABS NAVIGATION ═══════ --}}
     @php
       $totalVouchersCount = count($vouchers);
       $totalExpenseSum = $vouchers->sum('total_amount');
+      $headsCount = count($allExpenseHeads ?? []);
     @endphp
 
-    <div class="ev-kpi-grid">
+    <div class="ev-tabs-bar">
+      <ul class="nav nav-pills border-0 m-0" id="expenseTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="ev-tab-pill active" id="tab-vouchers-btn" data-bs-toggle="pill" data-bs-target="#tab-vouchers" type="button" role="tab" aria-controls="tab-vouchers" aria-selected="true">
+            <i class="bi bi-receipt"></i>
+            <span>Expense Vouchers</span>
+            <span class="badge rounded-pill bg-light text-primary border ms-1">{{ number_format($totalVouchersCount) }}</span>
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="ev-tab-pill" id="tab-heads-btn" data-bs-toggle="pill" data-bs-target="#tab-heads" type="button" role="tab" aria-controls="tab-heads" aria-selected="false">
+            <i class="bi bi-tags"></i>
+            <span>Expense Heads</span>
+            <span class="badge rounded-pill bg-light text-secondary border ms-1" id="badgeTotalExpenseHeads">{{ number_format($headsCount) }}</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <div class="tab-content" id="expenseTabsContent">
+      <!-- ═══════ TAB 1: EXPENSE VOUCHERS ═══════ -->
+      <div class="tab-pane fade show active" id="tab-vouchers" role="tabpanel" aria-labelledby="tab-vouchers-btn">
+
+        {{-- ═══════ KPI SUMMARY CARDS ═══════ --}}
+        <div class="ev-kpi-grid">
       <div class="ev-kpi-card">
         <div class="ev-kpi-info">
           <p>Total Vouchers Issued</p>
@@ -849,6 +930,119 @@
       {{-- ═══════ MOBILE / TABLET PREMIUM CARDS (rendered by JS from DataTable rows) ═══════ --}}
       <div id="expenseCards" class="ev-cards"></div>
     </div>
+  </div>
+  <!-- ═══════ END TAB 1: EXPENSE VOUCHERS ═══════ -->
+
+  <!-- ═══════ TAB 2: EXPENSE HEADS ═══════ -->
+  <div class="tab-pane fade" id="tab-heads" role="tabpanel" aria-labelledby="tab-heads-btn">
+    <div class="ev-table-card">
+      <div class="ev-table-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h3 class="ev-table-title mb-1">
+            <i class="bi bi-tags text-primary me-1"></i> Expense Heads Register
+          </h3>
+          <p class="text-muted small mb-0">Manage expense categories and account heads used across expense vouchers</p>
+        </div>
+        <button type="button" class="ev-btn ev-btn-primary" data-bs-toggle="modal" data-bs-target="#addExpenseHeadModal">
+          <i class="bi bi-plus-lg me-1"></i> Add New Expense Head
+        </button>
+      </div>
+
+      <div class="ev-table-wrapper p-3">
+        <div class="table-responsive">
+          <table id="expenseHeadsTable" class="table ev-table align-middle" style="width:100%">
+            <thead>
+              <tr>
+                <th width="6%">ID</th>
+                <th width="28%">Expense Head Name</th>
+                <th width="12%">Type</th>
+                <th width="14%">Linked Accounts</th>
+                <th width="14%">Linked Vouchers</th>
+                <th width="10%">Status</th>
+                <th width="16%" class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($allExpenseHeads ?? [] as $head)
+              <tr>
+                <td class="fw-bold" data-order="{{ $head->id }}">#{{ $head->id }}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="ev-head-icon">
+                      <i class="bi bi-tag-fill text-primary"></i>
+                    </div>
+                    <div>
+                      <span class="fw-bold text-dark d-block" style="font-size:0.92rem;">{{ $head->name }}</span>
+                      <span class="text-muted" style="font-size:0.75rem;">Created: {{ $head->created_at ? $head->created_at->format('d M, Y') : '-' }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border fw-medium" style="font-size:0.78rem;">
+                    {{ $head->type ?? 'Expense' }}
+                  </span>
+                </td>
+                <td>
+                  @if(($head->accounts_count ?? 0) > 0)
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold" style="font-size:0.78rem;">
+                      <i class="bi bi-wallet2 me-1"></i>{{ $head->accounts_count }} Account(s)
+                    </span>
+                  @else
+                    <span class="badge bg-light text-muted border" style="font-size:0.76rem;">0 Accounts</span>
+                  @endif
+                </td>
+                <td>
+                  @if(($head->expense_vouchers_count ?? 0) > 0)
+                    <span class="badge bg-info-subtle text-info border border-info-subtle fw-semibold" style="font-size:0.78rem;">
+                      <i class="bi bi-receipt me-1"></i>{{ $head->expense_vouchers_count }} Voucher(s)
+                    </span>
+                  @else
+                    <span class="badge bg-light text-muted border" style="font-size:0.76rem;">0 Vouchers</span>
+                  @endif
+                </td>
+                <td>
+                  @if($head->status == 1)
+                    <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold" style="font-size:0.78rem;">
+                      <i class="bi bi-check-circle me-1"></i>Active
+                    </span>
+                  @else
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold" style="font-size:0.78rem;">
+                      <i class="bi bi-x-circle me-1"></i>Inactive
+                    </span>
+                  @endif
+                </td>
+                <td class="text-center">
+                  <div class="d-inline-flex gap-1">
+                    <button type="button" 
+                            class="btn btn-sm btn-outline-primary rounded-2 btn-edit-head" 
+                            data-id="{{ $head->id }}" 
+                            data-name="{{ $head->name }}" 
+                            data-status="{{ $head->status }}"
+                            title="Edit Expense Head">
+                      <i class="bi bi-pencil-square me-1"></i> Edit
+                    </button>
+                    <button type="button" 
+                            class="btn btn-sm btn-outline-danger rounded-2 btn-delete-head" 
+                            data-id="{{ $head->id }}" 
+                            data-name="{{ $head->name }}"
+                            data-vouchers="{{ $head->expense_vouchers_count ?? 0 }}"
+                            data-accounts="{{ $head->accounts_count ?? 0 }}"
+                            title="Delete Expense Head">
+                      <i class="bi bi-trash me-1"></i> Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══════ END TAB 2: EXPENSE HEADS ═══════ -->
+</div>
+<!-- ═══════ END TAB CONTENT ═══════ -->
 
   </div>
 </div>
@@ -962,7 +1156,7 @@
         @csrf
         <div class="modal-body p-4">
           <div class="mb-3">
-            <label class="ev-label">Expense Head Name</label>
+            <label class="ev-label">Expense Head Name <span class="text-danger">*</span></label>
             <input type="text" name="name" id="newHeadName" class="ev-input" placeholder="e.g. Utility Bills, Office Supplies, Fuel..." required>
           </div>
           <div id="headFormAlert" class="alert d-none py-2 px-3 small rounded-2 mb-0"></div>
@@ -971,6 +1165,42 @@
           <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" id="saveHeadBtn" class="ev-btn ev-btn-primary">
             <i class="bi bi-check-lg me-1"></i> Save Head
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{{-- ═══════ EDIT EXPENSE HEAD MODAL ═══════ --}}
+<div class="modal fade ev-modal" id="editExpenseHeadModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit Expense Head</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editExpenseHeadForm">
+        @csrf
+        <input type="hidden" name="head_id" id="editHeadId">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="ev-label">Expense Head Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" id="editHeadName" class="ev-input" placeholder="e.g. Utility Bills, Fuel, Staff Tea..." required>
+          </div>
+          <div class="mb-3">
+            <label class="ev-label">Status</label>
+            <select name="status" id="editHeadStatus" class="ev-input">
+              <option value="1">Active</option>
+              <option value="0">Inactive</option>
+            </select>
+          </div>
+          <div id="editHeadAlert" class="alert d-none py-2 px-3 small rounded-2 mb-0"></div>
+        </div>
+        <div class="modal-footer bg-light px-4 py-3">
+          <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" id="updateHeadBtn" class="ev-btn ev-btn-primary">
+            <i class="bi bi-check-lg me-1"></i> Update Head
           </button>
         </div>
       </form>
@@ -1202,6 +1432,10 @@ $(document).ready(function() {
                 setTimeout(function() {
                     $('#addExpenseHeadModal').modal('hide');
                     $alert.addClass('d-none');
+                    if (!wasExpenseModalOpen) {
+                        localStorage.setItem('activeExpenseTab', '#tab-heads');
+                        location.reload();
+                    }
                 }, 800);
             },
             error: function(xhr) {
@@ -1215,6 +1449,139 @@ $(document).ready(function() {
                 $alert.removeClass('d-none').addClass('alert-danger').text(msg);
             }
         });
+    });
+
+    // ═══════ EXPENSE HEADS EDIT & DELETE ═══════
+    // Initialize DataTables for Expense Heads
+    if ($.fn.DataTable && $('#expenseHeadsTable').length) {
+        if (!$.fn.DataTable.isDataTable('#expenseHeadsTable')) {
+            $('#expenseHeadsTable').DataTable({
+                pageLength: 10,
+                lengthMenu: [
+                    [10, 25, 50, -1],
+                    [10, 25, 50, "All"]
+                ],
+                order: [
+                    [0, 'desc']
+                ],
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search expense heads..."
+                }
+            });
+        }
+    }
+
+    // Open Edit Head Modal
+    $(document).on('click', '.btn-edit-head', function(e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        var status = $(this).data('status');
+
+        $('#editHeadId').val(id);
+        $('#editHeadName').val(name);
+        $('#editHeadStatus').val(status);
+        $('#editHeadAlert').addClass('d-none').removeClass('alert-success alert-danger').text('');
+        $('#editExpenseHeadModal').modal('show');
+    });
+
+    // Submit Edit Head Form
+    $('#editExpenseHeadForm').on('submit', function(e) {
+        e.preventDefault();
+        var id = $('#editHeadId').val();
+        var btn = $('#updateHeadBtn');
+        var alertBox = $('#editHeadAlert');
+
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
+        alertBox.addClass('d-none').removeClass('alert-success alert-danger').text('');
+
+        $.ajax({
+            url: '/coa/head/' + id,
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                _method: 'PUT',
+                name: $('#editHeadName').val(),
+                status: $('#editHeadStatus').val()
+            },
+            success: function(res) {
+                alertBox.removeClass('d-none').addClass('alert-success').text(res.message || 'Head updated successfully!');
+                setTimeout(function() {
+                    $('#editExpenseHeadModal').modal('hide');
+                    localStorage.setItem('activeExpenseTab', '#tab-heads');
+                    location.reload();
+                }, 700);
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i> Update Head');
+                var msg = 'Failed to update Expense Head.';
+                if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    var errs = Object.values(xhr.responseJSON.errors).flat();
+                    msg = errs.join(' ');
+                }
+                alertBox.removeClass('d-none').addClass('alert-danger').text(msg);
+            }
+        });
+    });
+
+    // Delete Head
+    $(document).on('click', '.btn-delete-head', function(e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        var vouchersCount = parseInt($(this).data('vouchers') || 0);
+        var accountsCount = parseInt($(this).data('accounts') || 0);
+
+        if (vouchersCount > 0 || accountsCount > 0) {
+            var reasons = [];
+            if (vouchersCount > 0) reasons.push(vouchersCount + ' expense voucher(s)');
+            if (accountsCount > 0) reasons.push(accountsCount + ' account(s)');
+            alert('Cannot delete "' + name + '" because it is linked to ' + reasons.join(' and ') + '.\nPlease delete or reassign them first.');
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete the Expense Head "' + name + '"?')) {
+            $.ajax({
+                url: '/coa/head/' + id,
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    _method: 'DELETE'
+                },
+                success: function(res) {
+                    localStorage.setItem('activeExpenseTab', '#tab-heads');
+                    location.reload();
+                },
+                error: function(xhr) {
+                    var msg = 'Failed to delete Expense Head.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                    alert(msg);
+                }
+            });
+        }
+    });
+
+    // Tab state memory across reloads
+    var activeTab = localStorage.getItem('activeExpenseTab');
+    if (window.location.hash) {
+        activeTab = window.location.hash;
+    }
+    if (activeTab && $(activeTab).length) {
+        var tabTrigger = $('button[data-bs-target="' + activeTab + '"]');
+        if (tabTrigger.length) {
+            new bootstrap.Tab(tabTrigger[0]).show();
+        }
+    }
+
+    $('button[data-bs-toggle="pill"]').on('shown.bs.tab', function(e) {
+        var target = $(e.target).attr('data-bs-target');
+        localStorage.setItem('activeExpenseTab', target);
+        window.location.hash = target;
+        if ($.fn.DataTable) {
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+        }
     });
 });
 </script>

@@ -150,6 +150,40 @@ if (!function_exists('receipt_logo_url')) {
     }
 }
 
+if (!function_exists('format_stock_qty')) {
+    /**
+     * Format a stock/purchase quantity cleanly showing exact actual value.
+     * Preserves grams, milligrams, etc. (up to 6 decimal places),
+     * trims unnecessary trailing zeros while keeping at least $minDec (default 2) for standard look.
+     */
+    function format_stock_qty($val, $minDec = 2, $maxDec = 6): string
+    {
+        $val = (float)$val;
+        if (abs($val) < 1e-9) {
+            return '0.' . str_repeat('0', $minDec);
+        }
+
+        $isNegative = $val < 0;
+        $val = abs($val);
+
+        $formatted = number_format($val, $maxDec, '.', '');
+        $parts = explode('.', $formatted);
+        $intPart = number_format((float)$parts[0]);
+        $decPart = $parts[1] ?? '';
+
+        // Trim trailing zeros
+        $decPart = rtrim($decPart, '0');
+
+        // Pad to minimum decimals if needed
+        if (strlen($decPart) < $minDec) {
+            $decPart = str_pad($decPart, $minDec, '0');
+        }
+
+        $result = $decPart !== '' ? $intPart . '.' . $decPart : $intPart;
+        return ($isNegative ? '-' : '') . $result;
+    }
+}
+
 if (!function_exists('format_consumption_qty')) {
     /**
      * Format a consumption quantity (e.g. Grams / ML).
@@ -162,7 +196,7 @@ if (!function_exists('format_consumption_qty')) {
         $isGram = in_array($unitLower, ['gram', 'grams', 'gm', 'g', 'grm', 'grms']);
 
         if (!$isGram) {
-            return number_format($val, 2) . ' ' . $unit;
+            return format_stock_qty($val) . ' ' . $unit;
         }
 
         $isNegative = $val < 0;
@@ -170,17 +204,17 @@ if (!function_exists('format_consumption_qty')) {
 
         if ($grams >= 1000) {
             $kg = floor($grams / 1000);
-            $gm = round(fmod($grams, 1000), 2);
+            $gm = round(fmod($grams, 1000), 4);
             $prefix = $isNegative ? '-' : '';
             if ($gm > 0) {
-                // If fractional gram exists, display it cleanly
-                $gmStr = ($gm == floor($gm)) ? (int)$gm : number_format($gm, 2);
+                // If fractional gram exists, display it cleanly without trimming actual decimals
+                $gmStr = ($gm == floor($gm)) ? (int)$gm : rtrim(rtrim(number_format($gm, 4, '.', ''), '0'), '.');
                 return $prefix . number_format($kg) . 'kg ' . $gmStr . 'gm';
             }
             return $prefix . number_format($kg) . 'kg';
         }
 
-        $gmStr = ($grams == floor($grams)) ? (int)$grams : number_format($grams, 2);
+        $gmStr = ($grams == floor($grams)) ? (int)$grams : rtrim(rtrim(number_format($grams, 4, '.', ''), '0'), '.');
         return ($isNegative ? '-' : '') . $gmStr . ' gm';
     }
 }

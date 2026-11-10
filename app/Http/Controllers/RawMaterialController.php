@@ -204,7 +204,7 @@ class RawMaterialController extends Controller
             $m->has_usage = ($uPeriod > 0);
         }
 
-        $purchasesQuery = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse', 'branch', 'returns.items'])
+        $purchasesQuery = RawMaterialPurchase::with(['items.rawMaterial', 'creator', 'warehouse', 'branch', 'returns.items', 'vendor', 'paymentAccount'])
             ->where('invoice_no', 'not like', 'INIT-%')
             ->where(function($q) {
                 $q->whereNull('vendor_name')->orWhere('vendor_name', '!=', 'Initial Cost Setup');
@@ -254,9 +254,11 @@ class RawMaterialController extends Controller
             ->orderBy('warehouse_id')
             ->get();
 
+        $paymentAccounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
+
         return view('admin_panel.raw_material.index', compact(
             'materials', 'purchases', 'purchaseReturns', 'vendors', 'warehouses', 'productsWithBom', 'warehouseStocks',
-            'startDate', 'startTime', 'endDate', 'endTime'
+            'startDate', 'startTime', 'endDate', 'endTime', 'paymentAccounts'
         ));
     }
 
@@ -1046,9 +1048,9 @@ class RawMaterialController extends Controller
                     'product_name' => $pi->item_name . ($varName ? ' (' . $varName . ')' : ''),
                     'product_code' => $pi->item_code,
                     'produced_qty' => (float)$pi->qty_entered . ' ' . ($pi->unit ?? 'Pcs'),
-                    'rm_qty_used' => number_format($qtyUsed, 2) . ' ' . ($material->consumption_unit ?? $material->unit),
-                    'rm_qty_used_purchase' => number_format($qtyUsed / $factor, 2) . ' ' . $material->unit,
-                    'recipe_per_unit' => $itemsExpected[0]['bom_qty'] > 0 ? (number_format($itemsExpected[0]['bom_qty'], 2) . ' ' . ($material->consumption_unit ?? $material->unit)) : '-',
+                    'rm_qty_used' => format_stock_qty($qtyUsed) . ' ' . ($material->consumption_unit ?? $material->unit),
+                    'rm_qty_used_purchase' => format_stock_qty($qtyUsed / $factor) . ' ' . $material->unit,
+                    'recipe_per_unit' => $itemsExpected[0]['bom_qty'] > 0 ? (format_stock_qty($itemsExpected[0]['bom_qty']) . ' ' . ($material->consumption_unit ?? $material->unit)) : '-',
                 ];
             } elseif (count($itemsExpected) > 1) {
                 foreach ($itemsExpected as $ie) {
@@ -1061,9 +1063,9 @@ class RawMaterialController extends Controller
                         'product_name' => $pi->item_name . ($varName ? ' (' . $varName . ')' : ''),
                         'product_code' => $pi->item_code,
                         'produced_qty' => (float)$pi->qty_entered . ' ' . ($pi->unit ?? 'Pcs'),
-                        'rm_qty_used' => number_format($allocatedUsage, 2) . ' ' . ($material->consumption_unit ?? $material->unit),
-                        'rm_qty_used_purchase' => number_format($allocatedUsage / $factor, 2) . ' ' . $material->unit,
-                        'recipe_per_unit' => $ie['bom_qty'] > 0 ? (number_format($ie['bom_qty'], 2) . ' ' . ($material->consumption_unit ?? $material->unit)) : '-',
+                        'rm_qty_used' => format_stock_qty($allocatedUsage) . ' ' . ($material->consumption_unit ?? $material->unit),
+                        'rm_qty_used_purchase' => format_stock_qty($allocatedUsage / $factor) . ' ' . $material->unit,
+                        'recipe_per_unit' => $ie['bom_qty'] > 0 ? (format_stock_qty($ie['bom_qty']) . ' ' . ($material->consumption_unit ?? $material->unit)) : '-',
                     ];
                 }
             } else {
@@ -1071,8 +1073,8 @@ class RawMaterialController extends Controller
                     'product_name' => 'General Kitchen / Batch Usage',
                     'product_code' => '-',
                     'produced_qty' => '-',
-                    'rm_qty_used' => number_format($qtyUsed, 2) . ' ' . ($material->consumption_unit ?? $material->unit),
-                    'rm_qty_used_purchase' => number_format($qtyUsed / $factor, 2) . ' ' . $material->unit,
+                    'rm_qty_used' => format_stock_qty($qtyUsed) . ' ' . ($material->consumption_unit ?? $material->unit),
+                    'rm_qty_used_purchase' => format_stock_qty($qtyUsed / $factor) . ' ' . $material->unit,
                     'recipe_per_unit' => '-',
                 ];
             }
@@ -1084,8 +1086,8 @@ class RawMaterialController extends Controller
                 'datetime' => $u->usage_created_at ? date('d-M-Y h:i A', strtotime($u->usage_created_at)) : '-',
                 'creator' => $u->creator_name ?? '-',
                 'notes' => $u->entry_notes,
-                'batch_rm_qty' => number_format($qtyUsed, 2) . ' ' . ($material->consumption_unit ?? $material->unit),
-                'batch_rm_qty_purchase' => number_format($qtyUsed / $factor, 2) . ' ' . $material->unit,
+                'batch_rm_qty' => format_stock_qty($qtyUsed) . ' ' . ($material->consumption_unit ?? $material->unit),
+                'batch_rm_qty_purchase' => format_stock_qty($qtyUsed / $factor) . ' ' . $material->unit,
                 'products' => $productsData,
             ];
         }
@@ -1105,8 +1107,8 @@ class RawMaterialController extends Controller
                 'formatted' => date('d-M-Y h:i A', strtotime($startDT)) . ' to ' . date('d-M-Y h:i A', strtotime($endDT)),
             ],
             'total_used' => $totalUsedConsumption,
-            'total_used_consumption_formatted' => number_format($totalUsedConsumption, 2) . ' ' . ($material->consumption_unit ?? $material->unit),
-            'total_used_purchase_formatted' => number_format($totalUsedConsumption / $factor, 2) . ' ' . $material->unit,
+            'total_used_consumption_formatted' => format_stock_qty($totalUsedConsumption) . ' ' . ($material->consumption_unit ?? $material->unit),
+            'total_used_purchase_formatted' => format_stock_qty($totalUsedConsumption / $factor) . ' ' . $material->unit,
             'records' => $records,
         ]);
     }

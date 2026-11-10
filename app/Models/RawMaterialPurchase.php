@@ -37,4 +37,9 @@ class RawMaterialPurchase extends Model
     {
         return $this->hasMany(RawMaterialPurchaseReturn::class, 'purchase_id');
     }
+
+    public function paymentAccount()
+    {
+        return $this->belongsTo(\App\Models\Account::class, 'cash_account_id');
+    }
 }

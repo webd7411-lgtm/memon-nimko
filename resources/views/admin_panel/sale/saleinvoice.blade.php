@@ -372,7 +372,7 @@
       $isExchangeInv = count($invReturnItems) > 0 || (($bill->sale_status ?? $sale->sale_status ?? 0) == 2);
     @endphp
 
-    <div class="receipt-title">{{ $isExchangeInv ? 'Sale Exchange Receipt' : 'Sale Receipt' }}</div>
+    <div class="receipt-title">{{ $isExchangeInv ? 'Sale Exchange Receipt' : ($sale->is_trial ? 'Product Trial / Sample Slip' : 'Sale Receipt') }}</div>
     </div>
 
     <!-- Metadata -->
@@ -483,7 +483,13 @@
               <tr class="item-row">
                 <td style="width: 40%;" class="bold">{{ $item['item_name'] }}</td>
                 <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
-                <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif</td>
+                <td class="col-qty" style="width: 20%;">
+                @if((float)($item['qty'] ?? 0) == 0 && !empty($item['trade_offer']) && $item['trade_offer'] > 0)
+                  <span style="font-weight:bold;">{{ (float)$item['trade_offer'] }} Free (Trial)</span>
+                @else
+                  {{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif
+                @endif
+              </td>
                 <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
               </tr>
             @endforeach
@@ -519,7 +525,13 @@
             <tr class="item-row">
               <td style="width: 40%;" class="bold">{{ $item['item_name'] }}</td>
               <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
-              <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif</td>
+              <td class="col-qty" style="width: 20%;">
+                @if((float)($item['qty'] ?? 0) == 0 && !empty($item['trade_offer']) && $item['trade_offer'] > 0)
+                  <span style="font-weight:bold;">{{ (float)$item['trade_offer'] }} Free (Trial)</span>
+                @else
+                  {{ $displayQty }} {{ $displayUnit }}@if(!empty($item['trade_offer']) && $item['trade_offer'] > 0)<br><small style="color:#0f766e;font-size:10px;font-weight:bold;">(+{{ $item['trade_offer'] }} Free)</small>@endif
+                @endif
+              </td>
               <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
             </tr>
           @endforeach

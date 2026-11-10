@@ -10,6 +10,7 @@ class Sale extends Model
     protected $guarded = [];
     protected $casts = [
         'total_items' => 'float',
+        'is_trial'    => 'boolean',
     ];
 
     public static function generateInvoiceNo()

@@ -392,13 +392,13 @@
                     @php 
                       $sqty = $m->currentStock(); 
                       $factor = (float)($m->conversion_factor ?? 1);
-                      $purQty = $factor > 0 ? round($sqty / $factor, 2) : $sqty;
+                      $purQty = $factor > 0 ? ($sqty / $factor) : $sqty;
                       $cUnit = $m->consumption_unit ?? $m->unit;
                       $whQty = $m->warehouseStock();
-                      $whPurQty = $factor > 0 ? round($whQty / $factor, 2) : $whQty;
+                      $whPurQty = $factor > 0 ? ($whQty / $factor) : $whQty;
                     @endphp
                     <span class="stock-badge {{ $purQty > (float)$m->alert_qty ? 'stock-ok' : 'stock-low' }}">
-                      {{ number_format($purQty, 2) }} {{ $m->unit }}
+                      {{ format_stock_qty($purQty) }} {{ $m->unit }}
                     </span>
                     @if($factor > 1)
                       <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ format_consumption_qty($sqty, $cUnit) }})</div>
@@ -406,13 +406,13 @@
                     @if($whQty > 0)
                       <div class="mt-1">
                         <span class="badge bg-primary-subtle text-primary border" style="cursor:pointer;font-size:.7rem;" onclick="switchTab('tab-warehouse-stock')" title="Click to view warehouse stock">
-                          <i class="bi bi-building me-1"></i>WH: {{ number_format($whPurQty, 2) }} {{ $m->unit }}
+                          <i class="bi bi-building me-1"></i>WH: {{ format_stock_qty($whPurQty) }} {{ $m->unit }}
                         </span>
                       </div>
                     @endif
                   </td>
                   <td class="malert fw-semibold" data-label="Alert Qty">
-                    {{ number_format((float)($m->alert_qty ?? 0), 2) }} {{ $m->unit }}
+                    {{ format_stock_qty((float)($m->alert_qty ?? 0)) }} {{ $m->unit }}
                   </td>
                   <td class="text-center" data-label="Actions">
                     <div class="d-flex align-items-center justify-content-center gap-1">
@@ -425,9 +425,9 @@
                         data-cunit="{{ $m->consumption_unit ?? $m->unit }}"
                         data-factor="{{ (float)($m->conversion_factor ?? 1) }}"
                         data-price="{{ (float)$lastCost }}"
-                        data-purqty="{{ number_format($purQty, 2) }}"
-                        data-sqty="{{ number_format($sqty, 2) }}"
-                        data-whqty="{{ number_format($whPurQty, 2) }}"
+                        data-purqty="{{ format_stock_qty($purQty) }}"
+                        data-sqty="{{ format_stock_qty($sqty) }}"
+                        data-whqty="{{ format_stock_qty($whPurQty) }}"
                         data-alert="{{ (float)($m->alert_qty ?? 0) }}"
                         data-notes="{{ $m->notes ?? '' }}"
                         title="View Details">
@@ -878,7 +878,7 @@
 
                     $statusStr = $m->calc_status ?? 'In Stock';
                     $whQty = $m->warehouseStock();
-                    $whPurQty = $factor > 0 ? round($whQty / $factor, 2) : $whQty;
+                    $whPurQty = $factor > 0 ? ($whQty / $factor) : $whQty;
                   @endphp
                 <tr class="stock-row" data-status="{{ strtolower($statusStr) }}">
                   <td class="fw-bold" data-label="#">{{ $m->id }}</td>
@@ -895,7 +895,7 @@
                     @endif
                   </td>
                   <td style="font-weight:700;" class="open-stock-cell" data-label="Opening Stock">
-                    <span class="text-dark">{{ number_format($openPur, 2) }} {{ $m->unit }}</span>
+                    <span class="text-dark">{{ format_stock_qty($openPur) }} {{ $m->unit }}</span>
                     @if($factor > 1)
                       <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ format_consumption_qty($openCons, $cUnit) }})</div>
                     @endif
@@ -903,7 +903,7 @@
                   <td style="font-weight:700;" class="purchase-qty-cell" data-label="Purchase Qty">
                     @if($purCons > 0)
                       <span class="badge bg-success-subtle text-success border fw-bold" style="font-size:.82rem;">
-                        +{{ number_format($purPur, 2) }} {{ $m->unit }}
+                        +{{ format_stock_qty($purPur) }} {{ $m->unit }}
                       </span>
                       @if($factor > 1)
                         <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ format_consumption_qty($purCons, $cUnit) }})</div>
@@ -918,7 +918,7 @@
                         -{{ format_consumption_qty($usedCons, $cUnit) }}
                       </span>
                       @if($factor > 1)
-                        <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ number_format($usedPur, 2) }} {{ $m->unit }})</div>
+                        <div style="font-size:.72rem;" class="text-muted fw-semibold">({{ format_stock_qty($usedPur) }} {{ $m->unit }})</div>
                       @endif
                     @else
                       <span class="text-muted small">0.00</span>
@@ -926,14 +926,14 @@
                   </td>
                   <td style="font-weight:800;" class="fs-6 current-stock-cell" data-label="Current Stock">
                     <span class="stock-badge {{ $statusStr === 'In Stock' ? 'stock-ok' : 'stock-low' }}">
-                      {{ number_format($currPur, 2) }} {{ $m->unit }}
+                      {{ format_stock_qty($currPur) }} {{ $m->unit }}
                     </span>
                     @if($factor > 1)
                       <div style="font-size:.72rem;" class="text-muted fw-semibold mt-1">({{ format_consumption_qty($currCons, $cUnit) }})</div>
                     @endif
                   </td>
                   <td data-label="Alert Qty">
-                    {{ number_format((float)($m->alert_qty ?? 0), 2) }} {{ $m->unit }}
+                    {{ format_stock_qty((float)($m->alert_qty ?? 0)) }} {{ $m->unit }}
                   </td>
                   <td data-label="Status">
                     <span class="stock-badge {{ $statusStr === 'In Stock' ? 'stock-ok' : 'stock-low' }}">
@@ -956,8 +956,8 @@
                         data-name="{{ $m->name }}" 
                         data-unit="{{ $m->unit }}" 
                         data-cunit="{{ $cUnit }}" 
-                        data-used="{{ number_format($usedCons, 2) }}" 
-                        data-used-pur="{{ number_format($usedPur, 2) }}">
+                        data-used="{{ format_stock_qty($usedCons) }}" 
+                        data-used-pur="{{ format_stock_qty($usedPur) }}">
                         <i class="bi bi-info-circle me-1"></i> Detail
                       </button>
                     @else
@@ -1079,7 +1079,7 @@
                     if (!$m) continue;
                     $factor = (float)($m->conversion_factor ?? 1);
                     $rawQty = (float)$ws->qty;
-                    $purQty = $factor > 0 ? round($rawQty / $factor, 2) : $rawQty;
+                    $purQty = $factor > 0 ? ($rawQty / $factor) : $rawQty;
                     $alertInConsumption = (float)($m->alert_qty ?? 0) * ($factor > 0 ? $factor : 1);
                     $statusStr = $rawQty > $alertInConsumption ? 'In Stock' : ($rawQty > 0 ? 'Low Stock' : 'Out of Stock');
                     $lastCost = $m->lastPurchaseCost();
@@ -1096,7 +1096,7 @@
                     </td>
                     <td style="font-weight:800;" class="fs-6" data-label="Warehouse Stock">
                       <span class="stock-badge {{ $rawQty > $alertInConsumption ? 'stock-ok' : 'stock-low' }}">
-                        {{ number_format($purQty, 2) }} {{ $m->unit }}
+                        {{ format_stock_qty($purQty) }} {{ $m->unit }}
                       </span>
                     </td>
                     <td data-label="Recipe Qty">

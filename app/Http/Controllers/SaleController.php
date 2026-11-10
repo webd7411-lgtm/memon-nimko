@@ -27,8 +27,11 @@ class SaleController extends Controller
     {
         if ($request->ajax()) {
             
-            // 🔹 Base Query
+            // 🔹 Base Query (Exclude Product Trials / Free Samples from regular sales)
             $query = Sale::with(['customer_relation', 'user', 'branch'])->withCount('returns');
+            $query->where(function($q) {
+                $q->where('is_trial', 0)->orWhereNull('is_trial');
+            });
 
             // 🔹 Multi-Branch Scoping
             if (!is_all_branches()) {
@@ -82,7 +85,9 @@ class SaleController extends Controller
             }
 
             // 🔹 Total Records (before filtering)
-            $totalRecordsQuery = Sale::query();
+            $totalRecordsQuery = Sale::query()->where(function($q) {
+                $q->where('is_trial', 0)->orWhereNull('is_trial');
+            });
             if (!is_all_branches()) {
                 $totalRecordsQuery->where('branch_id', active_branch_id());
             }
@@ -309,8 +314,10 @@ class SaleController extends Controller
             ->where('date', date('Y-m-d'))
             ->value('amount') ?? 0;
 
-        // Calculate today's sales
-        $todaySalesQuery = Sale::query()->whereDate('created_at', date('Y-m-d'));
+        // Calculate today's sales (exclude trials)
+        $todaySalesQuery = Sale::query()->where(function($q) {
+            $q->where('is_trial', 0)->orWhereNull('is_trial');
+        })->whereDate('created_at', date('Y-m-d'));
         if (!is_all_branches()) {
             $todaySalesQuery->where('branch_id', active_branch_id());
         }
@@ -336,8 +343,10 @@ class SaleController extends Controller
 
         $netCash = $openingBalance + $todayNetSales - $todayExpense;
 
-        // KPI Summary Stats for ERP Header
-        $statsQuery = Sale::query();
+        // KPI Summary Stats for ERP Header (exclude trials)
+        $statsQuery = Sale::query()->where(function($q) {
+            $q->where('is_trial', 0)->orWhereNull('is_trial');
+        });
         if (!is_all_branches()) {
             $statsQuery->where('branch_id', active_branch_id());
         }
@@ -353,6 +362,168 @@ class SaleController extends Controller
             'openingBalance', 'todaySales', 'todayNetSales', 'todayExpense', 'netCash',
             'totalSalesCount', 'totalGrossSales', 'totalDiscountGiven', 'totalNetSales'
         ));
+    }
+
+    /**
+     * Display Product Trials / Free Samples register (Separate from regular sales)
+     */
+    public function trialsIndex(Request $request)
+    {
+        if ($request->ajax()) {
+            // 🔹 Base Query for Trials Only
+            $query = Sale::with(['customer_relation', 'user', 'branch', 'tradeOfferVoucher'])
+                ->where('is_trial', 1);
+
+            // Multi-Branch Scoping
+            if (!is_all_branches()) {
+                $query->where('branch_id', active_branch_id());
+            }
+
+            // Restrict non-admin users to their own entries
+            if (auth()->id() !== 1 && !auth()->user()->hasRole('Admin') && !auth()->user()->hasRole('Super Admin')) {
+                $query->where('user_id', auth()->id());
+            }
+
+            // Date Filters
+            if ($request->filled('from_date')) {
+                $query->where('created_at', '>=', \Carbon\Carbon::parse($request->from_date)->startOfDay());
+            }
+            if ($request->filled('to_date')) {
+                $query->where('created_at', '<=', \Carbon\Carbon::parse($request->to_date)->endOfDay());
+            }
+            if ($request->filled('filter_user')) {
+                $query->where('user_id', $request->filter_user);
+            }
+
+            // Search Filter
+            if ($request->has('search') && !empty($request->search['value'])) {
+                $search = $request->search['value'];
+                $query->where(function($q) use ($search) {
+                    $q->where('invoice_no', 'like', "%{$search}%")
+                      ->orWhere('reference', 'like', "%{$search}%")
+                      ->orWhereHas('customer_relation', function($c) use ($search) {
+                          $c->where('customer_name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('tradeOfferVoucher', function($v) use ($search) {
+                          $v->where('evid', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $totalRecordsQuery = Sale::query()->where('is_trial', 1);
+            if (!is_all_branches()) {
+                $totalRecordsQuery->where('branch_id', active_branch_id());
+            }
+            if (!auth()->user()->hasRole('Admin')) {
+                $totalRecordsQuery->where('user_id', auth()->id());
+            }
+            $totalRecords = $totalRecordsQuery->count();
+            $filteredRecords = $query->count();
+
+            // Order & Pagination
+            $query->orderBy('id', 'desc');
+            $start = intval($request->start);
+            $length = intval($request->length);
+            if ($length > 0) {
+                $query->skip($start)->take($length);
+            }
+            $trials = $query->get();
+
+            // Bulk prefetch products & variants
+            $allProductIds = [];
+            $allVariantIds = [];
+            foreach ($trials as $t) {
+                $pIds = explode(',', $t->product);
+                $vIds = explode(',', $t->variant_id);
+                foreach ($pIds as $pid) { if (!empty($pid)) $allProductIds[] = $pid; }
+                foreach ($vIds as $vid) { if (!empty($vid)) $allVariantIds[] = $vid; }
+            }
+            $productsMap = \App\Models\Product::whereIn('id', array_unique($allProductIds))->get()->keyBy('id');
+            $variantsMap = \App\Models\ProductVariant::whereIn('id', array_unique($allVariantIds))->get()->keyBy('id');
+
+            $data = [];
+            foreach ($trials as $index => $trial) {
+                $pIds = explode(',', $trial->product);
+                $vIds = explode(',', $trial->variant_id);
+                $toQtys = !empty($trial->trade_offer) ? explode(',', $trial->trade_offer) : [];
+
+                $itemsHtml = '';
+                $totalTrialPieces = 0;
+                foreach ($pIds as $i => $pid) {
+                    $p = $productsMap[$pid] ?? null;
+                    $vId = $vIds[$i] ?? null;
+                    $v = $vId ? ($variantsMap[$vId] ?? null) : null;
+                    $to = floatval($toQtys[$i] ?? 0);
+                    $totalTrialPieces += $to;
+
+                    $pName = $p ? $p->item_name : 'N/A';
+                    if ($v) {
+                        $pName .= ' (' . ($v->size_label ?: $v->variant_name) . ')';
+                    }
+                    $itemsHtml .= '<div class="small"><span class="fw-semibold">' . htmlspecialchars($pName) . '</span>: <span class="badge bg-primary-subtle text-primary border">' . ($to == (int)$to ? number_format($to, 0) : number_format($to, 2)) . ' Pcs</span></div>';
+                }
+
+                $dateObj = \Carbon\Carbon::parse($trial->created_at);
+                $dateHtml = '<div class="sl-date-wrap"><span class="sl-d fw-bold">' . $dateObj->format('d M Y') . '</span><br><span class="text-muted small">' . $dateObj->format('h:i A') . '</span></div>';
+
+                // Cost / Expense Voucher info
+                $expenseValue = floatval($trial->trade_offer_amount);
+                $voucherHtml = '<span class="text-muted">None</span>';
+                if ($trial->tradeOfferVoucher) {
+                    $voucherHtml = '<a href="' . route('expenseVoucher.print', $trial->tradeOfferVoucher->id) . '" target="_blank" class="badge bg-warning text-dark text-decoration-none border px-2 py-1"><i class="bi bi-receipt me-1"></i>' . $trial->tradeOfferVoucher->evid . '</a>';
+                } elseif ($trial->trade_offer_voucher_id) {
+                    $voucherHtml = '<span class="badge bg-warning text-dark border">ID #' . $trial->trade_offer_voucher_id . '</span>';
+                }
+
+                $costHtml = '<div class="text-end fw-bold text-danger">PKR ' . number_format($expenseValue, 2) . '<br><small class="text-muted" style="font-weight: normal;">(Cost Value)</small></div>';
+
+                // Actions
+                $receiptUrl = route('sales.recepit', $trial->id);
+                $invoiceUrl = route('sales.invoice', $trial->id);
+                $editUrl    = route('sales.edit', $trial->id);
+                $dcUrl      = route('sales.dc', $trial->id);
+
+                $actions = '<div class="d-flex align-items-center gap-1 justify-content-center">
+                    <button type="button" class="btn btn-sm btn-outline-info view-sale-details-btn" data-sale-id="' . $trial->id . '" title="View Details"><i class="fas fa-eye"></i></button>
+                    <a href="' . $receiptUrl . '" target="_blank" class="btn btn-sm btn-outline-primary" title="Print Slip"><i class="fas fa-print"></i></a>
+                    <a href="' . $invoiceUrl . '" target="_blank" class="btn btn-sm btn-outline-secondary" title="View A4 Invoice"><i class="fas fa-file-invoice"></i></a>
+                    <a href="' . $editUrl . '" class="btn btn-sm btn-outline-warning" title="Edit Trial"><i class="fas fa-edit"></i></a>
+                    <a href="' . $dcUrl . '" target="_blank" class="btn btn-sm btn-outline-success" title="Delivery Challan"><i class="fas fa-truck"></i></a>
+                </div>';
+
+                $data[] = [
+                    $start + $index + 1,
+                    '<span class="fw-bold font-monospace text-primary">' . $trial->invoice_no . '</span>',
+                    $dateHtml,
+                    '<span class="fw-semibold">' . htmlspecialchars($trial->customer_display_name) . '</span>',
+                    $trial->user ? htmlspecialchars($trial->user->name) : 'N/A',
+                    '<div class="mb-1"><span class="badge bg-info text-dark">' . $totalTrialPieces . ' Pcs Total</span></div>' . $itemsHtml,
+                    $costHtml,
+                    $voucherHtml,
+                    $actions
+                ];
+            }
+
+            return response()->json([
+                "draw" => intval($request->draw),
+                "recordsTotal" => $totalRecords,
+                "recordsFiltered" => $filteredRecords,
+                "data" => $data
+            ]);
+        }
+
+        // Summary KPI stats for Trials
+        $statsQuery = Sale::query()->where('is_trial', 1);
+        if (!is_all_branches()) {
+            $statsQuery->where('branch_id', active_branch_id());
+        }
+        if (!auth()->user()->hasRole('Admin')) {
+            $statsQuery->where('user_id', auth()->id());
+        }
+        $totalTrialsCount = (clone $statsQuery)->count();
+        $totalExpenseValue = (clone $statsQuery)->sum('trade_offer_amount');
+
+        return view('admin_panel.sale.trials', compact('totalTrialsCount', 'totalExpenseValue'));
     }
 
     public function addsale()
@@ -1479,16 +1650,19 @@ class SaleController extends Controller
             return back()->withInput()->withErrors($validator);
         }
 
-        // Validate there's at least one filled product row
-        $product_ids = is_array($request->product_id) ? $request->product_id : [];
-        $qtys = is_array($request->qty) ? $request->qty : [];
-        $prices = is_array($request->price) ? $request->price : [];
+        // Validate there's at least one filled product row (regular sale or product trial / free sample)
+        $product_ids  = is_array($request->product_id) ? $request->product_id : [];
+        $qtys         = is_array($request->qty) ? $request->qty : [];
+        $prices       = is_array($request->price) ? $request->price : [];
+        $trade_offers = is_array($request->trade_offer) ? $request->trade_offer : [];
+        $isTrialInput = $request->boolean('is_trial');
 
         $hasRow = false;
         foreach ($product_ids as $i => $pid) {
-            $q = isset($qtys[$i]) ? floatval($qtys[$i]) : 0;
-            $p = isset($prices[$i]) ? floatval($prices[$i]) : 0;
-            if (!empty($pid) && $q != 0 && $p > 0) {
+            $q  = isset($qtys[$i]) ? floatval($qtys[$i]) : 0;
+            $p  = isset($prices[$i]) ? floatval($prices[$i]) : 0;
+            $to = isset($trade_offers[$i]) ? floatval($trade_offers[$i]) : 0;
+            if (!empty($pid) && (($q != 0 && $p > 0) || ($q == 0 && $to > 0) || ($isTrialInput && $to > 0))) {
                 $hasRow = true;
                 break;
             }
@@ -1498,10 +1672,10 @@ class SaleController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Please add at least one product with quantity and price.'
+                    'message' => 'Please add at least one product with quantity or trial/trade offer pieces.'
                 ], 422);
             }
-            return back()->withInput()->with('error', 'Please add at least one product with quantity and price.');
+            return back()->withInput()->with('error', 'Please add at least one product with quantity or trial/trade offer pieces.');
         }
 
         DB::beginTransaction();
@@ -1581,9 +1755,10 @@ class SaleController extends Controller
                 
                 $qty   = isset($quantities[$index]) ? floatval($quantities[$index]) : 0;
                 $price = isset($prices[$index]) ? floatval($prices[$index]) : 0;
+                $toQty = isset($trade_offers[$index]) ? floatval($trade_offers[$index]) : 0;
 
-                // skip incomplete rows (allow negative qty for exchange returns)
-                if (empty($product_id) || $qty == 0 || $price <= 0) {
+                // skip incomplete rows (allow negative qty for exchange returns, and allow qty == 0 if trade_offer > 0)
+                if (empty($product_id) || ($qty == 0 && $toQty <= 0) || ($qty != 0 && $price <= 0 && $toQty <= 0)) {
                     continue;
                 }
 
@@ -1608,7 +1783,6 @@ class SaleController extends Controller
                 $combined_units[]      = $units[$index] ?? '';
                 $combined_prices[]     = $prices[$index] ?? 0;
                 $combined_discounts[]  = $discounts[$index] ?? 0;
-                $toQty = isset($trade_offers[$index]) ? floatval($trade_offers[$index]) : 0;
                 $combined_trade_offers[] = $toQty;
                 $combined_qtys[]       = $quantities[$index] ?? 0;
                 $combined_totals[]     = $totals[$index] ?? 0;
@@ -1630,7 +1804,13 @@ class SaleController extends Controller
                 $currentBranchId = active_branch_id();
                 
                 $dbVariantId = $isGram ? null : ($vId ?: null);
-                $totalPhysicalQty = $qty + ($qty > 0 ? $toQty : -$toQty);
+                if ($qty > 0) {
+                    $totalPhysicalQty = $qty + $toQty;
+                } elseif ($qty == 0) {
+                    $totalPhysicalQty = $toQty;
+                } else {
+                    $totalPhysicalQty = $qty - $toQty;
+                }
                 $deductQty = $totalPhysicalQty;
 
                 if ($isGram) {
@@ -1747,7 +1927,24 @@ class SaleController extends Controller
             $model->total_pieces          = $request->total_pieces;
             $model->total_meter          = $request->total_meter;
 
+            // Determine if this is a Product Trial / Free Sample
+            $isTrial = $request->boolean('is_trial');
+            if (!$isTrial) {
+                $totalPaidQty = 0;
+                $totalToQty = 0;
+                foreach ($combined_qtys as $cq) {
+                    $totalPaidQty += abs(floatval($cq));
+                }
+                foreach ($combined_trade_offers as $cto) {
+                    $totalToQty += floatval($cto);
+                }
+                if ($totalPaidQty == 0 && $totalToQty > 0) {
+                    $isTrial = true;
+                }
+            }
+
             if ($model instanceof \App\Models\Sale) {
+                $model->is_trial = $isTrial ? 1 : 0;
                 $model->user_id = auth()->id();
                 $model->order_type = $request->order_type ?? 'Walk-in';
                 $model->table_id = $request->table_id ?? null;
@@ -1995,7 +2192,7 @@ class SaleController extends Controller
             }
 
             if ($action === 'sale' && $model instanceof \App\Models\Sale) {
-                $this->syncTradeOfferExpenseVoucher($model, $combined_trade_offers, $combined_prices);
+                $this->syncTradeOfferExpenseVoucher($model, $combined_trade_offers, $combined_prices, $combined_product_ids, $combined_variant_ids);
             }
 
             DB::commit();
@@ -4608,7 +4805,7 @@ class SaleController extends Controller
      * @param array $prices
      * @return void
      */
-    public function syncTradeOfferExpenseVoucher(\App\Models\Sale $sale, array $tradeOffers = [], array $prices = [])
+    public function syncTradeOfferExpenseVoucher(\App\Models\Sale $sale, array $tradeOffers = [], array $prices = [], array $productIds = [], array $variantIds = [])
     {
         try {
             if (empty($tradeOffers)) {
@@ -4617,13 +4814,42 @@ class SaleController extends Controller
             if (empty($prices)) {
                 $prices = !empty($sale->per_price) ? explode(',', $sale->per_price) : [];
             }
+            if (empty($productIds)) {
+                $productIds = !empty($sale->product) ? explode(',', $sale->product) : [];
+            }
+            if (empty($variantIds)) {
+                $variantIds = !empty($sale->variant_id) ? explode(',', $sale->variant_id) : [];
+            }
 
+            // Option B: Cost Price (Purchase Rate) calculation for Free Samples / Trade Offers
             $totalTradeOfferAmount = 0.0;
             foreach ($tradeOffers as $idx => $toQty) {
                 $to = floatval($toQty);
-                $pr = isset($prices[$idx]) ? floatval($prices[$idx]) : 0.0;
-                if ($to > 0 && $pr > 0) {
-                    $totalTradeOfferAmount += ($to * $pr);
+                if ($to <= 0) continue;
+
+                $costPrice = 0.0;
+                $vId = $variantIds[$idx] ?? null;
+                $pId = $productIds[$idx] ?? null;
+
+                if (!empty($vId)) {
+                    $vModel = \App\Models\ProductVariant::find($vId);
+                    if ($vModel && (float)$vModel->cost_price > 0) {
+                        $costPrice = (float)$vModel->cost_price;
+                    }
+                }
+                if ($costPrice <= 0 && !empty($pId)) {
+                    $firstV = \App\Models\ProductVariant::where('product_id', $pId)->where('cost_price', '>', 0)->first();
+                    if ($firstV) {
+                        $costPrice = (float)$firstV->cost_price;
+                    }
+                }
+                // Fallback to selling price only if cost_price is not configured in DB
+                if ($costPrice <= 0) {
+                    $costPrice = isset($prices[$idx]) ? floatval($prices[$idx]) : 0.0;
+                }
+
+                if ($costPrice > 0) {
+                    $totalTradeOfferAmount += ($to * $costPrice);
                 }
             }
             $totalTradeOfferAmount = round($totalTradeOfferAmount, 2);
@@ -4677,7 +4903,9 @@ class SaleController extends Controller
             $voucher = $voucherId ? \App\Models\ExpenseVoucher::find($voucherId) : null;
 
             if ($totalTradeOfferAmount > 0) {
-                $remarkText = "Auto Expense: Trade Offer Free Goods on Invoice #{$sale->invoice_no} ({$customerName})";
+                $remarkText = $sale->is_trial
+                    ? "Auto Expense: Product Trial / Sample Pieces at Cost Price on #{$sale->invoice_no} ({$customerName})"
+                    : "Auto Expense: Trade Offer Free Goods at Cost Price on Invoice #{$sale->invoice_no} ({$customerName})";
                 $saleDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
 
                 if ($voucher) {

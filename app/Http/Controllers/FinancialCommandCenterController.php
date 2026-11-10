@@ -855,10 +855,15 @@ class FinancialCommandCenterController extends Controller
         usort($distAdvancesDetailed, fn($a, $b) => $b['balance'] <=> $a['balance']);
 
         // Market / Retail Shop receivables (distributor_customers)
+        // Exclude distributor's customers to prevent double counting (their balance is already in distributor ledger)
         $retailShops = DB::table('distributor_customers')
             ->leftJoin('distributors', 'distributors.id', '=', 'distributor_customers.distributor_id')
             ->where('distributor_customers.status', 'active')
             ->where('distributor_customers.current_balance', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('distributor_customers.distributor_id')
+                  ->orWhere('distributor_customers.distributor_id', 0);
+            })
             ->select(
                 'distributor_customers.id',
                 'distributor_customers.shop_name',

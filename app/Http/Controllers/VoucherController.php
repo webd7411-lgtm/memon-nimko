@@ -754,18 +754,22 @@ class VoucherController extends Controller
             // ✅ Vendor
         } elseif ($voucher->type === 'vendor') {
             $party = DB::table('vendors')->where('id', $voucher->party_id)->first();
-            $previousBalance = DB::table('vendor_ledgers')
+            $ledger = DB::table('vendor_ledgers')
                 ->where('vendor_id', $voucher->party_id)
                 ->orderByDesc('id')
-                ->value('closing_balance') ?? 0;
+                ->first();
+            $previousBalance = $ledger->previous_balance ?? ($ledger->closing_balance ?? 0);
+            $balanceAfter    = $ledger->closing_balance ?? 0;
 
             // ✅ Customer
         } elseif ($voucher->type === 'customer') {
             $party = DB::table('customers')->where('id', $voucher->party_id)->first();
-            $previousBalance = DB::table('customer_ledgers')
+            $ledger = DB::table('customer_ledgers')
                 ->where('customer_id', $voucher->party_id)
                 ->orderByDesc('id')
-                ->value('closing_balance') ?? 0;
+                ->first();
+            $previousBalance = $ledger->previous_balance ?? ($ledger->closing_balance ?? 0);
+            $balanceAfter    = $ledger->closing_balance ?? 0;
 
             // ✅ Walking customer
         } elseif ($voucher->type === 'walkin') {
@@ -781,11 +785,12 @@ class VoucherController extends Controller
                     'address' => $dist->address ?: ($dist->area . ', ' . $dist->city),
                     'phone'   => $dist->phone ?? '—',
                 ];
-                $previousBalance = $dist->current_balance ?? 0;
+                $balanceAfter = (float) $dist->current_balance;
+                $previousBalance = $balanceAfter - (float) $voucher->total_amount;
             }
         }
 
-        return view('admin_panel.vochers.payment_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+        return view('admin_panel.vochers.payment_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'balanceAfter'));
     }
 
     public function expense_vochers()
@@ -946,12 +951,26 @@ class VoucherController extends Controller
                   });
             })
             ->get();
+
+        $allExpenseHeads = \App\Models\AccountHead::where(function($q) {
+                $q->where('type', 'Expense')
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('type')
+                          ->whereNotIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks'])
+                          ->where('name', 'not like', '%Bank Account%')
+                          ->where('name', 'not like', '%Cash in Hand%');
+                  });
+            })
+            ->withCount(['accounts', 'expenseVouchers'])
+            ->orderBy('id', 'desc')
+            ->get();
+
         $accounts = \App\Models\Account::whereNull('distributor_id')->where('status', 1)->with('head')->get();
         $accountsMap = \App\Models\Account::whereNull('distributor_id')->pluck('title', 'id');
         $lastVoucher = \App\Models\ExpenseVoucher::latest('id')->first();
         $nextId = $lastVoucher ? $lastVoucher->id + 1 : 1;
         $nextRvid = 'EVID-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
-        return view('admin_panel.vochers.expense_vochers.all_expense_vochers', compact('vouchers', 'users', 'AccountHeads', 'accounts', 'accountsMap', 'nextRvid'));
+        return view('admin_panel.vochers.expense_vochers.all_expense_vochers', compact('vouchers', 'users', 'AccountHeads', 'allExpenseHeads', 'accounts', 'accountsMap', 'nextRvid'));
     }
 
     public function expenseprint($id)

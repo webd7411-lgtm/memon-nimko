@@ -11,6 +11,7 @@ class AccountHead extends Model
 
     protected $fillable = [
         'name',     // head ka name, jaise Bank, Expense, etc.
+        'type',
         'status',   // active/inactive
     ];
 
@@ -18,5 +19,11 @@ class AccountHead extends Model
     public function accounts()
     {
         return $this->hasMany(Account::class, 'head_id');
+    }
+
+    // Relation with Expense Vouchers
+    public function expenseVouchers()
+    {
+        return $this->hasMany(ExpenseVoucher::class, 'type', 'id');
     }
 }

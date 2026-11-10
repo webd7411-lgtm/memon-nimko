@@ -517,13 +517,6 @@
                 </div>
                 <div class="fcc-row-item">
                     <span class="fcc-row-label">
-                        <i class="fas fa-store text-info me-2"></i> Market / Retail Shop Receivables (Field)
-                        <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#retailShopsModal"><i class="fas fa-store-alt"></i> <span id="badgeShopsCount">0</span> Shops</span>
-                    </span>
-                    <span class="fcc-row-val" id="rowMarketReceivable">Rs. 0.00</span>
-                </div>
-                <div class="fcc-row-item">
-                    <span class="fcc-row-label">
                         <i class="fas fa-building text-secondary me-2"></i> Fixed Assets (Plant, Vehicles, Equipment)
                         <span class="bs-row-badge ms-2" data-bs-toggle="modal" data-bs-target="#assetsModal"><i class="fas fa-clipboard-list"></i> Asset Register</span>
                     </span>
@@ -889,46 +882,6 @@
       </div>
       <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
         <span class="small text-muted"><span id="modalDistCountFooter">0</span> Distributors | Total: <strong class="text-teal" style="color: #0f766e;" id="modalTotalDistFooter">Rs. 0.00</strong></span>
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 7. Market / Retail Shop Receivables Modal -->
-<div class="modal fade" id="retailShopsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-xl">
-    <div class="modal-content border-0 shadow-lg rounded-4">
-      <div class="modal-header border-bottom px-4 py-3">
-        <h5 class="modal-title fw-bold text-white mb-0">
-          <i class="fas fa-store text-info me-2"></i> Market / Retail Shop Receivables (Field Outlets)
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-4">
-        <input type="text" id="fccShopSearch" class="form-control form-control-sm mb-3 fcc-search-box" placeholder="Quick search shop name, owner or distributor...">
-        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
-          <table class="table table-sm table-hover align-middle fcc-modal-table mb-0">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Shop / Outlet Name</th>
-                <th>Owner Name</th>
-                <th>Distributor</th>
-                <th>Area</th>
-                <th>Phone</th>
-                <th class="text-end">Balance Due</th>
-                <th class="text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody id="retailShopsTableBody">
-              <!-- Populated via JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
-        <span class="small text-muted"><span id="modalShopsCountFooter">0</span> Retail Outlets | Total: <strong class="text-info" id="modalTotalShopsFooter">Rs. 0.00</strong></span>
         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -1363,30 +1316,6 @@ function loadFinancialSnapshot() {
             if (document.getElementById('modalDistCountFooter')) document.getElementById('modalDistCountFooter').innerText = distList.length;
             if (document.getElementById('modalTotalDistFooter')) document.getElementById('modalTotalDistFooter').innerText = formatCurrency(rec.distributors || 0);
 
-            // 8. Market / Retail Shops Modal
-            var shopList = rec.market_shops_list || [];
-            var shopHtml = '';
-            shopList.forEach(function(s, idx) {
-                shopHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td class="fw-semibold text-dark">${s.shop_name}</td>
-                    <td>${s.owner_name || '-'}</td>
-                    <td><span class="badge bg-light text-dark border">${s.distributor_name || 'Direct'}</span></td>
-                    <td>${s.area || '-'}</td>
-                    <td>${s.phone || '-'}</td>
-                    <td class="text-end fw-bold text-info">${formatCurrency(s.balance)}</td>
-                    <td class="text-center">
-                        <a href="${s.ledger_url}" target="_blank" class="btn btn-xs btn-outline-info py-0 px-2" style="font-size:0.75rem;">
-                            <i class="fas fa-book me-1"></i> Ledger
-                        </a>
-                    </td>
-                </tr>`;
-            });
-            if (!shopHtml) shopHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No retail outlet receivables</td></tr>';
-            if (document.getElementById('retailShopsTableBody')) document.getElementById('retailShopsTableBody').innerHTML = shopHtml;
-            if (document.getElementById('modalShopsCountFooter')) document.getElementById('modalShopsCountFooter').innerText = shopList.length;
-            if (document.getElementById('modalTotalShopsFooter')) document.getElementById('modalTotalShopsFooter').innerText = formatCurrency(rec.market_shops || 0);
-
             // 9. Fixed Assets Modal
             var assetList = bs.fixed_assets_list || [];
             var assetHtml = '';
@@ -1493,7 +1422,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setupModalSearch('fccRawStockSearch', 'rawStockTableBody');
     setupModalSearch('fccCustSearch', 'customersTableBody');
     setupModalSearch('fccDistSearch', 'distributorsTableBody');
-    setupModalSearch('fccShopSearch', 'retailShopsTableBody');
     setupModalSearch('fccAssetSearch', 'assetsTableBody');
     setupModalSearch('fccVendSearch', 'vendorsTableBody');
     setupModalSearch('fccAdvSearch', 'distAdvancesTableBody');

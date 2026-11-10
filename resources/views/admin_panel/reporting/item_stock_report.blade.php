@@ -903,7 +903,7 @@ $(document).on('change', '#only_movement', function() {
 function formatVal(val, isKg, unit) {
     val = parseFloat(val) || 0;
     if (!isKg) {
-        let fmtVal = Number.isInteger(val) ? val : val.toFixed(2);
+        let fmtVal = Number.isInteger(val) ? val : parseFloat(val.toFixed(4)).toString();
         return fmtVal + ' ' + (unit || 'PC');
     }
     let isNegative = val < 0;

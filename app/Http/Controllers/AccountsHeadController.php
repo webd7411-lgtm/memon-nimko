@@ -35,6 +35,71 @@ class AccountsHeadController extends Controller
         return redirect()->back()->with('success', 'Head added successfully.');
     }
 
+    public function updateHead(Request $request, $id)
+    {
+        $head = AccountHead::findOrFail($id);
+        $request->validate([
+            'name'   => 'required|string|max:100',
+            'status' => 'nullable|in:0,1',
+        ]);
+
+        $head->name = $request->name;
+        if ($request->has('status')) {
+            $head->status = $request->status;
+        }
+        $head->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Expense Head updated successfully.',
+                'head'    => $head,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Expense Head updated successfully.');
+    }
+
+    public function destroyHead(Request $request, $id)
+    {
+        $head = AccountHead::findOrFail($id);
+
+        // Core system heads check
+        if (in_array(strtolower(trim($head->name)), ['bank accounts', 'cash in hand', 'bank', 'cash'])) {
+            $msg = 'Core account heads cannot be deleted.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        // Check usage in expense vouchers or accounts
+        $usedInVouchers = ExpenseVoucher::where('type', $head->id)->exists();
+        $usedInAccounts = Account::where('head_id', $head->id)->exists();
+
+        if ($usedInVouchers || $usedInAccounts) {
+            $details = [];
+            if ($usedInVouchers) $details[] = 'expense vouchers';
+            if ($usedInAccounts) $details[] = 'chart of accounts';
+            $msg = 'Cannot delete Expense Head because it is currently linked to ' . implode(' and ', $details) . '. Please delete or reassign them first.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        $head->delete();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Expense Head deleted successfully.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Expense Head deleted successfully.');
+    }
+
     public function storeAccount(Request $request)
     {
         $request->validate([
