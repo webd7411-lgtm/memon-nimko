@@ -31,9 +31,10 @@ class VoucherController extends Controller
             $typeLabel = '-';
 
             // 🧩 Check if type is numeric → account-based
-            if (is_numeric($voucher->type)) {
-                $accountHead = DB::table('account_heads')->where('id', $voucher->type)->first();
+            if (is_numeric($voucher->type) || $voucher->type === 'all_accounts' || $voucher->type === 'account') {
                 $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+                $headId = is_numeric($voucher->type) ? $voucher->type : ($account->head_id ?? null);
+                $accountHead = $headId ? DB::table('account_heads')->where('id', $headId)->first() : null;
 
                 $typeLabel = $accountHead->name ?? 'Account';
                 $partyName = $account->title ?? '-';
@@ -78,18 +79,7 @@ class VoucherController extends Controller
         $narrations = \App\Models\Narration::where('expense_head', 'Receipts Voucher')
             ->pluck('narration', 'id');
         $AccountHeads = AccountHead::where('status', 1)
-            ->where(function($q) {
-                $q->where('type', 'Asset')
-                  ->orWhere(function($sub) {
-                      $sub->where('type', '!=', 'Expense')
-                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
-                  })
-                  ->orWhere(function($sub) {
-                      $sub->whereNull('type')
-                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
-                  });
-            })
-            ->orderBy('id')
+            ->orderBy('name')
             ->get();
 
         // Last RVID nikalna
@@ -396,18 +386,19 @@ class VoucherController extends Controller
         $party = null;
         $previousBalance = 0;
 
-        // If type is numeric — treat as account head id (legacy pattern you used)
-        if (is_numeric($voucher->type)) {
-            $accountHead = DB::table('account_heads')->where('id', $voucher->type)->first();
+        // If type is numeric or all_accounts — treat as account
+        if (is_numeric($voucher->type) || $voucher->type === 'all_accounts' || $voucher->type === 'account') {
             $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+            $headId = is_numeric($voucher->type) ? $voucher->type : ($account->head_id ?? null);
+            $accountHead = $headId ? DB::table('account_heads')->where('id', $headId)->first() : null;
 
             if ($account) {
                 $party = (object)[
                     'name' => $account->title ?? '—',
-                    'address' => $account->address ?? '—',
-                    'mobile' => $account->mobile ?? $account->phone ?? $account->account_code ?? '—',
-                    'phone' => $account->phone ?? $account->mobile ?? $account->account_code ?? '—',
-                    'head_name' => $accountHead->name ?? '—',
+                    'address' => $account->branch_name ?? '—',
+                    'mobile' => $account->account_code ?? ($account->account_number ?? '—'),
+                    'phone' => $account->account_code ?? ($account->account_number ?? '—'),
+                    'head_name' => $accountHead->name ?? 'Chart of Accounts',
                 ];
             }
         } elseif ($voucher->type === 'vendor') {
@@ -476,18 +467,7 @@ class VoucherController extends Controller
         $narrations = \App\Models\Narration::where('expense_head', 'Payment voucher')
             ->pluck('narration', 'id');
         $AccountHeads = AccountHead::where('status', 1)
-            ->where(function($q) {
-                $q->where('type', 'Asset')
-                  ->orWhere(function($sub) {
-                      $sub->where('type', '!=', 'Expense')
-                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
-                  })
-                  ->orWhere(function($sub) {
-                      $sub->whereNull('type')
-                          ->whereIn('name', ['Bank Accounts', 'Cash in Hand', 'Bank', 'Cash', 'Banks']);
-                  });
-            })
-            ->orderBy('id')
+            ->orderBy('name')
             ->get();
 
         // Last RVID nikalna
@@ -666,9 +646,10 @@ class VoucherController extends Controller
             $typeLabel = '-';
 
             // Check if type is numeric → account-based
-            if (is_numeric($voucher->type)) {
-                $accountHead = DB::table('account_heads')->where('id', $voucher->type)->first();
+            if (is_numeric($voucher->type) || $voucher->type === 'all_accounts' || $voucher->type === 'account') {
                 $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+                $headId = is_numeric($voucher->type) ? $voucher->type : ($account->head_id ?? null);
+                $accountHead = $headId ? DB::table('account_heads')->where('id', $headId)->first() : null;
 
                 $typeLabel = $accountHead->name ?? 'Account';
                 $partyName = $account->title ?? '-';
@@ -735,17 +716,18 @@ class VoucherController extends Controller
         $party = null;
         $previousBalance = 0;
 
-        // ✅ Account Head type (numeric)
-        if (is_numeric($voucher->type)) {
-            $accountHead = DB::table('account_heads')->where('id', $voucher->type)->first();
+        // ✅ Account Head type (numeric or all_accounts)
+        if (is_numeric($voucher->type) || $voucher->type === 'all_accounts' || $voucher->type === 'account') {
             $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+            $headId = is_numeric($voucher->type) ? $voucher->type : ($account->head_id ?? null);
+            $accountHead = $headId ? DB::table('account_heads')->where('id', $headId)->first() : null;
 
             if ($account) {
                 $party = (object)[
                     'name' => $account->title ?? '—',
-                    'address' => '—',
-                    'phone' => $account->account_code ?? '—',
-                    'head_name' => $accountHead->name ?? '—',
+                    'address' => $account->branch_name ?? '—',
+                    'phone' => $account->account_code ?? ($account->account_number ?? '—'),
+                    'head_name' => $accountHead->name ?? 'Chart of Accounts',
                 ];
             }
 

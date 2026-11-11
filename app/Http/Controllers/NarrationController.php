@@ -77,6 +77,22 @@ class NarrationController extends Controller
                 ->select('id', \Illuminate\Support\Facades\DB::raw("CONCAT(name, ' (', code, ')') as text"))
                 ->get();
             return response()->json($distributors);
+        } elseif ($type === 'account' || $type === 'all_accounts') {
+            $accounts = Account::whereNull('distributor_id')
+                ->where('status', 1)
+                ->with('head')
+                ->orderBy('title')
+                ->get()
+                ->map(function($acc) {
+                    $headLabel = $acc->head ? '[' . $acc->head->name . '] ' : '';
+                    $codeLabel = $acc->account_code ? ' (' . $acc->account_code . ')' : '';
+                    return [
+                        'id'   => $acc->id,
+                        'text' => $headLabel . $acc->title . $codeLabel,
+                        'code' => $acc->account_code,
+                    ];
+                });
+            return response()->json($accounts);
         }
 
         return response()->json([]);
@@ -114,6 +130,18 @@ class NarrationController extends Controller
             ]);
         }
 
+        if (is_numeric($type) || $type === 'account' || $type === 'all_accounts') {
+            $acc = Account::with('head')->find($id);
+            if ($acc) {
+                return response()->json([
+                    'address'          => $acc->branch_name ?? '',
+                    'mobile'           => $acc->account_code ?: ($acc->account_number ?? ''),
+                    'remarks'          => $acc->head ? "Head: {$acc->head->name}" : '',
+                    'previous_balance' => (float) ($acc->opening_balance ?? 0),
+                ]);
+            }
+        }
+
         // Default: Fetch Customer data (including walking)
         $c = Customer::find($id);
         if (!$c) {
@@ -138,7 +166,11 @@ class NarrationController extends Controller
 
     public function getAccountsByHead($headId)
     {
-        $accounts = Account::where('head_id', $headId)->whereNull('distributor_id')->where('status', 1)->get();
+        if ($headId === 'all') {
+            $accounts = Account::whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
+        } else {
+            $accounts = Account::where('head_id', $headId)->whereNull('distributor_id')->where('status', 1)->with('head')->orderBy('title')->get();
+        }
         return response()->json($accounts);
     }
 }

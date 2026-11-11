@@ -667,12 +667,17 @@ table.rvf-table tfoot th {
                         <label class="rvf-label">Receipt Type</label>
                         <select name="vendor_type" class="rvf-input" required>
                             <option value="">Select Receipt Type</option>
-                            @foreach($AccountHeads as $head)
-                            <option value="{{ $head->id }}">{{ $head->name }}</option>
-                            @endforeach
-                            <option value="vendor">Vendor</option>
-                            <option value="customer">Customer</option>
-                            <option value="distributor">Distributor</option>
+                            <option value="all_accounts" class="fw-bold text-success">★ All Accounts (Chart of Accounts)</option>
+                            <optgroup label="Chart of Accounts Heads">
+                                @foreach($AccountHeads as $head)
+                                <option value="{{ $head->id }}">{{ $head->name }}</option>
+                                @endforeach
+                            </optgroup>
+                            <optgroup label="Other Parties">
+                                <option value="customer">Customer</option>
+                                <option value="distributor">Distributor</option>
+                                <option value="vendor">Vendor</option>
+                            </optgroup>
                         </select>
                     </div>
 
@@ -740,6 +745,7 @@ table.rvf-table tfoot th {
                                 <td data-label="Account Head">
                                     <select name="row_account_head[]" class="rvf-input rowAccountHead" required>
                                         <option value="">Select Head</option>
+                                        <option value="all">★ All Accounts (Direct)</option>
                                         @foreach($AccountHeads as $head)
                                         <option value="{{ $head->id }}">{{ $head->name }}</option>
                                         @endforeach
@@ -851,6 +857,17 @@ table.rvf-table tfoot th {
                     $vendorSelect.append('<option value="' + item.id + '">' + item.text + '</option>');
                 });
             });
+        } else if (type === 'all_accounts' || type === 'account') {
+            $.get('{{ route("party.list") }}?type=all_accounts', function(data) {
+                $vendorSelect.empty().append('<option disabled selected>Select Account</option>');
+                data.forEach(function(item) {
+                    $vendorSelect.append(
+                        '<option value="' + item.id + '" data-code="' + (item.code || '') + '">' +
+                        item.text +
+                        '</option>'
+                    );
+                });
+            });
         } else if (type) {
             let headId = type;
             $.get('{{ url("get-accounts-by-head") }}/' + headId, function(data) {
@@ -901,7 +918,9 @@ table.rvf-table tfoot th {
         $.get('{{ url("get-accounts-by-head") }}/' + headId, function(res) {
             let html = '<option value="">Select Account</option>';
             res.forEach(acc => {
-                html += `<option value="${acc.id}">${acc.title}</option>`;
+                let headPrefix = (headId === 'all' && acc.head) ? '[' + acc.head.name + '] ' : '';
+                let codeSuffix = acc.account_code ? ' (' + acc.account_code + ')' : '';
+                html += `<option value="${acc.id}">${headPrefix}${acc.title}${codeSuffix}</option>`;
             });
             $subSelect.html(html);
         });
@@ -934,6 +953,7 @@ table.rvf-table tfoot th {
             <td data-label="Account Head">
                 <select name="row_account_head[]" class="rvf-input rowAccountHead" required>
                     <option value="">Select Head</option>
+                    <option value="all">★ All Accounts (Direct)</option>
                     @foreach($AccountHeads as $head)
                         <option value="{{ $head->id }}">{{ $head->name }}</option>
                     @endforeach
