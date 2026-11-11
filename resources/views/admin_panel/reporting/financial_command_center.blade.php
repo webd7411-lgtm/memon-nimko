@@ -447,9 +447,9 @@
 
             <div class="col-12 col-md-4">
                 <div class="p-3 bg-white rounded-4 border shadow-sm">
-                    <span class="text-muted small fw-bold text-uppercase d-block">All-Time Net Invested Capital</span>
+                    <span class="text-muted small fw-bold text-uppercase d-block">Period Net Invested Capital</span>
                     <h4 class="fw-bold mb-1 text-purple mt-1" style="color: #7c3aed;" id="equityCumulativeCapitalVal">Rs. 0.00</h4>
-                    <span class="text-muted small">Cumulative (Total Injected - Total Withdrawn)</span>
+                    <span class="text-muted small">Selected Period (Total Injected - Total Withdrawn)</span>
                 </div>
             </div>
         </div>
@@ -1118,7 +1118,7 @@ function loadFinancialSnapshot() {
             // Outsource Capital Tracking Section
             document.getElementById('equityInflowVal').innerText = '+ ' + formatCurrency(res.curr_equity.injections);
             document.getElementById('equityOutflowVal').innerText = '- ' + formatCurrency(res.curr_equity.drawings);
-            document.getElementById('equityCumulativeCapitalVal').innerText = formatCurrency(res.cumulative_equity.net_invested_capital);
+            document.getElementById('equityCumulativeCapitalVal').innerText = formatCurrency(res.curr_equity.net_movement);
 
             // Asset Details
             document.getElementById('totalAssetsVal').innerText = formatCurrency(res.curr_bs.total_assets);

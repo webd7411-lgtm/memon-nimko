@@ -157,228 +157,86 @@ class FinancialCommandCenterController extends Controller
     }
 
     /**
-     * Calculate Period-Specific Capital Injections (Outsource / Investment) & Drawings (Personal withdrawals).
+     * Fetch voucher total & latest entries for Receipt/Payment Vouchers within optional period or cumulative up to $endDate.
      */
-    private function calculateEquityMovements(string $startDate, string $endDate, $branchId): array
+    private function fetchVoucherMovements(string $table, ?string $startDate, string $endDate, $branchId, string $refCol, string $defaultRemark, bool $withHistory = true): array
     {
-        $isAll = ($branchId === 'all');
-        $startDT = $startDate . ' 00:00:00';
-        $endDT   = $endDate   . ' 23:59:59';
+        $endDT = $endDate . ' 23:59:59';
+        $q = DB::table($table);
 
-        // Find equity/capital heads
-        $equityHeadIds = DB::table('account_heads')
-            ->where('name', 'like', '%Equity%')
-            ->orWhere('name', 'like', '%Capital%')
-            ->orWhere('name', 'like', '%Investment%')
-            ->pluck('id')
-            ->toArray();
-
-        $equityAccIds = DB::table('accounts')
-            ->whereNull('distributor_id')
-            ->whereIn('head_id', $equityHeadIds)
-            ->orWhere('title', 'like', '%Capital%')
-            ->orWhere('title', 'like', '%Investment%')
-            ->pluck('id')
-            ->toArray();
-
-        // Capital Injections (Receipt Vouchers linked to Equity / Capital accounts or narrations)
-        $rvQ = DB::table('receipts_vouchers')
-            ->where(function($q) use ($startDT, $endDT, $startDate, $endDate) {
-                $q->whereBetween('entry_date', [$startDate, $endDate])
-                  ->orWhereBetween('receipt_date', [$startDate, $endDate])
-                  ->orWhereBetween('created_at', [$startDT, $endDT]);
+        if ($startDate !== null) {
+            $startDT = $startDate . ' 00:00:00';
+            $q->where(function ($sub) use ($startDate, $endDate, $startDT, $endDT) {
+                $sub->whereBetween('entry_date', [$startDate, $endDate])
+                    ->orWhereBetween('receipt_date', [$startDate, $endDate])
+                    ->orWhereBetween('created_at', [$startDT, $endDT]);
             });
-        if (!$isAll && Schema::hasColumn('receipts_vouchers', 'branch_id')) {
-            $rvQ->where('branch_id', $branchId);
+        } else {
+            $q->where(function ($sub) use ($endDate, $endDT) {
+                $sub->where('entry_date', '<=', $endDate)
+                    ->orWhere('receipt_date', '<=', $endDate)
+                    ->orWhere('created_at', '<=', $endDT);
+            });
         }
 
-        $vouchers = $rvQ->get();
-        $injectionsTotal = 0;
-        $injectionsList = [];
+        if ($branchId !== 'all' && Schema::hasColumn($table, 'branch_id')) {
+            $q->where('branch_id', $branchId);
+        }
 
-        foreach ($vouchers as $v) {
-            $isEquity = false;
-            if (in_array($v->type, $equityHeadIds) || in_array($v->party_id, $equityAccIds)) {
-                $isEquity = true;
-            } else {
-                $narrText = strtolower($v->remarks ?? '');
-                if (str_contains($narrText, 'capital') || str_contains($narrText, 'invest') || str_contains($narrText, 'outsource') || str_contains($narrText, 'loan')) {
-                    $isEquity = true;
-                }
-            }
+        $rows = $q->orderByDesc('id')->get();
+        $total = 0.0;
+        $history = [];
 
-            if ($isEquity) {
-                $amt = (float) $v->total_amount;
-                $injectionsTotal += $amt;
-                $injectionsList[] = [
-                    'id'          => $v->id,
-                    'rvid'        => $v->rvid ?? ('RV-' . $v->id),
-                    'date'        => $v->entry_date ?? $v->receipt_date ?? substr($v->created_at, 0, 10),
-                    'amount'      => $amt,
-                    'remarks'     => $v->remarks ?: 'Capital Injection / Outsource Fund',
+        foreach ($rows as $row) {
+            $amt = (float) ($row->total_amount ?? 0);
+            $total += $amt;
+
+            if ($withHistory && count($history) < 10) {
+                $history[] = [
+                    'id'      => $row->id,
+                    $refCol   => $row->{$refCol} ?? (strtoupper(substr($refCol, 0, 2)) . '-' . $row->id),
+                    'date'    => $row->receipt_date ?? $row->entry_date ?? substr((string) ($row->created_at ?? ''), 0, 10),
+                    'amount'  => $amt,
+                    'remarks' => $row->remarks ?: $defaultRemark,
                 ];
             }
         }
-
-        // Drawings (Payment Vouchers linked to Drawings / Owner Personal Withdrawals)
-        $drawingsHeadIds = DB::table('account_heads')
-            ->where('name', 'like', '%Drawing%')
-            ->orWhere('name', 'like', '%Withdrawal%')
-            ->orWhere('name', 'like', '%Personal%')
-            ->pluck('id')
-            ->toArray();
-
-        $drawingsAccIds = DB::table('accounts')
-            ->whereNull('distributor_id')
-            ->whereIn('head_id', $drawingsHeadIds)
-            ->orWhere('title', 'like', '%Drawing%')
-            ->orWhere('title', 'like', '%Personal%')
-            ->pluck('id')
-            ->toArray();
-
-        $pvQ = DB::table('payment_vouchers')
-            ->where(function($q) use ($startDT, $endDT, $startDate, $endDate) {
-                $q->whereBetween('entry_date', [$startDate, $endDate])
-                  ->orWhereBetween('receipt_date', [$startDate, $endDate])
-                  ->orWhereBetween('created_at', [$startDT, $endDT]);
-            });
-        if (!$isAll && Schema::hasColumn('payment_vouchers', 'branch_id')) {
-            $pvQ->where('branch_id', $branchId);
-        }
-
-        $pvtVouchers = $pvQ->get();
-        $drawingsTotal = 0;
-        $drawingsList = [];
-
-        foreach ($pvtVouchers as $pv) {
-            $isDrawing = false;
-            if (in_array($pv->type, $drawingsHeadIds) || in_array($pv->party_id, $drawingsAccIds)) {
-                $isDrawing = true;
-            } else {
-                $narrText = strtolower($pv->remarks ?? '');
-                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'owner')) {
-                    $isDrawing = true;
-                }
-            }
-
-            if ($isDrawing) {
-                $amt = (float) $pv->total_amount;
-                $drawingsTotal += $amt;
-                $drawingsList[] = [
-                    'id'          => $pv->id,
-                    'pvid'        => $pv->pvid ?? ('PV-' . $pv->id),
-                    'date'        => $pv->entry_date ?? $pv->receipt_date ?? substr($pv->created_at, 0, 10),
-                    'amount'      => $amt,
-                    'remarks'     => $pv->remarks ?: 'Owner Personal Withdrawal / Return of Capital',
-                ];
-            }
-        }
-
-        $netEquityMovement = $injectionsTotal - $drawingsTotal;
 
         return [
-            'injections'          => $injectionsTotal,
-            'drawings'            => $drawingsTotal,
-            'net_movement'        => $netEquityMovement,
-            'injections_history'  => array_slice($injectionsList, 0, 10),
-            'drawings_history'    => array_slice($drawingsList, 0, 10),
+            'total'   => round($total, 2),
+            'history' => $history,
         ];
     }
 
     /**
-     * Compute Cumulative Equity Injections & Drawings as of a specific date.
+     * Calculate Period-Specific Receipts & Payments (every Receipt Voucher & Payment Voucher).
+     */
+    private function calculateEquityMovements(string $startDate, string $endDate, $branchId): array
+    {
+        $rv = $this->fetchVoucherMovements('receipts_vouchers', $startDate, $endDate, $branchId, 'rvid', 'Receipt Voucher Inflow', true);
+        $pv = $this->fetchVoucherMovements('payment_vouchers', $startDate, $endDate, $branchId, 'pvid', 'Payment Voucher Outflow', true);
+
+        return [
+            'injections'         => $rv['total'],
+            'drawings'           => $pv['total'],
+            'net_movement'       => round($rv['total'] - $pv['total'], 2),
+            'injections_history' => $rv['history'],
+            'drawings_history'   => $pv['history'],
+        ];
+    }
+
+    /**
+     * Compute Cumulative Receipt & Payment Vouchers as of a specific date.
      */
     private function calculateCumulativeEquity(string $asOfDate, $branchId): array
     {
-        $isAll = ($branchId === 'all');
-        $endDT = $asOfDate . ' 23:59:59';
-
-        $equityHeadIds = DB::table('account_heads')
-            ->where('name', 'like', '%Equity%')
-            ->orWhere('name', 'like', '%Capital%')
-            ->orWhere('name', 'like', '%Investment%')
-            ->pluck('id')
-            ->toArray();
-
-        $equityAccIds = DB::table('accounts')
-            ->whereNull('distributor_id')
-            ->whereIn('head_id', $equityHeadIds)
-            ->orWhere('title', 'like', '%Capital%')
-            ->orWhere('title', 'like', '%Investment%')
-            ->pluck('id')
-            ->toArray();
-
-        $rvQ = DB::table('receipts_vouchers')
-            ->where(function($q) use ($asOfDate, $endDT) {
-                $q->where('entry_date', '<=', $asOfDate)
-                  ->orWhere('created_at', '<=', $endDT);
-            });
-        if (!$isAll && Schema::hasColumn('receipts_vouchers', 'branch_id')) {
-            $rvQ->where('branch_id', $branchId);
-        }
-
-        $totalInjected = 0;
-        foreach ($rvQ->get() as $v) {
-            $isEquity = false;
-            if (in_array($v->type, $equityHeadIds) || in_array($v->party_id, $equityAccIds)) {
-                $isEquity = true;
-            } else {
-                $narrText = strtolower($v->remarks ?? '');
-                if (str_contains($narrText, 'capital') || str_contains($narrText, 'invest') || str_contains($narrText, 'outsource') || str_contains($narrText, 'loan')) {
-                    $isEquity = true;
-                }
-            }
-            if ($isEquity) {
-                $totalInjected += (float) $v->total_amount;
-            }
-        }
-
-        $drawingsHeadIds = DB::table('account_heads')
-            ->where('name', 'like', '%Drawing%')
-            ->orWhere('name', 'like', '%Withdrawal%')
-            ->orWhere('name', 'like', '%Personal%')
-            ->pluck('id')
-            ->toArray();
-
-        $drawingsAccIds = DB::table('accounts')
-            ->whereNull('distributor_id')
-            ->whereIn('head_id', $drawingsHeadIds)
-            ->orWhere('title', 'like', '%Drawing%')
-            ->orWhere('title', 'like', '%Personal%')
-            ->pluck('id')
-            ->toArray();
-
-        $pvQ = DB::table('payment_vouchers')
-            ->where(function($q) use ($asOfDate, $endDT) {
-                $q->where('entry_date', '<=', $asOfDate)
-                  ->orWhere('created_at', '<=', $endDT);
-            });
-        if (!$isAll && Schema::hasColumn('payment_vouchers', 'branch_id')) {
-            $pvQ->where('branch_id', $branchId);
-        }
-
-        $totalWithdrawn = 0;
-        foreach ($pvQ->get() as $pv) {
-            $isDrawing = false;
-            if (in_array($pv->type, $drawingsHeadIds) || in_array($pv->party_id, $drawingsAccIds)) {
-                $isDrawing = true;
-            } else {
-                $narrText = strtolower($pv->remarks ?? '');
-                if (str_contains($narrText, 'drawing') || str_contains($narrText, 'withdraw') || str_contains($narrText, 'personal') || str_contains($narrText, 'owner')) {
-                    $isDrawing = true;
-                }
-            }
-            if ($isDrawing) {
-                $totalWithdrawn += (float) $pv->total_amount;
-            }
-        }
-
-        $netInvestedCapital = $totalInjected - $totalWithdrawn;
+        $rv = $this->fetchVoucherMovements('receipts_vouchers', null, $asOfDate, $branchId, 'rvid', 'Receipt Voucher Inflow', false);
+        $pv = $this->fetchVoucherMovements('payment_vouchers', null, $asOfDate, $branchId, 'pvid', 'Payment Voucher Outflow', false);
 
         return [
-            'total_injected'       => $totalInjected,
-            'total_withdrawn'      => $totalWithdrawn,
-            'net_invested_capital' => $netInvestedCapital,
+            'total_injected'       => $rv['total'],
+            'total_withdrawn'      => $pv['total'],
+            'net_invested_capital' => round($rv['total'] - $pv['total'], 2),
         ];
     }
 
