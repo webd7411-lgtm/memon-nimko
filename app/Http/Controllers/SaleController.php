@@ -1992,6 +1992,14 @@ class SaleController extends Controller
                     $model->save();
                     $cashAccount = \App\Models\Account::find($cashAccId);
                     if ($cashAccount) {
+                        $cashAccount->setLedgerMeta([
+                            'branch_id'        => $model->branch_id ?? null,
+                            'transaction_date' => $model->created_at ?? now(),
+                            'reference_type'   => 'Sale',
+                            'reference_no'     => $model->invoice_no,
+                            'reference_id'     => $model->id,
+                            'description'      => 'Cash received on Sale #' . $model->invoice_no,
+                        ]);
                         $cashAccount->opening_balance = (float)$cashAccount->opening_balance + $netCashReceived;
                         $cashAccount->save();
                     }
@@ -2003,6 +2011,14 @@ class SaleController extends Controller
             if ($action === 'sale' && !empty($model->card_account_id) && floatval($model->card) > 0) {
                 $cardAccount = \App\Models\Account::find($model->card_account_id);
                 if ($cardAccount) {
+                    $cardAccount->setLedgerMeta([
+                        'branch_id'        => $model->branch_id ?? null,
+                        'transaction_date' => $model->created_at ?? now(),
+                        'reference_type'   => 'Sale (Bank/Card)',
+                        'reference_no'     => $model->invoice_no,
+                        'reference_id'     => $model->id,
+                        'description'      => 'Card / Bank received on Sale #' . $model->invoice_no,
+                    ]);
                     $cardAccount->opening_balance = (float)$cardAccount->opening_balance + floatval($model->card);
                     $cardAccount->save();
 
@@ -2478,6 +2494,14 @@ class SaleController extends Controller
                     $sale->cash_account_id = $cashAccId;
                     $cashAcc = \App\Models\Account::find($cashAccId);
                     if ($cashAcc) {
+                        $cashAcc->setLedgerMeta([
+                            'branch_id'        => $sale->branch_id ?? null,
+                            'transaction_date' => $sale->created_at ?? now(),
+                            'reference_type'   => 'Sale',
+                            'reference_no'     => $sale->invoice_no,
+                            'reference_id'     => $sale->id,
+                            'description'      => 'Cash received on Sale #' . $sale->invoice_no,
+                        ]);
                         $cashAcc->opening_balance = (float)$cashAcc->opening_balance + $netCashPaid;
                         $cashAcc->save();
                     }
@@ -2488,6 +2512,14 @@ class SaleController extends Controller
                 if ($cardPaid > 0 && $cardAccountId && empty($sale->is_account_credited)) {
                     $cardAcc = \App\Models\Account::find($cardAccountId);
                     if ($cardAcc) {
+                        $cardAcc->setLedgerMeta([
+                            'branch_id'        => $sale->branch_id ?? null,
+                            'transaction_date' => $sale->created_at ?? now(),
+                            'reference_type'   => 'Sale (Bank/Card)',
+                            'reference_no'     => $sale->invoice_no,
+                            'reference_id'     => $sale->id,
+                            'description'      => 'Card / Bank received on Sale #' . $sale->invoice_no,
+                        ]);
                         $cardAcc->opening_balance = (float)$cardAcc->opening_balance + $cardPaid;
                         $cardAcc->save();
                         $sale->is_account_credited = 1;
@@ -3232,6 +3264,14 @@ class SaleController extends Controller
 
                 if ($accToDeduct) {
                     $saleReturn->cash_account_id = $accToDeduct->id;
+                    $accToDeduct->setLedgerMeta([
+                        'branch_id'        => $saleReturn->branch_id ?? null,
+                        'transaction_date' => $saleReturn->created_at ?? now(),
+                        'reference_type'   => 'Sale Return',
+                        'reference_no'     => 'RET-' . ($saleReturn->id ?? 'NEW'),
+                        'reference_id'     => $saleReturn->id ?? null,
+                        'description'      => 'Refund paid on Sale Return (Inv #' . ($sale->invoice_no ?? $sale->id) . ')',
+                    ]);
                     $accToDeduct->opening_balance = (float)$accToDeduct->opening_balance - $refundAmount;
                     $accToDeduct->save();
                 }

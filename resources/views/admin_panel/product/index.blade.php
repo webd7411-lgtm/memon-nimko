@@ -394,53 +394,113 @@
 }
 
 @media (max-width: 767.98px) {
-  body, html { overflow-x: hidden; }
-  .pc-page { overflow-x: hidden; }
+  body, html { overflow-x: hidden !important; max-width: 100% !important; }
+  .pc-page { overflow-x: hidden !important; max-width: 100% !important; padding-bottom: 1.5rem; }
   .pc-page > .container-fluid {
-    padding-left: .75rem !important;
-    padding-right: .75rem !important;
+    padding-left: .65rem !important;
+    padding-right: .65rem !important;
+    padding-top: .6rem !important;
   }
 
-  .pc-hdr { padding: .85rem; flex-direction: column; align-items: stretch; gap: .6rem; }
+  .pc-hdr {
+    padding: .75rem .85rem !important;
+    margin-bottom: .75rem !important;
+    border-radius: 12px !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .55rem;
+  }
   .pc-hdr h2 { font-size: 1rem; }
   .pc-hdr .hdr-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
     width: 100%;
   }
   .pc-hdr .hdr-actions .pc-btn {
-    flex: 0 1 auto;
+    width: 100%;
     justify-content: center;
-    padding: .35rem .55rem;
-    font-size: .65rem;
+    padding: .35rem .5rem;
+    font-size: .68rem;
     border-radius: 8px;
-    min-height: 32px;
+    min-height: 32px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pc-search {
+    max-width: 100% !important;
+    min-height: 38px !important;
+    font-size: .84rem !important;
+    padding: .42rem .75rem !important;
+    border-radius: 10px !important;
+  }
+
+  .pc-card { border-radius: 12px !important; }
+  .pc-card-body { padding: .65rem !important; overflow: hidden !important; }
+
+  .pc-mob-selbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    background: #f8fafc;
+    border: 1px solid var(--pc-border);
+    border-radius: 10px;
+    padding: .45rem .65rem;
+    margin-bottom: .6rem;
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--pc-text-sec);
+  }
+  .pc-mob-selbar label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    cursor: pointer;
+    min-height: auto !important;
+  }
+  .pc-mob-selbar input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    min-height: auto !important;
+    accent-color: var(--pc-accent);
+  }
+  .pc-mob-sel-pill {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: .15rem .5rem;
+    font-size: .66rem;
+    font-weight: 700;
     white-space: nowrap;
   }
 
-  .pc-card-body { padding: .9rem .75rem; }
-
-  /* ── TABLE → PREMIUM CARDS ── */
+  /* ── TABLE -> PREMIUM CARDS ── */
   .pc-tbl-wrap {
-    overflow: hidden !important;
+    overflow: visible !important;
     border: none;
     background: transparent;
+    max-width: 100%;
   }
-  .pc-tbl { display: block; width: 100%; font-size: .72rem; }
+  .pc-tbl { display: block; width: 100%; font-size: .74rem; }
   .pc-tbl thead { display: none; }
   .pc-tbl tbody { display: block; }
   .pc-tbl tbody tr {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .3rem .5rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: .4rem .6rem;
     align-items: start;
+    width: 100%;
+    max-width: 100%;
     background: var(--pc-surface);
     border: 1px solid var(--pc-border);
-    border-radius: 10px;
-    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
-    padding: .5rem .6rem;
-    margin-bottom: .5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+    padding: .65rem .75rem;
+    margin-bottom: .6rem;
     overflow: hidden;
   }
   .pc-tbl tbody tr:hover { background: var(--pc-surface); }
@@ -457,12 +517,12 @@
     min-height: 0;
     word-break: break-word;
     overflow-wrap: anywhere;
-    font-size: .72rem;
+    font-size: .74rem;
     line-height: 1.35;
   }
   .pc-tbl tbody td::before {
     content: attr(data-label) ":";
-    font-size: .55rem;
+    font-size: .56rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .4px;
@@ -471,48 +531,67 @@
     flex-shrink: 0;
   }
 
-  /* Checkbox + row number → top strip */
-  .pc-tbl tbody td:nth-child(1) { order: 0; justify-self: start; }
+  .pc-tbl tbody td[colspan] {
+    grid-column: 1 / -1 !important;
+    justify-content: center;
+    text-align: center;
+    padding: 1rem .5rem;
+  }
+  .pc-tbl tbody td[colspan]::before { content: none; }
+
+  /* Checkbox + row number -> top strip */
+  .pc-tbl tbody td:nth-child(1) { order: 0; justify-self: start; align-self: center; }
   .pc-tbl tbody td:nth-child(1)::before { content: none; }
   .pc-tbl tbody td:nth-child(1) input {
-    width: 17px; height: 17px; accent-color: var(--pc-accent); cursor: pointer;
+    width: 17px; height: 17px; min-height: auto !important; accent-color: var(--pc-accent); cursor: pointer;
   }
 
   .pc-tbl tbody td:nth-child(2) {
     order: 0;
     justify-self: end;
-    background: #f0f4fe;
-    color: #3b5bb3 !important;
+    width: fit-content;
+    background: #eff6ff;
+    color: #1d4ed8 !important;
     border-radius: 6px;
-    padding: .05rem .4rem !important;
+    padding: .1rem .45rem !important;
     font-weight: 700 !important;
-    font-size: .62rem;
-    text-align: center;
+    font-size: .64rem;
+    gap: 1px;
   }
-  .pc-tbl tbody td:nth-child(2)::before { content: none; }
+  .pc-tbl tbody td:nth-child(2)::before { content: "#"; color: #1d4ed8; font-size: .64rem; }
 
-  /* Pair up: (Code|Barcode) (Category|Unit) (Name|Brand) (Price|Stock) */
-  .pc-tbl tbody td:nth-child(3) { order: 1; }   /* Item Code  */
-  .pc-tbl tbody td:nth-child(4) { order: 2; }   /* Barcode    */
-  .pc-tbl tbody td:nth-child(5) { order: 3; }   /* Category   */
-  .pc-tbl tbody td:nth-child(7) { order: 4; }   /* Unit       */
-  .pc-tbl tbody td:nth-child(6) { order: 5; }   /* Item Name  */
-  .pc-tbl tbody td:nth-child(11) { order: 6; }  /* Brand      */
-  .pc-tbl tbody td:nth-child(9) { order: 7; }   /* Price      */
-  .pc-tbl tbody td:nth-child(10) { order: 8; }  /* Stock      */
-  .pc-tbl tbody td:nth-child(8) { order: 9; grid-column: 1 / -1; }   /* Variants (full)   */
-  .pc-tbl tbody td:nth-child(12) { order: 10; grid-column: 1 / -1; } /* Actions (full)    */
-
+  /* Item Name full-width title below top strip */
+  .pc-tbl tbody td:nth-child(6) {
+    order: 1;
+    grid-column: 1 / -1;
+    padding-bottom: .2rem;
+    border-bottom: 1px dashed var(--pc-border);
+  }
+  .pc-tbl tbody td:nth-child(6)::before { content: none; }
   .pc-tbl tbody td:nth-child(6) .pc-name-wrap strong {
-    font-size: .76rem;
+    font-size: .88rem;
+    font-weight: 700;
     display: block;
+    color: var(--pc-text);
   }
 
-  .pc-tbl tbody td:nth-child(8) {
+  /* Neat 2-col pairs: (Code|Unit), (Category|Brand), (Price|Stock), then Barcodes, Variants, Actions */
+  .pc-tbl tbody td:nth-child(3) { order: 2; }   /* Item Code  */
+  .pc-tbl tbody td:nth-child(7) { order: 3; }   /* Unit       */
+  .pc-tbl tbody td:nth-child(5) { order: 4; }   /* Category   */
+  .pc-tbl tbody td:nth-child(11) { order: 5; }  /* Brand      */
+  .pc-tbl tbody td:nth-child(9) { order: 6; }   /* Price      */
+  .pc-tbl tbody td:nth-child(10) { order: 7; }  /* Stock      */
+  .pc-tbl tbody td:nth-child(4) { order: 8; grid-column: 1 / -1; }   /* Barcode(s) (full) */
+  .pc-tbl tbody td:nth-child(8) { order: 9; grid-column: 1 / -1; }   /* Variants (full)   */
+  .pc-tbl tbody td:nth-child(12) { order: 10; grid-column: 1 / -1; padding-top: .25rem; border-top: 1px dashed var(--pc-border); } /* Actions (full) */
+
+  .pc-tbl tbody td:nth-child(8),
+  .pc-tbl tbody td:nth-child(4) {
     flex-direction: column;
     align-items: stretch;
-    gap: 2px;
-    margin-top: 2px;
+    gap: 3px;
+    margin-top: 1px;
   }
 
   .pc-tbl .pc-code { white-space: normal; word-break: break-all; }
@@ -521,27 +600,32 @@
 
   .pc-tbl tbody td:nth-child(12) .pc-actions {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: .4rem;
     width: 100%;
   }
   .pc-tbl tbody td:nth-child(12) .pc-act {
     justify-content: center;
     width: 100%;
-    padding: .35rem .4rem;
-    font-size: .64rem;
+    padding: .35rem .45rem;
+    font-size: .7rem;
     border-radius: 8px;
-    min-height: 34px;
+    min-height: 34px !important;
   }
 
-  .pc-tbl .pc-variant-list { font-size: .67rem; width: 100%; }
+  .pc-tbl .pc-variant-list { font-size: .69rem; width: 100%; background: #f8fafc; border-radius: 8px; padding: .35rem .5rem; }
   .pc-tbl .pc-variant-list > div { flex-wrap: wrap; gap: 2px 6px; padding: 2px 0; }
 
-  .pc-tbl .pc-badge { font-size: .6rem; padding: .05rem .4rem; }
-  .pc-tbl .pc-disc-badge { font-size: .58rem; }
+  .pc-tbl .pc-badge { font-size: .62rem; padding: .08rem .42rem; }
+  .pc-tbl .pc-disc-badge { font-size: .6rem; }
 
   /* Pagination wrap safety */
   .pc-pagi nav, .pc-pagi .pagination { flex-wrap: wrap; justify-content: center; gap: 4px; }
+
+  #addProductModal .modal-dialog { margin: .75rem auto; max-width: calc(100vw - 1.5rem); }
+  #addProductModal .modal-header, #addProductModal .modal-body, #addProductModal .modal-footer { padding: .8rem .95rem; }
+  #addProductModal .cat-fld { min-height: 38px !important; font-size: .85rem !important; }
+  #addProductModal .btn, #addProductModal .cat-btn-p { min-height: 36px !important; font-size: .8rem !important; }
 }
 </style>
 
@@ -602,6 +686,13 @@
     {{-- ═══ TABLE CARD ═══ --}}
     <div class="pc-card">
       <div class="pc-card-body">
+        <div class="pc-mob-selbar d-flex d-md-none">
+          <div class="d-flex align-items-center gap-3">
+            <label><input type="checkbox" id="selectAllMobile"> Page</label>
+            <label><input type="checkbox" id="selectAllPagesMobile"> All Pages</label>
+          </div>
+          <span class="pc-mob-sel-pill"><span id="selectedCountMobile">0</span> Selected</span>
+        </div>
         <div class="pc-tbl-wrap">
           <table class="pc-tbl" style="width:100%">
             <thead>
@@ -884,7 +975,7 @@ $(document).ready(function() {
   // Update selected count display
   function updateSelectedCount() {
     var count = allSelectedIds.size;
-    $('#selectedCount').text(count);
+    $('#selectedCount, #selectedCountMobile').text(count);
     if (count > 0) {
       $('#bulkEditBtn').show();
     } else {
@@ -892,15 +983,25 @@ $(document).ready(function() {
     }
   }
 
-  // When "select all this page" is clicked, sync visible checkboxes
-  $('#selectAll').click(function() {
-    $('.selectProduct').prop('checked', this.checked);
+  function handleSelectPageToggle(isChecked) {
+    $('#selectAll, #selectAllMobile').prop('checked', isChecked);
+    $('.selectProduct').prop('checked', isChecked);
     // If select-all-pages is off, update the set from visible checkboxes
     if (!selectAllPagesActive) {
       allSelectedIds.clear();
       $('.selectProduct:checked').each(function() { allSelectedIds.add($(this).val()); });
       updateSelectedCount();
     }
+  }
+
+  $('#selectAll').on('change', function() {
+    handleSelectPageToggle(this.checked);
+  });
+  $('#selectAllMobile').on('change', function() {
+    handleSelectPageToggle(this.checked);
+  });
+  $('#selectAllPagesMobile').on('change', function() {
+    $('#selectAllPages').prop('checked', this.checked).trigger('change');
   });
 
   // When individual checkbox changes
@@ -936,7 +1037,7 @@ $(document).ready(function() {
           allSelectedIds = new Set(ids.map(String));
           // Check all visible checkboxes too
           $('.selectProduct').each(function() { $(this).prop('checked', true); });
-          $('#selectAll').prop('checked', true);
+          $('#selectAll, #selectAllMobile, #selectAllPagesMobile').prop('checked', true);
           updateSelectedCount();
           Swal.fire({ icon: 'success', title: 'Selected!', text: ids.length + ' products selected across all pages', timer: 1500, showConfirmButton: false });
         }
@@ -945,7 +1046,7 @@ $(document).ready(function() {
       selectAllPagesActive = false;
       allSelectedIds.clear();
       $('.selectProduct').prop('checked', false);
-      $('#selectAll').prop('checked', false);
+      $('#selectAll, #selectAllMobile, #selectAllPagesMobile').prop('checked', false);
       updateSelectedCount();
     }
   });
@@ -958,7 +1059,8 @@ $(document).ready(function() {
       }
     });
     var allVisible = $('.selectProduct').length > 0 && $('.selectProduct:checked').length === $('.selectProduct').length;
-    $('#selectAll').prop('checked', allVisible);
+    $('#selectAll, #selectAllMobile').prop('checked', allVisible);
+    $('#selectAllPagesMobile').prop('checked', $('#selectAllPages').is(':checked'));
   }
 
   function fetchProducts(search = '', url = null) {

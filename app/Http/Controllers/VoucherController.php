@@ -251,6 +251,14 @@ class VoucherController extends Controller
                 // Bank/Head case → pehle vendor/account side minus
                 $account = Account::find($request->vendor_id);
                 if ($account) {
+                    $account->setLedgerMeta([
+                        'branch_id'        => $voucher->branch_id ?? null,
+                        'transaction_date' => $voucher->created_at ?? now(),
+                        'reference_type'   => 'Receipt Voucher',
+                        'reference_no'     => $rvid,
+                        'reference_id'     => $voucher->id ?? null,
+                        'description'      => 'Transfer / Deduction via Receipt Voucher #' . $rvid . ($request->remarks ? ' - ' . $request->remarks : ''),
+                    ]);
                     $account->opening_balance = $account->opening_balance - $amount;
                     $account->save();
                 }
@@ -264,6 +272,14 @@ class VoucherController extends Controller
                     if ($rowAmount > 0) {
                         $rowAccount = Account::find($accId);
                         if ($rowAccount) {
+                            $rowAccount->setLedgerMeta([
+                                'branch_id'        => $voucher->branch_id ?? null,
+                                'transaction_date' => $voucher->created_at ?? now(),
+                                'reference_type'   => 'Receipt Voucher',
+                                'reference_no'     => $rvid,
+                                'reference_id'     => $voucher->id ?? null,
+                                'description'      => 'Receipt Voucher #' . $rvid . ' (' . ucfirst((string)$request->vendor_type) . ')' . ($request->remarks ? ' - ' . $request->remarks : ''),
+                            ]);
                             $rowAccount->opening_balance = $rowAccount->opening_balance + $rowAmount;
                             $rowAccount->save();
                         }
@@ -543,6 +559,13 @@ class VoucherController extends Controller
                     if ($rowAmount > 0) {
                         $rowAccount = Account::find($accId);
                         if ($rowAccount) {
+                            $rowAccount->setLedgerMeta([
+                                'branch_id'        => active_branch_id(),
+                                'transaction_date' => now(),
+                                'reference_type'   => 'Payment Voucher',
+                                'reference_no'     => $pvid,
+                                'description'      => 'Payment Voucher #' . $pvid . ' (' . ucfirst((string)$request->vendor_type) . ')' . ($request->remarks ? ' - ' . $request->remarks : ''),
+                            ]);
                             $rowAccount->opening_balance = $rowAccount->opening_balance - $rowAmount;
                             $rowAccount->save();
                         }
@@ -620,6 +643,13 @@ class VoucherController extends Controller
                 // agar vendor_type me account head/account ki id ayi
                 $account = Account::find($request->vendor_id);
                 if ($account) {
+                    $account->setLedgerMeta([
+                        'branch_id'        => active_branch_id(),
+                        'transaction_date' => now(),
+                        'reference_type'   => 'Payment Voucher',
+                        'reference_no'     => $pvid,
+                        'description'      => 'Transfer / Receipt via Payment Voucher #' . $pvid . ($request->remarks ? ' - ' . $request->remarks : ''),
+                    ]);
                     $account->opening_balance = $account->opening_balance + $amount;
                     $account->save();
                 }
@@ -852,6 +882,13 @@ class VoucherController extends Controller
                 if ($amt > 0) {
                     $expenseAccount = Account::where('head_id', $request->vendor_type)->first();
                     if ($expenseAccount) {
+                        $expenseAccount->setLedgerMeta([
+                            'branch_id'        => active_branch_id(),
+                            'transaction_date' => now(),
+                            'reference_type'   => 'Expense Voucher',
+                            'reference_no'     => $evid ?? null,
+                            'description'      => 'Expense Voucher #' . ($evid ?? '') . (is_array($request->remarks ?? null) ? ': ' . implode(', ', $request->remarks) : ''),
+                        ]);
                         $expenseAccount->opening_balance += (float)$amt;
                         $expenseAccount->save();
                     }
@@ -865,6 +902,13 @@ class VoucherController extends Controller
                     if ($rowAmount > 0 && !empty($accId)) {
                         $payingAccount = Account::find($accId);
                         if ($payingAccount) {
+                            $payingAccount->setLedgerMeta([
+                                'branch_id'        => active_branch_id(),
+                                'transaction_date' => now(),
+                                'reference_type'   => 'Expense Voucher',
+                                'reference_no'     => $evid ?? null,
+                                'description'      => 'Expense paid via Voucher #' . ($evid ?? '') . (is_array($request->remarks ?? null) ? ': ' . implode(', ', $request->remarks) : ''),
+                            ]);
                             $payingAccount->opening_balance -= $rowAmount;
                             $payingAccount->save();
                         }

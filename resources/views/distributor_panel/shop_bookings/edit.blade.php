@@ -13,7 +13,7 @@
     --bk-warning: #f59e0b;
     --bk-border: #cbd5e1;
     --bk-card-bg: #ffffff;
-    --bk-radius: 16px;
+    --bk-radius: 14px;
 }
 
 /* Prevent any horizontal overflow on the entire page */
@@ -25,7 +25,7 @@ html, body {
 .bk-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 12px 14px 40px 14px;
+    padding: 12px 14px 36px 14px;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
     width: 100%;
@@ -35,34 +35,34 @@ html, body {
 /* Card Styling */
 .bk-card {
     background: var(--bk-card-bg);
-    border: 1px solid var(--bk-border);
+    border: 1px solid #e2e8f0;
     border-radius: var(--bk-radius);
-    padding: 18px 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    margin-bottom: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.035);
+    margin-bottom: 14px;
     box-sizing: border-box;
     width: 100%;
 }
 
 .bk-card-title {
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 800;
     color: #0f172a;
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     border-bottom: 1.5px solid #f1f5f9;
-    padding-bottom: 10px;
+    padding-bottom: 8px;
 }
 
 /* Live Previous Balance Highlight Box */
 .shop-balance-banner {
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border: 2px dashed #cbd5e1;
-    border-radius: 14px;
-    padding: 14px 18px;
-    margin-top: 14px;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-top: 12px;
     transition: all 0.3s ease;
     word-break: break-word;
 }
@@ -83,7 +83,7 @@ html, body {
 }
 
 .balance-amount-display {
-    font-size: 1.6rem;
+    font-size: 1.45rem;
     font-weight: 900;
     letter-spacing: -0.5px;
 }
@@ -92,7 +92,7 @@ html, body {
 .bk-table th {
     background-color: #0f172a;
     color: #ffffff;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -111,11 +111,12 @@ html, body {
 }
 
 .stock-tag {
-    font-size: 0.75rem;
-    padding: 4px 10px;
+    font-size: 0.73rem;
+    padding: 3px 8px;
     border-radius: 20px;
     font-weight: 600;
     display: inline-block;
+    white-space: nowrap;
 }
 
 /* Select2 Enhancements & Mobile Guard */
@@ -125,25 +126,25 @@ html, body {
 }
 
 .select2-container .select2-selection--single {
-    height: 44px !important;
+    height: 40px !important;
     border: 1.5px solid var(--bk-border) !important;
-    border-radius: 10px !important;
-    padding: 7px 12px !important;
+    border-radius: 8px !important;
+    padding: 5px 10px !important;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__rendered {
     line-height: 28px !important;
-    font-size: 14px !important;
+    font-size: 13.5px !important;
     font-weight: 600 !important;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 42px !important;
+    height: 38px !important;
 }
 
 .select2-dropdown {
-    max-width: 95vw !important;
-    border-radius: 12px !important;
+    max-width: 94vw !important;
+    border-radius: 10px !important;
     border: 1.5px solid var(--bk-primary) !important;
     box-shadow: 0 10px 25px rgba(0,0,0,0.12) !important;
     z-index: 99999 !important;
@@ -151,36 +152,59 @@ html, body {
 
 .select2-search--dropdown .select2-search__field {
     border-radius: 8px !important;
-    padding: 8px 12px !important;
+    padding: 7px 10px !important;
 }
 
-/* Sleek Buttons */
+/* Sleek Compact Buttons */
 .btn-premium-add {
     background-color: #f0fdfa;
     color: #0f766e;
-    border: 1.5px solid #99f6e4;
-    font-size: 0.82rem;
+    border: 1.5px solid #5eead4;
+    font-size: 0.78rem;
     font-weight: 700;
-    padding: 6px 14px;
+    padding: 5px 12px;
     border-radius: 8px;
     transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-premium-add:hover {
     background-color: #ccfbf1;
     color: #115e59;
-    border-color: #5eead4;
+    border-color: #14b8a6;
+}
+
+.btn-add-bottom-box {
+    background: #f0fdfa;
+    color: #0f766e;
+    border: 1.5px dashed #14b8a6;
+    font-size: 0.84rem;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 10px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-add-bottom-box:hover {
+    background: #ccfbf1;
+    color: #115e59;
+    border-color: #0f766e;
 }
 
 /* Premium Compact Submit Button */
 .btn-premium-submit {
     background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
     color: #ffffff;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 700;
-    padding: 11px 20px;
+    padding: 10px 18px;
     border-radius: 10px;
     border: none;
     letter-spacing: 0.2px;
@@ -189,7 +213,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 44px;
+    min-height: 42px;
     width: 100%;
 }
 
@@ -198,11 +222,6 @@ html, body {
     box-shadow: 0 4px 14px rgba(15, 118, 110, 0.32);
     transform: translateY(-1px);
     color: #ffffff;
-}
-
-.btn-premium-submit:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 5px rgba(15, 118, 110, 0.2);
 }
 
 /* Hide mobile-specific elements on desktop */
@@ -214,27 +233,61 @@ html, body {
 
 /* =========================================================================
    MOBILE NATIVE APP EXPERIENCE (< 768px)
-   Balanced, Symmetrical 2-Column Boxes with Zero Horizontal Scroll
+   Compact, High-Density, Balanced 2x2 Grid Boxes with Zero Bloat & Zero Scroll
    ========================================================================= */
 @media (max-width: 767.98px) {
     .bk-container {
-        padding: 8px 10px 40px 10px !important;
+        padding: 6px 8px 28px 8px !important;
+    }
+
+    .bk-top-banner {
+        padding: 8px 12px !important;
+        margin-bottom: 10px !important;
+        border-radius: 10px !important;
     }
 
     .bk-card {
-        padding: 14px 14px !important;
-        border-radius: 16px !important;
-        margin-bottom: 12px !important;
+        padding: 11px 12px !important;
+        border-radius: 12px !important;
+        margin-bottom: 10px !important;
     }
 
     .bk-card-title {
-        font-size: 0.96rem !important;
-        margin-bottom: 10px !important;
-        padding-bottom: 8px !important;
+        font-size: 0.88rem !important;
+        margin-bottom: 8px !important;
+        padding-bottom: 6px !important;
+    }
+
+    .form-label {
+        font-size: 0.72rem !important;
+        margin-bottom: 2px !important;
+    }
+
+    .form-control, .form-select {
+        font-size: 0.84rem !important;
+    }
+
+    .select2-container .select2-selection--single {
+        height: 36px !important;
+        padding: 3px 8px !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 28px !important;
+        font-size: 0.82rem !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px !important;
+    }
+
+    .shop-balance-banner {
+        padding: 10px 12px !important;
+        margin-top: 10px !important;
     }
 
     .balance-amount-display {
-        font-size: 1.35rem !important;
+        font-size: 1.2rem !important;
     }
 
     /* Disable horizontal scroll on table wrapper */
@@ -257,42 +310,40 @@ html, body {
     #bookingTable tbody {
         display: flex !important;
         flex-direction: column !important;
-        gap: 12px !important;
+        gap: 10px !important;
         width: 100% !important;
     }
 
-    /* EACH PRODUCT ROW AS AN ELEVATED, BALANCED CARD / BOX */
+    /* COMPACT ITEM CARD WITH EXPLICIT 2x2 GRID ROWS */
     #bookingTable tr.bk-row {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
-        gap: 10px 10px !important;
+        gap: 8px 10px !important;
         background: #ffffff !important;
-        border: 1.5px solid #e2e8f0 !important;
-        border-radius: 14px !important;
-        padding: 12px !important;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+        border: 1px solid #cbd5e1 !important;
+        border-top: 3px solid #f59e0b !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
         box-sizing: border-box !important;
         width: 100% !important;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    #bookingTable tr.bk-row:focus-within {
-        border-color: #0f766e !important;
-        box-shadow: 0 4px 14px rgba(15, 118, 110, 0.12) !important;
-    }
-
-    /* Grid Cell 1: Product & Variant spans full width (Row 1) */
+    /* Row 1: Product & Variant (Full Width) */
     .bk-td-product {
         grid-column: 1 / -1 !important;
+        grid-row: 1 !important;
         display: block !important;
         padding: 0 !important;
         border: none !important;
         width: 100% !important;
     }
 
-    /* Grid Cell 2 & 3: Booking Qty (Left) & Unit Price (Right) (Row 2) */
+    /* Row 2: Booking Qty (Left) & Unit Price (Right) */
     .bk-td-qty {
         grid-column: 1 / 2 !important;
+        grid-row: 2 !important;
         display: block !important;
         padding: 0 !important;
         border: none !important;
@@ -300,14 +351,16 @@ html, body {
 
     .bk-td-price {
         grid-column: 2 / 3 !important;
+        grid-row: 2 !important;
         display: block !important;
         padding: 0 !important;
         border: none !important;
     }
 
-    /* Grid Cell 4 & 5: Trade Offer (Left) & Van Stock (Right) (Row 3) */
+    /* Row 3: Trade Offer (Left) & Van Stock (Right) */
     .bk-td-to {
         grid-column: 1 / 2 !important;
+        grid-row: 3 !important;
         display: block !important;
         padding: 0 !important;
         border: none !important;
@@ -315,14 +368,16 @@ html, body {
 
     .bk-td-stock {
         grid-column: 2 / 3 !important;
+        grid-row: 3 !important;
         display: block !important;
         padding: 0 !important;
         border: none !important;
     }
 
-    /* Grid Cell 6: Subtotal Box spans full width (Row 4) */
+    /* Row 4: Subtotal Strip (Full Width) */
     .bk-td-subtotal {
         grid-column: 1 / -1 !important;
+        grid-row: 4 !important;
         display: block !important;
         padding: 0 !important;
         border: none !important;
@@ -337,20 +392,20 @@ html, body {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        padding-bottom: 8px !important;
-        margin-bottom: 10px !important;
+        padding-bottom: 6px !important;
+        margin-bottom: 8px !important;
         border-bottom: 1px dashed #e2e8f0 !important;
     }
 
     .bk-stock-box-mobile {
-        min-height: 38px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        padding: 4px 8px;
+        padding: 2px 6px;
         width: 100%;
         box-sizing: border-box;
     }
@@ -361,38 +416,56 @@ html, body {
         justify-content: space-between !important;
         background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%) !important;
         border: 1px solid #ccfbf1 !important;
-        border-radius: 10px !important;
-        padding: 8px 12px !important;
-        margin-top: 2px !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
     }
 
     .item-mobile-label {
         display: block !important;
-        font-size: 0.74rem !important;
+        font-size: 0.7rem !important;
         font-weight: 700 !important;
         color: #475569 !important;
-        margin-bottom: 4px !important;
+        margin-bottom: 3px !important;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
     .bk-item-badge {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 800;
         color: #0f766e;
         background: #f0fdfa;
         border: 1px solid #ccfbf1;
-        padding: 3px 9px;
-        border-radius: 20px;
+        padding: 2px 8px;
+        border-radius: 16px;
         display: inline-flex;
         align-items: center;
     }
 
     .row-qty, .row-price, .row-trade-offer {
-        font-size: 0.92rem !important;
+        font-size: 0.86rem !important;
         border-radius: 8px !important;
-        height: 38px !important;
+        height: 36px !important;
+        padding: 4px 8px !important;
+    }
+
+    .bk-mobile-remove-btn {
+        font-size: 0.72rem !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+    }
+
+    .btn-add-bottom-box {
+        width: 100% !important;
+        font-size: 0.82rem !important;
+        padding: 8px 12px !important;
+    }
+
+    .bk-summary-row {
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
+        font-size: 0.84rem !important;
     }
 }
 </style>
@@ -400,33 +473,32 @@ html, body {
 <div class="bk-container">
 
     {{-- Top Notification Banner --}}
-    <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between p-3 mb-3 rounded-4" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #f59e0b !important;">
+    <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between bk-top-banner p-2.5 p-md-3 mb-2 mb-md-3 rounded-3" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #f59e0b !important;">
         <div class="d-flex align-items-center gap-2">
-            <i class="fas fa-edit fs-4 text-warning"></i>
+            <i class="fas fa-edit fs-5 text-warning"></i>
             <div>
-                <strong class="text-dark d-block">Edit Shop Booking: {{ $booking->booking_no }}</strong>
-                <small class="text-secondary">Modify items, quantities, trade offers (free scheme), prices, discounts or customer before confirming delivery.</small>
+                <strong class="text-dark d-block" style="font-size: 0.9rem;">Edit Booking: {{ $booking->booking_no }}</strong>
+                <small class="text-secondary d-none d-sm-block" style="font-size: 0.76rem;">Modify items, quantities, prices or customer before confirming delivery.</small>
             </div>
         </div>
-        <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
-            <span class="badge bg-dark font-monospace px-3 py-1.5 fs-6">{{ $booking->booking_no }}</span>
-            <a href="{{ $isBookerUser ? route('distributor.booker.my_bookings') : route('distributor.shop_bookings.index') }}" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ $isBookerUser ? route('distributor.booker.my_bookings') : route('distributor.shop_bookings.index') }}" class="btn btn-sm btn-outline-dark rounded-pill px-2.5 py-1" style="font-size: 0.75rem; white-space: nowrap;">
                 <i class="fas fa-arrow-left me-1"></i> Back
             </a>
         </div>
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm py-2 px-3 small" role="alert">
             <i class="fas fa-check-circle me-1"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm py-2 px-3 small" role="alert">
             <i class="fas fa-exclamation-triangle me-1"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
@@ -476,7 +548,7 @@ html, body {
                     <label class="form-label fw-bold text-secondary small mb-1">
                         <i class="fas fa-hand-holding-dollar text-success me-1"></i> Order Type <span class="text-danger">*</span>
                     </label>
-                    <select class="form-select form-select-sm h-auto py-2 fw-bold" id="orderPaymentType" name="payment_type" required>
+                    <select class="form-select form-select-sm py-1.5 fw-bold" id="orderPaymentType" name="payment_type" required>
                         <option value="cash" {{ ($booking->payment_type ?? 'cash') === 'cash' ? 'selected' : '' }}>Order Cash</option>
                         <option value="credit" {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'selected' : '' }}>Order Credit</option>
                     </select>
@@ -484,45 +556,45 @@ html, body {
 
                 <div class="col-6 col-sm-3 col-md-2">
                     <label class="form-label fw-bold text-secondary small mb-1">Booking Date</label>
-                    <input type="date" class="form-control form-control-sm h-auto py-2 fw-bold" name="booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d') }}" required>
+                    <input type="date" class="form-control form-control-sm py-1.5 fw-bold" name="booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d') }}" required>
                 </div>
 
                 <div class="col-6 col-sm-3 col-md-2">
                     <label class="form-label fw-bold text-secondary small mb-1">Booker</label>
-                    <input type="text" class="form-control form-control-sm h-auto py-2 bg-light fw-bold text-muted" value="{{ $booking->booker->name ?? 'Booker' }}" readonly>
+                    <input type="text" class="form-control form-control-sm py-1.5 bg-light fw-bold text-muted" value="{{ $booking->booker->name ?? 'Booker' }}" readonly>
                 </div>
             </div>
 
             {{-- LIVE PREVIOUS BALANCE BANNER --}}
             <div id="shopBalanceBanner" class="shop-balance-banner" style="display: block;">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
                         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                            <span class="badge bg-dark font-monospace" id="lblShopArea">{{ $booking->customer->area ?? 'General' }}</span>
-                            <h5 class="mb-0 fw-bolder text-dark" id="lblShopName">{{ $booking->customer->shop_name ?? 'Selected Shop' }}</h5>
+                            <span class="badge bg-dark font-monospace" id="lblShopArea" style="font-size: 0.72rem;">{{ $booking->customer->area ?? 'General' }}</span>
+                            <h6 class="mb-0 fw-bolder text-dark" id="lblShopName">{{ $booking->customer->shop_name ?? 'Selected Shop' }}</h6>
                         </div>
-                        <div class="small text-muted mb-1">
+                        <div class="text-muted" style="font-size: 0.78rem;">
                             <i class="fas fa-user me-1"></i> <span id="lblShopOwner">{{ $booking->customer->owner_name ?? '-' }}</span> &bull; 
                             <i class="fas fa-phone me-1"></i> <span id="lblShopPhone">{{ $booking->customer->phone ?? '-' }}</span>
                         </div>
-                        <div>
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" id="badgeApprovedDiscount">
-                                <i class="fas fa-percentage me-1"></i> Approved Discount Limit: <strong id="lblApprovedDiscount">{{ (float)($booking->customer->approved_discount ?? 0) }}</strong>%
+                        <div class="mt-1">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5" id="badgeApprovedDiscount" style="font-size: 0.72rem;">
+                                <i class="fas fa-percentage me-1"></i> Approved Disc: <strong id="lblApprovedDiscount">{{ (float)($booking->customer->approved_discount ?? 0) }}</strong>%
                             </span>
                         </div>
                     </div>
 
-                    <div class="text-md-end text-start mt-2 mt-md-0">
+                    <div class="text-md-end text-start mt-1 mt-md-0">
                         @php
                             $initBal = (float)($booking->customer->current_balance ?? 0);
                             $badgeClass = $initBal > 0 ? 'bg-danger text-white' : ($initBal < 0 ? 'bg-info text-white' : 'bg-success text-white');
                             $dueStatus = $initBal > 0 ? 'Outstanding Balance Due' : ($initBal < 0 ? 'Advance Balance Available' : 'Account Clear / Zero Balance');
                         @endphp
-                        <span class="badge px-3 py-1 mb-1 fw-bold {{ $badgeClass }}" id="badgeDueStatus">{{ $dueStatus }}</span>
+                        <span class="badge px-2 py-0.5 mb-0.5 fw-bold {{ $badgeClass }}" id="badgeDueStatus" style="font-size: 0.7rem;">{{ $dueStatus }}</span>
                         <div class="balance-amount-display" id="valPreviousBalance" style="color: {{ $initBal > 0 ? '#dc2626' : ($initBal < 0 ? '#0284c7' : '#16a34a') }};">
                             Rs {{ number_format(abs($initBal), 2) }}
                         </div>
-                        <small class="text-muted d-block" id="lblBalanceHelp">{{ $dueStatus }}</small>
+                        <small class="text-muted d-block" id="lblBalanceHelp" style="font-size: 0.72rem;">{{ $dueStatus }}</small>
                     </div>
                 </div>
             </div>
@@ -530,13 +602,14 @@ html, body {
 
         {{-- STEP 2: PRODUCT SELECTION & BOOKING ITEMS (APP BOXES) --}}
         <div class="bk-card">
-            <div class="d-flex align-items-center justify-content-between gap-2 border-bottom pb-2 mb-3">
+            <div class="d-flex align-items-center justify-content-between gap-2 border-bottom pb-2 mb-2.5">
                 <div class="bk-card-title mb-0 border-0 p-0">
                     <i class="fas fa-boxes-stacked text-teal" style="color: #0f766e;"></i>
-                    <span>Step 2: Order Booking Items &amp; Trade Offers</span>
+                    <span class="d-none d-sm-inline">Step 2: Order Booking Items</span>
+                    <span class="d-inline d-sm-none">Step 2: Order Items</span>
                 </div>
                 <button type="button" class="btn btn-premium-add shadow-xs" id="btnAddRow">
-                    <i class="fas fa-plus me-1"></i> Add Another Item
+                    <i class="fas fa-plus me-1"></i> Add Item
                 </button>
             </div>
 
@@ -597,7 +670,7 @@ html, body {
                                         <span class="bk-item-badge">
                                             <i class="fas fa-box-open me-1"></i> Item #<span class="item-index-num">{{ $idx + 1 }}</span>
                                         </span>
-                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 btn-remove-row">
+                                        <button type="button" class="btn btn-sm btn-outline-danger bk-mobile-remove-btn btn-remove-row">
                                             <i class="fas fa-trash-alt me-1"></i> Remove
                                         </button>
                                     </div>
@@ -615,21 +688,21 @@ html, body {
                                         @if($availStock > 0)
                                             <span class="stock-tag bg-success-subtle text-success border border-success-subtle stock-display">{{ $availStock }} in Van</span>
                                         @else
-                                            <span class="stock-tag bg-warning-subtle text-dark border border-warning-subtle stock-display">0 (Out of Stock)</span>
+                                            <span class="stock-tag bg-warning-subtle text-dark border border-warning-subtle stock-display">0 (Out)</span>
                                         @endif
                                     </div>
                                 </td>
 
                                 <td class="bk-td-qty">
                                     <label class="item-mobile-label">Booking Qty <span class="text-danger">*</span></label>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty py-2" name="qty[]" value="{{ (float)$item->qty }}" required>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="{{ (float)$item->qty }}" required>
                                 </td>
 
                                 <td class="bk-td-price">
                                     <label class="item-mobile-label">Unit Price (Rs) <span class="text-danger">*</span></label>
                                     <div class="input-group input-group-sm">
-                                        <span class="input-group-text d-md-none small">Rs</span>
-                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price py-2" name="unit_price[]" value="{{ (float)$item->unit_price }}" required>
+                                        <span class="input-group-text d-md-none" style="font-size: 0.78rem;">Rs</span>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="{{ (float)$item->unit_price }}" required>
                                     </div>
                                 </td>
 
@@ -637,13 +710,13 @@ html, body {
                                     <label class="item-mobile-label">
                                         <i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)
                                     </label>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer py-2" name="trade_offer[]" value="{{ (float)($item->trade_offer ?? 0) }}" placeholder="0" title="Free scheme / Trade offer units">
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-trade-offer" name="trade_offer[]" value="{{ (float)($item->trade_offer ?? 0) }}" placeholder="0" title="Free scheme / Trade offer units">
                                 </td>
 
                                 <td class="bk-td-subtotal text-end">
                                     <div class="bk-mobile-subtotal-strip">
-                                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Item Subtotal:</span>
-                                        <span class="fw-bolder fs-6 row-subtotal text-teal" style="color: #0f766e;">Rs {{ number_format($item->subtotal, 2) }}</span>
+                                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Subtotal:</span>
+                                        <span class="fw-bolder row-subtotal text-teal" style="color: #0f766e; font-size: 0.95rem;">Rs {{ number_format($item->subtotal, 2) }}</span>
                                     </div>
                                     <span class="fw-bold row-subtotal text-dark d-none d-md-inline">Rs {{ number_format($item->subtotal, 2) }}</span>
                                 </td>
@@ -661,7 +734,7 @@ html, body {
                                         <span class="bk-item-badge">
                                             <i class="fas fa-box-open me-1"></i> Item #<span class="item-index-num">1</span>
                                         </span>
-                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 btn-remove-row">
+                                        <button type="button" class="btn btn-sm btn-outline-danger bk-mobile-remove-btn btn-remove-row">
                                             <i class="fas fa-trash-alt me-1"></i> Remove
                                         </button>
                                     </div>
@@ -679,25 +752,25 @@ html, body {
                                 </td>
                                 <td class="bk-td-qty">
                                     <label class="item-mobile-label">Booking Qty <span class="text-danger">*</span></label>
-                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty py-2" name="qty[]" value="1" required>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
                                 </td>
                                 <td class="bk-td-price">
                                     <label class="item-mobile-label">Unit Price (Rs) <span class="text-danger">*</span></label>
                                     <div class="input-group input-group-sm">
-                                        <span class="input-group-text d-md-none small">Rs</span>
-                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price py-2" name="unit_price[]" value="0" required>
+                                        <span class="input-group-text d-md-none" style="font-size: 0.78rem;">Rs</span>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>
                                     </div>
                                 </td>
                                 <td class="bk-td-to">
                                     <label class="item-mobile-label">
                                         <i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)
                                     </label>
-                                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary py-2" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated &amp; Locked by Company">
+                                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated &amp; Locked by Company">
                                 </td>
                                 <td class="bk-td-subtotal text-end">
                                     <div class="bk-mobile-subtotal-strip">
-                                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Item Subtotal:</span>
-                                        <span class="fw-bolder fs-6 row-subtotal text-teal" style="color: #0f766e;">Rs 0.00</span>
+                                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Subtotal:</span>
+                                        <span class="fw-bolder row-subtotal text-teal" style="color: #0f766e; font-size: 0.95rem;">Rs 0.00</span>
                                     </div>
                                     <span class="fw-bold row-subtotal text-dark d-none d-md-inline">Rs 0.00</span>
                                 </td>
@@ -712,15 +785,15 @@ html, body {
                 </table>
             </div>
 
-            <div class="mt-3 text-start">
-                <button type="button" class="btn btn-sm btn-light border fw-semibold rounded-pill px-3 py-2 w-100 w-sm-auto shadow-xs" id="btnAddRowBottom">
-                    <i class="fas fa-plus-circle text-success me-1"></i> + Add Another Item Box
+            <div class="mt-2.5 text-start">
+                <button type="button" class="btn btn-add-bottom-box" id="btnAddRowBottom">
+                    <i class="fas fa-plus-circle"></i> Add Another Product Item
                 </button>
             </div>
         </div>
 
         {{-- STEP 3: BILL SUMMARY & CONFIRMATION --}}
-        <div class="row g-3">
+        <div class="row g-2 g-md-3">
             <div class="col-12 col-md-5 order-1 order-md-2">
                 <div class="bk-card h-100">
                     <div class="bk-card-title">
@@ -728,56 +801,56 @@ html, body {
                         <span>Booking Total Summary</span>
                     </div>
 
-                    <div class="d-flex justify-content-between py-2 border-bottom">
+                    <div class="d-flex justify-content-between py-1.5 border-bottom bk-summary-row">
                         <span class="text-secondary small">Total Products:</span>
                         <strong id="lblTotalItems">{{ $booking->total_items }}</strong>
                     </div>
 
-                    <div class="d-flex justify-content-between py-2 border-bottom">
+                    <div class="d-flex justify-content-between py-1.5 border-bottom bk-summary-row">
                         <span class="text-secondary small">Total Quantity:</span>
                         <strong id="lblTotalQty">{{ number_format($booking->total_qty, 1) }}</strong>
                     </div>
 
-                    <div class="d-flex justify-content-between py-2 border-bottom">
+                    <div class="d-flex justify-content-between py-1.5 border-bottom bk-summary-row">
                         <span class="text-secondary small"><i class="fas fa-gift text-success me-1"></i> Trade Offer (Free):</span>
                         <strong id="lblTotalTradeOffer" class="text-success">0</strong>
                     </div>
 
-                    <div class="d-flex justify-content-between py-2 border-bottom">
+                    <div class="d-flex justify-content-between py-1.5 border-bottom bk-summary-row">
                         <span class="text-secondary small">Subtotal:</span>
                         <strong id="lblSubtotal">Rs {{ number_format($booking->subtotal, 2) }}</strong>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center py-1.5 border-bottom bk-summary-row">
                         <span class="text-secondary small">Order Type:</span>
-                        <span id="lblSummaryOrderType" class="badge {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'bg-primary' : 'bg-success' }} text-white px-2.5 py-1 fw-bold font-monospace">
+                        <span id="lblSummaryOrderType" class="badge {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'bg-primary' : 'bg-success' }} text-white px-2 py-1 fw-bold font-monospace" style="font-size: 0.72rem;">
                             <i class="fas {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'fa-file-invoice-dollar' : 'fa-money-bill-wave' }} me-1"></i>
                             {{ ($booking->payment_type ?? 'cash') === 'credit' ? 'Order Credit' : 'Order Cash' }}
                         </span>
                     </div>
 
-                    <div class="py-2 border-bottom">
+                    <div class="py-1.5 border-bottom bk-summary-row">
                         <div class="d-flex justify-content-between align-items-center gap-2">
                             <div>
                                 <span class="text-secondary fw-semibold small">Special Discount:</span>
-                                <small class="text-danger d-block" id="lblDiscountCapNote" style="font-size: 0.72rem;">Max Allowed: {{ (float)($booking->customer->approved_discount ?? 0) }}%</small>
+                                <small class="text-danger d-block" id="lblDiscountCapNote" style="font-size: 0.68rem;">Max Allowed: {{ (float)($booking->customer->approved_discount ?? 0) }}%</small>
                             </div>
-                            <div style="width: 140px; max-width: 50%;">
+                            <div style="width: 130px; max-width: 48%;">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">Rs</span>
-                                    <input type="number" step="any" min="0" class="form-control text-end fw-bold py-1.5" id="txtDiscount" name="discount" value="{{ (float)$booking->discount }}">
+                                    <input type="number" step="any" min="0" class="form-control text-end fw-bold" id="txtDiscount" name="discount" value="{{ (float)$booking->discount }}">
                                 </div>
                             </div>
                         </div>
-                        <div id="discountLimitAlert" class="alert alert-warning py-1.5 px-2 my-2 small" style="display: none; font-size: 0.75rem;"></div>
+                        <div id="discountLimitAlert" class="alert alert-warning py-1 px-2 my-1.5 small" style="display: none; font-size: 0.72rem;"></div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center py-3 border-bottom mt-2">
-                        <span class="fs-6 fw-bold text-dark">Net Order Value:</span>
-                        <span class="fs-4 fw-bolder text-teal" id="lblGrandTotal" style="color: #0f766e;">Rs {{ number_format($booking->grand_total, 2) }}</span>
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom mt-1">
+                        <span class="fw-bold text-dark" style="font-size: 0.95rem;">Net Order Value:</span>
+                        <span class="fs-5 fw-bolder text-teal" id="lblGrandTotal" style="color: #0f766e;">Rs {{ number_format($booking->grand_total, 2) }}</span>
                     </div>
 
-                    <div class="mt-3">
+                    <div class="mt-2.5">
                         <button type="submit" class="btn btn-premium-submit" id="btnSubmitBooking">
                             <i class="fas fa-save me-1.5"></i> Update &amp; Save Booking
                         </button>
@@ -791,10 +864,10 @@ html, body {
                         <i class="fas fa-comment-dots text-teal" style="color: #0f766e;"></i>
                         <span>Order Notes / Customer Remarks</span>
                     </div>
-                    <textarea class="form-control" name="notes" rows="4" placeholder="e.g. Deliver before 11 AM, carton packing requested...">{{ $booking->notes }}</textarea>
+                    <textarea class="form-control form-control-sm" name="notes" rows="3" placeholder="e.g. Deliver before 11 AM, carton packing requested...">{{ $booking->notes }}</textarea>
                     
-                    <div class="p-3 bg-light rounded-3 mt-3">
-                        <div class="d-flex align-items-center gap-2 text-muted small">
+                    <div class="p-2.5 bg-light rounded-3 mt-2.5">
+                        <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 0.76rem;">
                             <i class="fas fa-info-circle text-primary"></i>
                             <span>Changes made here will update the booked demand order. Stock and customer ledger will only be affected when confirmed for delivery.</span>
                         </div>
@@ -840,7 +913,7 @@ $(document).ready(function() {
             return $(`
                 <div class="d-flex justify-content-between align-items-center w-100">
                     <span class="fw-semibold text-dark">${mainText}</span>
-                    <span class="badge rounded-pill bg-light text-primary border border-primary-subtle px-2 py-1 ms-2 font-monospace" style="font-size: 0.78rem;">${stockPart}</span>
+                    <span class="badge rounded-pill bg-light text-primary border border-primary-subtle px-2 py-1 ms-2 font-monospace" style="font-size: 0.76rem;">${stockPart}</span>
                 </div>
             `);
         }
@@ -914,7 +987,7 @@ $(document).ready(function() {
             type: "GET",
             dataType: "json",
             beforeSend: function() {
-                $('#valPreviousBalance').html('<i class="fas fa-spinner fa-spin fs-5"></i>');
+                $('#valPreviousBalance').html('<i class="fas fa-spinner fa-spin fs-6"></i>');
             },
             success: function(res) {
                 if (res.success) {
@@ -989,7 +1062,7 @@ $(document).ready(function() {
                  .removeClass('bg-danger bg-light text-secondary text-dark')
                  .addClass('bg-success-subtle text-success border border-success-subtle');
         } else {
-            badge.text('0 (Out of Stock)')
+            badge.text('0 (Out)')
                  .removeClass('bg-success bg-light text-secondary')
                  .addClass('bg-warning-subtle text-dark border border-warning-subtle');
         }
@@ -1033,7 +1106,7 @@ $(document).ready(function() {
             discount = maxDiscountAllowed;
             $('#txtDiscount').val(maxDiscountAllowed > 0 ? maxDiscountAllowed.toFixed(2) : 0);
             $('#discountLimitAlert')
-                .html('<i class="fas fa-exclamation-triangle me-1"></i> <strong>Discount Limit:</strong> Ye shop sirf ' + approvedPct + '% discount ke liye approved hai (Max Rs ' + maxDiscountAllowed.toFixed(2) + '). Is se zyada discount nahi diya ja sakta.')
+                .html('<i class="fas fa-exclamation-triangle me-1"></i> <strong>Discount Limit:</strong> Ye shop sirf ' + approvedPct + '% discount ke liye approved hai (Max Rs ' + maxDiscountAllowed.toFixed(2) + ').')
                 .slideDown();
         } else {
             $('#discountLimitAlert').slideUp();
@@ -1066,7 +1139,7 @@ $(document).ready(function() {
                         <span class="bk-item-badge">
                             <i class="fas fa-box-open me-1"></i> Item #<span class="item-index-num">${rowCount + 1}</span>
                         </span>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 btn-remove-row">
+                        <button type="button" class="btn btn-sm btn-outline-danger bk-mobile-remove-btn btn-remove-row">
                             <i class="fas fa-trash-alt me-1"></i> Remove
                         </button>
                     </div>
@@ -1084,25 +1157,25 @@ $(document).ready(function() {
                 </td>
                 <td class="bk-td-qty">
                     <label class="item-mobile-label">Booking Qty <span class="text-danger">*</span></label>
-                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty py-2" name="qty[]" value="1" required>
+                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold row-qty" name="qty[]" value="1" required>
                 </td>
                 <td class="bk-td-price">
                     <label class="item-mobile-label">Unit Price (Rs) <span class="text-danger">*</span></label>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text d-md-none small">Rs</span>
-                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price py-2" name="unit_price[]" value="0" required>
+                        <span class="input-group-text d-md-none" style="font-size: 0.78rem;">Rs</span>
+                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold row-price" name="unit_price[]" value="0" required>
                     </div>
                 </td>
                 <td class="bk-td-to">
                     <label class="item-mobile-label">
                         <i class="fas fa-gift text-success me-1"></i> Trade Offer (Free)
                     </label>
-                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary py-2" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated &amp; Locked by Company">
+                    <input type="number" step="any" min="0" readonly class="form-control form-control-sm text-center fw-bold row-trade-offer bg-light text-primary" name="trade_offer[]" value="0" placeholder="0" title="Trade Offer Scheme: Auto-calculated &amp; Locked by Company">
                 </td>
                 <td class="bk-td-subtotal text-end">
                     <div class="bk-mobile-subtotal-strip">
-                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Item Subtotal:</span>
-                        <span class="fw-bolder fs-6 row-subtotal text-teal" style="color: #0f766e;">Rs 0.00</span>
+                        <span class="small text-secondary fw-bold"><i class="fas fa-receipt text-teal me-1"></i> Subtotal:</span>
+                        <span class="fw-bolder row-subtotal text-teal" style="color: #0f766e; font-size: 0.95rem;">Rs 0.00</span>
                     </div>
                     <span class="fw-bold row-subtotal text-dark d-none d-md-inline">Rs 0.00</span>
                 </td>

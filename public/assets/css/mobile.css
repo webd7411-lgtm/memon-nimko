@@ -95,45 +95,51 @@ html, body {
         background: rgba(255, 255, 255, .24);
     }
 
-    /* ---------- DRAWER (slide-down) ---------- */
-    .rt_nav_header.horizontal-layout .nav-bottom {
-        display: none;
-        position: absolute !important;
-        top: 100% !important;
-        left: 0;
-        right: 0;
-        width: 100% !important;
-        background: #fff;
-        max-height: calc(100vh - 58px);
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, .16);
-        border-radius: 0 0 14px 14px;
-        align-items: stretch;
-    }
-
-    .rt_nav_header.horizontal-layout .nav-bottom.header-toggled {
-        display: block;
-    }
-
+    /* ---------- DRAWER (Full-Height Fixed Left Sidebar) ---------- */
+    .rt_nav_header.horizontal-layout .nav-bottom,
     .rt_nav_header.horizontal-layout.fixed-on-scroll .nav-bottom {
-        position: absolute !important;
-        top: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        right: auto !important;
+        width: 288px !important;
+        max-width: 84vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        background: #090d16 !important;
+        overflow: hidden !important;
+        box-shadow: 12px 0 40px rgba(2, 6, 23, 0.55) !important;
+        border-radius: 0 !important;
+        align-items: stretch !important;
+        z-index: 1070 !important;
+        transform: translateX(-108%) !important;
+        transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom.header-toggled,
+    .rt_nav_header.horizontal-layout.fixed-on-scroll .nav-bottom.header-toggled {
+        transform: translateX(0) !important;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation {
-        display: block !important;
+        display: flex !important;
+        flex-direction: column !important;
         width: 100% !important;
-        padding: .5rem .75rem 1.1rem;
+        padding: .75rem .75rem 1.5rem !important;
+        gap: 4px !important;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item {
         display: block;
         width: 100% !important;
         max-width: 100%;
-        flex: 0 0 100%;
+        flex: 0 0 auto;
         line-height: 1.2;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: none !important;
         position: relative;
     }
 
@@ -141,32 +147,33 @@ html, body {
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        gap: .55rem;
-        padding: .85rem .5rem;
-        font-size: .95rem;
+        gap: .65rem;
+        padding: .72rem .85rem;
+        font-size: .88rem;
         font-weight: 600;
-        color: #1e293b;
+        color: #e2e8f0;
         border: none;
         background: transparent;
-        min-height: 48px;
+        min-height: 44px;
+        border-radius: 10px;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link .menu_icon {
         margin: 0;
-        width: 22px;
+        width: 20px;
         text-align: center;
-        color: #0e7a4b;
+        color: #94a3b8;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link .menu-arrow {
         margin-left: auto;
-        font-size: .75rem;
+        font-size: .78rem;
         color: #94a3b8;
         transition: transform .2s ease;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .nav-link .menu-arrow {
-        transform: rotate(90deg);
+        transform: rotate(180deg);
     }
 
     /* Submenu — stacked accordion */
@@ -178,10 +185,10 @@ html, body {
         right: auto !important;
         width: 100% !important;
         box-shadow: none;
-        border: none;
-        border-radius: 0;
-        background: #f8fafc;
-        padding: .25rem .4rem .75rem .9rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        padding: .45rem;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu .submenu {
@@ -204,14 +211,14 @@ html, body {
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu .category-heading {
-        margin: .35rem 0 .35rem;
-        padding: .35rem 0;
-        font-size: .72rem;
-        font-weight: 700;
+        margin: .3rem 0 .35rem;
+        padding: .3rem .4rem;
+        font-size: .7rem;
+        font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: .4px;
-        color: #334155;
-        border-bottom: 1px solid #eef2f7;
+        letter-spacing: .5px;
+        color: #5eead4;
+        border-bottom: 1px solid rgba(94, 234, 212, 0.2);
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu-item li,
@@ -223,11 +230,11 @@ html, body {
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu ul li a {
         display: flex;
         align-items: center;
-        gap: .5rem;
-        padding: .55rem .5rem;
-        font-size: .9rem;
+        gap: .55rem;
+        padding: .55rem .65rem;
+        font-size: .82rem;
         border-radius: 8px;
-        color: #334155;
+        color: #cbd5e1;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu-item li a i,
@@ -235,13 +242,13 @@ html, body {
         width: 20px;
         text-align: center;
         margin: 0;
-        color: #0e7a4b;
+        color: #5eead4;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu-item li a:hover,
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu ul li a:hover {
-        background: #eef7f1;
-        color: #0e7a4b;
+        background: rgba(20, 184, 166, 0.16);
+        color: #5eead4;
     }
 }
 

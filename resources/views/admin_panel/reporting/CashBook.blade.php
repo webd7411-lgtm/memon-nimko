@@ -576,6 +576,14 @@
                                 </h4>
                             </div>
                         </div>
+                        @php
+                            $ledgerTargetAccId = is_numeric($selectedAccountId ?? null)
+                                ? $selectedAccountId
+                                : (isset($companyCashAccounts) && $companyCashAccounts->first() ? $companyCashAccounts->first()->id : null);
+                        @endphp
+                        <a href="{{ route('coa.account.ledger', $ledgerTargetAccId) }}" class="btn btn-sm rounded-pill px-3 py-1 fw-bold" style="background: rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.28); font-size:0.78rem;">
+                            <i class="fa fa-history me-1"></i> Account Ledger / Statement
+                        </a>
                     </div>
 
                     <form method="GET" action="{{ route('cashbook') }}" id="dateFilterForm" class="cb-filters">

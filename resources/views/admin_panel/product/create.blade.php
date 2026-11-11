@@ -402,31 +402,76 @@
         }
 
         .pz-root {
-            padding: 0.4rem !important;
+            padding: 0.6rem 0.65rem 1.25rem !important;
             margin: 0 !important;
             width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
             box-sizing: border-box !important;
+        }
+
+        .pz-root .select2-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+        .pz-root .select2-selection--single {
+            min-height: 38px !important;
+            height: 38px !important;
+        }
+        .pz-root .select2-selection__rendered {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            max-width: 100% !important;
+            font-size: .84rem !important;
         }
 
         .pz-hero {
             padding: 0.85rem !important;
             border-radius: 12px !important;
+            gap: 0.55rem !important;
+            margin-bottom: 0.75rem !important;
         }
+        .pz-hero h2 { font-size: 1rem !important; }
+        .pz-hero .pz-hero-sub { font-size: 0.72rem !important; }
 
         .pz-hero-actions {
             width: 100% !important;
-            justify-content: flex-start !important;
-            gap: 0.35rem !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.4rem !important;
         }
 
         .pz-hero-actions .btn {
-            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-height: 32px !important;
+            padding: 0.35rem 0.5rem !important;
+            font-size: 0.72rem !important;
             text-align: center !important;
             justify-content: center !important;
         }
 
-        .pz-unit-selector { grid-template-columns: 1fr; }
+        /* Compact 3-col unit selector row on mobile */
+        .pz-unit-selector {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 0.4rem !important;
+        }
+        .pz-unit-opt label {
+            padding: 0.55rem 0.3rem !important;
+            border-radius: 10px !important;
+        }
+        .pz-unit-opt label i {
+            font-size: 1.1rem !important;
+            margin-bottom: 0.15rem !important;
+        }
+        .pz-unit-opt label .pz-unit-name { font-size: 0.74rem !important; }
+        .pz-unit-opt label small { font-size: 0.62rem !important; display: block; line-height: 1.1; }
+
         .pz-step .pz-step-desc { display: none; }
+        .pz-step .pz-step-label { font-size: .62rem !important; letter-spacing: 0 !important; }
+        .pz-step .pz-dot { width: 32px !important; height: 32px !important; font-size: .8rem !important; margin-bottom: .2rem !important; }
+        .pz-steps::before, .pz-steps::after { top: 16px !important; }
 
         .pz-progress-wrap {
             top: 0px !important;
@@ -441,14 +486,51 @@
             border-radius: 12px !important;
             box-shadow: none !important;
             border: 1px solid var(--pz-border) !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
         }
 
         .pz-panel {
-            padding: 0.75rem 0.65rem !important;
+            padding: 0.8rem 0.7rem !important;
         }
+        .pz-panel-head { margin-bottom: .8rem !important; padding-bottom: .65rem !important; }
+        .pz-panel-head h4 { font-size: .92rem !important; }
+        .pz-panel-head p { font-size: .72rem !important; }
 
-        .pz-nav { padding: .85rem .75rem; }
-        .pz-btn { padding: .5rem 1rem; font-size: .78rem; }
+        .pz-control {
+            min-height: 38px !important;
+            font-size: .85rem !important;
+            padding: .42rem .65rem !important;
+        }
+        textarea.pz-control { min-height: 60px !important; }
+        .pz-barcode-btn { flex: 0 0 38px !important; min-height: 38px !important; }
+
+        /* Compact variant card rows on mobile (2-col grid) */
+        .pz-variant-row {
+            padding: 0.7rem 0.7rem !important;
+            margin-bottom: 0.6rem !important;
+            border-radius: 12px !important;
+        }
+        .pz-variant-row .row > [class*="col-"] {
+            flex: 0 0 50% !important;
+            max-width: 50% !important;
+        }
+        .pz-variant-row .row > [class*="col-"]:first-child {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+        .pz-variant-row .variant-barcode-row .row > [class*="col-"] {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+        .variant-barcode-row .pz-barcode-group { max-width: 100% !important; }
+        .pz-add-variant-btn { padding: 0.4rem 0.85rem !important; font-size: 0.74rem !important; min-height: 34px !important; }
+        .pz-img-drop { padding: 0.8rem !important; }
+        .pz-img-drop img { max-height: 130px !important; }
+
+        .pz-nav { padding: 0.75rem !important; gap: 0.5rem !important; flex-wrap: wrap !important; }
+        .pz-nav > div { width: 100%; display: flex; gap: 0.45rem; }
+        .pz-btn { padding: 0.45rem 0.85rem !important; font-size: 0.78rem !important; min-height: 36px !important; flex: 1 1 auto; justify-content: center; }
 
         /* BOM (Step 3) Mobile Card Layout */
         .pz-bom-card {
@@ -461,24 +543,26 @@
             align-items: center !important;
             justify-content: space-between !important;
             gap: 0.5rem !important;
-            padding: 0.65rem 0.75rem !important;
+            padding: 0.6rem 0.65rem !important;
         }
 
         .pz-bom-title {
-            font-size: 0.78rem !important;
+            font-size: 0.72rem !important;
             font-weight: 800 !important;
-            white-space: nowrap !important;
+            white-space: normal !important;
         }
 
         .pz-bom-head .pz-btn-add {
             width: auto !important;
-            padding: 0.4rem 0.75rem !important;
-            font-size: 0.76rem !important;
+            padding: 0.35rem 0.7rem !important;
+            font-size: 0.72rem !important;
+            min-height: 32px !important;
             white-space: nowrap !important;
             flex-shrink: 0 !important;
         }
 
-        .pz-bom-table-wrap {
+        .pz-bom-table-wrap,
+        #customVariantBomTableWrap {
             overflow-x: visible !important;
             padding: 0.4rem 0 !important;
         }
@@ -487,53 +571,59 @@
         .pz-bom-table thead,
         .pz-bom-table tbody,
         .pz-bom-table tr,
-        .pz-bom-table td {
+        .pz-bom-table td,
+        #customVariantBomTable,
+        #customVariantBomTable thead,
+        #customVariantBomTable tbody,
+        #customVariantBomTable tr,
+        #customVariantBomTable td {
             display: block !important;
             width: 100% !important;
             box-sizing: border-box !important;
         }
 
-        .pz-bom-table thead {
+        .pz-bom-table thead,
+        #customVariantBomTable thead {
             display: none !important;
         }
 
-        .pz-bom-table tbody tr {
+        .pz-bom-table tbody tr,
+        #customVariantBomTable tbody tr {
             background: #ffffff !important;
             border: 1.5px solid #e2e8f0 !important;
             border-radius: 12px !important;
-            padding: 0.85rem !important;
-            margin-bottom: 0.75rem !important;
+            padding: 0.75rem !important;
+            margin-bottom: 0.6rem !important;
             position: relative !important;
             box-shadow: 0 2px 6px rgba(109, 92, 255, 0.04) !important;
         }
 
-        .pz-bom-table tbody tr:last-child {
+        .pz-bom-table tbody tr:last-child,
+        #customVariantBomTable tbody tr:last-child {
             margin-bottom: 0 !important;
         }
 
-        .pz-bom-table tbody td {
+        .pz-bom-table tbody td,
+        #customVariantBomTable tbody td {
             padding: 0 !important;
             border: none !important;
             text-align: left !important;
-            margin-bottom: 0.65rem !important;
+            margin-bottom: 0.55rem !important;
         }
 
-        .pz-bom-table tbody td:last-child {
+        .pz-bom-table tbody td:last-child,
+        #customVariantBomTable tbody td:last-child {
             margin-bottom: 0 !important;
-        }
-
-        .pz-bom-table tbody td:nth-child(1) {
-            margin-bottom: 0.65rem !important;
         }
 
         /* Label for Raw Material Dropdown */
         .pz-bom-table tbody td:nth-child(1)::before {
             content: 'Raw Material *';
             display: block;
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.25rem;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             padding-right: 2.5rem;
@@ -543,38 +633,77 @@
         .pz-bom-table tbody td:nth-child(2)::before {
             content: 'Qty Required per Unit *';
             display: block;
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        /* Custom Variant BOM Card Labels */
+        #customVariantBomTable tbody td:nth-child(1)::before {
+            content: 'Variant *';
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding-right: 2.5rem;
+        }
+        #customVariantBomTable tbody td:nth-child(2)::before {
+            content: 'Raw Material / Ingredient *';
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        #customVariantBomTable tbody td:nth-child(3)::before {
+            content: 'Qty per 1 Pack / Unit *';
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 0.25rem;
             text-transform: uppercase;
             letter-spacing: 0.4px;
         }
 
         .pz-bom-table tbody td select,
-        .pz-bom-table tbody td input {
+        .pz-bom-table tbody td input,
+        #customVariantBomTable tbody td select,
+        #customVariantBomTable tbody td input {
             width: 100% !important;
             max-width: 100% !important;
             min-width: 0 !important;
+            min-height: 38px !important;
             font-size: 0.84rem !important;
-            padding: 0.5rem 0.7rem !important;
+            padding: 0.42rem 0.65rem !important;
             border-radius: 8px !important;
             box-sizing: border-box !important;
         }
 
         /* Trash / Remove Button */
-        .pz-bom-table tbody td:nth-child(3) {
+        .pz-bom-table tbody td:nth-child(3),
+        #customVariantBomTable tbody td:nth-child(4) {
             position: absolute !important;
-            top: 0.65rem !important;
-            right: 0.65rem !important;
+            top: 0.6rem !important;
+            right: 0.6rem !important;
             width: auto !important;
             margin: 0 !important;
             padding: 0 !important;
         }
 
-        .pz-bom-remove {
+        .pz-bom-remove,
+        .remove-custom-vbom-row {
             width: 32px !important;
             height: 32px !important;
+            min-height: 32px !important;
             padding: 0 !important;
             display: inline-flex !important;
             align-items: center !important;
@@ -585,6 +714,20 @@
             color: #ef4444 !important;
         }
 
+        /* Review summary mobile containment */
+        .pz-review-hero { padding: 0.85rem !important; gap: 0.65rem !important; border-radius: 12px !important; }
+        .pz-review-hero-name { white-space: normal !important; word-break: break-word; font-size: 0.95rem !important; }
+        .pz-review-hero-stats { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+        .pz-review-stat { min-width: 0 !important; padding: 0.4rem 0.5rem !important; }
+        .pz-review-table { table-layout: fixed; word-break: break-word; font-size: 0.76rem !important; }
+        .pz-review-table th, .pz-review-table td { padding: 0.45rem 0.65rem !important; }
+        .pz-review-chip { max-width: 100%; white-space: normal; word-break: break-word; font-size: 0.7rem !important; }
+
+        /* Modals mobile fit */
+        #categoryModal .modal-dialog,
+        #subcategoryModal .modal-dialog,
+        #cuModal .modal-dialog { margin: 0.75rem auto; max-width: calc(100vw - 1.5rem); }
+
         /* Hint Text ("Press Enter in a row...") */
         .pz-bom-hint {
             display: flex !important;
@@ -592,9 +735,9 @@
             align-items: center !important;
             justify-content: center !important;
             text-align: center !important;
-            font-size: 0.74rem !important;
-            padding: 0.6rem 0.5rem !important;
-            gap: 0.35rem !important;
+            font-size: 0.72rem !important;
+            padding: 0.55rem 0.5rem !important;
+            gap: 0.3rem !important;
             line-height: 1.4 !important;
             white-space: normal !important;
             width: 100% !important;
@@ -603,17 +746,13 @@
 
         .pz-bom-hint kbd {
             display: inline-block !important;
-            font-size: 0.68rem !important;
-            padding: 0.1rem 0.4rem !important;
+            font-size: 0.66rem !important;
+            padding: 0.1rem 0.35rem !important;
         }
     }
     @media (max-width: 480px) {
-        .pz-step .pz-step-label { font-size: .6rem; letter-spacing: 0; }
-        .pz-step .pz-dot { width: 32px; height: 32px; font-size: .8rem; }
-        .pz-steps::before, .pz-steps::after { top: 16px; }
-        .pz-nav { flex-direction: column-reverse; gap: .6rem; }
-        .pz-nav > div { width: 100%; display: flex; gap: .6rem; }
-        .pz-nav .pz-btn { flex: 1; justify-content: center; }
+        .pz-nav > div { flex-wrap: wrap; }
+        .pz-nav .pz-btn { flex: 1 1 46%; min-height: 36px !important; }
     }
 </style>
 

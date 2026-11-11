@@ -96,67 +96,7 @@ class ReportingController extends Controller
             ->toArray();
 
         // Calculate Cost of Goods Manufactured (COGM) from Raw Materials (BOM) for each product & variant
-        $bomProductCostMap = [];
-        foreach ($products as $pObj) {
-            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
-            $pBoms = $pObj->bom ?? collect();
-
-            if ($pBoms->isNotEmpty()) {
-                // Group by variant_id (null for base/all, or specific variant_id)
-                $baseBom = $pBoms->whereNull('variant_id');
-
-                // Compute base product BOM cost (per 1 unit, or per 1 KG if unit_type is kg)
-                $baseCost = 0;
-                foreach ($baseBom as $bItem) {
-                    if ($bItem->rawMaterial) {
-                        $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                        $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                        if ($factor <= 0) $factor = 1;
-                        $baseCost += ((float)$bItem->qty * ($rmCost / $factor));
-                    } elseif ($bItem->ingredientProduct) {
-                        $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                        $baseCost += ((float)$bItem->qty * $ingCost);
-                    }
-                }
-
-                if ($baseCost > 0) {
-                    $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
-                }
-
-                // Check variants
-                foreach ($pObj->variants as $vObj) {
-                    $vBom = $pBoms->where('variant_id', $vObj->id);
-                    if ($vBom->isNotEmpty()) {
-                        $vCost = 0;
-                        foreach ($vBom as $bItem) {
-                            if ($bItem->rawMaterial) {
-                                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                                if ($factor <= 0) $factor = 1;
-                                $vCost += ((float)$bItem->qty * ($rmCost / $factor));
-                            } elseif ($bItem->ingredientProduct) {
-                                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                                $vCost += ((float)$bItem->qty * $ingCost);
-                            }
-                        }
-                        if ($vCost > 0) {
-                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
-                        }
-                    } elseif ($baseCost > 0) {
-                        // Inherit from base scaled by size value if KG product
-                        if ($isObjKg) {
-                            $sizeVal = (float)$vObj->size_value;
-                            if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
-                                $sizeVal /= 1000;
-                            }
-                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
-                        } else {
-                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
-                        }
-                    }
-                }
-            }
-        }
+        $bomProductCostMap = $this->buildBomProductCostMap($products);
 
         // 2. Bulk queries grouped by product_id AND variant_id with DATE filters
         $purchasesQuery = DB::table('purchase_items')
@@ -2625,6 +2565,11 @@ class ReportingController extends Controller
             ->get();
 
         $selectedAccountId = $request->get('account_id', 'all');
+        $cashAccountIds = $companyCashAccounts->pluck('id')->map(fn($id) => (int)$id)->toArray();
+        $targetCashAccountIds = ($selectedAccountId !== 'all' && is_numeric($selectedAccountId))
+            ? [(int)$selectedAccountId]
+            : $cashAccountIds;
+
         if ($canViewAllCashbook) {
             $selectedUserId = $request->get('user_id', 'all');
             if ($selectedUserId !== 'all' && !empty($selectedUserId)) {
@@ -2637,110 +2582,28 @@ class ReportingController extends Controller
             $selectedUserId = (string)($currentUser->id ?? 0);
         }
 
-        /* ================= OPENING BALANCE (CUMULATIVE HISTORICAL) ================= */
-        // Calculate true historical opening balance up to startDT (no 30-day cutoff unless explicitly requested)
-        $hasCustomStartDate = $request->filled('start_date');
-        $customStartDT = $hasCustomStartDate ? ($request->get('start_date') . ' 00:00:00') : null;
-        $customStartDate = $hasCustomStartDate ? $request->get('start_date') : null;
-
-        $prevSalesQ = Sale::where('created_at', '<', $startDT);
-        if ($customStartDT) $prevSalesQ->where('created_at', '>=', $customStartDT);
-
-        $prevCustQ = CustomerPayment::where('payment_date', '<', $selectedDate)
-            ->where(function($q) {
-                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
-            });
-        if ($customStartDate) $prevCustQ->where('payment_date', '>=', $customStartDate);
-
-        $prevReturnsQ = \App\Models\SalesReturn::where('created_at', '<', $startDT);
-        if ($customStartDT) $prevReturnsQ->where('created_at', '>=', $customStartDT);
-
-        $prevVendQ = VendorPayment::where('payment_date', '<', $selectedDate)
-            ->where(function($q) {
-                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
-            });
-        if ($customStartDate) $prevVendQ->where('payment_date', '>=', $customStartDate);
-
-        $prevExpQ = ExpenseVoucher::where('date', '<', $selectedDate)
-            ->where(function($q) {
-                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', false);
-            })
-            ->where(function($q) {
-                $q->whereNull('remarks')
-                  ->orWhere(function($sub) {
-                      $sub->where('remarks', 'not like', '%Credit note%')
-                          ->where('remarks', 'not like', '%Trade Offer%')
-                          ->where('remarks', 'not like', '%Product Trial%')
-                          ->where('remarks', 'not like', '%Sample%')
-                          ->where('remarks', 'not like', '%Stock Adj%');
-                  });
-            });
-        if ($customStartDate) $prevExpQ->where('date', '>=', $customStartDate);
-
-        if ($selectedBranchId !== 'all') {
-            $prevSalesQ->where('branch_id', $selectedBranchId);
-            $prevCustQ->where('branch_id', $selectedBranchId);
-            $prevReturnsQ->where('branch_id', $selectedBranchId);
-            $prevVendQ->where('branch_id', $selectedBranchId);
-            $prevExpQ->where('branch_id', $selectedBranchId);
-        }
-
-        if ($selectedUserId !== 'all') {
-            $prevSalesQ->where('user_id', $selectedUserId);
-            $prevCustQ->where('admin_or_user_id', $selectedUserId);
-            $prevVendQ->where('admin_or_user_id', $selectedUserId);
-            $prevExpQ->where('user_id', $selectedUserId);
-        }
-
-        // For sales opening: actual cash/card received on sales
-        $previousSales = $prevSalesQ->get()->sum(function($s) {
-            $paid = floatval($s->cash) + floatval($s->card);
-            $net = floatval($s->total_net);
-            if ($s->customer === 'Walk-in Customer' || $paid >= $net) {
-                return $net;
-            }
-            return min($net, $paid);
-        });
-        $previousCustomerRecoveries = (float)$prevCustQ->sum('amount');
-        $previousReturnsCash = (float)$prevReturnsQ->sum('cash');
-        $previousVendorPayments = (float)$prevVendQ->sum('amount');
-        $previousExpenses = (float)$prevExpQ->sum('total_amount');
-
-        // Cash Accounts opening balance from Chart of Accounts
-        $accountCashOpening = 0;
-        if ($selectedUserId === 'all') {
-            $cashAccountsQ = DB::table('accounts')
-                ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
-                ->where('accounts.status', 1)
-                ->whereNull('accounts.distributor_id')
-                ->where(function($q) {
-                    $q->where('account_heads.name', 'like', '%Cash%')
-                      ->orWhere('accounts.title', 'like', '%Cash%')
-                      ->orWhere('accounts.head_id', 2);
-                });
-            if ($selectedAccountId !== 'all' && is_numeric($selectedAccountId)) {
-                $cashAccountsQ->where('accounts.id', $selectedAccountId);
-            }
-            $accountCashOpening = (float)$cashAccountsQ->sum('accounts.opening_balance');
-        }
-
-        $openingBalance = $accountCashOpening + ($previousSales + $previousCustomerRecoveries) - ($previousVendorPayments + $previousExpenses + $previousReturnsCash);
-
-        /* ================= TODAY'S DATA (with time filter) ================= */
+        /* ================= SELECTED DATE DATA (with time filter) ================= */
         $salesQ = Sale::with('user')
             ->where('created_at', '>=', $startDT)
             ->where('created_at', '<=', $endDT);
         $custQ = CustomerPayment::with(['customer', 'user'])
             ->whereDate('payment_date', $selectedDate)
             ->where(function($q) {
-                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
+                $q->whereNull('note')
+                  ->orWhere(function($sub) {
+                      $sub->where('note', 'not like', '%Paid on Sale%')
+                          ->where('note', 'not like', 'Receipt Voucher #%');
+                  });
             });
-        $returnsQ = \App\Models\SalesReturn::with('user')
-            ->whereBetween('created_at', [$startDT, $endDT]);
+        $returnsQ = \App\Models\SalesReturn::whereBetween('created_at', [$startDT, $endDT]);
         $vendQ = VendorPayment::with(['vendor', 'user'])
             ->whereDate('payment_date', $selectedDate)
             ->where(function($q) {
-                $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
+                $q->whereNull('note')
+                  ->orWhere(function($sub) {
+                      $sub->where('note', 'not like', '%Paid on Purchase%')
+                          ->where('note', 'not like', 'Payment Voucher #%');
+                  });
             });
         $expQ = ExpenseVoucher::with('user')
             ->whereDate('date', $selectedDate)
@@ -2757,6 +2620,15 @@ class ReportingController extends Controller
                           ->where('remarks', 'not like', '%Stock Adj%');
                   });
             });
+        $payVoucherQ = \App\Models\PaymentVoucher::whereDate('receipt_date', $selectedDate);
+        $recVoucherQ = \App\Models\ReceiptsVoucher::whereDate('receipt_date', $selectedDate);
+        $distPayQ = \App\Models\DistributorPayment::with('distributor')
+            ->whereDate('payment_date', $selectedDate)
+            ->where('status', 'approved')
+            ->where('payment_method', '!=', 'receipt_voucher')
+            ->where(function($q) {
+                $q->whereNull('notes')->orWhere('notes', 'not like', '%Payment on Sale Invoice%');
+            });
 
         if ($selectedBranchId !== 'all') {
             $salesQ->where('branch_id', $selectedBranchId);
@@ -2764,6 +2636,8 @@ class ReportingController extends Controller
             $returnsQ->where('branch_id', $selectedBranchId);
             $vendQ->where('branch_id', $selectedBranchId);
             $expQ->where('branch_id', $selectedBranchId);
+            $payVoucherQ->where('branch_id', $selectedBranchId);
+            $recVoucherQ->where('branch_id', $selectedBranchId);
         }
 
         if ($selectedUserId !== 'all') {
@@ -2771,22 +2645,95 @@ class ReportingController extends Controller
             $custQ->where('admin_or_user_id', $selectedUserId);
             $vendQ->where('admin_or_user_id', $selectedUserId);
             $expQ->where('user_id', $selectedUserId);
+            $distPayQ->where('created_by', $selectedUserId);
         }
 
         if ($selectedAccountId !== 'all' && is_numeric($selectedAccountId)) {
             $salesQ->where('cash_account_id', $selectedAccountId);
             $returnsQ->where('cash_account_id', $selectedAccountId);
-            $prevSalesQ->where('cash_account_id', $selectedAccountId);
-            $prevReturnsQ->where('cash_account_id', $selectedAccountId);
+            $distPayQ->where('account_id', $selectedAccountId);
+        } elseif (!empty($targetCashAccountIds)) {
+            $distPayQ->where(function($q) use ($targetCashAccountIds) {
+                $q->whereIn('account_id', $targetCashAccountIds)
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('account_id')->where('payment_method', 'Cash');
+                  });
+            });
         }
 
         $allSales = $salesQ->get();
-        $customerRecoveries = $custQ->get();
+        $customerRecoveries = $custQ->get()->filter(function($cr) {
+            return floatval($cr->cash) > 0 || strtolower((string)($cr->payment_method ?? '')) === 'cash';
+        })->values();
         $todayReturns = $returnsQ->get();
-        $vendorPayments = $vendQ->get();
-        $expenseVouchers = $expQ->get();
+        $vendorPayments = $vendQ->get()->filter(function($vp) {
+            return floatval($vp->cash) > 0 || strtolower((string)($vp->payment_method ?? '')) === 'cash';
+        })->values();
+        $rawExpenses = $expQ->get();
+        $distributorCashPayments = $distPayQ->get();
 
-        /* ================= RECEIPTS BREAKDOWN ================= */
+        // Filter Expense Vouchers strictly to ones paid out of target Company Cash Accounts
+        $expenseVouchers = collect();
+        $expenseCashAmounts = [];
+        foreach ($rawExpenses as $exp) {
+            $rowAccs = is_array($exp->row_account_id) ? $exp->row_account_id : json_decode((string)$exp->row_account_id, true);
+            $rowAmts = is_array($exp->amount) ? $exp->amount : json_decode((string)$exp->amount, true);
+            $matchedAmt = 0.0;
+            if (is_array($rowAccs) && count($rowAccs) > 0) {
+                foreach ($rowAccs as $idx => $aId) {
+                    if (in_array((int)$aId, $targetCashAccountIds, true)) {
+                        $matchedAmt += (float)($rowAmts[$idx] ?? 0);
+                    }
+                }
+            } elseif (in_array((int)$exp->party_id, $targetCashAccountIds, true) || ($selectedAccountId === 'all' && in_array(strtolower((string)$exp->type), ['cash', 'walkin'], true))) {
+                $matchedAmt = (float)$exp->total_amount;
+            }
+            if ($matchedAmt > 0) {
+                $expenseVouchers->push($exp);
+                $expenseCashAmounts[$exp->id] = $matchedAmt;
+            }
+        }
+
+        // Extract cash-account line items from Payment Vouchers & Receipt Vouchers
+        $cashPayVouchers = [];
+        if ($selectedUserId === 'all') {
+            foreach ($payVoucherQ->get() as $pv) {
+                $rowAccs = json_decode((string)$pv->row_account_id, true);
+                $rowAmts = json_decode((string)$pv->amount, true);
+                $matched = 0.0;
+                if (is_array($rowAccs)) {
+                    foreach ($rowAccs as $idx => $aId) {
+                        if (in_array((int)$aId, $targetCashAccountIds, true)) {
+                            $matched += (float)($rowAmts[$idx] ?? 0);
+                        }
+                    }
+                }
+                if ($matched > 0) {
+                    $cashPayVouchers[] = ['pvid' => $pv->pvid, 'type' => $pv->type, 'amount' => $matched];
+                }
+            }
+        }
+
+        $cashRecVouchers = [];
+        if ($selectedUserId === 'all') {
+            foreach ($recVoucherQ->get() as $rv) {
+                $rowAccs = json_decode((string)$rv->row_account_id, true);
+                $rowAmts = json_decode((string)$rv->amount, true);
+                $matched = 0.0;
+                if (is_array($rowAccs)) {
+                    foreach ($rowAccs as $idx => $aId) {
+                        if (in_array((int)$aId, $targetCashAccountIds, true)) {
+                            $matched += (float)($rowAmts[$idx] ?? 0);
+                        }
+                    }
+                }
+                if ($matched > 0) {
+                    $cashRecVouchers[] = ['rvid' => $rv->rvid, 'type' => $rv->type, 'amount' => $matched];
+                }
+            }
+        }
+
+        /* ================= RECEIPTS BREAKDOWN (CASH ONLY FOR BALANCE) ================= */
         $totalSaleCash = $allSales->sum('cash');
         $totalSaleCard = $allSales->sum('card');
         $totalChange   = $allSales->sum('change');
@@ -2794,67 +2741,140 @@ class ReportingController extends Controller
         $saleCount     = $allSales->count();
 
         $recoveryByMethod = [];
+        $totalRecoveries = 0.0;
         foreach ($customerRecoveries as $cr) {
-            $m = $cr->payment_method ?? 'Other';
+            $cashAmt = floatval($cr->cash) > 0 ? floatval($cr->cash) : floatval($cr->amount);
+            $m = $cr->payment_method ?? 'Cash';
             if (!isset($recoveryByMethod[$m])) $recoveryByMethod[$m] = 0;
-            $recoveryByMethod[$m] += $cr->amount;
+            $recoveryByMethod[$m] += $cashAmt;
+            $totalRecoveries += $cashAmt;
         }
-        $totalRecoveries = $customerRecoveries->sum('amount');
+        $totalDistCash = (float) $distributorCashPayments->sum('amount');
+        $totalRecVoucherCash = array_sum(array_column($cashRecVouchers, 'amount'));
 
-        // Actual cash/card received from sales today
-        $todaySaleReceived = $allSales->sum(function($s) {
-            $paid = floatval($s->cash) + floatval($s->card);
-            $net = floatval($s->total_net);
-            if ($s->customer === 'Walk-in Customer' || $paid >= $net) {
-                return $net;
+        // Actual physical CASH received from sales (exclude Card/Bank & subtract Change returned)
+        $todaySaleCashReceived = $allSales->sum(function($s) use ($selectedAccountId, $targetCashAccountIds) {
+            if ($selectedAccountId === 'all' && !empty($s->cash_account_id) && !in_array((int)$s->cash_account_id, $targetCashAccountIds, true)) {
+                return 0;
             }
-            return min($net, $paid);
+            return max(0, floatval($s->cash) - max(0, floatval($s->change)));
         });
 
-        $totalReceipts = $todaySaleReceived + $totalRecoveries;
+        $totalReceipts = $todaySaleCashReceived + $totalRecoveries + $totalDistCash + $totalRecVoucherCash;
 
-        /* ================= PAYMENTS BREAKDOWN ================= */
+        /* ================= PAYMENTS BREAKDOWN (CASH ONLY FOR BALANCE) ================= */
         $vendorPayByMethod = [];
+        $totalVendorPayments = 0.0;
         foreach ($vendorPayments as $vp) {
-            $m = $vp->payment_method ?? 'Other';
+            $cashAmt = floatval($vp->cash) > 0 ? floatval($vp->cash) : floatval($vp->amount);
+            $m = $vp->payment_method ?? 'Cash';
             if (!isset($vendorPayByMethod[$m])) $vendorPayByMethod[$m] = 0;
-            $vendorPayByMethod[$m] += $vp->amount;
+            $vendorPayByMethod[$m] += $cashAmt;
+            $totalVendorPayments += $cashAmt;
         }
-        $totalVendorPayments = $vendorPayments->sum('amount');
-        $totalExpenses = $expenseVouchers->sum('total_amount');
+        $totalPayVoucherCash = array_sum(array_column($cashPayVouchers, 'amount'));
+        $totalVendorPayments += $totalPayVoucherCash;
+
+        $totalExpenses = array_sum($expenseCashAmounts);
         $todayReturnCash = (float)$todayReturns->sum('cash');
         $totalPayments = $totalVendorPayments + $totalExpenses + $todayReturnCash;
-        $closingBalance = $openingBalance + $totalReceipts - $totalPayments;
+
+        /* ================= OPENING & CLOSING BALANCE (NO DOUBLE COUNTING) ================= */
+        if ($selectedUserId === 'all' && !empty($targetCashAccountIds)) {
+            $currentLiveCashBalance = (float) \App\Models\Account::whereIn('id', $targetCashAccountIds)->sum('opening_balance');
+            $afterEndNet = 0.0;
+            if (\Illuminate\Support\Facades\Schema::hasTable('account_ledgers')) {
+                $afterEndNet = (float) \App\Models\AccountLedger::whereIn('account_id', $targetCashAccountIds)
+                    ->where('transaction_date', '>', $endDT)
+                    ->selectRaw('COALESCE(SUM(credit), 0) - COALESCE(SUM(debit), 0) as net')
+                    ->value('net');
+            }
+            $closingBalance = round($currentLiveCashBalance - $afterEndNet, 2);
+            $openingBalance = round($closingBalance - $totalReceipts + $totalPayments, 2);
+        } else {
+            // User-specific register view (cash transactions only)
+            $prevSalesQ = Sale::where('created_at', '<', $startDT)->where('user_id', $selectedUserId);
+            $prevCustQ = CustomerPayment::where('payment_date', '<', $selectedDate)
+                ->where('admin_or_user_id', $selectedUserId)
+                ->where(function($q) {
+                    $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Sale%');
+                })
+                ->where(function($q) {
+                    $q->where('payment_method', 'Cash')->orWhere('cash', '>', 0);
+                });
+            $prevReturnsQ = \App\Models\SalesReturn::where('created_at', '<', $startDT)->where('user_id', $selectedUserId);
+            $prevVendQ = VendorPayment::where('payment_date', '<', $selectedDate)
+                ->where('admin_or_user_id', $selectedUserId)
+                ->where(function($q) {
+                    $q->whereNull('note')->orWhere('note', 'not like', '%Paid on Purchase%');
+                })
+                ->where(function($q) {
+                    $q->where('payment_method', 'Cash')->orWhere('cash', '>', 0);
+                });
+            $prevExpQ = ExpenseVoucher::where('date', '<', $selectedDate)
+                ->where('user_id', $selectedUserId)
+                ->where(function($q) {
+                    $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', false);
+                });
+            if ($selectedBranchId !== 'all') {
+                $prevSalesQ->where('branch_id', $selectedBranchId);
+                $prevCustQ->where('branch_id', $selectedBranchId);
+                $prevReturnsQ->where('branch_id', $selectedBranchId);
+                $prevVendQ->where('branch_id', $selectedBranchId);
+                $prevExpQ->where('branch_id', $selectedBranchId);
+            }
+            $prevSalesCash = $prevSalesQ->get()->sum(fn($s) => max(0, floatval($s->cash) - max(0, floatval($s->change))));
+            $prevCustCash  = $prevCustQ->get()->sum(fn($cr) => floatval($cr->cash) > 0 ? floatval($cr->cash) : floatval($cr->amount));
+            $prevRetCash   = (float) $prevReturnsQ->sum('cash');
+            $prevVendCash  = $prevVendQ->get()->sum(fn($vp) => floatval($vp->cash) > 0 ? floatval($vp->cash) : floatval($vp->amount));
+            $prevExpCash   = (float) $prevExpQ->sum('total_amount');
+
+            $openingBalance = round(($prevSalesCash + $prevCustCash) - ($prevVendCash + $prevExpCash + $prevRetCash), 2);
+            $closingBalance = round($openingBalance + $totalReceipts - $totalPayments, 2);
+        }
 
         /* ================= DETAILED ENTRIES ================= */
         $receipts = [];
         foreach ($allSales as $sale) {
-            $paid = floatval($sale->cash) + floatval($sale->card);
-            $net = floatval($sale->total_net);
-            $received = ($sale->customer === 'Walk-in Customer' || $paid >= $net) ? $net : min($net, $paid);
+            if ($selectedAccountId === 'all' && !empty($sale->cash_account_id) && !in_array((int)$sale->cash_account_id, $targetCashAccountIds, true)) {
+                continue;
+            }
+            $received = max(0, floatval($sale->cash) - max(0, floatval($sale->change)));
             if ($received > 0) {
                 $ref = '#' . $sale->invoice_no;
                 if ($selectedUserId === 'all' && $sale->user) {
                     $ref .= ' (' . $sale->user->name . ')';
                 }
-                $receipts[] = ['title' => 'Sale', 'ref' => $ref, 'amount' => $received];
+                $receipts[] = ['title' => 'Sale (Cash)', 'ref' => $ref, 'amount' => $received];
             }
         }
         foreach ($customerRecoveries as $cr) {
-            $ref = ($cr->customer->customer_name ?? '-') . ' (' . ($cr->payment_method ?? 'N/A') . ')';
+            $cashAmt = floatval($cr->cash) > 0 ? floatval($cr->cash) : floatval($cr->amount);
+            $ref = ($cr->customer->customer_name ?? '-') . ' (' . ($cr->payment_method ?? 'Cash') . ')';
             if ($selectedUserId === 'all' && $cr->user) {
                 $ref .= ' - by ' . $cr->user->name;
             }
-            $receipts[] = ['title' => 'Recovery', 'ref' => $ref, 'amount' => $cr->amount];
+            $receipts[] = ['title' => 'Recovery', 'ref' => $ref, 'amount' => $cashAmt];
+        }
+        foreach ($distributorCashPayments as $dp) {
+            $ref = ($dp->distributor->name ?? 'Distributor') . ' (#' . $dp->payment_no . ')';
+            $receipts[] = ['title' => 'Distributor Payment', 'ref' => $ref, 'amount' => (float)$dp->amount];
+        }
+        foreach ($cashRecVouchers as $rv) {
+            $receipts[] = ['title' => 'Receipt Voucher', 'ref' => '#' . $rv['rvid'] . ' (' . ucfirst((string)$rv['type']) . ')', 'amount' => $rv['amount']];
         }
 
         $payments = [];
         foreach ($vendorPayments as $vp) {
-            $ref = ($vp->vendor->name ?? '-') . ' (' . ($vp->payment_method ?? 'N/A') . ')';
+            $cashAmt = floatval($vp->cash) > 0 ? floatval($vp->cash) : floatval($vp->amount);
+            $ref = ($vp->vendor->name ?? '-') . ' (' . ($vp->payment_method ?? 'Cash') . ')';
             if ($selectedUserId === 'all' && $vp->user) {
                 $ref .= ' - by ' . $vp->user->name;
             }
-            $payments[] = ['title' => 'Vendor Pay', 'ref' => $ref, 'amount' => $vp->amount];
+            $payments[] = ['title' => 'Vendor Pay', 'ref' => $ref, 'amount' => $cashAmt];
+        }
+        foreach ($cashPayVouchers as $pv) {
+            $payments[] = ['title' => 'Payment Voucher', 'ref' => '#' . $pv['pvid'] . ' (' . ucfirst((string)$pv['type']) . ')', 'amount' => $pv['amount']];
         }
         foreach ($expenseVouchers as $exp) {
             $remarks = is_array($exp->remarks) ? implode(', ', $exp->remarks) : ($exp->remarks ?? '');
@@ -2862,7 +2882,7 @@ class ReportingController extends Controller
             if ($selectedUserId === 'all' && $exp->user) {
                 $ref .= ' (' . $exp->user->name . ')';
             }
-            $payments[] = ['title' => 'Expense', 'ref' => $ref, 'amount' => $exp->total_amount];
+            $payments[] = ['title' => 'Expense', 'ref' => $ref, 'amount' => $expenseCashAmounts[$exp->id] ?? $exp->total_amount];
         }
         foreach ($todayReturns as $ret) {
             $rCash = floatval($ret->cash);
@@ -3500,62 +3520,7 @@ class ReportingController extends Controller
         $products = \App\Models\Product::with(['category_relation', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->get()->keyBy('id');
 
         // BOM Recipe Manufactured Cost mapping for Profit & Loss
-        $bomProductCostMap = [];
-        foreach ($products as $pObj) {
-            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
-            $pBoms = $pObj->bom ?? collect();
-
-            if ($pBoms->isNotEmpty()) {
-                $baseBom = $pBoms->whereNull('variant_id');
-                $baseCost = 0;
-                foreach ($baseBom as $bItem) {
-                    if ($bItem->rawMaterial) {
-                        $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                        $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                        if ($factor <= 0) $factor = 1;
-                        $baseCost += ((float)$bItem->qty * ($rmCost / $factor));
-                    } elseif ($bItem->ingredientProduct) {
-                        $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                        $baseCost += ((float)$bItem->qty * $ingCost);
-                    }
-                }
-
-                if ($baseCost > 0) {
-                    $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
-                }
-
-                foreach ($pObj->variants as $vObj) {
-                    $vBom = $pBoms->where('variant_id', $vObj->id);
-                    if ($vBom->isNotEmpty()) {
-                        $vCost = 0;
-                        foreach ($vBom as $bItem) {
-                            if ($bItem->rawMaterial) {
-                                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                                if ($factor <= 0) $factor = 1;
-                                $vCost += ((float)$bItem->qty * ($rmCost / $factor));
-                            } elseif ($bItem->ingredientProduct) {
-                                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                                $vCost += ((float)$bItem->qty * $ingCost);
-                            }
-                        }
-                        if ($vCost > 0) {
-                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
-                        }
-                    } elseif ($baseCost > 0) {
-                        if ($isObjKg) {
-                            $sizeVal = (float)$vObj->size_value;
-                            if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
-                                $sizeVal /= 1000;
-                            }
-                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
-                        } else {
-                            $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
-                        }
-                    }
-                }
-            }
-        }
+        $bomProductCostMap = $this->buildBomProductCostMap($products);
         $variantsDict = \App\Models\ProductVariant::all()->keyBy('id');
         $categoriesDict = \App\Models\Category::all()->keyBy('id');
         $customersDict = \App\Models\Customer::all()->keyBy('id');
@@ -5105,5 +5070,79 @@ class ReportingController extends Controller
             ],
             'distributors' => $distributorRows
         ]);
+    }
+
+    /**
+     * Build a map of manufactured BOM recipe unit costs keyed by "{product_id}_{variant_id}".
+     */
+    private function buildBomProductCostMap($products): array
+    {
+        $bomProductCostMap = [];
+
+        foreach ($products as $pObj) {
+            $pBoms = $pObj->bom ?? collect();
+            if ($pBoms->isEmpty()) {
+                continue;
+            }
+
+            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
+            $baseCost = $this->computeBomItemsCost($pBoms->whereNull('variant_id'));
+
+            if ($baseCost > 0) {
+                $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
+            }
+
+            foreach ($pObj->variants as $vObj) {
+                $vBom = $pBoms->where('variant_id', $vObj->id);
+                if ($vBom->isNotEmpty()) {
+                    $vCost = $this->computeBomItemsCost($vBom);
+                    if ($vCost > 0) {
+                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
+                    }
+                } elseif ($baseCost > 0) {
+                    if ($isObjKg) {
+                        $sizeVal = (float)$vObj->size_value;
+                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
+                            $sizeVal /= 1000;
+                        }
+                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
+                    } else {
+                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
+                    }
+                }
+            }
+        }
+
+        return $bomProductCostMap;
+    }
+
+    /**
+     * Sum raw material and ingredient product costs for a collection of BOM rows using qty_per_unit.
+     */
+    private function computeBomItemsCost($bomItems): float
+    {
+        $cost = 0.0;
+
+        foreach ($bomItems as $bItem) {
+            // Column in product_raw_material_bom is qty_per_unit (fallback to qty if ever aliased)
+            $qty = (float)($bItem->qty_per_unit ?? $bItem->qty ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            if ($bItem->rawMaterial) {
+                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
+                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
+                if ($factor <= 0) {
+                    $factor = 1;
+                }
+                $cost += ($qty * ($rmCost / $factor));
+            } elseif ($bItem->ingredientProduct) {
+                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
+                $cost += ($qty * $ingCost);
+            }
+        }
+
+        return $cost;
     }
 }

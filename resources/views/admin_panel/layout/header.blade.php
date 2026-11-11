@@ -13,60 +13,102 @@
 /* ══════════ RESPONSIVE HEADER STYLING ══════════ */
 @media (max-width: 991.98px) {
     .top_nav .container, .top_nav .container-fluid {
-        padding-left: 6px !important;
-        padding-right: 6px !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
         flex-wrap: nowrap !important;
+        max-width: 100% !important;
+    }
+    .rt_nav_wrapper {
+        min-width: 0;
+        flex-shrink: 1;
+    }
+    .rt_logo {
+        margin-right: 4px !important;
     }
     .rt_logo img {
-        max-height: 38px !important;
+        max-height: 34px !important;
         width: auto !important;
     }
     .navbar-nav-right {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
-        gap: 4px !important;
+        gap: 6px !important;
         margin-left: auto !important;
         margin-right: 0 !important;
+        padding-right: 2px !important;
+        flex-shrink: 0;
+    }
+    .navbar-nav-right > .nav-item.me-1 {
+        margin-right: 0 !important;
+        gap: 6px !important;
     }
     .nav-bell-link {
-        width: 30px !important;
-        height: 30px !important;
+        width: 32px !important;
+        height: 32px !important;
         font-size: 0.85rem !important;
         padding: 2px !important;
-        border-radius: 8px !important;
+        border-radius: 9px !important;
+    }
+    .top_nav .dropdown-menu {
+        max-width: calc(100vw - 16px) !important;
+        min-width: 250px !important;
     }
     .branch-switch-container {
-        max-width: 100px !important;
-        height: 30px !important;
+        max-width: 112px !important;
+        height: 32px !important;
     }
-    .branch-switch-container select {
-        font-size: 0.7rem !important;
-        padding-left: 3px !important;
-        padding-right: 14px !important;
+    .branch-switch-container select.form-select {
+        font-size: 0.72rem !important;
+        padding-left: 4px !important;
+        padding-right: 18px !important;
         height: 30px !important;
-        max-width: 70px !important;
+        min-height: 30px !important;
+        max-width: 82px !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
         overflow: hidden !important;
+        border-radius: 0 !important;
     }
     .branch-switch-container .input-group-text {
-        padding-left: 5px !important;
+        padding-left: 6px !important;
         padding-right: 5px !important;
-        font-size: 0.7rem !important;
+        font-size: 0.72rem !important;
         height: 30px !important;
     }
     .nav-profile {
         margin-left: 0 !important;
+        flex-shrink: 0 !important;
+    }
+    #profileDropdown {
+        padding: 2px 6px 2px 2px !important;
+        padding-right: 6px !important;
     }
     .user-avatar-circle {
         width: 28px !important;
         height: 28px !important;
         font-size: 0.7rem !important;
+        margin-right: 3px !important;
     }
     #mobileNavToggle {
-        padding: 2px 4px !important;
-        margin-left: 2px !important;
+        width: 34px !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 !important;
+        margin-right: 6px !important;
+        border-radius: 10px !important;
+        background: rgba(255, 255, 255, 0.14) !important;
+        border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        color: #ffffff !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+    }
+    #mobileNavToggle:hover,
+    #mobileNavToggle:active {
+        background: rgba(255, 255, 255, 0.24) !important;
     }
 }
 </style>
@@ -77,6 +119,9 @@
         <div class="top_nav flex-grow-1">
             <div class="container-fluid px-3 px-md-4 d-flex flex-row h-100 align-items-center">
                 <div class="text-center rt_nav_wrapper d-flex align-items-center">
+                    <button type="button" id="mobileNavToggle" class="btn btn-sm d-inline-flex d-lg-none" aria-label="Open Navigation Menu" aria-expanded="false">
+                        <i class="fas fa-bars" style="font-size: 1rem;"></i>
+                    </button>
                     <a class="nav_logo rt_logo rt_logo_badge text-decoration-none me-3" href="{{ url('/home') }}">
                         <img src="{{ asset('assets/images/logo.png') }}" alt="{{ shop_name() }}" />
                     </a>
@@ -250,17 +295,6 @@
                                 </div>
                             </form>
                         </li>
-                        @can('Settings')
-                        <li class="nav-item">
-                            <a href="{{ route('settings.index') }}" 
-                               class="nav-link px-2.5 py-1 d-flex align-items-center text-decoration-none shadow-sm"
-                               title="System Settings"
-                               style="background: {{ request()->is('settings*') ? 'rgba(15, 118, 110, 0.45)' : 'rgba(255, 255, 255, 0.08)' }}; border-radius: 24px; border: 1px solid {{ request()->is('settings*') ? 'rgba(20, 184, 166, 0.6)' : 'rgba(255, 255, 255, 0.16)' }}; backdrop-filter: blur(8px); height: 32px; color: #ffffff; transition: all 0.2s ease;">
-                                <i class="fas fa-sliders-h me-1.5" style="font-size: 0.82rem; color: {{ request()->is('settings*') ? '#5eead4' : 'rgba(255,255,255,0.7)' }} !important;"></i>
-                                <span class="fw-bold d-none d-sm-inline-block text-white" style="font-size: 0.8rem;">Settings</span>
-                            </a>
-                        </li>
-                        @endcan
                         <li class="nav-item nav-profile dropdown">
                             <a class="nav-link dropdown-toggle p-1 d-flex align-items-center text-decoration-none" href="#" data-bs-toggle="dropdown"
                                 id="profileDropdown" aria-expanded="false" 
@@ -304,7 +338,22 @@
 
                 </div>
             </div>
+        <div id="mobileNavBackdrop" class="d-lg-none"></div>
         <div class="nav-bottom">
+            <div class="mobile-drawer-header d-lg-none">
+                <div class="d-flex align-items-center gap-2 min-width-0">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-3" style="width: 34px; height: 34px; background: linear-gradient(135deg, #0f766e, #0d9488); color: #fff; flex-shrink: 0;">
+                        <i class="fas fa-cubes" style="font-size: 0.95rem;"></i>
+                    </div>
+                    <div class="text-truncate">
+                        <div class="fw-bold text-white text-truncate" style="font-size: 0.9rem; line-height: 1.2;">{{ shop_name() }}</div>
+                        <div style="font-size: 0.68rem; color: #5eead4; font-weight: 600;">Enterprise Navigation</div>
+                    </div>
+                </div>
+                <button type="button" id="mobileNavClose" class="btn btn-sm d-inline-flex align-items-center justify-content-center" aria-label="Close Navigation Menu" style="width: 32px; height: 32px; min-height: 32px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); color: #e2e8f0; flex-shrink: 0;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
             <div class="container-fluid px-3 px-md-4">
                 <ul class="nav page-navigation">
                     @can('Dashboard')
@@ -440,7 +489,7 @@
 
                     @canany(['Char Of Accounts','Expense Voucher','Receipts Voucher','Payment Voucher','Narrations'])
                     @php
-                        $isVouchersActive = request()->is('view_all*') || request()->is('all-expense-vochers*') || request()->is('all-recepit-vochers*') || request()->is('all-Payment-vochers*') || request()->is('narrations*');
+                        $isVouchersActive = request()->is('view_all*') || request()->is('account-ledger*') || request()->is('all-expense-vochers*') || request()->is('all-recepit-vochers*') || request()->is('all-Payment-vochers*') || request()->is('narrations*');
                     @endphp
                     <!-- Vouchers Menu -->
                     <li class="nav-item {{ $isVouchersActive ? 'active' : '' }}">
@@ -457,6 +506,12 @@
                                     <a href="{{ route('view_all') }}">
                                         <i class="fas fa-project-diagram"></i>
                                         <span>Chart Of Accounts</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('coa.account.ledger') }}">
+                                        <i class="fas fa-book-open"></i>
+                                        <span>Account Ledger / Statement</span>
                                     </a>
                                 </li>
                                 @endcan
@@ -805,23 +860,77 @@
                     </li>
                     @endcanany
 
+                    @can('Settings')
+                    <li class="nav-item d-lg-none {{ request()->is('settings*') ? 'active' : '' }}">
+                        <a href="{{ route('settings.index') }}" class="nav-link">
+                            <i class="menu_icon fas fa-sliders-h"></i>
+                            <span class="menu-title">System Settings</span>
+                        </a>
+                    </li>
+                    @endcan
+
                 </ul>
             </div>
         </div>
     </nav>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Mobile Hamburger Button Toggle
+    // 1. Mobile Off-Canvas Sidebar Drawer Toggle
     var mobileBtn = document.getElementById('mobileNavToggle');
+    var mobileCloseBtn = document.getElementById('mobileNavClose');
+    var mobileBackdrop = document.getElementById('mobileNavBackdrop');
+    var navBottom = document.querySelector('.rt_nav_header.horizontal-layout .nav-bottom');
+
+    function setMobileDrawer(open) {
+        if (!navBottom) return;
+        if (open) {
+            navBottom.classList.add('header-toggled');
+            if (mobileBackdrop) mobileBackdrop.classList.add('show');
+            if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'true');
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        } else {
+            navBottom.classList.remove('header-toggled');
+            if (mobileBackdrop) mobileBackdrop.classList.remove('show');
+            if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'false');
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        }
+    }
+
     if (mobileBtn) {
         mobileBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            var navBottom = document.querySelector('.rt_nav_header.horizontal-layout .nav-bottom');
-            if (navBottom) {
-                navBottom.classList.toggle('header-toggled');
-            }
+            e.stopPropagation();
+            var isOpen = navBottom && navBottom.classList.contains('header-toggled');
+            setMobileDrawer(!isOpen);
         });
     }
+
+    if (mobileCloseBtn) {
+        mobileCloseBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            setMobileDrawer(false);
+        });
+    }
+
+    if (mobileBackdrop) {
+        mobileBackdrop.addEventListener('click', function() {
+            setMobileDrawer(false);
+        });
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && navBottom && navBottom.classList.contains('header-toggled')) {
+            setMobileDrawer(false);
+        }
+    });
+
+    window.addEventListener('resize', function() {
+        if (window.innerWidth >= 992 && navBottom && navBottom.classList.contains('header-toggled')) {
+            setMobileDrawer(false);
+        }
+    });
 
     // 2. Click-to-toggle dropdown submenus (Management, Vouchers, Reports, User Management)
     var navItems = document.querySelectorAll('.rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item');
@@ -830,7 +939,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var submenu = item.querySelector('.submenu');
         if (submenu && link) {
             link.addEventListener('click', function(e) {
-                // Prevent jumping if link is anchor or has submenus
                 var href = link.getAttribute('href');
                 if (!href || href === '#' || href === 'javascript:void(0)' || submenu) {
                     e.preventDefault();

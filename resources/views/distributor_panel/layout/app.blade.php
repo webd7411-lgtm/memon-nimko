@@ -468,6 +468,39 @@
             color: #ffffff !important;
         }
 
+        /* Mobile Offcanvas Drawer Dark Theme Nav Hover Fix */
+        #mobilePortalNav .portal-nav-link {
+            color: rgba(255, 255, 255, 0.88) !important;
+            border-radius: 10px;
+            padding: 9px 12px !important;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        #mobilePortalNav .portal-nav-link:hover,
+        #mobilePortalNav .portal-nav-link:focus {
+            background: rgba(20, 184, 166, 0.16) !important;
+            color: #5eead4 !important;
+        }
+        #mobilePortalNav .portal-nav-link:hover i,
+        #mobilePortalNav .portal-nav-link:focus i {
+            color: #5eead4 !important;
+        }
+        #mobilePortalNav .portal-nav-link.text-danger:hover,
+        #mobilePortalNav .portal-nav-link.text-danger:focus {
+            background: rgba(239, 68, 68, 0.16) !important;
+            color: #fca5a5 !important;
+        }
+        #mobilePortalNav .portal-nav-link.text-danger:hover i {
+            color: #fca5a5 !important;
+        }
+        #mobilePortalNav .portal-nav-link.active {
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 3px 10px rgba(15, 118, 110, 0.35);
+        }
+        #mobilePortalNav .portal-nav-link.active i {
+            color: #ffffff !important;
+        }
+
         /* Footer */
         .portal-footer {
             margin-top: auto;

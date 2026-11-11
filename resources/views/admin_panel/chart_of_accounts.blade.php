@@ -550,6 +550,9 @@
           <a href="{{ route('Payment-vochers') }}" class="btn btn-sm rounded-pill px-3 py-1 font-weight-bold shadow-sm" style="font-size:0.78rem; background: linear-gradient(135deg, #0f766e, #0d9488); color:#fff; border: none;">
             <i class="bi bi-cash-stack me-1"></i> + Vendor Payment Voucher
           </a>
+          <a href="{{ route('coa.account.ledger') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 font-weight-bold" style="font-size:0.78rem;">
+            <i class="bi bi-journal-check me-1"></i> Account Ledger / Statement
+          </a>
           <a href="{{ route('all-Payment-vochers') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 font-weight-bold" style="font-size:0.78rem;">
             <i class="bi bi-journal-text me-1"></i> Vendor Payment History
           </a>
@@ -602,6 +605,10 @@
               </td>
               <td class="text-center">
                 <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                  <a href="{{ route('coa.account.ledger', $account->id) }}" class="btn btn-xs rounded-2 fw-semibold" title="View Account Ledger / Running Statement" style="font-size:0.72rem; padding: 2px 7px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; text-decoration: none;">
+                    <i class="bi bi-journal-text me-1"></i> Ledger
+                  </a>
+
                   <a href="{{ route('Payment-vochers') }}" class="btn btn-xs rounded-2 fw-semibold" title="Create Vendor / Account Payment Voucher" style="font-size:0.72rem; padding: 2px 7px; background: #f0fdf4; color: #0f766e; border: 1px solid #ccfbf1; text-decoration: none;">
                     <i class="bi bi-wallet2 me-1"></i> Pay
                   </a>

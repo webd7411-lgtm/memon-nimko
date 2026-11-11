@@ -15,17 +15,27 @@
     @include('admin_panel.layout.head')
 </head>
 <style>
+    html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
+
+    .container-scroller, .main-content {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
     .main-content {
         margin-top: 20px;
     }
 
-    @media (max-width: 767.98px) {
+    @media (max-width: 991.98px) {
         .main-content {
-            margin-top: 6px;
+            margin-top: 8px;
         }
 
         body {
-            padding-top: 6px;
+            padding-top: 0 !important;
         }
     }
 </style>

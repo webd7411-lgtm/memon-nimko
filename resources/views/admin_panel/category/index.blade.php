@@ -320,15 +320,18 @@
 
 /* ═══════ RESPONSIVE ═══════ */
 @media (max-width: 767.98px) {
-  body, html { overflow-x: hidden !important; }
-  .pc-page { overflow-x: hidden !important; }
+  body, html { overflow-x: hidden !important; max-width: 100% !important; }
+  .pc-page { overflow-x: hidden !important; max-width: 100% !important; }
+  .pc-page > .container-fluid { padding-left: .65rem !important; padding-right: .65rem !important; padding-top: .6rem !important; }
 
-  .pc-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .5rem; }
-  .pc-hdr h2 { font-size: .95rem !important; }
-  .pc-hdr .pc-btn { padding: .35rem .6rem !important; font-size: .68rem !important; min-height: 32px; border-radius: 8px; }
+  .pc-hdr { padding: .65rem .8rem !important; margin-bottom: .7rem !important; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; gap: .5rem; border-radius: 12px !important; }
+  .pc-hdr h2 { font-size: .95rem !important; white-space: nowrap; }
+  .pc-hdr h2 i { width: 28px; height: 28px; font-size: .85rem; }
+  .pc-hdr .pc-btn { margin-top: 0 !important; padding: .35rem .65rem !important; font-size: .72rem !important; min-height: 34px !important; border-radius: 8px; flex-shrink: 0; white-space: nowrap; }
+  .pc-card { border-radius: 12px !important; }
   .pc-card-body { padding: .6rem !important; overflow: hidden !important; }
 
-  /* Kill ALL scroll wrappers — higher specificity */
+  /* Kill ALL scroll wrappers inside card while keeping page locked against x-scroll */
   .pc-page .pc-tbl-wrap,
   .pc-page .dataTables_wrapper,
   .pc-page .dataTables_scrollBody,
@@ -343,25 +346,37 @@
     max-width: 100% !important;
   }
 
+  /* Compact DataTables search/length controls */
+  .pc-page .dataTables_wrapper .row:first-child { margin-bottom: .5rem !important; row-gap: .4rem; }
+  .pc-page .dataTables_length,
+  .pc-page .dataTables_filter { text-align: left !important; width: 100% !important; }
+  .pc-page .dataTables_length label,
+  .pc-page .dataTables_filter label { display: flex !important; align-items: center; gap: .4rem; width: 100%; font-size: .72rem !important; margin: 0; }
+  .pc-page .dataTables_length select { min-height: 34px !important; padding: .25rem 1.5rem .25rem .5rem !important; font-size: .78rem !important; width: auto !important; border-radius: 8px !important; }
+  .pc-page .dataTables_filter input { min-height: 34px !important; padding: .28rem .6rem !important; font-size: .8rem !important; flex: 1; margin-left: 0 !important; border-radius: 8px !important; }
+  .pc-page .dataTables_info { font-size: .7rem !important; text-align: center !important; padding-top: .35rem !important; }
+  .pc-page .dataTables_paginate .pagination { justify-content: center !important; flex-wrap: wrap; gap: 3px; margin-top: .35rem !important; }
+  .pc-page .dataTables_paginate .page-link { min-height: 30px !important; padding: .25rem .55rem !important; font-size: .72rem !important; border-radius: 7px !important; }
+
   .pc-page .pc-tbl,
   .pc-page .pc-tbl.dataTable {
     display: block !important;
     width: 100% !important;
-    font-size: .72rem !important;
+    font-size: .74rem !important;
   }
   .pc-page .pc-tbl thead { display: none !important; }
   .pc-page .pc-tbl tbody { display: block !important; }
   .pc-page .pc-tbl tbody tr {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    gap: .35rem .55rem;
+    gap: .4rem .55rem;
     align-items: start;
     background: var(--pc-surface);
     border: 1px solid var(--pc-border);
-    border-radius: 10px;
-    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.04);
-    padding: .5rem .6rem;
-    margin-bottom: .5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+    padding: .65rem .75rem;
+    margin-bottom: .55rem;
     overflow: hidden !important;
   }
   .pc-page .pc-tbl tbody tr:hover { background: var(--pc-surface); }
@@ -375,12 +390,12 @@
     min-width: 0;
     word-break: break-word;
     overflow-wrap: anywhere;
-    font-size: .72rem;
+    font-size: .74rem;
     line-height: 1.35;
   }
   .pc-page .pc-tbl tbody td::before {
     content: attr(data-label) ":";
-    font-size: .55rem;
+    font-size: .56rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .4px;
@@ -389,18 +404,48 @@
     flex-shrink: 0;
   }
 
-  .pc-page .pc-tbl tbody td:nth-child(1) { order: 0; }
-  .pc-page .pc-tbl tbody td:nth-child(1)::before { content: none; }
-  .pc-page .pc-tbl tbody td:nth-child(1) {
-    background: #f0f4fe; color: #3b5bb3 !important; border-radius: 6px;
-    padding: .05rem .4rem !important; font-weight: 700 !important; font-size: .62rem;
+  .pc-page .pc-tbl tbody td[colspan],
+  .pc-page .pc-tbl tbody td.dataTables_empty {
+    grid-column: 1 / -1 !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 1.1rem .5rem !important;
+    width: 100% !important;
   }
-  .pc-page .pc-tbl tbody td:nth-child(2) { order: 1; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td[colspan]::before,
+  .pc-page .pc-tbl tbody td.dataTables_empty::before { content: none !important; }
+
+  .pc-page .pc-tbl tbody td:nth-child(1) {
+    order: 0;
+    justify-self: start;
+    width: fit-content;
+    background: #eff6ff;
+    color: #1d4ed8 !important;
+    border-radius: 6px;
+    padding: .1rem .45rem !important;
+    font-weight: 700 !important;
+    font-size: .64rem;
+    gap: 1px;
+  }
+  .pc-page .pc-tbl tbody td:nth-child(1)::before { content: "#"; color: #1d4ed8; font-size: .64rem; }
+  .pc-page .pc-tbl tbody td:nth-child(2) {
+    order: 1;
+    grid-column: 1 / -1;
+    font-weight: 600;
+    font-size: .86rem;
+    padding-top: 2px !important;
+    color: var(--pc-text);
+  }
   .pc-page .pc-tbl tbody td:nth-child(2)::before { content: none; }
-  .pc-page .pc-tbl tbody td:nth-child(2) { font-weight: 600; font-size: .8rem; padding-top: 2px; }
-  .pc-page .pc-tbl tbody td:nth-child(3) { order: 2; grid-column: 1 / -1; }
+  .pc-page .pc-tbl tbody td:nth-child(3) { order: 2; grid-column: 1 / -1; padding-top: .25rem !important; border-top: 1px dashed var(--pc-border) !important; }
+  .pc-page .pc-tbl tbody td:nth-child(3)::before { content: none; }
   .pc-page .pc-tbl .pc-actions { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: .4rem; width: 100%; }
-  .pc-page .pc-act { justify-content: center; width: 100%; padding: .38rem .4rem; font-size: .64rem; border-radius: 8px; min-height: 34px; }
+  .pc-page .pc-act { justify-content: center; width: 100%; padding: .35rem .45rem; font-size: .7rem; border-radius: 8px; min-height: 34px !important; }
+
+  #catModal .modal-dialog { margin: .75rem auto; max-width: calc(100vw - 1.5rem); }
+  #catModal .modal-header, #catModal .modal-body, #catModal .modal-footer { padding: .75rem .9rem !important; }
+  #catModal .form-control { min-height: 38px !important; font-size: .88rem !important; }
+  #catModal .btn { min-height: 36px !important; font-size: .8rem !important; padding: .4rem .85rem !important; }
 
   /* ── DataTables length / search controls: un-clipped stack ── */
   .pc-page .dataTables_wrapper { display: block !important; width: 100% !important; overflow: visible !important; }

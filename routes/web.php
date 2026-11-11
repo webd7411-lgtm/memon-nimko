@@ -381,6 +381,7 @@ Route::middleware('auth')->group(function () {
 
     // Chart of Accounts
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all')->middleware('permission:Char Of Accounts');
+    Route::get('/account-ledger/{id?}', [AccountsHeadController::class, 'ledger'])->name('coa.account.ledger')->middleware('permission:Char Of Accounts|Cashbook|Payment Voucher|Receipts Voucher|Expense Voucher');
     Route::delete('/coa/account/{id}', [AccountsHeadController::class, 'destroy'])->name('coa.account.delete')->middleware('permission:Char Of Accounts|Delete Account');
 
     Route::get('/getPartyList', [NarrationController::class, 'getPartyList'])->name('party.list');

@@ -50,10 +50,27 @@
         overflow-x: hidden !important;
     }
     .page-title-text {
-        font-size: 1.15rem !important;
+        font-size: 1.08rem !important;
     }
     .filter-card {
-        border-radius: 16px !important;
+        border-radius: 14px !important;
+    }
+    .filter-card .card-body {
+        padding: 10px 12px !important;
+    }
+    .filter-card .form-label {
+        font-size: 0.7rem !important;
+        margin-bottom: 2px !important;
+    }
+    .filter-card .form-select,
+    .filter-card .form-control {
+        font-size: 0.8rem !important;
+        padding: 5px 8px !important;
+    }
+    .booking-app-card {
+        padding: 11px 12px !important;
+        border-radius: 14px !important;
+        margin-bottom: 10px !important;
     }
 }
 </style>
@@ -61,42 +78,42 @@
 <div class="container-fluid px-2 px-sm-3 px-md-4 py-2 py-md-3 booker-page-container">
 
     {{-- Top Action Header --}}
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2.5 mb-md-3">
         <div>
-            <h4 class="fw-bold mb-1 text-dark page-title-text d-flex align-items-center gap-2">
+            <h4 class="fw-bold mb-0.5 text-dark page-title-text d-flex align-items-center gap-2">
                 <i class="fas fa-clipboard-list text-teal" style="color: #0f766e;"></i>
                 <span>My Shop Bookings</span>
             </h4>
-            <span class="text-muted small">Track and review all shop market orders booked by you</span>
+            <span class="text-muted small d-block" style="font-size: 0.76rem;">Track and review all shop market orders booked by you</span>
         </div>
-        <div class="d-flex gap-2 w-sm-auto w-100 justify-content-end">
-            <a href="{{ route('distributor.booker.create') }}" class="btn btn-success fw-bold rounded-pill px-3 py-2 shadow-sm w-100 w-sm-auto text-center" style="background: linear-gradient(135deg, #10b981 0%, #0f766e 100%); border: none;">
-                <i class="fas fa-plus-circle me-1"></i> + Book New Order
+        <div class="d-flex gap-2 w-100 w-sm-auto justify-content-end">
+            <a href="{{ route('distributor.booker.create') }}" class="btn btn-sm btn-success fw-bold rounded-pill px-3 py-1.5 shadow-sm w-100 w-sm-auto text-center" style="background: linear-gradient(135deg, #10b981 0%, #0f766e 100%); border: none;">
+                <i class="fas fa-plus-circle me-1"></i> Book New Order
             </a>
         </div>
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm py-2 px-3 small" role="alert">
             <i class="fas fa-check-circle me-1"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm py-2 px-3 small" role="alert">
             <i class="fas fa-exclamation-triangle me-1"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
     {{-- Filter Card --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-3 filter-card">
+    <div class="card border-0 shadow-sm rounded-4 mb-2.5 mb-md-3 filter-card">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('distributor.booker.my_bookings') }}" class="row g-2 align-items-end">
-                <div class="col-12 col-sm-6 col-md-3">
+                <div class="col-6 col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Status Filter</label>
-                    <select name="status" class="form-select form-select-sm py-2">
+                    <select name="status" class="form-select form-select-sm">
                         <option value="">All Statuses</option>
                         <option value="booked" {{ request('status') == 'booked' ? 'selected' : '' }}>Pending / Booked</option>
                         <option value="delivered" {{ request('status') == 'delivered' ? 'selected' : '' }}>Delivered / Sold</option>
@@ -104,25 +121,25 @@
                     </select>
                 </div>
 
-                <div class="col-12 col-sm-6 col-md-3">
+                <div class="col-6 col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Order Type</label>
-                    <select name="payment_type" class="form-select form-select-sm py-2">
-                        <option value="">All Types (Cash &amp; Credit)</option>
+                    <select name="payment_type" class="form-select form-select-sm">
+                        <option value="">All (Cash &amp; Credit)</option>
                         <option value="cash" {{ request('payment_type') === 'cash' ? 'selected' : '' }}>Order Cash</option>
                         <option value="credit" {{ request('payment_type') === 'credit' ? 'selected' : '' }}>Order Credit</option>
                     </select>
                 </div>
 
-                <div class="col-12 col-sm-6 col-md-3">
+                <div class="col-6 col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Date</label>
-                    <input type="date" name="date" class="form-control form-control-sm py-2" value="{{ request('date') }}">
+                    <input type="date" name="date" class="form-control form-control-sm" value="{{ request('date') }}">
                 </div>
 
-                <div class="col-12 col-sm-6 col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-sm btn-dark flex-fill fw-bold py-2">
+                <div class="col-6 col-md-3 d-flex gap-1.5">
+                    <button type="submit" class="btn btn-sm btn-dark flex-fill fw-bold py-1.5">
                         <i class="fas fa-filter me-1"></i> Filter
                     </button>
-                    <a href="{{ route('distributor.booker.my_bookings') }}" class="btn btn-sm btn-light border flex-fill py-2 text-center">Reset</a>
+                    <a href="{{ route('distributor.booker.my_bookings') }}" class="btn btn-sm btn-light border px-2.5 py-1.5 text-center">Reset</a>
                 </div>
             </form>
         </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\AccountHead;
+use App\Models\AccountLedger;
 use App\Models\ExpenseVoucher;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,93 @@ class AccountsHeadController extends Controller
         $accounts = Account::whereNull('distributor_id')->with('head')->get();
         $heads = AccountHead::all();
         return view('admin_panel.chart_of_accounts', compact('accounts', 'heads'));
+    }
+
+    /**
+     * Account Ledger / Statement Page with chronological running balance.
+     */
+    public function ledger(Request $request, $id = null)
+    {
+        $accounts = Account::whereNull('distributor_id')
+            ->with('head')
+            ->orderByRaw('CASE WHEN head_id IN (1, 2) THEN 0 ELSE 1 END')
+            ->orderBy('title')
+            ->get();
+
+        $targetId = $id ?? $request->get('account_id');
+        if ($targetId) {
+            $account = Account::whereNull('distributor_id')->with('head')->findOrFail($targetId);
+        } else {
+            $account = $accounts->firstWhere('account_code', 'ACC-CASH-01') ?? $accounts->first();
+        }
+
+        $startDate = $request->get('start_date');
+        $endDate   = $request->get('end_date');
+        $flow      = $request->get('flow', 'all');
+        $search    = trim((string) $request->get('search', ''));
+
+        $entries = collect();
+        $periodOpeningBalance = 0.0;
+        $totalIn = 0.0;
+        $totalOut = 0.0;
+        $periodClosingBalance = $account ? (float) ($account->opening_balance ?? 0) : 0.0;
+
+        if ($account) {
+            if ($startDate) {
+                $lastBefore = AccountLedger::where('account_id', $account->id)
+                    ->where('transaction_date', '<', $startDate . ' 00:00:00')
+                    ->orderBy('transaction_date', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $periodOpeningBalance = $lastBefore ? (float) $lastBefore->balance : 0.0;
+            }
+
+            $baseQ = AccountLedger::with('user')
+                ->where('account_id', $account->id);
+
+            if ($startDate) {
+                $baseQ->where('transaction_date', '>=', $startDate . ' 00:00:00');
+            }
+            if ($endDate) {
+                $baseQ->where('transaction_date', '<=', $endDate . ' 23:59:59');
+            }
+
+            $totalIn  = (float) (clone $baseQ)->sum('credit');
+            $totalOut = (float) (clone $baseQ)->sum('debit');
+            $periodClosingBalance = round($periodOpeningBalance + $totalIn - $totalOut, 2);
+
+            if ($flow === 'in') {
+                $baseQ->where('credit', '>', 0);
+            } elseif ($flow === 'out') {
+                $baseQ->where('debit', '>', 0);
+            }
+
+            if ($search !== '') {
+                $baseQ->where(function ($q) use ($search) {
+                    $q->where('reference_type', 'like', "%{$search}%")
+                      ->orWhere('reference_no', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%");
+                });
+            }
+
+            $entries = $baseQ->orderBy('transaction_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+        }
+
+        return view('admin_panel.account_ledger', compact(
+            'accounts',
+            'account',
+            'entries',
+            'startDate',
+            'endDate',
+            'flow',
+            'search',
+            'periodOpeningBalance',
+            'totalIn',
+            'totalOut',
+            'periodClosingBalance'
+        ));
     }
 
     public function storeHead(Request $request)
@@ -115,6 +203,12 @@ class AccountsHeadController extends Controller
         if ($request->account_id) {
             $account = Account::findOrFail($request->account_id);
 
+            $account->setLedgerMeta([
+                'reference_type' => 'Manual Balance Edit',
+                'reference_no'   => $request->account_code,
+                'reference_id'   => $account->id,
+                'description'    => 'Balance manually updated from Chart of Accounts (' . $request->title . ')',
+            ]);
             $account->update([
                 'head_id'         => $request->head_id,
                 'account_code'    => $request->account_code,
@@ -179,6 +273,14 @@ class AccountsHeadController extends Controller
             $account = Account::find($sale->card_account_id);
             if ($account) {
                 $amount = (float) $sale->card;
+                $account->setLedgerMeta([
+                    'branch_id'        => $sale->branch_id ?? null,
+                    'transaction_date' => $sale->created_at ?? now(),
+                    'reference_type'   => 'Sale Payment Sync',
+                    'reference_no'     => $sale->invoice_no,
+                    'reference_id'     => $sale->id,
+                    'description'      => 'Synced Card / Bank payment for Sale #' . $sale->invoice_no,
+                ]);
                 $account->opening_balance = (float) $account->opening_balance + $amount;
                 $account->save();
 

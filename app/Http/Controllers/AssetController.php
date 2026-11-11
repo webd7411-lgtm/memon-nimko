@@ -394,6 +394,14 @@ class AssetController extends Controller
                     $voucherId = $voucher->id;
 
                     // Deduct from paying account (Cash in Hand / Bank)
+                    $payingAccount->setLedgerMeta([
+                        'branch_id'        => $asset->branch_id ?? null,
+                        'transaction_date' => now(),
+                        'reference_type'   => 'Asset Maintenance',
+                        'reference_no'     => $voucher->evid ?? null,
+                        'reference_id'     => $voucherId,
+                        'description'      => "Asset Maintenance: {$asset->name} ({$asset->asset_code}) - {$request->service_type}",
+                    ]);
                     $payingAccount->opening_balance -= $cost;
                     $payingAccount->save();
                 }

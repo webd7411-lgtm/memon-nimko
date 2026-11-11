@@ -965,6 +965,403 @@
 }
 .ss-prod-item-stock-badge.in-stock { background: #dcfce7; color: #15803d; }
 .ss-prod-item-stock-badge.out-stock { background: #fee2e2; color: #b91c1c; }
+
+/* ==========================================================================
+   MOBILE & TABLET PREMIUM RESPONSIVE ADJUSTMENTS (ZERO HORIZONTAL SCROLL)
+   ========================================================================== */
+.ss-wrapper {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+@media (max-width: 991.98px) {
+    .ss-wrapper {
+        padding: 0 2px 16px 2px !important;
+    }
+    .ss-table-responsive-wrap {
+        max-height: none !important;
+        min-height: 0 !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .ss-topbar-card {
+        padding: 10px !important;
+        border-radius: 12px !important;
+        margin-bottom: 8px !important;
+    }
+    .ss-field-group label {
+        font-size: 10.5px !important;
+    }
+    .ss-input-control,
+    .ss-select-control {
+        height: 36px !important;
+        min-height: 36px !important;
+        font-size: 13px !important;
+        border-radius: 8px !important;
+    }
+    .ss-top-btn,
+    .ss-panel-toggle-btn,
+    .ss-btn-add-row {
+        height: 36px !important;
+        min-height: 36px !important;
+        font-size: 12px !important;
+        border-radius: 8px !important;
+    }
+    .select2-container--default .select2-selection--single {
+        height: 36px !important;
+        border-radius: 8px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px !important;
+    }
+
+    /* Order Header & Barcode Scanner */
+    .ss-order-header {
+        border: 1px solid var(--ss-border) !important;
+        border-radius: 12px !important;
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        gap: 6px !important;
+        flex-wrap: nowrap !important;
+    }
+    .ss-barcode-box {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+    }
+    .ss-barcode-input {
+        height: 36px !important;
+        min-height: 36px !important;
+        font-size: 13px !important;
+        border-radius: 10px !important;
+    }
+    #btnAddGridRow {
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 10px !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* Quick Products Panel */
+    .ss-quick-panel {
+        border: 1px solid var(--ss-border) !important;
+        border-radius: 12px !important;
+        padding: 8px !important;
+        margin-bottom: 8px !important;
+    }
+    .ss-qp-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+    }
+    #qpSearchFilter {
+        width: 100% !important;
+        height: 34px !important;
+        min-height: 34px !important;
+    }
+    .ss-cat-tabs {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    .ss-qp-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        max-height: 240px !important;
+    }
+
+    /* Excel Table -> Mobile App Item Card Boxes (Zero Horizontal Scroll) */
+    .ss-table-card {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+    .ss-table-responsive-wrap,
+    .ss-table-card .table-responsive {
+        overflow: visible !important;
+        max-height: none !important;
+        min-height: 0 !important;
+    }
+    .ss-excel-table,
+    .ss-excel-table tbody {
+        display: block !important;
+        width: 100% !important;
+        table-layout: auto !important;
+        background: transparent !important;
+    }
+    .ss-excel-table thead {
+        display: none !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 7px 8px !important;
+        height: auto !important;
+        padding: 10px !important;
+        margin-bottom: 8px !important;
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row:hover {
+        background: #ffffff !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td {
+        height: auto !important;
+        border: none !important;
+        padding: 0 !important;
+        min-width: 0 !important;
+    }
+
+    /* Row 1: Item Badge + Delete Pill */
+    .ss-excel-table tbody tr.ss-grid-row td.excel-cell-idx {
+        grid-column: 1 / 2 !important;
+        grid-row: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-self: start !important;
+        background: #f0fdfa !important;
+        color: #0f766e !important;
+        border: 1px solid #99f6e4 !important;
+        border-radius: 20px !important;
+        padding: 2px 10px !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td.excel-cell-idx::before {
+        content: "Item #";
+        margin-right: 1px;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(10) {
+        grid-column: 2 / 3 !important;
+        grid-row: 1 !important;
+        justify-self: end !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row .ss-btn-del-row {
+        width: auto !important;
+        height: 26px !important;
+        min-height: 26px !important;
+        padding: 0 10px !important;
+        background: #fef2f2 !important;
+        border: 1px solid #fecaca !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        gap: 4px !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row .ss-btn-del-row::after {
+        content: "Remove";
+    }
+
+    /* Row 2: Full-width Product Search */
+    .ss-excel-table tbody tr.ss-grid-row td.excel-cell-prod {
+        grid-column: 1 / -1 !important;
+        grid-row: 2 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td.excel-cell-prod::before {
+        content: "PRODUCT";
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.3px;
+        margin-bottom: 3px;
+    }
+    .ss-excel-table tbody tr.ss-grid-row .ss-prod-search-wrap {
+        height: 38px !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row .ss-prod-search-input {
+        height: 38px !important;
+        min-height: 38px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        background: #f8fafc !important;
+        font-size: 13px !important;
+        padding: 4px 28px 4px 10px !important;
+    }
+
+    /* Row 3: Stock & Size Chips */
+    .ss-excel-table tbody tr.ss-grid-row td.row-stock-badge {
+        grid-column: 1 / 2 !important;
+        grid-row: 3 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        padding: 4px 8px !important;
+        font-size: 11.5px !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td.row-stock-badge::before {
+        content: "Stock:";
+        color: #64748b;
+        font-weight: 600;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td.row-size-col {
+        grid-column: 2 / 3 !important;
+        grid-row: 3 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        padding: 4px 8px !important;
+        font-size: 11.5px !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td.row-size-col::before {
+        content: "Size:";
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    /* Row 4: Qty & Price */
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(4),
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(6),
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(7),
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(8) {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(4) { grid-column: 1 / 2 !important; grid-row: 4 !important; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(6) { grid-column: 2 / 3 !important; grid-row: 4 !important; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(7) { grid-column: 1 / 2 !important; grid-row: 5 !important; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(8) { grid-column: 2 / 3 !important; grid-row: 5 !important; }
+
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(4)::before,
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(6)::before,
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(7)::before,
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(8)::before {
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-bottom: 3px;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(4)::before { content: "Qty"; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(6)::before { content: "Price (Rs)"; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(7)::before { content: "Trade Offer"; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(8)::before { content: "Discount"; }
+
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(4) .ss-excel-input,
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(6) .ss-excel-input,
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(7) .ss-excel-input {
+        height: 36px !important;
+        min-height: 36px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        background: #f8fafc !important;
+        font-size: 13px !important;
+        padding: 4px 8px !important;
+        text-align: left !important;
+    }
+
+    .ss-excel-table tbody tr.ss-grid-row .ss-disc-wrap {
+        height: 36px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        background: #f8fafc !important;
+        padding-right: 3px !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row .ss-disc-wrap .row-disc-val {
+        height: 100% !important;
+        min-height: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        font-size: 13px !important;
+        padding: 2px 6px !important;
+        text-align: left !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row .ss-disc-toggle-btn {
+        height: 26px !important;
+        border-radius: 6px !important;
+        margin: 0 !important;
+    }
+
+    /* Row 6: Line Amount Summary Bar */
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(9) {
+        grid-column: 1 / -1 !important;
+        grid-row: 6 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: #f0fdfa !important;
+        border: 1px solid #99f6e4 !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        margin-top: 2px !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(9)::before {
+        content: "Item Amount:";
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #0f766e;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(9) .row-amount {
+        height: auto !important;
+        min-height: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        color: #0f766e !important;
+        font-size: 14px !important;
+        font-weight: 800 !important;
+        text-align: right !important;
+        padding: 0 !important;
+        width: auto !important;
+        max-width: 55% !important;
+    }
+
+    /* Grid Total Bar */
+    .ss-grid-total-row {
+        background: #ffffff !important;
+        border: 1px solid var(--ss-border) !important;
+        border-radius: 12px !important;
+        padding: 9px 12px !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        margin-bottom: 4px !important;
+    }
+    .ss-grid-total-val {
+        font-size: 16px !important;
+        min-width: 0 !important;
+    }
+
+    /* Right Column Summary & Payment */
+    .ss-sidebar-card {
+        border-radius: 12px !important;
+        padding: 10px 12px !important;
+    }
+    .ss-pm-select,
+    .ss-pm-input {
+        height: 36px !important;
+        min-height: 36px !important;
+        font-size: 13px !important;
+        border-radius: 8px !important;
+    }
+    .ss-pm-remove {
+        height: 36px !important;
+        flex: 0 0 30px !important;
+        border-radius: 8px !important;
+    }
+    .ss-btn-save-complete {
+        height: 44px !important;
+        font-size: 14px !important;
+        border-radius: 10px !important;
+    }
+    .ss-floating-dropdown {
+        max-width: calc(100vw - 16px) !important;
+    }
+}
 </style>
 
 <div class="container-fluid ss-wrapper">
@@ -997,7 +1394,7 @@
                 <!-- 1. Customer (FIRST & PROMINENT) -->
                 <div class="col-lg-4 col-md-5 col-12">
                     <div class="ss-field-group">
-                        <div class="d-flex justify-content-between align-items-center mb-0.5">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-1 mb-1">
                             <label>
                                 <i class="fas fa-user-check me-1 text-success"></i> Customer / Booker / Dist. <span class="text-danger">*</span>
                                 @if(isset($sale))
@@ -1135,7 +1532,7 @@
 
                 <!-- COLLAPSIBLE QUICK PRODUCTS PANEL -->
                 <div class="ss-quick-panel" id="quickProductsPanel">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 ss-qp-toolbar">
                         <!-- Category Tabs -->
                         <div class="ss-cat-tabs flex-grow-1" id="qpCategoryTabs">
                             <span class="ss-cat-tab active" data-cat="all">All Items</span>
@@ -1500,7 +1897,8 @@ $(document).ready(function() {
     }
 
     // --- ROW TEMPLATE GENERATION (EXCEL STYLE - COLOR & PCS REMOVED) ---
-    const MIN_BLANK_ROWS = 8;
+    const isMobileScreen = () => window.innerWidth < 768;
+    const getMinBlankRows = () => isMobileScreen() ? 1 : 8;
     let rowCounter = 0;
 
     // --- HELPER: GET CURRENT ACTIVE CUSTOMER TIER & POLICY ---
@@ -1655,14 +2053,17 @@ $(document).ready(function() {
             }
         });
 
-        if (totalCount < MIN_BLANK_ROWS) {
-            const need = MIN_BLANK_ROWS - totalCount;
+        const minRows = getMinBlankRows();
+        const minTrailingBlank = isMobileScreen() ? 1 : 2;
+
+        if (totalCount < minRows) {
+            const need = minRows - totalCount;
             for (let i = 0; i < need; i++) {
                 $('#saleGridBody').append(createRowHtml(null));
             }
-        } else if (blankCount < 2) {
-            // Always keep at least 2 blank rows ready at the bottom so user never needs to manually scroll
-            const need = 2 - blankCount;
+        } else if (blankCount < minTrailingBlank) {
+            // Keep blank rows ready at the bottom so user never needs to manually scroll
+            const need = minTrailingBlank - blankCount;
             for (let i = 0; i < need; i++) {
                 $('#saleGridBody').append(createRowHtml(null));
             }
@@ -1780,7 +2181,8 @@ $(document).ready(function() {
         const $row = $(this).closest('tr.ss-grid-row');
         const totalRows = $('#saleGridBody tr.ss-grid-row').length;
 
-        if (totalRows <= MIN_BLANK_ROWS) {
+        const minRows = getMinBlankRows();
+        if (totalRows <= minRows) {
             clearRow($row);
             // Move cleared row to the end if there are filled rows after it
             const $filledAfter = $row.nextAll('tr.ss-grid-row').filter(function() {
@@ -2273,11 +2675,14 @@ $(document).ready(function() {
     function positionFloatingDropdown(inputEl) {
         if (!inputEl) return;
         const rect = inputEl.getBoundingClientRect();
-        const dropWidth = Math.max(430, rect.width + 120);
-        let leftPos = rect.left;
+        const maxAllowedWidth = Math.max(240, window.innerWidth - 16);
+        const dropWidth = window.innerWidth < 768
+            ? maxAllowedWidth
+            : Math.min(maxAllowedWidth, Math.max(430, rect.width + 120));
+        let leftPos = window.innerWidth < 768 ? 8 : rect.left;
 
-        if (leftPos + dropWidth > window.innerWidth - 10) {
-            leftPos = Math.max(10, window.innerWidth - dropWidth - 15);
+        if (leftPos + dropWidth > window.innerWidth - 8) {
+            leftPos = Math.max(8, window.innerWidth - dropWidth - 8);
         }
 
         const spaceBelow = window.innerHeight - rect.bottom;

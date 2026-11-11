@@ -45,10 +45,18 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: var(--erp-text-main);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden !important;
+  max-width: 100% !important;
 }
 
 .erp-dashboard * {
   box-sizing: border-box;
+}
+
+.erp-chart-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* ─── Enterprise Top Bar ─── */
@@ -416,10 +424,213 @@
   color: #059669;
 }
 
-@media (max-width: 768px) {
-  .erp-page-title { font-size: 1.1rem; }
-  .kpi-amount-val { font-size: 1.15rem; }
-  .erp-section-container { padding: 0.85rem; }
+/* ─── Mobile Box Lists (Suite 5 Tables -> App Cards on < 768px) ─── */
+.erp-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+
+.erp-m-box {
+  background: #f8fafc;
+  border: 1px solid var(--erp-border);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.erp-m-box.is-active {
+  background: #f0fdf4;
+  border-color: #99f6e4;
+}
+
+.erp-m-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.erp-m-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--erp-text-main);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.erp-m-sub {
+  font-size: 0.68rem;
+  color: var(--erp-text-muted);
+  margin-top: 2px;
+}
+
+.erp-m-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.erp-m-stat {
+  min-width: 0;
+}
+
+.erp-m-stat-lbl {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--erp-text-muted);
+  letter-spacing: 0.3px;
+}
+
+.erp-m-stat-val {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--erp-text-main);
+  word-break: break-word;
+}
+
+@media (max-width: 767.98px) {
+  .erp-dashboard { padding: 0.4rem 0 2rem; }
+  .erp-top-header {
+    padding: 0.7rem 0.75rem;
+    margin-bottom: 0.65rem;
+    gap: 0.55rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .erp-breadcrumb { font-size: 0.66rem; }
+  .erp-page-title { font-size: 1.02rem; flex-wrap: wrap; gap: 6px; }
+  .erp-header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .erp-filter-form {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 4px;
+    padding: 0.3rem 0.45rem;
+    border-radius: 8px;
+  }
+  .erp-filter-input {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 0.72rem !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    padding: 2px !important;
+  }
+  .erp-filter-btn {
+    min-height: 30px !important;
+    height: 30px !important;
+    padding: 0 9px !important;
+    font-size: 0.72rem !important;
+  }
+  .erp-reports-btn {
+    width: 100%;
+    min-height: 34px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.76rem !important;
+  }
+  .erp-alert-bar {
+    padding: 0.55rem 0.7rem;
+    margin-bottom: 0.55rem;
+    font-size: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+  .erp-alert-btn {
+    justify-content: center;
+    min-height: 32px !important;
+  }
+  .erp-quick-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    overflow-x: visible;
+    padding-bottom: 0;
+    margin-bottom: 0.75rem;
+  }
+  .erp-nav-pill {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    padding: 0.55rem 0.3rem;
+    font-size: 0.67rem;
+    gap: 4px;
+    border-radius: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .erp-nav-pill span {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .erp-nav-pill i {
+    font-size: 0.92rem;
+  }
+  .erp-section-container {
+    padding: 0.7rem 0.65rem;
+    margin-bottom: 0.75rem;
+    border-radius: 12px;
+  }
+  .erp-section-header {
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.45rem;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .erp-section-title { font-size: 0.76rem; gap: 6px; }
+  .erp-section-tag { font-size: 0.6rem; padding: 2px 6px; }
+  .erp-kpi-tile { padding: 0.65rem 0.6rem; border-radius: 10px; }
+  .kpi-top-meta { margin-bottom: 0.35rem; gap: 4px; }
+  .kpi-label-text { font-size: 0.61rem; line-height: 1.2; }
+  .kpi-icon-box { width: 24px; height: 24px; font-size: 0.72rem; flex-shrink: 0; }
+  .kpi-amount-val {
+    font-size: clamp(0.84rem, 3.6vw, 1.02rem);
+    margin-bottom: 0.2rem;
+    word-break: break-word;
+  }
+  .kpi-sub-detail { font-size: 0.64rem; flex-wrap: wrap; line-height: 1.25; }
+  .kpi-arrow-link { font-size: 0.63rem; margin-top: 0.45rem; padding-top: 0.35rem; }
+  .erp-card-surface { padding: 0.75rem; border-radius: 12px; }
+  .erp-card-header {
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.45rem;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .erp-card-heading { font-size: 0.78rem; }
+  .erp-card-surface .btn {
+    min-height: 28px !important;
+    font-size: 0.7rem !important;
+    display: inline-flex;
+    align-items: center;
+  }
+  #salesFilter {
+    min-height: 28px !important;
+    height: 28px !important;
+    font-size: 0.72rem !important;
+    border-radius: 6px !important;
+  }
 }
 </style>
 
@@ -440,24 +651,24 @@
         </h1>
       </div>
 
-      <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="d-flex align-items-center gap-2 flex-wrap erp-header-actions">
         {{-- Date Filter --}}
         <form method="GET" action="{{ url('/home') }}" class="erp-filter-form mb-0">
           <i class="fas fa-calendar-day text-secondary" style="font-size:0.75rem;"></i>
           <input type="date" name="start_date" value="{{ $startDate }}" class="erp-filter-input" style="width:125px;" title="Start Date">
           <span class="text-muted" style="font-size:0.75rem;">—</span>
           <input type="date" name="end_date" value="{{ $endDate }}" class="erp-filter-input" style="width:125px;" title="End Date">
-          <button type="submit" class="btn btn-sm btn-dark px-2.5 py-0.5 fw-bold" style="font-size:0.72rem; border-radius:4px;">
+          <button type="submit" class="btn btn-sm btn-dark px-2.5 py-0.5 fw-bold erp-filter-btn" style="font-size:0.72rem; border-radius:4px;">
             Filter
           </button>
           @if(request('start_date') || request('end_date'))
-            <a href="{{ url('/home') }}" class="btn btn-sm btn-outline-secondary px-2 py-0.5" style="font-size:0.72rem; border-radius:4px;" title="Clear Filter">
+            <a href="{{ url('/home') }}" class="btn btn-sm btn-outline-secondary px-2 py-0.5 erp-filter-btn" style="font-size:0.72rem; border-radius:4px;" title="Clear Filter">
               <i class="fas fa-times"></i>
             </a>
           @endif
         </form>
 
-        <a href="{{ route('System.Reports') }}" class="btn btn-sm btn-outline-dark px-3 py-1 fw-bold" style="font-size:0.76rem; border-radius:6px;">
+        <a href="{{ route('System.Reports') }}" class="btn btn-sm btn-outline-dark px-3 py-1 fw-bold erp-reports-btn" style="font-size:0.76rem; border-radius:6px;">
           <i class="fas fa-file-pdf me-1"></i> Reports
         </a>
       </div>
@@ -519,40 +730,40 @@
     {{-- ══════════════════════════════════════════════════════════════ --}}
     <div class="erp-quick-nav">
       <a href="{{ route('sale.screen') }}" class="erp-nav-pill primary">
-        <i class="fas fa-cash-register"></i> POS Screen
+        <i class="fas fa-cash-register"></i> <span>POS Screen</span>
       </a>
       <a href="{{ route('sale.index') }}" class="erp-nav-pill">
-        <i class="fas fa-receipt text-teal"></i> Sales Register
+        <i class="fas fa-receipt text-teal"></i> <span>Sales Register</span>
       </a>
       <a href="{{ route('add_purchase') }}" class="erp-nav-pill">
-        <i class="fas fa-shopping-cart text-primary"></i> Purchase Bill
+        <i class="fas fa-shopping-cart text-primary"></i> <span>Purchase Bill</span>
       </a>
       <a href="{{ route('production.create') }}" class="erp-nav-pill">
-        <i class="fas fa-industry text-warning"></i> Factory Production
+        <i class="fas fa-industry text-warning"></i> <span>Production</span>
       </a>
       <a href="{{ route('admin.distributors.orders') }}" class="erp-nav-pill">
-        <i class="fas fa-truck-loading text-danger"></i> Distributor Orders
+        <i class="fas fa-truck-loading text-danger"></i> <span>Dist. Orders</span>
       </a>
       <a href="{{ route('admin.distributors.index') }}" class="erp-nav-pill">
-        <i class="fas fa-users-cog text-info"></i> Distributors
+        <i class="fas fa-users-cog text-info"></i> <span>Distributors</span>
       </a>
       <a href="{{ route('stock_transfers.index') }}" class="erp-nav-pill">
-        <i class="fas fa-exchange-alt text-primary"></i> Stock Transfers
+        <i class="fas fa-exchange-alt text-primary"></i> <span>Transfers</span>
       </a>
       <a href="{{ route('recepit-vochers') }}" class="erp-nav-pill">
-        <i class="fas fa-hand-holding-usd text-success"></i> Customer Receipt
+        <i class="fas fa-hand-holding-usd text-success"></i> <span>Receipts</span>
       </a>
       <a href="{{ route('Payment-vochers') }}" class="erp-nav-pill">
-        <i class="fas fa-money-bill-wave text-secondary"></i> Vendor Payment
+        <i class="fas fa-money-bill-wave text-secondary"></i> <span>Payments</span>
       </a>
       <a href="{{ route('all-expense-vochers') }}" class="erp-nav-pill">
-        <i class="fas fa-file-invoice text-danger"></i> Expense Voucher
+        <i class="fas fa-file-invoice text-danger"></i> <span>Expenses</span>
       </a>
       <a href="{{ route('cashbook') }}" class="erp-nav-pill">
-        <i class="fas fa-book text-dark"></i> Cashbook
+        <i class="fas fa-book text-dark"></i> <span>Cashbook</span>
       </a>
       <a href="{{ route('view_all') }}" class="erp-nav-pill">
-        <i class="fas fa-balance-scale text-primary"></i> Chart of Accounts
+        <i class="fas fa-balance-scale text-primary"></i> <span>Accounts</span>
       </a>
     </div>
 
@@ -570,7 +781,7 @@
 
       <div class="row g-2 g-md-3">
         {{-- Card 1: Retail POS Sales --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('report.sale') }}" class="erp-kpi-tile kpi-accent-teal">
             <div>
               <div class="kpi-top-meta">
@@ -593,7 +804,7 @@
         </div>
 
         {{-- Card 2: Distributor Demand Orders --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('admin.distributors.orders') }}" class="erp-kpi-tile kpi-accent-amber">
             <div>
               <div class="kpi-top-meta">
@@ -616,7 +827,7 @@
         </div>
 
         {{-- Card 3: Gross Profit --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('report.profit_loss') }}" class="erp-kpi-tile kpi-accent-emerald">
             <div>
               <div class="kpi-top-meta">
@@ -638,7 +849,7 @@
         </div>
 
         {{-- Card 4: Net Operating Profit --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('report.profit_loss') }}" class="erp-kpi-tile kpi-accent-teal">
             <div>
               <div class="kpi-top-meta">
@@ -675,7 +886,7 @@
 
       <div class="row g-2 g-md-3">
         {{-- Card 1: Commercial Purchases --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('report.purchase') }}" class="erp-kpi-tile kpi-accent-slate">
             <div>
               <div class="kpi-top-meta">
@@ -695,7 +906,7 @@
         </div>
 
         {{-- Card 2: Raw Material Purchases --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('raw-materials.index') }}" class="erp-kpi-tile kpi-accent-amber">
             <div>
               <div class="kpi-top-meta">
@@ -715,7 +926,7 @@
         </div>
 
         {{-- Card 3: Factory Production Batches --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('production.index') }}" class="erp-kpi-tile kpi-accent-indigo">
             <div>
               <div class="kpi-top-meta">
@@ -735,7 +946,7 @@
         </div>
 
         {{-- Card 4: Audited Operating Expenses --}}
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-6 col-sm-6 col-xl-3">
           <a href="{{ route('all-expense-vochers') }}" class="erp-kpi-tile kpi-accent-rose">
             <div>
               <div class="kpi-top-meta">
@@ -770,7 +981,7 @@
 
       <div class="row g-2 g-md-3">
         {{-- Customer Receivables --}}
-        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+        <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
           <a href="{{ route('report.customer.ledger') }}" class="erp-kpi-tile kpi-accent-teal">
             <div>
               <div class="kpi-top-meta">
@@ -785,7 +996,7 @@
         </div>
 
         {{-- Distributor Receivables --}}
-        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+        <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
           <a href="{{ route('admin.distributors.index') }}" class="erp-kpi-tile kpi-accent-amber">
             <div>
               <div class="kpi-top-meta">
@@ -800,7 +1011,7 @@
         </div>
 
         {{-- Vendor Payables --}}
-        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+        <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
           <a href="{{ route('report.vendor.ledger') }}" class="erp-kpi-tile kpi-accent-rose">
             <div>
               <div class="kpi-top-meta">
@@ -815,7 +1026,7 @@
         </div>
 
         {{-- Stock Valuation --}}
-        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+        <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
           <a href="{{ route('report.item_stock') }}" class="erp-kpi-tile kpi-accent-indigo">
             <div>
               <div class="kpi-top-meta">
@@ -830,7 +1041,7 @@
         </div>
 
         {{-- Cash in Hand (Drawer) --}}
-        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+        <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
           <a href="{{ route('cashbook') }}" class="erp-kpi-tile kpi-accent-blue">
             <div>
               <div class="kpi-top-meta">
@@ -845,7 +1056,7 @@
         </div>
 
         {{-- Bank & Digital (Meezan) --}}
-        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+        <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
           <a href="{{ route('view_all') }}" class="erp-kpi-tile kpi-accent-teal">
             <div>
               <div class="kpi-top-meta">
@@ -884,7 +1095,7 @@
               </a>
             </div>
           </div>
-          <div style="flex:1;">
+          <div class="erp-chart-wrap" style="flex:1;">
             <div id="salesOverviewChart" style="min-height: 250px;"></div>
           </div>
         </div>
@@ -901,7 +1112,9 @@
             <span class="badge bg-light text-secondary border" style="font-size:0.68rem;">Share</span>
           </div>
           <div class="d-flex flex-column justify-content-between" style="flex:1;">
-            <div id="channelShareDonutChart" style="min-height: 180px;"></div>
+            <div class="erp-chart-wrap">
+              <div id="channelShareDonutChart" style="min-height: 180px;"></div>
+            </div>
             <div class="pt-2 border-top">
               <div class="d-flex align-items-center justify-content-between py-1 border-bottom" style="font-size:0.8rem;">
                 <div class="d-flex align-items-center gap-2">
@@ -961,7 +1174,9 @@
             </div>
 
             {{-- ApexChart Container --}}
-            <div id="cashFlowChart" style="min-height: 180px;"></div>
+            <div class="erp-chart-wrap">
+              <div id="cashFlowChart" style="min-height: 180px;"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -977,7 +1192,9 @@
             <a href="{{ route('report.sale.category') }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.7rem;">Categories</a>
           </div>
           <div class="d-flex flex-column justify-content-between" style="flex:1;">
-            <div id="categoryPieChart" style="min-height: 180px;"></div>
+            <div class="erp-chart-wrap">
+              <div id="categoryPieChart" style="min-height: 180px;"></div>
+            </div>
             <div class="pt-1" style="max-height: 90px; overflow-y: auto;">
               @foreach(array_slice($catDonutList, 0, 4) as $cItem)
               <div class="d-flex align-items-center justify-content-between py-0.5 border-bottom" style="font-size:0.74rem;">
@@ -1004,7 +1221,9 @@
             <a href="{{ route('all-expense-vochers') }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.7rem;">Vouchers</a>
           </div>
           <div class="d-flex flex-column justify-content-between" style="flex:1;">
-            <div id="expenseDonutChart" style="min-height: 180px;"></div>
+            <div class="erp-chart-wrap">
+              <div id="expenseDonutChart" style="min-height: 180px;"></div>
+            </div>
             <div class="pt-2 text-center text-muted fw-bold" style="font-size:0.75rem;">
               Audited Total: <span class="text-danger">Rs {{ number_format($totalExpenses, 0) }}</span>
             </div>
@@ -1030,7 +1249,7 @@
               Stock Report &rarr;
             </a>
           </div>
-          <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+          <div class="table-responsive d-none d-md-block" style="max-height: 380px; overflow-y: auto;">
             <table class="erp-table">
               <thead>
                 <tr>
@@ -1071,6 +1290,38 @@
               </tbody>
             </table>
           </div>
+
+          {{-- Mobile Box List: Top Products --}}
+          <div class="d-md-none erp-mobile-list">
+            @forelse($topProducts as $tp)
+            <div class="erp-m-box">
+              <div class="erp-m-top">
+                <div class="d-flex align-items-start gap-2 min-width-0">
+                  <span class="erp-rank-tag {{ $tp['rank'] <= 3 ? 'top' : '' }} flex-shrink-0">#{{ $tp['rank'] }}</span>
+                  <div class="min-width-0">
+                    <div class="erp-m-title">{{ $tp['name'] }}</div>
+                    <div class="erp-m-sub font-monospace">{{ $tp['code'] }} &bull; {{ $tp['category'] }}</div>
+                  </div>
+                </div>
+                <span class="badge {{ $tp['stock_qty'] > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }} rounded-pill flex-shrink-0" style="font-size:0.64rem;">
+                  Stock: {{ number_format($tp['stock_qty']) }}
+                </span>
+              </div>
+              <div class="erp-m-stats" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <div class="erp-m-stat">
+                  <div class="erp-m-stat-lbl">Units Sold</div>
+                  <div class="erp-m-stat-val">{{ number_format($tp['units_sold']) }}</div>
+                </div>
+                <div class="erp-m-stat text-end">
+                  <div class="erp-m-stat-lbl">Revenue</div>
+                  <div class="erp-m-stat-val text-teal">Rs {{ number_format($tp['revenue'], 0) }}</div>
+                </div>
+              </div>
+            </div>
+            @empty
+            <div class="text-center text-muted py-3 small">No product sales recorded yet.</div>
+            @endforelse
+          </div>
         </div>
       </div>
 
@@ -1086,7 +1337,7 @@
               Distributors &rarr;
             </a>
           </div>
-          <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+          <div class="table-responsive d-none d-md-block" style="max-height: 380px; overflow-y: auto;">
             <table class="erp-table">
               <thead>
                 <tr>
@@ -1128,6 +1379,41 @@
               </tbody>
             </table>
           </div>
+
+          {{-- Mobile Box List: Top Distributors --}}
+          <div class="d-md-none erp-mobile-list">
+            @forelse($topDistributors as $dItem)
+            <div class="erp-m-box">
+              <div class="erp-m-top">
+                <div class="min-width-0">
+                  <div class="erp-m-title">{{ $dItem->name }}</div>
+                  <div class="erp-m-sub font-monospace">{{ $dItem->code }} &bull; {{ $dItem->city ?? 'N/A' }}</div>
+                </div>
+                <span class="badge {{ $dItem->status == 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} rounded-pill flex-shrink-0" style="font-size:0.64rem;">
+                  {{ ucfirst($dItem->status) }}
+                </span>
+              </div>
+              <div class="erp-m-stats">
+                <div class="erp-m-stat">
+                  <div class="erp-m-stat-lbl">Phone</div>
+                  <div class="erp-m-stat-val" style="font-size:0.7rem;">{{ $dItem->phone ?: 'N/A' }}</div>
+                </div>
+                <div class="erp-m-stat text-center">
+                  <div class="erp-m-stat-lbl">Orders</div>
+                  <div class="erp-m-stat-val">{{ $dItem->orders_count }}</div>
+                </div>
+                <div class="erp-m-stat text-end">
+                  <div class="erp-m-stat-lbl">Balance</div>
+                  <div class="erp-m-stat-val" style="color: {{ $dItem->current_balance > 0 ? '#d97706' : '#059669' }};">
+                    Rs {{ number_format($dItem->current_balance, 0) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            @empty
+            <div class="text-center text-muted py-3 small">No distributors registered yet.</div>
+            @endforelse
+          </div>
         </div>
       </div>
 
@@ -1143,7 +1429,7 @@
               All Sales &rarr;
             </a>
           </div>
-          <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+          <div class="table-responsive d-none d-md-block" style="max-height: 340px; overflow-y: auto;">
             <table class="erp-table">
               <thead>
                 <tr>
@@ -1187,6 +1473,39 @@
               </tbody>
             </table>
           </div>
+
+          {{-- Mobile Box List: Recent Sales --}}
+          <div class="d-md-none erp-mobile-list">
+            @forelse($recentSalesList as $rSale)
+            <div class="erp-m-box">
+              <div class="erp-m-top">
+                <div class="min-width-0">
+                  <div class="erp-m-title font-monospace">{{ $rSale->invoice_no }}</div>
+                  <div class="erp-m-sub">{{ $rSale->customer_name ?: ($rSale->customer_field ?? 'Walk-in Customer') }}</div>
+                </div>
+                <a href="{{ route('sales.invoice', $rSale->id) }}" target="_blank" class="btn btn-xs btn-outline-secondary py-0.5 px-2 flex-shrink-0" style="font-size:0.68rem;">
+                  <i class="fas fa-receipt me-1"></i>View
+                </a>
+              </div>
+              <div class="erp-m-stats">
+                <div class="erp-m-stat">
+                  <div class="erp-m-stat-lbl">Mode</div>
+                  <div class="erp-m-stat-val">{{ $rSale->card > 0 ? 'Card' : 'Cash' }}</div>
+                </div>
+                <div class="erp-m-stat text-center">
+                  <div class="erp-m-stat-lbl">Date</div>
+                  <div class="erp-m-stat-val" style="font-size:0.68rem;">{{ \Carbon\Carbon::parse($rSale->created_at)->format('d M, h:i A') }}</div>
+                </div>
+                <div class="erp-m-stat text-end">
+                  <div class="erp-m-stat-lbl">Net Total</div>
+                  <div class="erp-m-stat-val text-teal">Rs {{ number_format($rSale->total_net, 0) }}</div>
+                </div>
+              </div>
+            </div>
+            @empty
+            <div class="text-center text-muted py-3 small">No sales recorded yet.</div>
+            @endforelse
+          </div>
         </div>
       </div>
 
@@ -1202,7 +1521,7 @@
               <i class="fas fa-plus me-1"></i> + Purchase Order
             </a>
           </div>
-          <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+          <div class="table-responsive d-none d-md-block" style="max-height: 340px; overflow-y: auto;">
             <table class="erp-table">
               <thead>
                 <tr>
@@ -1241,6 +1560,41 @@
               </tbody>
             </table>
           </div>
+
+          {{-- Mobile Box List: Low Stock --}}
+          <div class="d-md-none erp-mobile-list">
+            @forelse($lowStockItems as $lItem)
+            <div class="erp-m-box">
+              <div class="erp-m-top">
+                <div class="min-width-0">
+                  <div class="erp-m-title">{{ $lItem->item_name }}</div>
+                  <div class="erp-m-sub font-monospace">{{ $lItem->item_code }} &bull; {{ $lItem->category_name ?? 'Nimko' }}</div>
+                </div>
+                <span class="badge {{ $lItem->qty <= 0 ? 'bg-danger text-white' : 'bg-warning text-dark' }} rounded-pill flex-shrink-0" style="font-size:0.64rem;">
+                  {{ $lItem->status }}
+                </span>
+              </div>
+              <div class="erp-m-stats">
+                <div class="erp-m-stat">
+                  <div class="erp-m-stat-lbl">Current Qty</div>
+                  <div class="erp-m-stat-val text-danger">{{ $lItem->qty }}</div>
+                </div>
+                <div class="erp-m-stat text-center">
+                  <div class="erp-m-stat-lbl">Alert Level</div>
+                  <div class="erp-m-stat-val text-muted">{{ $lItem->alert_quantity }}</div>
+                </div>
+                <div class="erp-m-stat text-end">
+                  <div class="erp-m-stat-lbl">Deficit</div>
+                  <div class="erp-m-stat-val">+{{ $lItem->deficit }}</div>
+                </div>
+              </div>
+            </div>
+            @empty
+            <div class="text-center text-muted py-3 small">
+              <i class="fas fa-check-circle text-success me-1"></i> All stock levels are healthy!
+            </div>
+            @endforelse
+          </div>
         </div>
       </div>
 
@@ -1256,7 +1610,7 @@
               Branch Sales Report &rarr;
             </a>
           </div>
-          <div class="table-responsive">
+          <div class="table-responsive d-none d-md-block">
             <table class="erp-table">
               <thead>
                 <tr>
@@ -1306,6 +1660,51 @@
                 @endforelse
               </tbody>
             </table>
+          </div>
+
+          {{-- Mobile Box List: Branch Performance --}}
+          <div class="d-md-none erp-mobile-list">
+            @forelse($branchSalesPerformance as $bItem)
+            <div class="erp-m-box {{ $bItem['is_active'] ? 'is-active' : '' }}">
+              <div class="erp-m-top">
+                <div class="min-width-0">
+                  <div class="erp-m-title">
+                    {{ $bItem['name'] }}
+                    @if($bItem['is_active'])
+                      <span class="badge bg-teal text-white rounded-pill px-2 py-0.5 ms-1" style="font-size:0.6rem; background:#0f766e;">Active</span>
+                    @endif
+                  </div>
+                  <div class="erp-m-sub">{{ $bItem['address'] ?: 'Branch Office' }} &bull; {{ number_format($bItem['invoice_count']) }} Invoices</div>
+                </div>
+                <a href="{{ route('report.sale') }}" class="btn btn-xs btn-outline-secondary py-0.5 px-2 flex-shrink-0" style="font-size:0.68rem;">
+                  History
+                </a>
+              </div>
+              <div class="erp-m-stats">
+                <div class="erp-m-stat">
+                  <div class="erp-m-stat-lbl">Gross Sales</div>
+                  <div class="erp-m-stat-val">Rs {{ number_format($bItem['total_sales'], 0) }}</div>
+                </div>
+                <div class="erp-m-stat text-center">
+                  <div class="erp-m-stat-lbl">Returns</div>
+                  <div class="erp-m-stat-val text-danger">Rs {{ number_format($bItem['total_returns'], 0) }}</div>
+                </div>
+                <div class="erp-m-stat text-end">
+                  <div class="erp-m-stat-lbl">Net Sales</div>
+                  <div class="erp-m-stat-val text-teal">Rs {{ number_format($bItem['net_sales'], 0) }}</div>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2 pt-1">
+                <span class="text-muted" style="font-size:0.64rem; font-weight:600;">Share</span>
+                <div class="progress flex-fill" style="height: 5px; background: #e2e8f0; border-radius: 4px;">
+                  <div class="progress-bar" role="progressbar" style="width: {{ max($bItem['share_pct'], 4) }}%; background-color: #0f766e;"></div>
+                </div>
+                <span class="fw-bold text-dark" style="font-size:0.68rem;">{{ number_format($bItem['share_pct'], 1) }}%</span>
+              </div>
+            </div>
+            @empty
+            <div class="text-center text-muted py-3 small">No branch sales recorded for this period.</div>
+            @endforelse
           </div>
         </div>
       </div>

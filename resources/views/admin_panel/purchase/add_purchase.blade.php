@@ -573,11 +573,84 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
 }
 
 /* ═══════ RESPONSIVE ═══════ */
-@media (max-width: 768px) {
-  .pp-header { padding: 1.1rem 1.25rem; }
-  .pp-header h2 { font-size: 1.05rem; }
-  .pp-card-bd { padding: 1rem; }
-  .pp .container-fluid { padding-left: .75rem !important; padding-right: .75rem !important; }
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; max-width: 100% !important; }
+  .pp { overflow-x: hidden !important; max-width: 100% !important; padding-bottom: 1.5rem; }
+  .pp .container-fluid { padding-left: .65rem !important; padding-right: .65rem !important; padding-top: .6rem !important; }
+
+  .pp-header {
+    padding: .75rem .9rem !important;
+    margin-bottom: .75rem !important;
+    border-radius: 12px !important;
+    gap: .5rem;
+  }
+  .pp-header h2 { font-size: 1rem !important; }
+  .pp-header > div:last-child { margin-top: 0 !important; }
+  .pp-back { padding: .32rem .65rem !important; font-size: .72rem !important; min-height: 32px !important; }
+
+  .pp-card { border-radius: 12px !important; margin-bottom: .75rem !important; }
+  .pp-card-hdr { padding: .7rem .85rem !important; font-size: .8rem !important; }
+  .pp-card-bd { padding: .75rem !important; }
+  .pp-cnt { font-size: .68rem !important; padding: .2rem .6rem !important; }
+
+  .pp-lbl { font-size: .7rem !important; margin-bottom: .25rem !important; }
+  .pp-fld, .pp-sum .sm-inp {
+    min-height: 38px !important;
+    height: auto !important;
+    font-size: .84rem !important;
+    padding: .4rem .65rem !important;
+  }
+
+  .pp .select2-container { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+  .pp .select2-container--default .select2-selection--single {
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: .1rem 0 !important;
+  }
+  .pp .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 34px !important;
+    font-size: .84rem !important;
+  }
+  .pp .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px !important;
+  }
+
+  .pp-rd { gap: 1rem; margin-top: .2rem; }
+  .pp-rd .rd-opt label, .pp-rd .rd-opt span { font-size: .82rem; }
+
+  #ppResults { max-height: 55vh; width: 100%; max-width: 100%; }
+  .pp-res-item { padding: .6rem .75rem !important; }
+  .pp-res-item .ri-nm { font-size: .82rem !important; }
+
+  .ppc-card {
+    margin: .55rem .6rem !important;
+    padding: .65rem .75rem !important;
+    border-radius: 11px !important;
+  }
+  .ppc-top { margin-bottom: .4rem !important; }
+  .ppc-nm { font-size: .84rem !important; margin-bottom: .5rem !important; }
+  .ppc-grid { gap: .45rem !important; }
+  .ppc-f { padding: .4rem .5rem !important; border-radius: 8px !important; }
+  .ppc-f .t-inp { min-height: 34px !important; font-size: .84rem !important; padding: .28rem .45rem !important; }
+  .ppc-lt .t-total { font-size: .95rem !important; }
+
+  .pp-sum { padding: .75rem !important; border-radius: 10px !important; }
+  .pp-sum .sm-lbl { font-size: .64rem !important; margin-bottom: .18rem !important; }
+  .pp-sum .sm-val { font-size: .95rem !important; }
+  .pp-sum .sm-val.net { font-size: 1.25rem !important; }
+  .pp-sum .mt-4 { margin-top: .85rem !important; }
+  #svBtn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: .55rem 1rem !important;
+    min-height: 40px !important;
+    font-size: .86rem !important;
+  }
+
+  #vModal .modal-dialog { margin: .75rem auto; max-width: calc(100vw - 1.5rem); }
+  #vModal .modal-header, #vModal .modal-body, #vModal .modal-footer { padding: .85rem 1rem !important; }
+  .vbtn, .nvbtn { padding: .38rem .75rem !important; font-size: .78rem !important; min-height: 34px !important; }
+  #vModal .pp-btn, #vModal .pp-btn-s { min-height: 36px !important; padding: .42rem .9rem !important; font-size: .8rem !important; }
 }
 </style>
 
@@ -613,11 +686,15 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
 
           {{-- Row 1: Date | Vendor | Inv # | Type | Note --}}
           <div class="row g-2 g-md-3 align-items-end">
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <label class="pp-lbl"><i class="bi bi-calendar3"></i>Date</label>
               <input type="date" name="purchase_date" class="pp-fld" value="{{ date('Y-m-d') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-2 order-md-3">
+              <label class="pp-lbl"><i class="bi bi-receipt"></i>Inv #</label>
+              <input type="text" name="purchase_order_no" class="pp-fld" placeholder="e.g. INV-001">
+            </div>
+            <div class="col-12 col-md-3 order-md-2">
               <label class="pp-lbl"><i class="bi bi-building"></i>Vendor</label>
               <select name="vendor_id" class="pp-fld select2">
                 <option disabled selected>Select Vendor</option>
@@ -626,11 +703,7 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
                 @endforeach
               </select>
             </div>
-            <div class="col-md-2">
-              <label class="pp-lbl"><i class="bi bi-receipt"></i>Inv #</label>
-              <input type="text" name="purchase_order_no" class="pp-fld" placeholder="e.g. INV-001">
-            </div>
-            <div class="col-md-2">
+            <div class="col-12 col-md-2 order-md-4">
               <label class="pp-lbl"><i class="bi bi-arrow-left-right"></i>Type</label>
               <div class="pp-rd">
                 <label class="rd-opt">
@@ -643,7 +716,7 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
                 </label>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3 order-md-5">
               <label class="pp-lbl"><i class="bi bi-chat-text"></i>Note</label>
               <input type="text" name="note" class="pp-fld" placeholder="Optional reference note">
             </div>
@@ -651,7 +724,7 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
 
           {{-- Warehouse (conditional) --}}
           <div class="row mt-2 d-none" id="whBox">
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <label class="pp-lbl"><i class="bi bi-building2"></i>Warehouse</label>
               <select name="warehouse_id" class="pp-fld">
                 <option disabled selected>Select Warehouse</option>
@@ -705,7 +778,9 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
             </table>
           </div>
           {{-- Mobile / Tablet premium cards --}}
-          <div id="itemCards" class="ppc-cards"></div>
+          <div id="itemCards" class="ppc-cards">
+            <div class="ppc-empty"><i class="bi bi-inbox"></i><span>No items yet — search above to add</span></div>
+          </div>
         </div>
       </div>
 
@@ -716,33 +791,38 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
         <div class="pp-card-hdr"><i class="bi bi-calculator"></i>Summary</div>
         <div class="pp-card-bd">
           <div class="pp-sum">
-            <div class="row g-3 align-items-end">
-              <div class="col-md-3">
+            <div class="row g-2 g-md-3 align-items-end">
+              <div class="col-6 col-md-3">
                 <div class="sm-lbl">Subtotal</div>
                 <div class="sm-val" id="subDsp">0.00</div>
               </div>
-              <div class="col-md-3">
-                <div class="sm-lbl">Discount</div>
-                <input type="number" step="0.01" name="discount" id="discFld" class="sm-inp" value="0" placeholder="0.00">
-              </div>
-              <div class="col-md-3">
-                <div class="sm-lbl">Extra Cost</div>
-                <input type="number" step="0.01" name="extra_cost" id="extFld" class="sm-inp" value="0" placeholder="0.00">
-              </div>
-              <div class="col-md-3">
+              <div class="col-6 col-md-3 order-md-4">
                 <div class="sm-lbl">Net Amount</div>
                 <div class="sm-val net" id="netDsp">0.00</div>
                 <input type="hidden" name="net_amount" id="netHid" value="0.00">
               </div>
+              <div class="col-6 col-md-3 order-md-2">
+                <div class="sm-lbl">Discount</div>
+                <input type="number" step="0.01" name="discount" id="discFld" class="sm-inp" value="0" placeholder="0.00">
+              </div>
+              <div class="col-6 col-md-3 order-md-3">
+                <div class="sm-lbl">Extra Cost</div>
+                <input type="number" step="0.01" name="extra_cost" id="extFld" class="sm-inp" value="0" placeholder="0.00">
+              </div>
             </div>
 
-            <div class="row g-3 align-items-end mt-2 pt-3 border-top">
-              <div class="col-md-3">
-                <div class="sm-lbl text-primary"><i class="bi bi-cash-stack me-1"></i> Paid to Vendor (Rs)</div>
+            <div class="row g-2 g-md-3 align-items-end mt-2 pt-3 border-top">
+              <div class="col-6 col-md-3">
+                <div class="sm-lbl text-primary"><i class="bi bi-cash-stack me-1"></i> Paid (Rs)</div>
                 <input type="number" step="0.01" name="paid_amount" id="paidFld" class="sm-inp" value="0" min="0" placeholder="0.00" style="border-color:#3b82f6; font-weight:700; color:#1d4ed8;">
               </div>
-              <div class="col-md-3">
-                <div class="sm-lbl"><i class="bi bi-credit-card me-1"></i> Payment Method</div>
+              <div class="col-6 col-md-3 order-md-3">
+                <div class="sm-lbl text-danger"><i class="bi bi-clock-history me-1"></i> Due Balance</div>
+                <div class="sm-val text-danger" id="dueDsp">0.00</div>
+                <input type="hidden" name="due_amount" id="dueHid" value="0.00">
+              </div>
+              <div class="col-6 col-md-3 order-md-2">
+                <div class="sm-lbl"><i class="bi bi-credit-card me-1"></i> Method</div>
                 <select name="payment_method" id="payMethodFld" class="sm-inp">
                   <option value="Cash">💵 Cash</option>
                   <option value="Online / Bank">🏦 Online / Bank</option>
@@ -750,14 +830,9 @@ select.pp-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
                   <option value="Other">✨ Other</option>
                 </select>
               </div>
-              <div class="col-md-3">
-                <div class="sm-lbl text-danger"><i class="bi bi-clock-history me-1"></i> Due Balance (Rs)</div>
-                <div class="sm-val text-danger" id="dueDsp">0.00</div>
-                <input type="hidden" name="due_amount" id="dueHid" value="0.00">
-              </div>
-              <div class="col-md-3">
-                <div class="sm-lbl">Payment Note (Optional)</div>
-                <input type="text" name="payment_note" id="payNoteFld" class="sm-inp" placeholder="e.g. Paid in full / advance">
+              <div class="col-6 col-md-3 order-md-4">
+                <div class="sm-lbl">Payment Note</div>
+                <input type="text" name="payment_note" id="payNoteFld" class="sm-inp" placeholder="Optional note">
               </div>
             </div>
 

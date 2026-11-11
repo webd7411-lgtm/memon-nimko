@@ -211,6 +211,14 @@ class VendorController extends Controller
         if ($cardAmount > 0 && $cardAccountId) {
             $cardAcc = \App\Models\Account::find($cardAccountId);
             if ($cardAcc) {
+                $cardAcc->setLedgerMeta([
+                    'branch_id'        => $payment->branch_id ?? null,
+                    'transaction_date' => $payment->created_at ?? now(),
+                    'reference_type'   => 'Vendor Payment',
+                    'reference_no'     => $payment->payment_no ?? null,
+                    'reference_id'     => $payment->id ?? null,
+                    'description'      => 'Vendor payment (' . ($paymentMethod ?? 'Card') . ')' . ($request->note ? ' - ' . $request->note : ''),
+                ]);
                 $cardAcc->opening_balance = (float)$cardAcc->opening_balance - $cardAmount;
                 $cardAcc->save();
             }
