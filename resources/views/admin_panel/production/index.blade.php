@@ -260,58 +260,158 @@
 .pc-mlist { display: none; }
 
 @media (max-width: 991.98px) {
+  body, html { overflow-x: hidden !important; }
   .pc-container {
-    padding: 0.6rem 0.4rem !important;
+    padding: 0.65rem 0.65rem 1.25rem !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 
   .pc-header-bar {
     flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 0.75rem !important;
+    align-items: stretch !important;
+    gap: 0.6rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .pc-title-group h4 {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+  }
+  .pc-title-group p {
+    font-size: 0.74rem !important;
   }
 
   .pc-header-actions {
     width: 100% !important;
-    display: flex !important;
-    gap: 0.5rem !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
   }
 
   .pc-header-actions > * {
-    flex: 1 !important;
+    width: 100% !important;
+    min-height: 34px !important;
+    padding: 0.35rem 0.55rem !important;
+    font-size: 0.75rem !important;
     text-align: center !important;
     justify-content: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .pc-header-actions > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1 !important;
   }
 
   .pc-kpi-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .pc-kpi-card {
+    padding: 0.65rem 0.75rem !important;
+    gap: 0.6rem !important;
+    border-radius: 10px !important;
+  }
+  .pc-kpi-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+  .pc-kpi-info .lbl {
+    font-size: 0.64rem !important;
+  }
+  .pc-kpi-info .val {
+    font-size: 1.15rem !important;
   }
 
   .pc-table-card { display: none !important; }
   .pc-mlist { display: block !important; }
 
+  .pc-msearch-wrap {
+    position: relative;
+    margin-bottom: 0.65rem;
+  }
+  .pc-msearch-wrap i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.85rem;
+    pointer-events: none;
+  }
+  .pc-msearch {
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 0.35rem 0.75rem 0.35rem 2.1rem !important;
+    font-size: 0.8rem !important;
+    border: 1px solid var(--pc-border) !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    color: var(--pc-text) !important;
+  }
+  .pc-msearch:focus {
+    outline: none !important;
+    border-color: var(--pc-accent) !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12) !important;
+  }
+
   .pc-mcard {
     background: #ffffff;
     border: 1px solid var(--pc-border);
-    border-radius: 10px;
-    padding: 0.9rem;
-    margin-bottom: 0.85rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    border-radius: 12px;
+    padding: 0.72rem 0.8rem;
+    margin-bottom: 0.6rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
 
   .pc-mcard-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.5rem;
     border-bottom: 1px solid #f1f5f9;
-    padding-bottom: 0.6rem;
-    margin-bottom: 0.6rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.5rem;
+  }
+  .pc-mcard-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.75rem;
+    font-size: 0.71rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+  }
+  .pc-mcard-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #e2e8f0;
+  }
+  .pc-mcard-actions .btn {
+    min-height: 34px !important;
+    padding: 0.3rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 }
 
 @media (max-width: 575.98px) {
   .pc-kpi-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .pc-kpi-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1 !important;
   }
 }
 </style>
@@ -457,20 +557,27 @@
 
   {{-- ══════════ MOBILE CARDS VIEW ══════════ --}}
   <div class="pc-mlist">
+    @if($entries->count() > 0)
+    <div class="pc-msearch-wrap">
+      <i class="bi bi-search"></i>
+      <input type="text" id="pcMobileSearch" class="pc-msearch" placeholder="Search entry #, product, source, date...">
+    </div>
+    @endif
+
     @forelse($entries as $e)
-    <div class="pc-mcard">
+    <div class="pc-mcard" data-search="{{ strtolower($e->entry_no . ' ' . $e->production_date . ' ' . $e->source . ' ' . $e->product_details . ' ' . ($e->creator_name ?? '') . ' ' . ($e->notes ?? '')) }}">
       <div class="pc-mcard-header">
         <div>
-          <span class="fw-bold text-dark fs-6">#{{ $e->entry_no }}</span>
-          <div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>{{ \Carbon\Carbon::parse($e->production_date)->format('d M Y') }}</div>
+          <span class="fw-bold text-dark" style="font-size: 0.88rem;">#{{ $e->entry_no }}</span>
+          <div class="text-muted" style="font-size: 0.71rem;"><i class="bi bi-calendar3 me-1"></i>{{ \Carbon\Carbon::parse($e->production_date)->format('d M Y') }}</div>
         </div>
         <div>
           @if($e->source === 'branch')
-          <span class="pc-badge-source pc-badge-warehouse" style="font-size:.72rem;">
+          <span class="pc-badge-source pc-badge-warehouse" style="font-size:.68rem;">
             <i class="bi bi-building me-1"></i>Branch: {{ active_branch_name() }}
           </span>
           @else
-          <span class="pc-badge-source {{ $e->source === 'kitchen' ? 'pc-badge-kitchen' : 'pc-badge-warehouse' }}">
+          <span class="pc-badge-source {{ $e->source === 'kitchen' ? 'pc-badge-kitchen' : 'pc-badge-warehouse' }}" style="font-size:.68rem;">
             <i class="bi bi-{{ $e->source === 'kitchen' ? 'house-door' : 'building' }} me-1"></i>
             {{ ucfirst($e->source) }}
           </span>
@@ -478,25 +585,41 @@
         </div>
       </div>
 
-      <div class="mb-2">
-        <div class="small fw-bold text-dark mb-1">{{ $e->product_details }}</div>
+      <div style="font-size: 0.78rem; font-weight: 600; color: #0f172a; line-height: 1.38;">
+        {{ $e->product_details }}
       </div>
 
-      <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top">
-        <a href="{{ route('production.edit', $e->id) }}" class="btn btn-sm btn-outline-secondary w-100">
+      @if(!empty($e->creator_name) || !empty($e->notes))
+      <div class="pc-mcard-meta">
+        @if(!empty($e->creator_name))
+        <span><i class="bi bi-person me-1"></i>{{ $e->creator_name }}</span>
+        @endif
+        @if(!empty($e->notes))
+        <span class="text-truncate" style="max-width: 100%;"><i class="bi bi-chat-left-text me-1"></i>{{ $e->notes }}</span>
+        @endif
+      </div>
+      @endif
+
+      <div class="pc-mcard-actions">
+        <a href="{{ route('production.edit', $e->id) }}" class="btn btn-sm btn-outline-secondary">
           <i class="bi bi-pencil me-1"></i> Edit
         </a>
-        <a href="{{ route('production.gatepass', $e->id) }}" class="btn btn-sm btn-outline-primary w-100" target="_blank">
+        <a href="{{ route('production.gatepass', $e->id) }}" class="btn btn-sm btn-outline-primary" target="_blank">
           <i class="bi bi-printer me-1"></i> Gatepass
         </a>
       </div>
     </div>
     @empty
-    <div class="text-center py-5 text-muted bg-white rounded border">
-      <i class="bi bi-inbox fs-1"></i>
-      <p class="mt-2 mb-0">No production entries recorded yet.</p>
+    <div class="text-center py-4 text-muted bg-white rounded-3 border">
+      <i class="bi bi-inbox fs-2"></i>
+      <p class="mt-2 mb-0 small">No production entries recorded yet.</p>
     </div>
     @endforelse
+
+    <div id="pcMobileNoMatch" class="text-center py-4 text-muted bg-white rounded-3 border" style="display:none;">
+      <i class="bi bi-search fs-4"></i>
+      <p class="mt-1 mb-0 small">No matching production entries found.</p>
+    </div>
   </div>
 
 </div>
@@ -514,6 +637,18 @@
         searchPlaceholder: "Search production entries...",
         emptyTable: "No production entries found"
       }
+    });
+
+    $('#pcMobileSearch').on('input', function() {
+      const q = ($(this).val() || '').toLowerCase().trim();
+      let visible = 0;
+      $('.pc-mcard').each(function() {
+        const hay = $(this).data('search') || '';
+        const match = !q || hay.indexOf(q) !== -1;
+        $(this).toggle(match);
+        if (match) visible++;
+      });
+      $('#pcMobileNoMatch').toggle(visible === 0 && $('.pc-mcard').length > 0);
     });
   });
 </script>

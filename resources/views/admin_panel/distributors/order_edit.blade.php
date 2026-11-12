@@ -29,6 +29,35 @@
         justify-content: center;
         padding: 0;
     }
+    @media (max-width: 767.98px) {
+        html, body { overflow-x: hidden !important; }
+        .dist-module-container { padding: 0.6rem 0.65rem 1.25rem !important; max-width: 100% !important; overflow-x: hidden !important; }
+        .table-responsive { overflow: visible !important; }
+        #itemsTable, #itemsTable tbody { display: block !important; width: 100% !important; }
+        #itemsTable thead { display: none !important; }
+        #itemsTable tbody tr {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.4rem 0.55rem !important;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0.65rem 0.75rem;
+            margin-bottom: 0.55rem;
+        }
+        #itemsTable tbody td {
+            display: flex !important;
+            flex-direction: column !important;
+            border: none !important;
+            padding: 0 !important;
+            min-width: 0 !important;
+            text-align: left !important;
+        }
+        #itemsTable tbody td:first-child { grid-column: 1 / -1 !important; }
+        #itemsTable tbody td:last-child { grid-column: 1 / -1 !important; border-top: 1px dashed #e2e8f0 !important; padding-top: 0.4rem !important; }
+        #itemsTable tbody td:last-child .remove-row-btn { width: 100% !important; min-height: 34px !important; }
+        #itemsTable tbody td .form-control, #itemsTable tbody td .form-select { width: 100% !important; min-height: 36px !important; font-size: 0.8rem !important; }
+    }
 </style>
 
 <div class="dist-module-container">

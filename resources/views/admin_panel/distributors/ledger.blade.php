@@ -1,6 +1,55 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+@media (max-width: 767.98px) {
+    html, body { overflow-x: hidden !important; }
+    .container-fluid { padding: 0.6rem 0.65rem 1.25rem !important; max-width: 100% !important; overflow-x: hidden !important; }
+    .card-header form.d-flex { width: 100%; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.45rem !important; }
+    .card-header form.d-flex input[type="date"] { min-height: 36px; font-size: 0.78rem; }
+    .card-header form.d-flex button { grid-column: 1 / -1; min-height: 34px; font-size: 0.78rem; }
+    .table-responsive { overflow: visible !important; }
+    .table-responsive > table.table,
+    .table-responsive > table.table > tbody { display: block !important; width: 100% !important; }
+    .table-responsive > table.table > thead { display: none !important; }
+    .table-responsive > table.table > tbody > tr {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.35rem 0.55rem !important;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.65rem 0.75rem;
+        margin-bottom: 0.55rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .table-responsive > table.table > tbody > tr > td {
+        display: flex !important;
+        flex-direction: column !important;
+        border: none !important;
+        padding: 0 !important;
+        text-align: left !important;
+        white-space: normal !important;
+        word-break: break-word;
+        font-size: 0.76rem;
+    }
+    .table-responsive > table.table > tbody > tr > td::before {
+        font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b;
+    }
+    .table-responsive > table.table > tbody > tr > td:nth-child(1)::before { content: "Date"; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(2)::before { content: "Type"; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(3) { grid-column: 1 / -1; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(3)::before { content: "Ref #"; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(4) { grid-column: 1 / -1; background: #f8fafc; padding: 0.3rem 0.45rem !important; border-radius: 7px; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(4)::before { content: "Description"; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(5)::before { content: "Debit"; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(6)::before { content: "Credit"; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(7) { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0 !important; padding-top: 0.35rem !important; }
+    .table-responsive > table.table > tbody > tr > td:nth-child(7)::before { content: "Running Balance"; }
+    .table-responsive > table.table > tbody > tr > td[colspan] { grid-column: 1 / -1; align-items: center; text-align: center !important; padding: 1.25rem 0.5rem !important; }
+    .table-responsive > table.table > tbody > tr > td[colspan]::before { content: none !important; }
+}
+</style>
 <div class="container-fluid px-3 px-md-4 py-2">
     <!-- Top Action Header -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">

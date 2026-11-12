@@ -498,15 +498,16 @@
 .evc-total span { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #991b1b; }
 .evc-total b { font-size: 1.02rem; font-weight: 900; color: #dc2626; word-break: break-word; }
 
-.evc-actions { display: flex; gap: .45rem; flex-wrap: wrap; padding: 0 .9rem .9rem; }
+.evc-actions { display: flex; gap: .45rem; flex-wrap: wrap; padding: 0 .78rem .78rem; }
 .evc-actions .btn {
-  flex: 1 1 40%; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
-  border-radius: 10px !important; font-size: .78rem !important; font-weight: 700; margin: 0 !important; white-space: normal;
+  flex: 1 1 100%; min-height: 36px !important; width: 100% !important; display: inline-flex !important; align-items: center; justify-content: center; gap: .4rem;
+  border-radius: 10px !important; font-size: .78rem !important; font-weight: 700 !important; margin: 0 !important; padding: .35rem .75rem !important; white-space: nowrap;
   text-decoration: none;
 }
 .evc-actions .btn:hover { transform: translateY(-1px); }
 .evc-actions .btn-outline-danger,
-.evc-actions .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff !important; border: none; box-shadow: 0 4px 12px rgba(220, 38, 38, .25); }
+.evc-actions .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #ffffff !important; border: none !important; box-shadow: 0 3px 10px rgba(220, 38, 38, .22) !important; }
+.evc-actions .btn-outline-danger::after { content: " Print Voucher"; font-size: .78rem; }
 
 .evc-empty {
   text-align: center; padding: 2.5rem 1rem; color: #64748b;
@@ -517,51 +518,82 @@
 /* ═══════ FULL MOBILE RESPONSIVE (no horizontal scroll) ═══════ */
 @media (max-width: 991.98px) {
   body, html { overflow-x: hidden !important; }
-  .ev-page { padding-bottom: 2rem; }
+  .ev-page { padding-bottom: 1.5rem; overflow-x: hidden !important; max-width: 100% !important; }
+  .ev-page > .container-fluid { padding: .6rem .65rem 1.25rem !important; }
 
-  .ev-hero { padding: 1.1rem 1rem; gap: .75rem; }
-  .ev-hero-title { gap: .6rem; align-items: flex-start; }
-  .ev-hero-title h2 { font-size: 1.05rem; }
-  .ev-hero-icon { width: 40px; height: 40px; font-size: 1.15rem; border-radius: 10px; }
-  .ev-hero-badge { font-size: .6rem; padding: .22rem .6rem; }
+  .ev-hero { padding: .85rem .9rem; gap: .65rem; border-radius: 14px; margin-bottom: .75rem; }
+  .ev-hero-title { gap: .55rem; align-items: center; }
+  .ev-hero-title h2 { font-size: 1rem; margin: 0; }
+  .ev-hero-icon { width: 38px; height: 38px; font-size: 1.05rem; border-radius: 10px; }
+  .ev-hero-badge { font-size: .58rem; padding: .18rem .5rem; }
   .ev-hero .d-flex { width: 100%; flex-direction: column; align-items: stretch; }
-  .ev-hero .d-flex .ev-btn { width: 100%; justify-content: center; }
+  .ev-hero .d-flex .ev-btn { width: 100%; min-height: 36px !important; padding: .35rem .65rem !important; font-size: .78rem !important; justify-content: center; border-radius: 9px !important; }
 
-  .ev-kpi-grid { gap: .65rem; margin-bottom: 1rem; }
-  .ev-kpi-card { padding: .9rem .85rem; border-radius: 14px; }
-  .ev-kpi-info p { font-size: .66rem; }
-  .ev-kpi-info h3 { font-size: 1.2rem; }
-  .ev-kpi-icon { width: 38px; height: 38px; font-size: 1rem; }
+  .ev-tabs-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: .4rem !important;
+    padding: .35rem !important;
+    margin-bottom: .75rem !important;
+  }
+  .ev-tab-btn {
+    width: 100% !important;
+    min-height: 36px !important;
+    padding: .35rem .5rem !important;
+    font-size: .72rem !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
 
-  .ev-filter-card { padding: 1rem; border-radius: 14px; margin-bottom: 1rem; }
-  .ev-filter-card .row { margin: 0; }
-  .ev-filter-card [class*="col-"] { padding: 0; margin-bottom: .6rem; }
-  .ev-filter-card [class*="col-"]:last-child { margin-bottom: 0; }
+  .ev-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: .5rem; margin-bottom: .75rem; }
+  .ev-kpi-card { padding: .65rem .75rem; border-radius: 12px; gap: .45rem; }
+  .ev-kpi-info p { font-size: .6rem; }
+  .ev-kpi-info h3 { font-size: 1rem; word-break: break-word; }
+  .ev-kpi-icon { width: 34px; height: 34px; font-size: .95rem; border-radius: 9px; }
+
+  .ev-filter-card { padding: .7rem .75rem !important; border-radius: 12px; margin-bottom: .75rem; }
+  .ev-filter-card .row { margin: 0 !important; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: .45rem .5rem !important; }
+  .ev-filter-card [class*="col-"] { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+  .ev-filter-card .col-md-3:nth-child(3):not(:last-child),
+  .ev-filter-card .col-md-3:last-child { grid-column: 1 / -1 !important; }
+  .ev-label { font-size: .62rem !important; margin-bottom: .2rem !important; }
+  .ev-input { min-height: 36px !important; height: 36px !important; font-size: .78rem !important; padding: .28rem .55rem !important; border-radius: 8px !important; }
+  .ev-filter-card .ev-btn { min-height: 36px !important; height: 36px !important; padding: .3rem .55rem !important; font-size: .76rem !important; border-radius: 8px !important; }
 
   .ev-table-card { border-radius: 14px; }
-  .ev-table-header { padding: .9rem 1rem; }
-  .ev-table-title { font-size: .92rem; }
+  .ev-table-header { padding: .75rem .85rem !important; flex-wrap: wrap !important; gap: .5rem !important; }
+  .ev-table-title { font-size: .88rem; }
+  .ev-table-header .ev-btn { min-height: 34px !important; padding: .3rem .65rem !important; font-size: .74rem !important; width: 100%; justify-content: center; }
 
   /* DataTables controls: full width, no float overlap */
-  .ev-table-wrapper { overflow: hidden; padding: 0; }
-  .ev-table-wrapper > .dataTables_wrapper > .row > div { flex: 0 0 100%; max-width: 100%; }
+  .ev-table-wrapper { overflow: hidden !important; padding: .55rem !important; }
+  .ev-table-wrapper .table-responsive { overflow: visible !important; }
+  .ev-table-wrapper > .dataTables_wrapper > .row,
+  .ev-table-wrapper .dataTables_wrapper > .row { margin: 0 !important; }
+  .ev-table-wrapper .dataTables_wrapper > .row > div { flex: 0 0 100%; max-width: 100%; padding: 0 !important; }
   .ev-table-wrapper .dataTables_filter,
-  .ev-table-wrapper .dataTables_length { float: none !important; text-align: left !important; margin: .35rem 0 0; }
-  .ev-table-wrapper .dataTables_length { margin-top: .75rem; }
-  .ev-table-wrapper .dataTables_length label { font-size: .78rem; color: var(--ev-text-muted); white-space: normal; }
+  .ev-table-wrapper .dataTables_length { float: none !important; text-align: left !important; margin: 0 0 .45rem 0 !important; width: 100% !important; }
+  .ev-table-wrapper .dataTables_length label,
+  .ev-table-wrapper .dataTables_filter label {
+    display: flex !important; align-items: center !important; gap: .45rem !important; width: 100% !important;
+    font-size: .74rem; color: var(--ev-text-muted); white-space: nowrap; margin: 0;
+  }
   .ev-table-wrapper .dataTables_length select,
   .ev-table-wrapper .dataTables_filter input {
-    display: inline-block;
-    width: auto;
-    padding: .45rem .7rem;
-    border: 1px solid var(--ev-border);
-    border-radius: 10px;
-    font-size: .85rem;
-    background: #fff;
-    color: var(--ev-text);
-    margin: 0 0 0 .35rem !important;
+    flex: 1 1 auto !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: .25rem .6rem !important;
+    border: 1px solid var(--ev-border) !important;
+    border-radius: 8px !important;
+    font-size: .78rem !important;
+    background: #fff !important;
+    color: var(--ev-text) !important;
+    margin: 0 !important;
   }
-  .ev-table-wrapper .dataTables_filter input { width: 100% !important; margin: .35rem 0 0 0 !important; }
   .ev-table-wrapper .dataTables_filter input:focus,
   .ev-table-wrapper .dataTables_length select:focus {
     border-color: var(--ev-primary);
@@ -571,22 +603,68 @@
 
   /* Hide actual table on mobile, render premium cards instead */
   #productTable { display: none !important; }
-  .ev-cards { display: block; padding: .5rem .6rem 1rem; }
+  .ev-cards { display: block; padding: .25rem 0 .5rem; }
+
+  /* Tab 2 (#expenseHeadsTable) -> Mobile Box Cards */
+  #expenseHeadsTable,
+  #expenseHeadsTable thead,
+  #expenseHeadsTable tbody { display: block !important; width: 100% !important; }
+  #expenseHeadsTable thead { display: none !important; }
+  #expenseHeadsTable tbody tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: .35rem .55rem;
+    background: #fff;
+    border: 1px solid var(--ev-border);
+    border-radius: 12px;
+    padding: .65rem .75rem;
+    margin-bottom: .55rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  #expenseHeadsTable tbody td {
+    display: flex !important;
+    align-items: center;
+    border: none !important;
+    padding: 0 !important;
+    min-width: 0;
+    white-space: normal !important;
+    word-break: break-word;
+    font-size: .74rem;
+  }
+  #expenseHeadsTable tbody td:nth-child(1) {
+    order: 0; grid-column: 1; justify-self: start; width: fit-content;
+    background: #eef4ff; color: #2b5bb3 !important; border-radius: 6px; padding: .08rem .45rem !important; font-size: .64rem;
+  }
+  #expenseHeadsTable tbody td:nth-child(6) { order: 0; grid-column: 2; justify-self: end; }
+  #expenseHeadsTable tbody td:nth-child(2) { order: 1; grid-column: 1 / -1; }
+  #expenseHeadsTable tbody td:nth-child(3) { order: 2; grid-column: 1 / -1; }
+  #expenseHeadsTable tbody td:nth-child(4) { order: 3; }
+  #expenseHeadsTable tbody td:nth-child(5) { order: 4; justify-content: flex-end; }
+  #expenseHeadsTable tbody td:nth-child(7) {
+    order: 5; grid-column: 1 / -1;
+    border-top: 1px dashed #e2e8f0 !important;
+    padding-top: .45rem !important;
+    margin-top: .15rem;
+    justify-content: flex-end;
+  }
+  #expenseHeadsTable tbody td:nth-child(7) .btn { min-height: 32px !important; padding: .22rem .55rem !important; font-size: .72rem !important; }
+  #expenseHeadsTable tbody td[colspan],
+  #expenseHeadsTable tbody td.dataTables_empty { grid-column: 1 / -1 !important; justify-content: center !important; padding: 1.5rem .5rem !important; }
 
   /* Pagination */
-  .ev-table-wrapper .dataTables_info { text-align: center; font-size: .72rem; padding: 1rem 0 .35rem; }
-  .ev-table-wrapper .pagination { flex-wrap: wrap; justify-content: center; gap: .25rem; }
+  .ev-table-wrapper .dataTables_info { text-align: center; font-size: .68rem; padding: .45rem 0 .25rem; }
+  .ev-table-wrapper .pagination { flex-wrap: wrap; justify-content: center; gap: .2rem; margin: .25rem 0 0 !important; }
   .ev-table-wrapper .page-item { margin: 0; }
   .ev-table-wrapper .page-link {
-    min-width: 34px;
-    height: 34px;
+    min-width: 28px;
+    height: 28px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 .5rem;
-    font-size: .75rem;
+    padding: 0 .4rem;
+    font-size: .7rem;
     border: 1px solid var(--ev-border);
-    border-radius: 8px;
+    border-radius: 6px;
     color: var(--ev-text-sec);
     background: #fff;
   }
@@ -597,13 +675,42 @@
   }
 }
 
-/* Modal polish on small screens */
-@media (max-width: 575.98px) {
+/* Modal polish & scrolling on small screens */
+@media (max-width: 767.98px) {
+  .ev-modal .modal-dialog {
+    margin: .5rem !important;
+    max-width: calc(100% - 1rem) !important;
+    max-height: calc(100dvh - 1rem) !important;
+  }
+  .ev-modal .modal-content {
+    max-height: calc(100dvh - 1rem) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+  }
+  .ev-modal .modal-header {
+    padding: .7rem .85rem !important;
+    flex-shrink: 0 !important;
+  }
   .ev-modal .modal-body,
-  .ev-modal form.p-4 { padding: 1rem !important; }
-  .ev-modal .modal-dialog { margin: .5rem; }
-  .ev-modal .modal-title { font-size: 1rem; }
-  .ev-modal [class*="col-"] { margin-bottom: .5rem; }
+  .ev-modal form.p-4,
+  .ev-modal #expenseForm {
+    padding: .75rem .85rem !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex: 1 1 auto !important;
+  }
+  .ev-modal .modal-title { font-size: .95rem !important; }
+  .ev-modal .row.g-3 { --bs-gutter-x: .5rem; --bs-gutter-y: .45rem; }
+  .ev-modal .row.g-2 { --bs-gutter-x: .45rem; --bs-gutter-y: .4rem; }
+  .ev-modal .ev-label { font-size: .62rem !important; margin-bottom: .18rem !important; }
+  .ev-modal .ev-input,
+  .ev-modal .form-control,
+  .ev-modal .form-select { min-height: 36px !important; height: 36px !important; font-size: .8rem !important; padding: .28rem .55rem !important; border-radius: 8px !important; }
+  .ev-modal .btn { min-height: 34px !important; font-size: .78rem !important; }
+  .ev-modal .ev-row-btn { width: 34px !important; height: 34px !important; }
+  .ev-modal #modalTotalAmount { font-size: .95rem !important; }
 }
 
 @media (max-width: 399.98px) {
@@ -1059,15 +1166,15 @@
         @csrf
         <input type="hidden" name="evid" value="{{ $nextRvid ?? 'EVID-001' }}">
         <div class="row g-3 mb-3">
-          <div class="col-md-4">
+          <div class="col-6 col-md-4">
             <label class="ev-label">EVID</label>
             <input type="text" class="ev-input" value="{{ $nextRvid ?? 'EVID-001' }}" readonly style="background:#f8fafc;font-weight:600;">
           </div>
-          <div class="col-md-4">
+          <div class="col-6 col-md-4">
             <label class="ev-label">Date</label>
             <input type="date" name="date" class="ev-input" value="{{ date('Y-m-d') }}" required>
           </div>
-          <div class="col-md-4">
+          <div class="col-12 col-md-4">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <label class="ev-label mb-0">Expense Head</label>
               <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addExpenseHeadModal">
@@ -1098,10 +1205,10 @@
 
         <div id="modalExpenseRows">
           <div class="row g-2 mb-2 expense-row align-items-center">
-            <div class="col-md-5">
+            <div class="col-12 col-md-5">
               <input type="text" name="remarks[]" class="ev-input" placeholder="Remark / Description" required>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <select name="row_account_id[]" class="ev-input row-account-select" required>
                 <option value="">Select Account (Paid From)</option>
                 @foreach($accounts ?? [] as $acc)
@@ -1109,10 +1216,10 @@
                 @endforeach
               </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-7 col-md-2">
               <input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="0.00" required>
             </div>
-            <div class="col-md-2 d-flex align-items-center justify-content-center gap-2">
+            <div class="col-5 col-md-2 d-flex align-items-center justify-content-end justify-content-md-center gap-2">
               <button type="button" class="ev-row-btn ev-row-btn-add add-expense-row" title="Add Row">
                 <i class="bi bi-plus-lg"></i>
               </button>
@@ -1294,7 +1401,7 @@ $(document).ready(function() {
                 + '<span class="evc-inv">' + esc(vno) + '</span>'
                 + '<span class="evc-sub"><i class="bi bi-folder2-open"></i>' + esc(head) + '</span>'
                 + '</div>'
-                + '<span class="evc-id">#' + esc(id) + '</span>'
+                + '<span class="evc-id">' + esc(id) + '</span>'
                 + '</div>'
                 + '<div class="evc-meta">'
                 + '<span><i class="bi bi-wallet2"></i>' + esc(party) + '</span>'
@@ -1324,17 +1431,17 @@ $(document).ready(function() {
     // Add Expense Row
     $(document).on('click', '.add-expense-row', function() {
         var row = '<div class="row g-2 mb-2 expense-row align-items-center">\
-            <div class="col-md-5">\
+            <div class="col-12 col-md-5">\
                 <input type="text" name="remarks[]" class="ev-input" placeholder="Remark / Description" required>\
             </div>\
-            <div class="col-md-3">\
+            <div class="col-12 col-md-3">\
                 <select name="row_account_id[]" class="ev-input row-account-select" required>\
                     <option value="">Select Account (Paid From)</option>' + accountOptionsHtml + '</select>\
             </div>\
-            <div class="col-md-2">\
+            <div class="col-7 col-md-2">\
                 <input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="0.00" required>\
             </div>\
-            <div class="col-md-2 d-flex align-items-center justify-content-center gap-2">\
+            <div class="col-5 col-md-2 d-flex align-items-center justify-content-end justify-content-md-center gap-2">\
                 <button type="button" class="ev-row-btn ev-row-btn-add add-expense-row" title="Add Row"><i class="bi bi-plus-lg"></i></button>\
                 <button type="button" class="ev-row-btn ev-row-btn-remove remove-expense-row" title="Remove Row"><i class="bi bi-dash-lg"></i></button>\
             </div>\

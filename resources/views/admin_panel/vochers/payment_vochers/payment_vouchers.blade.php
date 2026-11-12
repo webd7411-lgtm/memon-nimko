@@ -388,11 +388,18 @@ table.pvf-table tfoot th {
 }
 
 @media (max-width: 991.98px) {
+    body, html { overflow-x: hidden !important; }
+    .pvf-page { overflow-x: hidden !important; max-width: 100% !important; padding-bottom: 1.5rem; }
+    .pvf-page > .container-fluid { padding: 0.6rem 0.65rem 1.25rem !important; }
+    .pvf-card .input-group { flex-wrap: nowrap !important; width: 100% !important; }
+    .pvf-card .input-group > .pvf-input { flex: 1 1 0% !important; width: 1% !important; min-width: 0 !important; }
+    .pvf-card .input-group > .input-group-text { padding: 0.3rem 0.55rem !important; font-size: 0.78rem !important; min-height: 36px !important; height: 36px !important; }
+
     .pvf-table-container {
         border: none !important;
         background: transparent !important;
         overflow: visible !important;
-        margin-bottom: 1.25rem !important;
+        margin-bottom: 0.85rem !important;
     }
     table.pvf-table {
         min-width: 0 !important;
@@ -406,19 +413,19 @@ table.pvf-table tfoot th {
     table.pvf-table tbody {
         display: flex !important;
         flex-direction: column !important;
-        gap: 1.15rem !important;
+        gap: 0.65rem !important;
         width: 100% !important;
     }
     table.pvf-table tbody tr {
         display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 0.75rem 0.85rem !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.45rem 0.55rem !important;
         background: #ffffff !important;
-        border: 1.5px solid #e2e8f0 !important;
-        border-left: 4.5px solid var(--pvf-primary) !important;
-        border-radius: 14px !important;
-        padding: 1.1rem !important;
-        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06) !important;
+        border: 1px solid #e2e8f0 !important;
+        border-left: 4px solid var(--pvf-primary) !important;
+        border-radius: 12px !important;
+        padding: 0.65rem 0.75rem !important;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
         position: relative !important;
         width: 100% !important;
         box-sizing: border-box !important;
@@ -438,159 +445,196 @@ table.pvf-table tfoot th {
     table.pvf-table tbody td:nth-child(1) {
         grid-column: 1 / -1 !important;
     }
-    /* Reference & Code */
+    /* Reference spans full width */
     table.pvf-table tbody td:nth-child(2) {
-        grid-column: 1 / 2 !important;
+        grid-column: 1 / -1 !important;
     }
-    table.pvf-table tbody td:nth-child(5) {
-        grid-column: 2 / 3 !important;
-    }
-    /* Party Type & Beneficiary Party */
+    /* Account Head & Disbursement Account */
     table.pvf-table tbody td:nth-child(3) {
         grid-column: 1 / 2 !important;
     }
     table.pvf-table tbody td:nth-child(4) {
         grid-column: 2 / 3 !important;
     }
-    /* Discount & Amount */
-    table.pvf-table tbody td:nth-child(6) {
+    /* Discount & Amount (PKR) */
+    table.pvf-table tbody td:nth-child(5) {
         grid-column: 1 / 2 !important;
     }
-    table.pvf-table tbody td:nth-child(7) {
+    table.pvf-table tbody td:nth-child(6) {
         grid-column: 2 / 3 !important;
     }
     /* Delete button full width */
-    table.pvf-table tbody td:nth-child(8) {
+    table.pvf-table tbody td:nth-child(7) {
         grid-column: 1 / -1 !important;
-        padding-top: 0.5rem !important;
-        margin-top: 0.35rem !important;
+        padding-top: 0.45rem !important;
+        margin-top: 0.15rem !important;
         border-top: 1px dashed #e2e8f0 !important;
     }
     /* Labels on mobile */
     table.pvf-table tbody td::before {
         content: attr(data-label);
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.35px;
         color: #64748b;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.18rem;
         display: block;
     }
-    table.pvf-table tbody td:nth-child(8)::before {
+    table.pvf-table tbody td:nth-child(7)::before {
         display: none !important;
     }
-    table.pvf-table tbody td:nth-child(8) .removeRow {
+    table.pvf-table tbody td:nth-child(7) .removeRow {
         width: 100% !important;
-        border-radius: 9px !important;
-        padding: 0.5rem 0.75rem !important;
+        min-height: 34px !important;
+        border-radius: 8px !important;
+        padding: 0.3rem 0.65rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 0.4rem !important;
-        font-size: 0.82rem !important;
+        gap: 0.35rem !important;
+        font-size: 0.76rem !important;
         font-weight: 600 !important;
         background: #fef2f2 !important;
         color: #dc2626 !important;
         border: 1px solid #fecaca !important;
         transition: all 0.2s ease !important;
     }
-    table.pvf-table tbody td:nth-child(8) .removeRow::after {
-        content: " Delete Transaction Row";
+    table.pvf-table tbody td:nth-child(7) .removeRow::after {
+        content: " Delete Row";
     }
 
     .pvf-hero {
-        padding: 1.25rem 1.15rem;
+        padding: 0.85rem;
+        border-radius: 14px;
         flex-direction: column;
         align-items: stretch;
-        gap: 1rem;
+        gap: 0.65rem;
+        margin-bottom: 0.75rem;
     }
     .pvf-hero-left {
-        gap: 0.75rem;
+        gap: 0.6rem;
     }
     .pvf-hero-icon {
-        width: 44px;
-        height: 44px;
-        font-size: 1.3rem;
-        border-radius: 12px;
+        width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
+        border-radius: 10px;
     }
     .pvf-hero-title h2 {
-        font-size: 1.35rem;
+        font-size: 1.05rem;
+    }
+    .pvf-hero-badge {
+        font-size: 0.62rem;
     }
     .pvf-hero-actions {
         width: 100%;
-        display: flex;
-        gap: 0.5rem;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
     }
     .pvf-btn-glass {
-        flex: 1;
+        width: 100%;
+        min-height: 34px;
         justify-content: center;
         text-align: center;
-        padding: 0.55rem 0.75rem;
-        font-size: 0.8rem;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.75rem;
+        border-radius: 9px;
     }
     .pvf-card {
-        padding: 1.2rem;
+        padding: 0.75rem;
         border-radius: 14px;
+    }
+    .pvf-section-title {
+        font-size: 0.86rem;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.65rem;
+    }
+    .pvf-section-title .pvf-btn-add-row {
+        min-height: 32px;
+        padding: 0.28rem 0.65rem;
+        font-size: 0.74rem;
     }
 }
 
 @media (max-width: 575.98px) {
     table.pvf-table tbody tr {
-        grid-template-columns: 1fr 1fr !important;
-        padding: 0.85rem !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        padding: 0.65rem !important;
     }
-    table.pvf-table tbody td:nth-child(3),
     table.pvf-table tbody td:nth-child(4) {
+        grid-column: 1 / -1 !important;
+    }
+    table.pvf-table tbody td:nth-child(3) {
         grid-column: 1 / -1 !important;
     }
 }
 
 @media (max-width: 767.98px) {
+    .pvf-label {
+        font-size: 0.62rem !important;
+        margin-bottom: 0.2rem !important;
+    }
     .pvf-input {
-        min-height: 42px;
-        font-size: 0.95rem;
+        min-height: 36px !important;
+        height: 36px !important;
+        font-size: 0.8rem !important;
+        padding: 0.28rem 0.55rem !important;
+        border-radius: 8px !important;
     }
     .pvf-card {
-        padding: 1rem;
+        padding: 0.75rem !important;
+    }
+    .pvf-card .row.g-3 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
     }
     .pvf-bottom-bar {
         flex-direction: column !important;
         align-items: stretch !important;
-        gap: 1.25rem !important;
+        gap: 0.65rem !important;
+        padding-top: 0.75rem !important;
     }
     .pvf-bottom-bar-left {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 0.5rem !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.45rem !important;
     }
-    .pvf-bottom-bar-left .pvf-btn-add-row {
+    .pvf-bottom-bar-left .pvf-btn-add-row,
+    .pvf-bottom-bar-left .pvf-cancel-btn {
         width: 100%;
         justify-content: center;
-        min-height: 44px;
+        min-height: 36px !important;
+        font-size: 0.78rem !important;
+        padding: 0.35rem 0.55rem !important;
     }
     .pvf-bottom-bar-right {
         flex-direction: column !important;
         align-items: stretch !important;
-        gap: 0.75rem !important;
+        gap: 0.55rem !important;
         width: 100%;
     }
     .pvf-total-box {
         width: 100%;
         display: flex;
         justify-content: space-between;
-        padding: 0.85rem 1.15rem;
+        align-items: center;
+        padding: 0.55rem 0.85rem;
+        border-radius: 10px;
     }
     .pvf-submit-btn {
         width: 100%;
         justify-content: center;
-        min-height: 46px;
-        font-size: 1rem;
+        min-height: 40px !important;
+        font-size: 0.88rem !important;
+        border-radius: 10px !important;
     }
     .pvf-cancel-btn {
         width: 100%;
         justify-content: center;
-        min-height: 44px;
+        min-height: 36px !important;
     }
 }
 </style>
@@ -648,7 +692,7 @@ table.pvf-table tfoot th {
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-12 col-sm-6 col-md-2">
+                    <div class="col-6 col-md-2">
                         <label class="pvf-label">PVID No</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-hash"></i></span>
@@ -656,17 +700,17 @@ table.pvf-table tfoot th {
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-2">
+                    <div class="col-6 col-md-2">
                         <label class="pvf-label">Payment Date</label>
                         <input type="date" name="receipt_date" class="pvf-input" value="{{ now()->toDateString() }}" required>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-2">
+                    <div class="col-6 col-md-2">
                         <label class="pvf-label">Entry Date</label>
                         <input type="date" name="entry_date" class="pvf-input" value="{{ now()->toDateString() }}">
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-3">
+                    <div class="col-6 col-md-3">
                         <label class="pvf-label">Payment Type</label>
                         <select name="vendor_type" class="pvf-input" required>
                             <option value="">Select Payment Type</option>
@@ -684,14 +728,14 @@ table.pvf-table tfoot th {
                         </select>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-3">
+                    <div class="col-6 col-md-3">
                         <label class="pvf-label">Party / Account Title</label>
                         <select name="vendor_id" class="pvf-input" required>
                             <option disabled selected>Select Type First</option>
                         </select>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-3">
+                    <div class="col-6 col-md-3">
                         <label class="pvf-label">Phone / Account Code</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-telephone"></i></span>
@@ -699,7 +743,7 @@ table.pvf-table tfoot th {
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-9">
+                    <div class="col-12 col-md-9">
                         <label class="pvf-label">General Remarks / Notes</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-chat-left-text"></i></span>

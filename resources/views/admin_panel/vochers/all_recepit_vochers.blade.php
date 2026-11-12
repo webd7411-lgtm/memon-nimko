@@ -393,76 +393,135 @@ table#voucherTable tbody tr:hover td {
 
 /* ══════════ MOBILE CARD VIEW & RESPONSIVENESS ══════════ */
 @media (max-width: 991.98px) {
+    body, html { overflow-x: hidden !important; }
     .rv-page {
-        padding-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        overflow-x: hidden !important;
+        max-width: 100% !important;
+    }
+    .rv-page > .container-fluid {
+        padding: 0.6rem 0.65rem 1.25rem !important;
     }
     .rv-hero {
-        padding: 1.25rem 1.15rem;
+        padding: 0.85rem;
+        border-radius: 14px;
         flex-direction: column;
         align-items: stretch;
-        gap: 1rem;
+        gap: 0.65rem;
+        margin-bottom: 0.75rem;
     }
     .rv-hero-left {
-        gap: 0.75rem;
+        gap: 0.6rem;
     }
     .rv-hero-icon {
-        width: 44px;
-        height: 44px;
-        font-size: 1.3rem;
-        border-radius: 12px;
+        width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
+        border-radius: 10px;
     }
     .rv-hero-title h2 {
-        font-size: 1.3rem;
+        font-size: 1.05rem;
     }
     .rv-hero-actions {
         width: 100%;
     }
     .rv-btn-create {
         width: 100%;
+        min-height: 36px;
         justify-content: center;
-        padding: 0.75rem;
+        padding: 0.42rem 0.75rem;
+        font-size: 0.8rem;
+        border-radius: 10px;
     }
     .rv-kpi-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     .rv-kpi-card {
-        padding: 1rem;
+        padding: 0.65rem 0.75rem;
+        border-radius: 12px;
     }
     .rv-kpi-info h6 {
-        font-size: 0.7rem;
+        font-size: 0.62rem;
     }
     .rv-kpi-info .rv-kpi-val {
-        font-size: 1.15rem;
+        font-size: 0.96rem;
+        word-break: break-word;
     }
     .rv-kpi-icon {
-        width: 38px;
-        height: 38px;
-        font-size: 1.15rem;
+        width: 34px;
+        height: 34px;
+        font-size: 0.95rem;
+        border-radius: 9px;
     }
     .rv-filter-bar {
-        padding: 1rem;
+        padding: 0.65rem 0.75rem;
+        border-radius: 12px;
         flex-direction: column;
         align-items: stretch;
-        gap: 0.75rem;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     .rv-filter-group {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.65rem;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
     }
     .rv-filter-group > div {
         width: 100%;
+        min-width: 0;
+    }
+    .rv-filter-group > div:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
     .rv-filter-control {
         width: 100%;
-        min-height: 42px;
+        min-height: 36px !important;
+        height: 36px !important;
+        font-size: 0.78rem !important;
+        padding: 0.25rem 0.55rem !important;
+        border-radius: 8px !important;
+    }
+
+    /* DataTables controls */
+    .rv-table-wrap .dataTables_wrapper .dataTables_length,
+    .rv-table-wrap .dataTables_wrapper .dataTables_filter {
+        width: 100% !important;
+        text-align: left !important;
+        margin-bottom: 0.45rem !important;
+    }
+    .rv-table-wrap .dataTables_wrapper .dataTables_length label,
+    .rv-table-wrap .dataTables_wrapper .dataTables_filter label {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.45rem !important;
+        width: 100% !important;
+        font-size: 0.74rem !important;
+    }
+    .rv-table-wrap .dataTables_wrapper .dataTables_length select,
+    .rv-table-wrap .dataTables_wrapper .dataTables_filter input {
+        flex: 1 1 auto !important;
+        min-height: 34px !important;
+        height: 34px !important;
+        font-size: 0.78rem !important;
+        border-radius: 8px !important;
+        padding: 0.25rem 0.55rem !important;
+        margin: 0 !important;
+    }
+    .rv-table-wrap .dataTables_info { font-size: 0.68rem !important; text-align: center !important; }
+    .rv-table-wrap .dataTables_paginate { text-align: center !important; padding-top: 0.4rem !important; }
+    .rv-table-wrap .dataTables_paginate .paginate_button {
+        min-width: 28px !important;
+        height: 28px !important;
+        padding: 0 0.35rem !important;
+        font-size: 0.7rem !important;
+        border-radius: 6px !important;
     }
 
     /* Transform Table to Clean Responsive Cards on Mobile */
     .rv-table-wrap {
-        padding: 0.75rem !important;
+        padding: 0.55rem !important;
         overflow: visible !important;
     }
     table#voucherTable {
@@ -476,13 +535,13 @@ table#voucherTable tbody tr:hover td {
     table#voucherTable tbody {
         display: flex !important;
         flex-direction: column !important;
-        gap: 0.85rem !important;
+        gap: 0.55rem !important;
     }
     table#voucherTable tbody tr {
         display: block !important;
         background: #ffffff !important;
-        border: 1.5px solid #e2e8f0 !important;
-        border-radius: 14px !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
         padding: 1rem !important;
         position: relative !important;
@@ -544,20 +603,23 @@ table#voucherTable tbody tr:hover td {
     }
     table#voucherTable tbody td[data-label="Action"] .rv-action-print {
         width: 100%;
-        min-height: 40px;
-        border-radius: 10px;
+        min-height: 34px;
+        border-radius: 9px;
         font-weight: 700;
-        gap: 0.5rem;
+        gap: 0.45rem;
     }
     table#voucherTable tbody td[data-label="Action"] .rv-action-print::after {
         content: ' Print Voucher';
-        font-size: 0.85rem;
+        font-size: 0.78rem;
     }
 }
 
 @media (max-width: 575.98px) {
     .rv-kpi-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .rv-kpi-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
 }
 </style>

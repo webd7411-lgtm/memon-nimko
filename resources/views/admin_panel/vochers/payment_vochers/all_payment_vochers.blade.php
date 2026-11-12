@@ -382,76 +382,135 @@ table#voucherTable tbody tr:hover td {
 
 /* ══════════ MOBILE CARD VIEW & RESPONSIVENESS ══════════ */
 @media (max-width: 991.98px) {
+    body, html { overflow-x: hidden !important; }
     .pv-page {
-        padding-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        overflow-x: hidden !important;
+        max-width: 100% !important;
+    }
+    .pv-page > .container-fluid {
+        padding: 0.6rem 0.65rem 1.25rem !important;
     }
     .pv-hero {
-        padding: 1.25rem 1.15rem;
+        padding: 0.85rem;
+        border-radius: 14px;
         flex-direction: column;
         align-items: stretch;
-        gap: 1rem;
+        gap: 0.65rem;
+        margin-bottom: 0.75rem;
     }
     .pv-hero-left {
-        gap: 0.75rem;
+        gap: 0.6rem;
     }
     .pv-hero-icon {
-        width: 44px;
-        height: 44px;
-        font-size: 1.3rem;
-        border-radius: 12px;
+        width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
+        border-radius: 10px;
     }
     .pv-hero-title h2 {
-        font-size: 1.3rem;
+        font-size: 1.05rem;
     }
     .pv-hero-actions {
         width: 100%;
     }
     .pv-btn-create {
         width: 100%;
+        min-height: 36px;
         justify-content: center;
-        padding: 0.75rem;
+        padding: 0.42rem 0.75rem;
+        font-size: 0.8rem;
+        border-radius: 10px;
     }
     .pv-kpi-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     .pv-kpi-card {
-        padding: 1rem;
+        padding: 0.65rem 0.75rem;
+        border-radius: 12px;
     }
     .pv-kpi-info h6 {
-        font-size: 0.7rem;
+        font-size: 0.62rem;
     }
     .pv-kpi-info .pv-kpi-val {
-        font-size: 1.15rem;
+        font-size: 0.96rem;
+        word-break: break-word;
     }
     .pv-kpi-icon {
-        width: 38px;
-        height: 38px;
-        font-size: 1.15rem;
+        width: 34px;
+        height: 34px;
+        font-size: 0.95rem;
+        border-radius: 9px;
     }
     .pv-filter-bar {
-        padding: 1rem;
+        padding: 0.65rem 0.75rem;
+        border-radius: 12px;
         flex-direction: column;
         align-items: stretch;
-        gap: 0.75rem;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     .pv-filter-group {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.65rem;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
     }
     .pv-filter-group > div {
         width: 100%;
+        min-width: 0;
+    }
+    .pv-filter-group > div:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
     .pv-filter-control {
         width: 100%;
-        min-height: 42px;
+        min-height: 36px !important;
+        height: 36px !important;
+        font-size: 0.78rem !important;
+        padding: 0.25rem 0.55rem !important;
+        border-radius: 8px !important;
+    }
+
+    /* DataTables controls */
+    .pv-table-wrap .dataTables_wrapper .dataTables_length,
+    .pv-table-wrap .dataTables_wrapper .dataTables_filter {
+        width: 100% !important;
+        text-align: left !important;
+        margin-bottom: 0.45rem !important;
+    }
+    .pv-table-wrap .dataTables_wrapper .dataTables_length label,
+    .pv-table-wrap .dataTables_wrapper .dataTables_filter label {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.45rem !important;
+        width: 100% !important;
+        font-size: 0.74rem !important;
+    }
+    .pv-table-wrap .dataTables_wrapper .dataTables_length select,
+    .pv-table-wrap .dataTables_wrapper .dataTables_filter input {
+        flex: 1 1 auto !important;
+        min-height: 34px !important;
+        height: 34px !important;
+        font-size: 0.78rem !important;
+        border-radius: 8px !important;
+        padding: 0.25rem 0.55rem !important;
+        margin: 0 !important;
+    }
+    .pv-table-wrap .dataTables_info { font-size: 0.68rem !important; text-align: center !important; }
+    .pv-table-wrap .dataTables_paginate { text-align: center !important; padding-top: 0.4rem !important; }
+    .pv-table-wrap .dataTables_paginate .paginate_button {
+        min-width: 28px !important;
+        height: 28px !important;
+        padding: 0 0.35rem !important;
+        font-size: 0.7rem !important;
+        border-radius: 6px !important;
     }
 
     /* Transform Table to Clean Responsive Cards on Mobile */
     .pv-table-wrap {
-        padding: 0.75rem !important;
+        padding: 0.55rem !important;
         overflow: visible !important;
     }
     table#voucherTable {
@@ -465,14 +524,14 @@ table#voucherTable tbody tr:hover td {
     table#voucherTable tbody {
         display: flex !important;
         flex-direction: column !important;
-        gap: 0.85rem !important;
+        gap: 0.55rem !important;
     }
     table#voucherTable tbody tr {
         display: block !important;
         background: #ffffff !important;
-        border: 1.5px solid #e2e8f0 !important;
-        border-radius: 14px !important;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
         padding: 1rem !important;
         position: relative !important;
         overflow: hidden !important;
@@ -533,20 +592,23 @@ table#voucherTable tbody tr:hover td {
     }
     table#voucherTable tbody td[data-label="Action"] .pv-action-print {
         width: 100%;
-        min-height: 40px;
-        border-radius: 10px;
+        min-height: 34px;
+        border-radius: 9px;
         font-weight: 700;
-        gap: 0.5rem;
+        gap: 0.45rem;
     }
     table#voucherTable tbody td[data-label="Action"] .pv-action-print::after {
         content: ' Print Voucher';
-        font-size: 0.85rem;
+        font-size: 0.78rem;
     }
 }
 
 @media (max-width: 575.98px) {
     .pv-kpi-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .pv-kpi-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
 }
 </style>

@@ -239,6 +239,266 @@
     .fcc-container { padding: 0 !important; background: #ffffff !important; }
     .fcc-hero { background: #0f766e !important; color: #fff !important; }
 }
+
+/* Mobile App-Style Responsive Rules */
+@media (max-width: 767.98px) {
+    html, body { overflow-x: hidden !important; max-width: 100% !important; }
+    .fcc-container {
+        padding: 0.65rem 0.65rem 1.75rem !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .fcc-hero {
+        padding: 0.85rem 0.9rem !important;
+        border-radius: 14px !important;
+        margin-bottom: 0.75rem !important;
+        gap: 0.7rem !important;
+    }
+    .fcc-hero h3 { font-size: 1.05rem !important; line-height: 1.25; }
+    .fcc-hero p { font-size: 0.74rem !important; line-height: 1.35; margin-top: 0.2rem; }
+    .fcc-hero-actions {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.4rem !important;
+        width: 100%;
+    }
+    .fcc-hero-actions .fcc-hero-btn,
+    .fcc-hero-actions .btn {
+        width: 100% !important;
+        min-height: 34px !important;
+        padding: 0.35rem 0.5rem !important;
+        font-size: 0.69rem !important;
+        border-radius: 9px !important;
+        justify-content: center !important;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .fcc-filter-card {
+        padding: 0.75rem 0.8rem !important;
+        border-radius: 12px !important;
+        margin-bottom: 0.75rem !important;
+    }
+    .fcc-filter-card .form-select,
+    .fcc-filter-card .form-control {
+        min-height: 36px !important;
+        font-size: 0.82rem !important;
+    }
+
+    .fcc-compare-strip {
+        padding: 0.7rem 0.8rem !important;
+        border-radius: 12px !important;
+        margin-bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    .fcc-compare-strip > div:last-child {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.4rem !important;
+    }
+
+    .fcc-kpi-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.55rem !important;
+        margin: 0 0 0.85rem 0 !important;
+    }
+    .fcc-kpi-grid > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        flex: none !important;
+    }
+    .fcc-kpi-grid > div:last-child {
+        grid-column: 1 / -1;
+    }
+    .fcc-kpi-card {
+        padding: 0.75rem 0.8rem !important;
+        border-radius: 12px !important;
+    }
+    .fcc-kpi-title { font-size: 0.64rem !important; margin-bottom: 0.25rem !important; }
+    .fcc-kpi-value { font-size: 1.05rem !important; margin-bottom: 0.3rem !important; word-break: break-word; }
+    .fcc-kpi-card .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 3px;
+        margin-top: 0.35rem !important;
+    }
+    .fcc-delta-pill {
+        font-size: 0.64rem !important;
+        padding: 2px 6px !important;
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.25;
+    }
+
+    .fcc-panel {
+        padding: 0.85rem 0.8rem !important;
+        border-radius: 13px !important;
+        margin-bottom: 0.85rem !important;
+    }
+    .fcc-panel-hdr {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.45rem;
+        padding-bottom: 0.65rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    .fcc-panel-hdr > .text-end {
+        text-align: left !important;
+        display: flex;
+        align-items: baseline;
+        gap: 0.45rem;
+    }
+    .fcc-panel-title { font-size: 0.92rem !important; }
+    .fcc-capital-actions {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.4rem !important;
+    }
+    .fcc-capital-actions .btn {
+        width: 100%;
+        min-height: 32px !important;
+        font-size: 0.68rem !important;
+        padding: 0.3rem 0.45rem !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    .fcc-capital-cards h4 { font-size: 1rem !important; }
+    .fcc-capital-cards .p-3 { padding: 0.65rem 0.75rem !important; }
+
+    .fcc-row-item {
+        padding: 0.55rem 0.2rem !important;
+        font-size: 0.79rem !important;
+        gap: 0.5rem;
+    }
+    .fcc-row-label {
+        flex: 1 1 auto;
+        min-width: 0;
+        line-height: 1.35;
+    }
+    .bs-row-badge {
+        margin-left: 0 !important;
+        margin-top: 3px;
+        font-size: 0.65rem !important;
+        padding: 0.14rem 0.42rem !important;
+    }
+    .fcc-row-val {
+        flex-shrink: 0;
+        text-align: right;
+        white-space: nowrap;
+        font-size: 0.8rem !important;
+    }
+
+    /* Modals: zero horizontal scroll + boxed mobile cards */
+    .modal .modal-dialog {
+        margin: 0.5rem auto !important;
+        max-width: calc(100vw - 1rem) !important;
+    }
+    .modal .modal-header,
+    .modal .modal-footer {
+        padding: 0.7rem 0.9rem !important;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .modal .modal-header .modal-title { font-size: 0.92rem !important; }
+    .modal .modal-body { padding: 0.75rem 0.75rem !important; }
+    .modal .fcc-search-box {
+        min-height: 36px !important;
+        font-size: 0.84rem !important;
+    }
+    .modal .table-responsive {
+        overflow-x: visible !important;
+        max-height: 58vh !important;
+        overflow-y: auto !important;
+    }
+    .fcc-modal-table,
+    .fcc-modal-table thead,
+    .fcc-modal-table tbody,
+    .fcc-modal-table tr,
+    .fcc-modal-table td {
+        display: block !important;
+        width: 100% !important;
+    }
+    .fcc-modal-table thead { display: none !important; }
+    .fcc-modal-table tbody tr {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.35rem 0.55rem;
+        align-items: start;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 11px;
+        padding: 0.6rem 0.7rem;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .fcc-modal-table tbody td {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 2px 4px;
+        border: none !important;
+        padding: 0 !important;
+        text-align: left !important;
+        min-width: 0;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        font-size: 0.74rem !important;
+        line-height: 1.35;
+    }
+    .fcc-modal-table tbody td::before {
+        content: attr(data-label) ":";
+        font-size: 0.58rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.35px;
+        color: #64748b;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .fcc-modal-table tbody td:first-child {
+        order: 0;
+        grid-column: 1 / -1;
+        justify-self: start;
+        width: fit-content !important;
+        background: #eff6ff;
+        color: #1d4ed8 !important;
+        border-radius: 6px;
+        padding: 0.08rem 0.42rem !important;
+        font-weight: 700 !important;
+        font-size: 0.64rem !important;
+        gap: 1px;
+    }
+    .fcc-modal-table tbody td:first-child::before {
+        content: "#";
+        color: #1d4ed8;
+        font-size: 0.64rem;
+    }
+    .fcc-modal-table tbody td[colspan] {
+        grid-column: 1 / -1 !important;
+        justify-content: center !important;
+        text-align: center !important;
+        background: transparent !important;
+        color: #64748b !important;
+        padding: 0.75rem 0.25rem !important;
+        width: 100% !important;
+    }
+    .fcc-modal-table tbody td[colspan]::before { content: none !important; }
+    .fcc-modal-table tbody td a.btn {
+        min-height: 30px !important;
+        padding: 0.22rem 0.6rem !important;
+        font-size: 0.72rem !important;
+    }
+}
 </style>
 
 <div class="container-fluid fcc-container">
@@ -252,7 +512,7 @@
             <h3>Financial Command Center (One-Window Control)</h3>
             <p>Track Where You Were Yesterday vs Where You Stand Today • Assets • Liabilities • P&L • Outsource Capital & Drawings</p>
         </div>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-2 flex-wrap fcc-hero-actions">
             <!-- Shortcuts to create vouchers -->
             <a href="{{ route('recepit-vochers') }}" target="_blank" class="fcc-hero-btn" title="Add Outsource Investment via Receipt Voucher">
                 <i class="fas fa-plus-circle text-success"></i> + Inward Investment (Receipt)
@@ -346,7 +606,7 @@
     </div>
 
     <!-- Top 5 Master Executive KPI Cards -->
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4 fcc-kpi-grid">
         <!-- 1. Net Worth (Owner's Equity) -->
         <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
             <div class="fcc-kpi-card" style="border-left: 4px solid #0f766e !important;">
@@ -418,7 +678,7 @@
                 </h5>
                 <span class="text-muted small">Bahir se kitni investment aayi (+ Inflow) aur business se kitna personal nikaala (- Drawings/Outflow)</span>
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 fcc-capital-actions">
                 <a href="{{ route('recepit-vochers') }}" target="_blank" class="btn btn-sm btn-outline-purple bg-white rounded-pill px-3 fw-semibold border" style="color: #7c3aed;">
                     <i class="fas fa-plus-circle me-1"></i> New Capital Inflow (RV)
                 </a>
@@ -428,8 +688,8 @@
             </div>
         </div>
 
-        <div class="row g-3">
-            <div class="col-12 col-md-4">
+        <div class="row g-2 g-md-3 fcc-capital-cards">
+            <div class="col-6 col-md-4">
                 <div class="p-3 bg-white rounded-4 border shadow-sm">
                     <span class="text-muted small fw-bold text-uppercase d-block">Period Capital Injected (+ Inflow)</span>
                     <h4 class="fw-bold mb-1 text-success mt-1" id="equityInflowVal">Rs. 0.00</h4>
@@ -437,7 +697,7 @@
                 </div>
             </div>
 
-            <div class="col-12 col-md-4">
+            <div class="col-6 col-md-4">
                 <div class="p-3 bg-white rounded-4 border shadow-sm">
                     <span class="text-muted small fw-bold text-uppercase d-block">Period Personal Drawings (- Outflow)</span>
                     <h4 class="fw-bold mb-1 text-danger mt-1" id="equityOutflowVal">Rs. 0.00</h4>
@@ -1206,10 +1466,10 @@ function loadFinancialSnapshot() {
             var cashHtml = '';
             (cashDet.accounts || []).forEach(function(ca, idx) {
                 cashHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td class="fw-semibold text-dark">${ca.title || '-'}</td>
-                    <td><span class="badge bg-light text-muted border">${ca.code || '-'}</span></td>
-                    <td class="text-end fw-bold text-success">${formatCurrency(ca.balance)}</td>
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Account Title" class="fw-semibold text-dark">${ca.title || '-'}</td>
+                    <td data-label="Code"><span class="badge bg-light text-muted border">${ca.code || '-'}</span></td>
+                    <td data-label="Balance" class="text-end fw-bold text-success">${formatCurrency(ca.balance)}</td>
                 </tr>`;
             });
             if (!cashHtml) cashHtml = '<tr><td colspan="4" class="text-center text-muted py-3">No cash accounts found</td></tr>';
@@ -1219,14 +1479,14 @@ function loadFinancialSnapshot() {
             var bankHtml = '';
             (bs.bank_details || []).forEach(function(ba, idx) {
                 bankHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td class="fw-semibold text-dark">${ba.title || '-'}</td>
-                    <td>${ba.bank_name || '-'}</td>
-                    <td><span class="badge bg-light text-muted border">${ba.code || '-'}</span></td>
-                    <td class="text-end text-muted">${formatCurrency(ba.opening_balance)}</td>
-                    <td class="text-end text-success">+ ${formatCurrency(ba.inflow)}</td>
-                    <td class="text-end text-danger">- ${formatCurrency(ba.outflow)}</td>
-                    <td class="text-end fw-bold text-primary">${formatCurrency(ba.current_balance)}</td>
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Account" class="fw-semibold text-dark">${ba.title || '-'}</td>
+                    <td data-label="Bank">${ba.bank_name || '-'}</td>
+                    <td data-label="Code"><span class="badge bg-light text-muted border">${ba.code || '-'}</span></td>
+                    <td data-label="Opening" class="text-end text-muted">${formatCurrency(ba.opening_balance)}</td>
+                    <td data-label="Inflow" class="text-end text-success">+ ${formatCurrency(ba.inflow)}</td>
+                    <td data-label="Outflow" class="text-end text-danger">- ${formatCurrency(ba.outflow)}</td>
+                    <td data-label="Balance" class="text-end fw-bold text-primary">${formatCurrency(ba.current_balance)}</td>
                 </tr>`;
             });
             if (!bankHtml) bankHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No bank accounts configured</td></tr>';
@@ -1238,14 +1498,14 @@ function loadFinancialSnapshot() {
             var stockHtml = '';
             stockItems.forEach(function(it, idx) {
                 stockHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td class="fw-semibold text-dark">${it.name}</td>
-                    <td><span class="badge bg-light text-muted border">${it.code || '-'}</span></td>
-                    <td><span class="badge bg-secondary-subtle text-secondary">${it.category || 'General'}</span></td>
-                    <td class="text-end fw-bold">${it.qty}</td>
-                    <td>${it.unit}</td>
-                    <td class="text-end text-muted">${formatCurrency(it.unit_cost)}</td>
-                    <td class="text-end fw-bold text-warning-emphasis">${formatCurrency(it.total_val)}</td>
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Product" class="fw-semibold text-dark">${it.name}</td>
+                    <td data-label="Code"><span class="badge bg-light text-muted border">${it.code || '-'}</span></td>
+                    <td data-label="Category"><span class="badge bg-secondary-subtle text-secondary">${it.category || 'General'}</span></td>
+                    <td data-label="Qty" class="text-end fw-bold">${it.qty}</td>
+                    <td data-label="Unit">${it.unit}</td>
+                    <td data-label="Unit Cost" class="text-end text-muted">${formatCurrency(it.unit_cost)}</td>
+                    <td data-label="Valuation" class="text-end fw-bold text-warning-emphasis">${formatCurrency(it.total_val)}</td>
                 </tr>`;
             });
             if (!stockHtml) stockHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No physical finished stock recorded</td></tr>';
@@ -1258,13 +1518,13 @@ function loadFinancialSnapshot() {
             var rawHtml = '';
             rawItems.forEach(function(rm, idx) {
                 rawHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td class="fw-semibold text-dark">${rm.name}</td>
-                    <td><span class="badge bg-light text-muted border">${rm.code || '-'}</span></td>
-                    <td class="text-end fw-bold">${rm.qty}</td>
-                    <td>${rm.unit}</td>
-                    <td class="text-end text-muted">${formatCurrency(rm.unit_cost)}</td>
-                    <td class="text-end fw-bold text-info">${formatCurrency(rm.total_val)}</td>
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Material" class="fw-semibold text-dark">${rm.name}</td>
+                    <td data-label="Code"><span class="badge bg-light text-muted border">${rm.code || '-'}</span></td>
+                    <td data-label="Qty" class="text-end fw-bold">${rm.qty}</td>
+                    <td data-label="Unit">${rm.unit}</td>
+                    <td data-label="Last Cost" class="text-end text-muted">${formatCurrency(rm.unit_cost)}</td>
+                    <td data-label="Valuation" class="text-end fw-bold text-info">${formatCurrency(rm.total_val)}</td>
                 </tr>`;
             });
             if (!rawHtml) rawHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No raw materials in stock</td></tr>';
@@ -1277,11 +1537,11 @@ function loadFinancialSnapshot() {
             var custHtml = '';
             custList.forEach(function(c, idx) {
                 custHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td class="fw-semibold text-dark">${c.name}</td>
-                    <td>${c.phone || '-'}</td>
-                    <td class="text-end fw-bold text-primary">${formatCurrency(c.balance)}</td>
-                    <td class="text-center">
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Customer" class="fw-semibold text-dark">${c.name}</td>
+                    <td data-label="Phone">${c.phone || '-'}</td>
+                    <td data-label="Receivable" class="text-end fw-bold text-primary">${formatCurrency(c.balance)}</td>
+                    <td data-label="Action" class="text-center">
                         <a href="${c.ledger_url}" target="_blank" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:0.75rem;">
                             <i class="fas fa-book me-1"></i> Ledger
                         </a>
@@ -1298,13 +1558,13 @@ function loadFinancialSnapshot() {
             var distHtml = '';
             distList.forEach(function(d, idx) {
                 distHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td><span class="badge bg-light text-muted border">${d.code || '-'}</span></td>
-                    <td class="fw-semibold text-dark">${d.name}</td>
-                    <td>${d.area || '-'}</td>
-                    <td>${d.phone || '-'}</td>
-                    <td class="text-end fw-bold text-teal" style="color: #0f766e;">${formatCurrency(d.balance)}</td>
-                    <td class="text-center">
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Code"><span class="badge bg-light text-muted border">${d.code || '-'}</span></td>
+                    <td data-label="Distributor" class="fw-semibold text-dark">${d.name}</td>
+                    <td data-label="Area">${d.area || '-'}</td>
+                    <td data-label="Phone">${d.phone || '-'}</td>
+                    <td data-label="Receivable" class="text-end fw-bold text-teal" style="color: #0f766e;">${formatCurrency(d.balance)}</td>
+                    <td data-label="Action" class="text-center">
                         <a href="${d.ledger_url}" target="_blank" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size:0.75rem;">
                             <i class="fas fa-book-open me-1"></i> Ledger
                         </a>
@@ -1321,13 +1581,13 @@ function loadFinancialSnapshot() {
             var assetHtml = '';
             assetList.forEach(function(a, idx) {
                 assetHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td><span class="badge bg-light text-muted border">${a.code || '-'}</span></td>
-                    <td class="fw-semibold text-dark">${a.name}</td>
-                    <td>${a.category || '-'}</td>
-                    <td class="text-end text-muted">${formatCurrency(a.purchase_cost)}</td>
-                    <td class="text-end fw-bold text-dark">${formatCurrency(a.current_value)}</td>
-                    <td class="text-center"><span class="badge bg-success-subtle text-success">${a.status || 'Active'}</span></td>
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Code"><span class="badge bg-light text-muted border">${a.code || '-'}</span></td>
+                    <td data-label="Asset" class="fw-semibold text-dark">${a.name}</td>
+                    <td data-label="Category">${a.category || '-'}</td>
+                    <td data-label="Purchase Cost" class="text-end text-muted">${formatCurrency(a.purchase_cost)}</td>
+                    <td data-label="Book Value" class="text-end fw-bold text-dark">${formatCurrency(a.current_value)}</td>
+                    <td data-label="Status" class="text-center"><span class="badge bg-success-subtle text-success">${a.status || 'Active'}</span></td>
                 </tr>`;
             });
             if (!assetHtml) assetHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No fixed assets registered</td></tr>';
@@ -1340,11 +1600,11 @@ function loadFinancialSnapshot() {
             var vendHtml = '';
             vendList.forEach(function(v, idx) {
                 vendHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td class="fw-semibold text-dark">${v.name}</td>
-                    <td>${v.phone || '-'}</td>
-                    <td class="text-end fw-bold text-danger">${formatCurrency(v.balance)}</td>
-                    <td class="text-center">
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Vendor" class="fw-semibold text-dark">${v.name}</td>
+                    <td data-label="Phone">${v.phone || '-'}</td>
+                    <td data-label="Payable" class="text-end fw-bold text-danger">${formatCurrency(v.balance)}</td>
+                    <td data-label="Action" class="text-center">
                         <a href="${v.ledger_url}" target="_blank" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size:0.75rem;">
                             <i class="fas fa-book me-1"></i> Ledger
                         </a>
@@ -1361,13 +1621,13 @@ function loadFinancialSnapshot() {
             var advHtml = '';
             advList.forEach(function(ad, idx) {
                 advHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td><span class="badge bg-light text-muted border">${ad.code || '-'}</span></td>
-                    <td class="fw-semibold text-dark">${ad.name}</td>
-                    <td>${ad.area || '-'}</td>
-                    <td>${ad.phone || '-'}</td>
-                    <td class="text-end fw-bold text-warning-emphasis">${formatCurrency(ad.balance)}</td>
-                    <td class="text-center">
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Code"><span class="badge bg-light text-muted border">${ad.code || '-'}</span></td>
+                    <td data-label="Distributor" class="fw-semibold text-dark">${ad.name}</td>
+                    <td data-label="Area">${ad.area || '-'}</td>
+                    <td data-label="Phone">${ad.phone || '-'}</td>
+                    <td data-label="Advance" class="text-end fw-bold text-warning-emphasis">${formatCurrency(ad.balance)}</td>
+                    <td data-label="Action" class="text-center">
                         <a href="${ad.ledger_url}" target="_blank" class="btn btn-xs btn-outline-warning py-0 px-2" style="font-size:0.75rem;">
                             <i class="fas fa-book me-1"></i> Ledger
                         </a>
@@ -1384,12 +1644,12 @@ function loadFinancialSnapshot() {
             var claimsHtml = '';
             claimsList.forEach(function(clm, idx) {
                 claimsHtml += `<tr>
-                    <td>${idx + 1}</td>
-                    <td><span class="badge bg-light text-dark border fw-bold">${clm.claim_no || '-'}</span></td>
-                    <td class="fw-semibold">${clm.distributor_name}</td>
-                    <td>${clm.claim_date}</td>
-                    <td><span class="badge bg-warning-subtle text-warning-emphasis">${clm.type_label}</span></td>
-                    <td class="text-end fw-bold text-danger">${formatCurrency(clm.amount)}</td>
+                    <td data-label="#">${idx + 1}</td>
+                    <td data-label="Claim No"><span class="badge bg-light text-dark border fw-bold">${clm.claim_no || '-'}</span></td>
+                    <td data-label="Distributor" class="fw-semibold">${clm.distributor_name}</td>
+                    <td data-label="Date">${clm.claim_date}</td>
+                    <td data-label="Type"><span class="badge bg-warning-subtle text-warning-emphasis">${clm.type_label}</span></td>
+                    <td data-label="Amount" class="text-end fw-bold text-danger">${formatCurrency(clm.amount)}</td>
                 </tr>`;
             });
             if (!claimsHtml) claimsHtml = '<tr><td colspan="6" class="text-center text-muted py-3">No pending claims</td></tr>';

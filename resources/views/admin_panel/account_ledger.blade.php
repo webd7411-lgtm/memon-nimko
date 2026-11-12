@@ -190,13 +190,8 @@
 
 @media (max-width: 991px) {
   .al-kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 575px) {
-  .al-kpi-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
   }
 }
 
@@ -327,6 +322,143 @@
 
 .al-print-header {
   display: none;
+}
+
+@media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .al-page { overflow-x: hidden !important; max-width: 100% !important; padding: 0 !important; }
+  .al-page .container-fluid { padding: 0.6rem 0.65rem 1.25rem !important; }
+
+  .al-hero {
+    padding: 0.85rem !important;
+    border-radius: 14px !important;
+    margin-bottom: 0.75rem !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+  }
+  .al-hero-left { gap: 0.6rem !important; align-items: flex-start !important; }
+  .al-hero-icon { width: 38px !important; height: 38px !important; font-size: 1.05rem !important; border-radius: 10px !important; flex-shrink: 0; }
+  .al-hero-title h2 { font-size: 1.02rem !important; margin-bottom: 0.25rem !important; }
+  .al-hero-sub { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .al-pill { font-size: 0.66rem !important; padding: 0.16rem 0.45rem !important; }
+
+  .al-hero .al-no-print {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
+    width: 100%;
+  }
+  .al-hero .al-no-print .al-btn {
+    width: 100%;
+    min-height: 34px !important;
+    padding: 0.32rem 0.5rem !important;
+    font-size: 0.74rem !important;
+    justify-content: center;
+    border-radius: 9px !important;
+  }
+  .al-hero .al-no-print .al-btn:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .al-filter-card { padding: 0.7rem 0.75rem !important; border-radius: 12px !important; margin-bottom: 0.75rem !important; }
+  .al-label { font-size: 0.62rem !important; margin-bottom: 0.2rem !important; }
+  .al-input { min-height: 36px !important; height: 36px !important; font-size: 0.78rem !important; padding: 0.3rem 0.55rem !important; border-radius: 8px !important; }
+  .al-filter-card .al-btn { min-height: 36px !important; height: 36px !important; padding: 0.3rem 0.55rem !important; font-size: 0.76rem !important; border-radius: 8px !important; }
+
+  .al-kpi-grid { gap: 0.5rem !important; margin-bottom: 0.75rem !important; }
+  .al-kpi { padding: 0.65rem 0.75rem !important; border-radius: 11px !important; }
+  .al-kpi-lbl { font-size: 0.58rem !important; margin-bottom: 0.2rem !important; }
+  .al-kpi-val { font-size: 0.94rem !important; word-break: break-word; }
+  .al-kpi-sub { font-size: 0.62rem !important; }
+
+  .al-table-card { border-radius: 12px !important; background: transparent !important; border: none !important; box-shadow: none !important; }
+  .al-table-head {
+    background: var(--al-surface);
+    border: 1px solid var(--al-border);
+    border-radius: 12px;
+    padding: 0.65rem 0.8rem !important;
+    margin-bottom: 0.55rem;
+  }
+  .al-table-head h5, .al-table-head h6 { font-size: 0.88rem !important; margin: 0 !important; }
+  .al-table-card .table-responsive { overflow: visible !important; }
+
+  .al-table, .al-table thead, .al-table tbody, .al-table tfoot { display: block !important; width: 100% !important; }
+  .al-table thead { display: none !important; }
+
+  .al-table tbody tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.55rem;
+    background: var(--al-surface);
+    border: 1px solid var(--al-border);
+    border-radius: 12px;
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.55rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .al-table tbody td {
+    display: flex !important;
+    flex-direction: column;
+    border: none !important;
+    padding: 0 !important;
+    text-align: left !important;
+    white-space: normal !important;
+    word-break: break-word;
+    min-width: 0;
+    font-size: 0.74rem;
+  }
+  .al-table tbody td:nth-child(1) {
+    order: 0; grid-column: 1; justify-self: start; align-self: center;
+    background: #eef4ff; color: #2b5bb3 !important; border-radius: 6px;
+    padding: 0.1rem 0.45rem !important; font-size: 0.64rem; width: fit-content;
+    flex-direction: row;
+  }
+  .al-table tbody td:nth-child(1)::before { content: "#"; font-weight: 800; }
+  .al-table tbody td:nth-child(2) {
+    order: 0; grid-column: 2; justify-self: end; text-align: right !important; align-items: flex-end; font-size: 0.7rem;
+  }
+  .al-table tbody td:nth-child(3) { order: 1; grid-column: 1 / -1; }
+  .al-table tbody td:nth-child(4) { order: 2; grid-column: 1 / -1; background: #f8fafc; padding: 0.3rem 0.45rem !important; border-radius: 7px; font-size: 0.73rem; }
+  .al-table tbody td:nth-child(5) { order: 3; }
+  .al-table tbody td:nth-child(5)::before { content: "Before"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: var(--al-text-muted); }
+  .al-table tbody td:nth-child(8) { order: 4; align-items: flex-end; text-align: right !important; }
+  .al-table tbody td:nth-child(8)::before { content: "After Balance"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: var(--al-text-muted); }
+  .al-table tbody td:nth-child(6) { order: 5; border-top: 1px dashed #e2e8f0 !important; padding-top: 0.35rem !important; }
+  .al-table tbody td:nth-child(6)::before { content: "In (+)"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: var(--al-text-muted); }
+  .al-table tbody td:nth-child(7) { order: 6; align-items: flex-end; text-align: right !important; border-top: 1px dashed #e2e8f0 !important; padding-top: 0.35rem !important; }
+  .al-table tbody td:nth-child(7)::before { content: "Out (-)"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: var(--al-text-muted); }
+
+  .al-table tbody td[colspan] {
+    grid-column: 1 / -1 !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 1.5rem 0.5rem !important;
+  }
+
+  .al-table tfoot tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.55rem;
+    background: #f1f5f9;
+    border: 1px solid var(--al-border);
+    border-radius: 12px;
+    padding: 0.65rem 0.75rem;
+  }
+  .al-table tfoot td {
+    display: flex !important;
+    flex-direction: column;
+    border: none !important;
+    padding: 0 !important;
+    text-align: left !important;
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+  .al-table tfoot td:nth-child(1) { grid-column: 1 / -1; font-size: 0.78rem; border-bottom: 1px solid #cbd5e1 !important; padding-bottom: 0.3rem !important; }
+  .al-table tfoot td:nth-child(2)::before { content: "Opening"; font-size: 0.56rem; color: var(--al-text-muted); text-transform: uppercase; }
+  .al-table tfoot td:nth-child(3)::before { content: "Total In"; font-size: 0.56rem; color: var(--al-text-muted); text-transform: uppercase; }
+  .al-table tfoot td:nth-child(4)::before { content: "Total Out"; font-size: 0.56rem; color: var(--al-text-muted); text-transform: uppercase; }
+  .al-table tfoot td:nth-child(5)::before { content: "Closing"; font-size: 0.56rem; color: var(--al-text-muted); text-transform: uppercase; }
 }
 
 @media print {

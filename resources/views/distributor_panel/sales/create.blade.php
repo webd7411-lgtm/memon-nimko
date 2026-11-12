@@ -965,6 +965,62 @@
 }
 .ss-prod-item-stock-badge.in-stock { background: #dcfce7; color: #15803d; }
 .ss-prod-item-stock-badge.out-stock { background: #fee2e2; color: #b91c1c; }
+
+@media (max-width: 991.98px) {
+    html, body { overflow-x: hidden !important; }
+    .ss-wrapper { overflow-x: hidden !important; max-width: 100% !important; padding: 0.5rem 0.6rem 1.25rem !important; }
+    .ss-header { flex-direction: column !important; align-items: stretch !important; gap: 0.55rem !important; padding: 0.65rem 0.75rem !important; }
+    .ss-header-left, .ss-header-right { flex-wrap: wrap !important; gap: 0.4rem !important; width: 100% !important; }
+    .ss-meta-grid, .ss-customer-bar { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.45rem !important; }
+    .ss-table-card { border: none !important; background: transparent !important; box-shadow: none !important; overflow: visible !important; }
+    .ss-table-responsive-wrap { max-height: none !important; min-height: 0 !important; overflow: visible !important; }
+    .ss-excel-table, .ss-excel-table tbody { display: block !important; width: 100% !important; table-layout: auto !important; }
+    .ss-excel-table thead { display: none !important; }
+    .ss-excel-table tbody { display: flex !important; flex-direction: column !important; gap: 0.55rem !important; }
+    .ss-excel-table tbody tr.ss-grid-row {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.4rem 0.5rem !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        padding: 0.6rem 0.7rem !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td {
+        display: flex !important;
+        flex-direction: column !important;
+        border: none !important;
+        padding: 0 !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(1) {
+        order: 0; grid-column: 1; justify-self: start; width: fit-content !important;
+        background: #eef4ff; color: #2b5bb3 !important; border-radius: 6px; padding: 0.08rem 0.45rem !important; font-size: 0.68rem;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(10) {
+        order: 0; grid-column: 2; justify-self: end; width: fit-content !important; align-items: flex-end;
+    }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(2) { order: 1; grid-column: 1 / -1; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(3) { order: 2; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(3)::before { content: "Stock"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(4) { order: 3; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(4)::before { content: "Qty"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(5) { order: 4; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(5)::before { content: "Size"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(6) { order: 5; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(6)::before { content: "Price"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(7) { order: 6; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(7)::before { content: "T.O"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(8) { order: 7; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(8)::before { content: "Discount"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(9) { order: 8; grid-column: 1 / -1; background: #f8fafc; padding: 0.35rem 0.5rem !important; border-radius: 8px; }
+    .ss-excel-table tbody tr.ss-grid-row td:nth-child(9)::before { content: "Amount"; font-size: 0.56rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .ss-excel-input { min-height: 34px !important; height: 34px !important; font-size: 0.8rem !important; width: 100% !important; }
+    #ssProdSearchDropdown { max-width: calc(100vw - 1.5rem) !important; left: 0.75rem !important; right: 0.75rem !important; }
+}
 </style>
 
 <div class="container-fluid ss-wrapper">

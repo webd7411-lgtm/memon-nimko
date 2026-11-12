@@ -62,6 +62,11 @@
         gap: 4px;
         line-height: 1.4;
     }
+    @media (max-width: 767.98px) {
+        .dist-nav-container { padding-left: 0.5rem !important; padding-right: 0.5rem !important; margin-bottom: 0.65rem; }
+        .dist-nav-tab { padding: 7px 9px; font-size: 0.75rem; }
+        .dist-btn-action { font-size: 0.7rem !important; padding: 4px 9px !important; min-height: 30px !important; }
+    }
 </style>
 
 <div class="dist-nav-container rounded-3 shadow-none">

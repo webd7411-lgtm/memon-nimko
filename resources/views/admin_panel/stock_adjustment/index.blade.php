@@ -168,23 +168,51 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
 .adj-view .bi-arrow-right { margin-left: auto; }
 
 @media (max-width: 767.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pc-page { padding: 0 !important; max-width: 100% !important; overflow-x: hidden !important; }
+  .pc-page .container-fluid { padding: .6rem .65rem 1.25rem !important; }
   .pc-tbl-desk { display: none !important; }
   .adj-list { display: block; }
-  .pc-hdr { padding: 1rem 1rem; flex-direction: column; align-items: stretch; gap: .65rem; }
-  .pc-hdr h2 { font-size: 1.02rem; margin-bottom: 0; }
-  .pc-hdr .pc-hdr-actions { justify-content: stretch; gap: .5rem; }
-  .pc-hdr .pc-btn { flex: 1 1 auto; justify-content: center; padding: .55rem .6rem; font-size: .76rem; }
-  .hdr-badge { align-self: flex-start; }
+  .pc-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .55rem; margin-bottom: .7rem !important; border-radius: 12px !important; }
+  .pc-hdr h2 { font-size: .98rem !important; margin-bottom: 0; }
+  .pc-hdr .pc-hdr-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+  .pc-hdr .pc-btn { width: 100%; justify-content: center; padding: .35rem .55rem !important; font-size: .75rem !important; min-height: 34px !important; border-radius: 9px !important; }
+  .hdr-badge { align-self: flex-start; font-size: .68rem !important; }
 
-  .pc-filter { padding: 12px 12px; margin-bottom: 10px; gap: 10px; }
-  .pc-filter .fg { gap: 4px; }
-  .pc-filter label { font-size: .6rem; }
-  .pc-filter .pc-fld { font-size: .78rem; padding: .5rem .65rem; }
-  .pc-filter .fg { width: 100%; }
-  .pc-filter .pc-btn { flex: 1 1 auto; justify-content: center; min-height: 42px; font-size: .78rem; }
+  .pc-filter {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    padding: .65rem .7rem !important;
+    margin-bottom: .65rem !important;
+    gap: .45rem .5rem !important;
+    border-radius: 12px !important;
+  }
+  .pc-filter .fg { width: 100% !important; min-width: 0 !important; gap: 3px !important; }
+  .pc-filter .fg:nth-child(3) { grid-column: 1 / -1 !important; }
+  .pc-filter label { font-size: .58rem !important; }
+  .pc-filter .pc-fld { font-size: .78rem !important; padding: .32rem .55rem !important; min-height: 34px !important; height: 34px !important; border-radius: 8px !important; }
+  .pc-filter .pc-btn { width: 100% !important; justify-content: center; min-height: 34px !important; height: 34px !important; padding: .3rem .55rem !important; font-size: .76rem !important; border-radius: 8px !important; }
+
+  .adj-card { border-radius: 12px !important; margin-bottom: .6rem !important; }
+  .adj-top { padding: .7rem .8rem .5rem !important; gap: .5rem !important; }
+  .adj-ref-ic { width: 2.1rem !important; height: 2.1rem !important; font-size: .95rem !important; border-radius: 9px !important; }
+  .adj-ref-no { font-size: .86rem !important; }
+  .adj-date { font-size: .68rem !important; }
+  .adj-body { padding: .1rem .8rem .6rem !important; }
+  .adj-reason { padding: .42rem .55rem !important; border-radius: 8px !important; }
+  .adj-reason-val { font-size: .75rem !important; }
+  .adj-items { margin-top: .5rem !important; border-radius: 9px !important; }
+  .adj-items-hd { padding: .4rem .6rem !important; font-size: .65rem !important; }
+  .adj-item { padding: .42rem .6rem !important; gap: .45rem !important; }
+  .adj-item-nm { font-size: .77rem !important; }
+  .adj-item-qty { font-size: .7rem !important; padding: .18rem .45rem !important; }
+  .adj-meta { padding: .45rem .8rem .35rem !important; gap: .3rem .65rem !important; }
+  .adj-meta span { font-size: .7rem !important; }
+  .adj-foot { padding: .45rem .8rem .7rem !important; }
+  .adj-view { padding: .45rem .75rem !important; min-height: 34px !important; font-size: .76rem !important; border-radius: 9px !important; }
 
   .pc-pagi { margin-top: .5rem; }
-  .pc-pagi nav span, .pc-pagi nav a { min-width: 34px; height: 34px; padding: 0 .4rem; font-size: .74rem; }
+  .pc-pagi nav span, .pc-pagi nav a { min-width: 30px; height: 30px; padding: 0 .35rem; font-size: .72rem; }
 }
 </style>
 
