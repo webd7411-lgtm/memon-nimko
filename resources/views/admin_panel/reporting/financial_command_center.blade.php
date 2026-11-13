@@ -610,11 +610,24 @@
         <!-- 1. Net Worth (Owner's Equity) -->
         <div class="col-12 col-md-4 col-xl-2.4" style="flex: 1 0 200px;">
             <div class="fcc-kpi-card" style="border-left: 4px solid #0f766e !important;">
-                <div class="fcc-kpi-title">True Net Worth</div>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="fcc-kpi-title">True Net Worth</div>
+                    <span class="badge bg-light text-muted border px-1.5 py-0.5 fw-semibold" style="font-size: 0.65rem;" id="nwHorizonBadge">Closing</span>
+                </div>
                 <div class="fcc-kpi-value" id="kpiNetWorth">Rs. 0.00</div>
-                <div class="d-flex align-items-center justify-content-between mt-2">
+                <div class="d-flex align-items-center justify-content-between mt-1">
                     <span class="fcc-delta-pill" id="deltaNetWorth"><i class="fas fa-minus"></i> 0%</span>
                     <span class="text-muted" style="font-size: 0.72rem;">Assets - Liabilities</span>
+                </div>
+                <div class="mt-2 pt-2 border-top" style="font-size: 0.71rem; line-height: 1.45;">
+                    <div class="d-flex justify-content-between align-items-center text-muted">
+                        <span title="Pichle din ki closing / Period Opening Balance"><i class="fas fa-history me-1 text-primary"></i>Prev Close (Opening):</span>
+                        <strong class="text-dark" id="nwOpeningVal">Rs. 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted mt-1">
+                        <span title="Selected period ki closing balance"><i class="fas fa-flag-checkered me-1 text-teal" style="color: #0f766e;"></i>Period Closing:</span>
+                        <strong class="text-teal fw-bold" style="color: #0f766e;" id="nwClosingVal">Rs. 0.00</strong>
+                    </div>
                 </div>
             </div>
         </div>
@@ -892,6 +905,14 @@
                 </div>
                 <div class="p-2 rounded" style="background: rgba(255, 255, 255, 0.1);">
                     <div class="d-flex justify-content-between small text-white-50">
+                        <span>• Prev Close (Opening Net Worth):</span>
+                        <strong class="text-white" id="eqOpeningNetWorth">Rs. 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small text-white-50 mt-1">
+                        <span>• Period Closing Net Worth:</span>
+                        <strong class="text-white" id="eqClosingNetWorth">Rs. 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small text-white-50 mt-1">
                         <span>• Net Capital Invested:</span>
                         <strong class="text-white" id="eqNetInvested">Rs. 0.00</strong>
                     </div>
@@ -1360,6 +1381,14 @@ function loadFinancialSnapshot() {
 
             // Top KPI Cards
             document.getElementById('kpiNetWorth').innerText = formatCurrency(res.curr_bs.net_worth);
+            if (res.net_worth_summary) {
+                if (document.getElementById('nwOpeningVal')) {
+                    document.getElementById('nwOpeningVal').innerText = formatCurrency(res.net_worth_summary.opening_net_worth);
+                }
+                if (document.getElementById('nwClosingVal')) {
+                    document.getElementById('nwClosingVal').innerText = formatCurrency(res.net_worth_summary.closing_net_worth);
+                }
+            }
             document.getElementById('kpiSales').innerText = formatCurrency(res.curr_pl.net_revenue ?? res.curr_pl.total_sales);
             document.getElementById('kpiExpenses').innerText = formatCurrency(res.curr_pl.total_expenses);
             document.getElementById('kpiNetProfit').innerText = formatCurrency(res.curr_pl.net_profit);
@@ -1420,6 +1449,14 @@ function loadFinancialSnapshot() {
             document.getElementById('eqAssets').innerText = formatCurrency(res.curr_bs.total_assets);
             document.getElementById('eqLiabilities').innerText = '- ' + formatCurrency(res.curr_bs.total_liabilities);
             document.getElementById('eqNetWorth').innerText = formatCurrency(res.curr_bs.net_worth);
+            if (res.net_worth_summary) {
+                if (document.getElementById('eqOpeningNetWorth')) {
+                    document.getElementById('eqOpeningNetWorth').innerText = formatCurrency(res.net_worth_summary.opening_net_worth);
+                }
+                if (document.getElementById('eqClosingNetWorth')) {
+                    document.getElementById('eqClosingNetWorth').innerText = formatCurrency(res.net_worth_summary.closing_net_worth);
+                }
+            }
             document.getElementById('eqNetInvested').innerText = formatCurrency(res.curr_bs.equity_breakdown.net_invested_capital);
             document.getElementById('eqRetainedEarnings').innerText = formatCurrency(res.curr_bs.equity_breakdown.retained_earnings);
 

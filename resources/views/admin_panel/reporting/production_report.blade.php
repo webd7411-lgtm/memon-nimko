@@ -350,10 +350,111 @@
 }
 
 @media (max-width: 991.98px) {
-  .rp-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  body, html { overflow-x: hidden !important; }
+  .rp-page, .rp-page * { max-width: 100%; box-sizing: border-box; }
+  .rp-page { overflow-x: hidden !important; padding: 0.65rem 0.65rem 1.25rem !important; }
+
+  .rp-hdr { padding: 1rem 0.85rem !important; gap: 0.6rem; flex-direction: column; align-items: stretch !important; border-radius: 12px; }
+  .rp-hdr-title { gap: 0.6rem; }
+  .rp-hdr-title h2 { font-size: 1.05rem !important; }
+  .rp-hdr-icon { width: 38px; height: 38px; font-size: 1.1rem; }
+  .rp-hdr-badge { font-size: 0.62rem; padding: 0.2rem 0.6rem; }
+  .rp-hdr-actions { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.45rem; width: 100%; }
+  .rp-btn { width: 100%; justify-content: center; min-height: 34px !important; font-size: 0.76rem !important; padding: 0.35rem 0.65rem; border-radius: 8px; }
+
+  .rp-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .rp-kpi-card { padding: 0.7rem 0.8rem; border-radius: 12px; }
+  .rp-kpi-card .val { font-size: 1.1rem; }
+  .rp-kpi-card .lbl { font-size: 0.62rem; }
+
+  .rp-card { border-radius: 12px; margin-bottom: 0.75rem; }
+  .rp-card-body { padding: 0.75rem !important; }
+  .rp-card-body form.row { margin: 0 !important; }
+  .rp-card-body form.row > [class*="col-"] { padding: 0 !important; margin-bottom: 0.5rem; }
+  .rp-label { font-size: 0.65rem !important; margin-bottom: 0.2rem; }
+  .rp-input { min-height: 36px !important; height: 36px !important; font-size: 0.8rem !important; padding: 0.3rem 0.55rem; border-radius: 8px; }
+
+  /* Table → Mobile Cards */
+  .rp-table-wrapper { overflow: visible !important; border: none !important; padding: 0 !important; }
+  .rp-table { display: block !important; width: 100% !important; border: none !important; }
+  .rp-table thead { display: none !important; }
+  .rp-table tbody { display: flex !important; flex-direction: column !important; gap: 0.6rem !important; width: 100% !important; }
+  .rp-table tbody tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.4rem 0.55rem !important;
+    background: #ffffff;
+    border: 1px solid var(--rp-border) !important;
+    border-radius: 12px;
+    padding: 0.7rem 0.8rem !important;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
+  }
+  .rp-table tbody td {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    border: none !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+    text-align: left !important;
+    font-size: 0.76rem;
+  }
+  .rp-table tbody td::before {
+    font-size: 0.56rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.15rem;
+  }
+  .rp-table tbody td:nth-child(1) { grid-column: 1 / 2; }
+  .rp-table tbody td:nth-child(1)::before { content: "Batch / Date"; }
+  .rp-table tbody td:nth-child(2) { grid-column: 2 / 3; align-items: flex-end; }
+  .rp-table tbody td:nth-child(2)::before { content: "Location"; }
+  .rp-table tbody td:nth-child(3) { grid-column: 1 / -1; background: #f8fafc; padding: 0.4rem 0.55rem !important; border-radius: 8px; }
+  .rp-table tbody td:nth-child(3)::before { content: "Finished Goods Produced"; }
+  .rp-table tbody td:nth-child(4) { grid-column: 1 / -1; background: #fffbeb; padding: 0.4rem 0.55rem !important; border-radius: 8px; border: 1px solid #fef3c7; }
+  .rp-table tbody td:nth-child(4)::before { content: "Raw Materials Used"; }
+  .rp-table tbody td:nth-child(5) { grid-column: 1 / 2; }
+  .rp-table tbody td:nth-child(5)::before { content: "Production Cost"; }
+  .rp-table tbody td:nth-child(6) { grid-column: 2 / 3; align-items: flex-end; }
+  .rp-table tbody td:nth-child(6)::before { content: "Avg Cost / Unit"; }
+  .rp-table tbody td:nth-child(7) {
+    grid-column: 1 / -1;
+    border-top: 1px dashed #e2e8f0 !important;
+    padding-top: 0.45rem !important;
+    margin-top: 0.15rem;
+    align-items: stretch !important;
+  }
+  .rp-table tbody td:nth-child(7)::before { display: none !important; }
+  .rp-table tbody td:nth-child(7) a { width: 100%; justify-content: center; min-height: 34px; font-size: 0.78rem; display: inline-flex; align-items: center; border-radius: 8px; }
+
+  .rp-table tbody tr td[colspan] {
+    grid-column: 1 / -1 !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 1.5rem 0.5rem !important;
+  }
+  .rp-table tbody tr td[colspan]::before { display: none !important; }
+
+  .rp-table tfoot { display: block !important; width: 100% !important; margin-top: 0.5rem; }
+  .rp-table tfoot tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.4rem 0.55rem !important;
+    border-radius: 12px;
+    padding: 0.65rem 0.75rem !important;
+  }
+  .rp-table tfoot td { display: flex !important; flex-direction: column !important; border: none !important; padding: 0 !important; font-size: 0.76rem !important; }
+  .rp-table tfoot td:nth-child(1) { grid-column: 1 / -1 !important; font-size: 0.82rem !important; }
+  .rp-table tfoot td:nth-child(2)::before { content: "Total Produced Qty"; font-size: 0.56rem; color: #94a3b8; }
+  .rp-table tfoot td:nth-child(3)::before { content: "Total RM Used"; font-size: 0.56rem; color: #94a3b8; }
+  .rp-table tfoot td:nth-child(4)::before { content: "Total Cost"; font-size: 0.56rem; color: #94a3b8; }
+  .rp-table tfoot td:nth-child(5)::before { content: "Avg Unit Cost"; font-size: 0.56rem; color: #94a3b8; }
+  .rp-table tfoot td:nth-child(6) { display: none !important; }
 }
+
 @media (max-width: 575.98px) {
-  .rp-kpi-grid { grid-template-columns: 1fr; }
+  .rp-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 </style>
 

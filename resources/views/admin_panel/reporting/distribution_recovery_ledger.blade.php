@@ -108,6 +108,79 @@
     transform: translateY(-1px);
 }
 
+/* ═══════ MOBILE RESPONSIVE ═══════ */
+@media (max-width: 991.98px) {
+    html, body { overflow-x: hidden !important; }
+    .drec-container { padding: 0.6rem 0.65rem 1.25rem !important; overflow-x: hidden !important; max-width: 100% !important; }
+    .drec-container .d-flex.justify-content-between {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.6rem !important;
+    }
+    .drec-container .d-flex.align-items-center.gap-2:last-child {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.45rem;
+        width: 100%;
+    }
+    .drec-container .btn.rounded-pill {
+        width: 100%;
+        min-height: 34px !important;
+        font-size: 0.76rem !important;
+        justify-content: center;
+        display: inline-flex;
+        align-items: center;
+    }
+    .drec-filter-card { border-radius: 12px !important; margin-bottom: 0.75rem !important; }
+    .drec-filter-card .row.g-3 {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.45rem 0.55rem !important;
+        margin: 0 !important;
+    }
+    .drec-filter-card .row.g-3 > [class*="col-"] {
+        width: 100% !important;
+        padding: 0 !important;
+    }
+    .drec-filter-card .row.g-3 > [class*="col-"]:nth-child(3):not(:last-child),
+    .drec-filter-card .row.g-3 > [class*="col-"]:last-child {
+        grid-column: 1 / -1 !important;
+    }
+    .drec-filter-card .form-control,
+    .drec-filter-card .form-select {
+        min-height: 36px !important;
+        font-size: 0.8rem !important;
+        border-radius: 8px;
+    }
+
+    .kpi-summary-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.5rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    .kpi-card {
+        padding: 0.7rem 0.8rem !important;
+        border-radius: 12px !important;
+    }
+    .kpi-val { font-size: 1.1rem !important; }
+    .kpi-label { font-size: 0.62rem !important; }
+
+    .dist-card { border-radius: 12px !important; margin-bottom: 0.75rem !important; }
+    .dist-header { padding: 0.75rem 0.85rem !important; flex-wrap: wrap !important; gap: 0.45rem; }
+    .dist-header h5 { font-size: 0.95rem !important; }
+    .booker-pill-card { padding: 0.7rem 0.8rem !important; border-radius: 10px !important; }
+
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .shop-table {
+        min-width: 540px;
+        font-size: 0.76rem !important;
+    }
+}
+
 @media print {
     .no-print, header, .navbar, .dist-nav-container, .btn, .drec-filter-card {
         display: none !important;

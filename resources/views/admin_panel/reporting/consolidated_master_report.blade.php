@@ -342,6 +342,67 @@ body {
   text-align: center;
   padding: 3rem 1rem;
 }
+
+/* ═══════ MOBILE RESPONSIVE ═══════ */
+@media (max-width: 991.98px) {
+  body, html { overflow-x: hidden !important; }
+  .rp-container, .rp-container * { max-width: 100%; box-sizing: border-box; }
+  .rp-container { overflow-x: hidden !important; padding: 0.65rem 0.65rem 1.25rem !important; }
+
+  .rp-hdr {
+    padding: 0.85rem 0.9rem !important;
+    gap: 0.6rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .rp-hdr h2 { font-size: 1.05rem !important; }
+  .rp-hdr .d-flex:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
+    width: 100%;
+  }
+  .rp-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 34px !important;
+    font-size: 0.76rem !important;
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .kpi-card {
+    padding: 0.75rem 0.85rem !important;
+    border-radius: 12px !important;
+  }
+  .kpi-val { font-size: 1.15rem !important; }
+  .kpi-lbl { font-size: 0.65rem !important; }
+  .kpi-sub { font-size: 0.62rem !important; }
+
+  .rp-card { border-radius: 12px !important; margin-bottom: 0.75rem !important; }
+  .rp-card-body { padding: 0.75rem !important; }
+  .rp-card-header { padding: 0.75rem 0.85rem !important; font-size: 0.88rem !important; flex-wrap: wrap; gap: 0.4rem; }
+  .rp-card-header h5 { font-size: 0.88rem !important; }
+
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .table-custom {
+    min-width: 580px;
+    font-size: 0.76rem !important;
+  }
+  .table-custom th, .table-custom td {
+    padding: 0.45rem 0.6rem !important;
+  }
+}
 </style>
 
 <div class="rp-container">

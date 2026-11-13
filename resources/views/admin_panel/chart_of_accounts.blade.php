@@ -345,18 +345,89 @@
 .coac-balance span { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #991b1b; }
 .coac-balance b { font-size: 1rem; font-weight: 900; color: #dc2626; word-break: break-word; }
 
-.coac-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; padding: 0 .75rem .75rem; }
-.coac-actions > .d-flex { display: contents !important; }
-.coac-actions .btn {
-  width: 100% !important; min-height: 34px !important; display: inline-flex !important; align-items: center; justify-content: center; gap: .3rem;
-  border-radius: 9px !important; font-size: .72rem !important; font-weight: 700 !important; margin: 0 !important; padding: .28rem .4rem !important; white-space: nowrap;
-  text-decoration: none;
+.coac-actions-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.45rem !important;
+  padding: 0 0.85rem 0.85rem !important;
 }
-.coac-actions .btn:hover { transform: translateY(-1px); }
-.coac-actions .btn-outline-primary,
-.coac-actions .btn-edit-account { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; color: #ffffff !important; border: none !important; box-shadow: 0 3px 10px rgba(37, 99, 235, .22) !important; }
-.coac-actions .btn-outline-danger,
-.coac-actions .btn-delete-account { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #ffffff !important; border: none !important; box-shadow: 0 3px 10px rgba(220, 38, 38, .22) !important; }
+.coac-act-row {
+  display: grid !important;
+  gap: 0.45rem !important;
+  width: 100% !important;
+}
+.coac-act-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+.coac-act-row-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+.coac-btn {
+  min-height: 34px !important;
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.35rem !important;
+  border-radius: 9px !important;
+  font-size: 0.74rem !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  border: 1px solid transparent !important;
+  white-space: nowrap !important;
+  padding: 0 0.45rem !important;
+}
+.coac-btn i {
+  font-size: 0.82rem !important;
+}
+.coac-btn-ledger {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+}
+.coac-btn-ledger:hover {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+.coac-btn-pay {
+  background: #f0fdf4 !important;
+  color: #0f766e !important;
+  border-color: #ccfbf1 !important;
+}
+.coac-btn-pay:hover {
+  background: #0f766e !important;
+  color: #ffffff !important;
+}
+.coac-btn-rec {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #e2e8f0 !important;
+}
+.coac-btn-rec:hover {
+  background: #334155 !important;
+  color: #ffffff !important;
+}
+.coac-btn-edit {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+}
+.coac-btn-edit:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+}
+.coac-btn-delete {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border: 1px solid #fecaca !important;
+}
+.coac-btn-delete:hover {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
 
 .coac-empty {
   text-align: center; padding: 2.5rem 1rem; color: #64748b;
@@ -460,9 +531,7 @@
   .coac-head { padding: .68rem .78rem .58rem; }
   .coac-meta { padding: .48rem .78rem; }
   .coac-balance { margin: 0 .78rem .58rem; padding: .48rem .72rem; border-radius: 10px; }
-  .coac-actions { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: .38rem !important; padding: 0 .78rem .78rem !important; }
-  .coac-actions > .d-flex { display: contents !important; }
-  .coac-actions .btn { min-height: 34px !important; padding: .26rem .38rem !important; font-size: .72rem !important; display: inline-flex !important; align-items: center; justify-content: center; width: 100% !important; }
+  .coac-actions-grid { padding: 0 .78rem .78rem !important; }
 
   /* Pagination */
   .coa-table-wrapper .dataTables_info { text-align: center; font-size: .68rem; padding: .45rem 0 .25rem; }
@@ -887,8 +956,31 @@ $(document).ready(function() {
             var bal = $(tds[4]).text().trim();
             var statusText = $(tds[5]).text().trim();
             var isActive = /active/i.test(statusText);
-            var $actWrap = $(tds[6]).find('.d-flex');
-            var actions = $actWrap.length ? $actWrap.html() : ($(tds[6]).html() || '');
+            var $tdAct = $(tds[6]);
+            var ledgerLink = $tdAct.find('a[href*="ledger"]').attr('href') || '#';
+            var payLink = $tdAct.find('a[href*="Payment"]').attr('href') || '#';
+            var recLink = $tdAct.find('a[href*="recepit"]').attr('href') || '#';
+            var $editBtn = $tdAct.find('.btn-edit-account');
+            var $delBtn = $tdAct.find('.btn-delete-account');
+
+            var editAttrs = '';
+            if ($editBtn.length) {
+                var d = $editBtn[0].dataset;
+                editAttrs = 'data-id="' + esc(d.id || '') + '" data-head="' + esc(d.head || '') + '" data-code="' + esc(d.code || '') + '" data-title="' + esc(d.title || '') + '" data-balance="' + esc(d.balance || '') + '" data-status="' + esc(d.status || '') + '"';
+            }
+            var delId = $delBtn.length ? ($delBtn.data('id') || '') : '';
+
+            var actionsHtml = '<div class="coac-actions-grid">'
+                + '<div class="coac-act-row coac-act-row-3">'
+                + '<a href="' + ledgerLink + '" class="coac-btn coac-btn-ledger"><i class="bi bi-journal-text"></i> Ledger</a>'
+                + '<a href="' + payLink + '" class="coac-btn coac-btn-pay"><i class="bi bi-wallet2"></i> Pay</a>'
+                + '<a href="' + recLink + '" class="coac-btn coac-btn-rec"><i class="bi bi-receipt"></i> Rec</a>'
+                + '</div>'
+                + '<div class="coac-act-row coac-act-row-2">'
+                + '<button type="button" class="coac-btn coac-btn-edit btn-edit-account" data-bs-toggle="modal" data-bs-target="#addAccountModal" ' + editAttrs + '><i class="bi bi-pencil-square"></i> Edit</button>'
+                + '<button type="button" class="coac-btn coac-btn-delete btn-delete-account" data-id="' + esc(delId) + '"><i class="bi bi-trash3-fill"></i> Delete</button>'
+                + '</div>'
+                + '</div>';
 
             html += '<div class="coac-card">'
                 + '<div class="coac-head">'
@@ -903,7 +995,7 @@ $(document).ready(function() {
                 + '<span><i class="bi bi-hash"></i>' + esc(sr) + '</span>'
                 + '</div>'
                 + '<div class="coac-balance"><span>Closing Balance</span><b>' + esc(bal) + '</b></div>'
-                + '<div class="coac-actions">' + actions + '</div>'
+                + actionsHtml
                 + '</div>';
         });
         $wrap.html(html);

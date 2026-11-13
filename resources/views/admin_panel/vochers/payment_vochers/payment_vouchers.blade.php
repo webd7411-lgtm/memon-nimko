@@ -445,18 +445,18 @@ table.pvf-table tfoot th {
     table.pvf-table tbody td:nth-child(1) {
         grid-column: 1 / -1 !important;
     }
-    /* Reference spans full width */
+    /* Reference & Account Head side by side */
     table.pvf-table tbody td:nth-child(2) {
-        grid-column: 1 / -1 !important;
-    }
-    /* Account Head & Disbursement Account */
-    table.pvf-table tbody td:nth-child(3) {
         grid-column: 1 / 2 !important;
     }
-    table.pvf-table tbody td:nth-child(4) {
+    table.pvf-table tbody td:nth-child(3) {
         grid-column: 2 / 3 !important;
     }
-    /* Discount & Amount (PKR) */
+    /* Disbursement Account spans full width */
+    table.pvf-table tbody td:nth-child(4) {
+        grid-column: 1 / -1 !important;
+    }
+    /* Discount & Amount side by side */
     table.pvf-table tbody td:nth-child(5) {
         grid-column: 1 / 2 !important;
     }
@@ -561,14 +561,7 @@ table.pvf-table tfoot th {
 
 @media (max-width: 575.98px) {
     table.pvf-table tbody tr {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         padding: 0.65rem !important;
-    }
-    table.pvf-table tbody td:nth-child(4) {
-        grid-column: 1 / -1 !important;
-    }
-    table.pvf-table tbody td:nth-child(3) {
-        grid-column: 1 / -1 !important;
     }
 }
 

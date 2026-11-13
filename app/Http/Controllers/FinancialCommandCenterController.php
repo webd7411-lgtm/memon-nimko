@@ -106,6 +106,29 @@ class FinancialCommandCenterController extends Controller
         $currBS = $this->calculateCumulativeBalanceSheet($currEnd, $branchId, $cumulativeEquity);
         $baseBS = $this->calculateCumulativeBalanceSheet($baseEnd, $branchId, $baseCumulativeEq);
 
+        // Period Opening Net Worth (Closing balance of the day prior to $currStart)
+        $periodOpeningDate = Carbon::parse($currStart)->subDay()->toDateString();
+        if ($baseEnd === $periodOpeningDate) {
+            $openingBS = $baseBS;
+        } else {
+            $openingCumulativeEq = $this->calculateCumulativeEquity($periodOpeningDate, $branchId);
+            $openingBS = $this->calculateCumulativeBalanceSheet($periodOpeningDate, $branchId, $openingCumulativeEq);
+        }
+
+        $openingNetWorth = (float) ($openingBS['net_worth'] ?? 0);
+        $closingNetWorth = (float) ($currBS['net_worth'] ?? 0);
+        $netWorthChange  = round($closingNetWorth - $openingNetWorth, 2);
+
+        $netWorthSummary = [
+            'opening_date'       => $periodOpeningDate,
+            'opening_label'      => Carbon::parse($periodOpeningDate)->format('d M Y'),
+            'opening_net_worth'  => round($openingNetWorth, 2),
+            'closing_date'       => $currEnd,
+            'closing_label'      => Carbon::parse($currEnd)->format('d M Y'),
+            'closing_net_worth'  => round($closingNetWorth, 2),
+            'period_net_change'  => $netWorthChange,
+        ];
+
         // 4. Compute Delta Comparison Indicators
         $comparison = [
             'labels' => [
@@ -143,6 +166,7 @@ class FinancialCommandCenterController extends Controller
             'base_pl'            => $basePL,
             'curr_bs'            => $currBS,
             'base_bs'            => $baseBS,
+            'net_worth_summary'  => $netWorthSummary,
             'curr_equity'        => $currEquityMovements,
             'base_equity'        => $baseEquityMovements,
             'cumulative_equity'  => $cumulativeEquity,

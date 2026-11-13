@@ -445,16 +445,16 @@ table.rvf-table tfoot th {
     table.rvf-table tbody td:nth-child(1) {
         grid-column: 1 / -1 !important;
     }
-    /* Reference spans full width */
+    /* Reference & Account Head side by side */
     table.rvf-table tbody td:nth-child(2) {
-        grid-column: 1 / -1 !important;
-    }
-    /* Account Head & Destination Account */
-    table.rvf-table tbody td:nth-child(3) {
         grid-column: 1 / 2 !important;
     }
-    table.rvf-table tbody td:nth-child(4) {
+    table.rvf-table tbody td:nth-child(3) {
         grid-column: 2 / 3 !important;
+    }
+    /* Destination Account spans full width */
+    table.rvf-table tbody td:nth-child(4) {
+        grid-column: 1 / -1 !important;
     }
     /* Discount & Amount */
     table.rvf-table tbody td:nth-child(5) {
@@ -561,12 +561,7 @@ table.rvf-table tfoot th {
 
 @media (max-width: 575.98px) {
     table.rvf-table tbody tr {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         padding: 0.65rem !important;
-    }
-    table.rvf-table tbody td:nth-child(3),
-    table.rvf-table tbody td:nth-child(4) {
-        grid-column: 1 / -1 !important;
     }
 }
 

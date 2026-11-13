@@ -499,15 +499,28 @@
 .evc-total b { font-size: 1.02rem; font-weight: 900; color: #dc2626; word-break: break-word; }
 
 .evc-actions { display: flex; gap: .45rem; flex-wrap: wrap; padding: 0 .78rem .78rem; }
-.evc-actions .btn {
-  flex: 1 1 100%; min-height: 36px !important; width: 100% !important; display: inline-flex !important; align-items: center; justify-content: center; gap: .4rem;
-  border-radius: 10px !important; font-size: .78rem !important; font-weight: 700 !important; margin: 0 !important; padding: .35rem .75rem !important; white-space: nowrap;
-  text-decoration: none;
+.evc-btn-print {
+  width: 100% !important;
+  min-height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  box-shadow: 0 3px 12px rgba(220, 38, 38, 0.28) !important;
+  transition: all 0.2s ease !important;
 }
-.evc-actions .btn:hover { transform: translateY(-1px); }
-.evc-actions .btn-outline-danger,
-.evc-actions .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #ffffff !important; border: none !important; box-shadow: 0 3px 10px rgba(220, 38, 38, .22) !important; }
-.evc-actions .btn-outline-danger::after { content: " Print Voucher"; font-size: .78rem; }
+.evc-btn-print:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
 
 .evc-empty {
   text-align: center; padding: 2.5rem 1rem; color: #64748b;
@@ -1162,85 +1175,87 @@
         <h5 class="modal-title"><i class="bi bi-receipt me-2 text-primary"></i>Add Expense Voucher</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form id="expenseForm" class="p-4">
-        @csrf
-        <input type="hidden" name="evid" value="{{ $nextRvid ?? 'EVID-001' }}">
-        <div class="row g-3 mb-3">
-          <div class="col-6 col-md-4">
-            <label class="ev-label">EVID</label>
-            <input type="text" class="ev-input" value="{{ $nextRvid ?? 'EVID-001' }}" readonly style="background:#f8fafc;font-weight:600;">
-          </div>
-          <div class="col-6 col-md-4">
-            <label class="ev-label">Date</label>
-            <input type="date" name="date" class="ev-input" value="{{ date('Y-m-d') }}" required>
-          </div>
-          <div class="col-12 col-md-4">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <label class="ev-label mb-0">Expense Head</label>
-              <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addExpenseHeadModal">
-                <i class="bi bi-plus-circle me-1"></i>+ New Head
-              </button>
+      <form id="expenseForm" class="d-flex flex-column h-100" style="min-height:0;">
+        <div class="modal-body p-3 p-md-4" style="overflow-y:auto; -webkit-overflow-scrolling:touch; max-height: calc(85vh - 120px);">
+          @csrf
+          <input type="hidden" name="evid" value="{{ $nextRvid ?? 'EVID-001' }}">
+          <div class="row g-3 mb-3">
+            <div class="col-6 col-md-4">
+              <label class="ev-label">EVID</label>
+              <input type="text" class="ev-input" value="{{ $nextRvid ?? 'EVID-001' }}" readonly style="background:#f8fafc;font-weight:600;">
             </div>
-            <select name="vendor_type" id="modalExpenseHead" class="ev-input" required>
-              <option value="">Select Expense Head</option>
-              @foreach($AccountHeads ?? [] as $head)
-                <option value="{{ $head->id }}">{{ $head->name }}</option>
-              @endforeach
-            </select>
-          </div>
-        </div>
-
-        <hr class="my-3 text-muted">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="fw-bold fs-6 text-dark"><i class="bi bi-list-stars me-1 text-primary"></i> Expense Lines</div>
-          <small class="text-muted">Select paying account for each item</small>
-        </div>
-
-        <div class="row g-2 text-muted small fw-bold text-uppercase mb-2 px-1 d-none d-md-flex align-items-center">
-          <div class="col-md-5"><i class="bi bi-card-text me-1"></i> Remark / Description</div>
-          <div class="col-md-3"><i class="bi bi-wallet2 me-1"></i> Paid From (Account)</div>
-          <div class="col-md-2"><i class="bi bi-cash me-1"></i> Amount (PKR)</div>
-          <div class="col-md-2 text-center"><i class="bi bi-gear me-1"></i> Action</div>
-        </div>
-
-        <div id="modalExpenseRows">
-          <div class="row g-2 mb-2 expense-row align-items-center">
-            <div class="col-12 col-md-5">
-              <input type="text" name="remarks[]" class="ev-input" placeholder="Remark / Description" required>
+            <div class="col-6 col-md-4">
+              <label class="ev-label">Date</label>
+              <input type="date" name="date" class="ev-input" value="{{ date('Y-m-d') }}" required>
             </div>
-            <div class="col-12 col-md-3">
-              <select name="row_account_id[]" class="ev-input row-account-select" required>
-                <option value="">Select Account (Paid From)</option>
-                @foreach($accounts ?? [] as $acc)
-                  <option value="{{ $acc->id }}">{{ $acc->title }} ({{ $acc->head->name ?? 'Account' }})</option>
+            <div class="col-12 col-md-4">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="ev-label mb-0">Expense Head</label>
+                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addExpenseHeadModal">
+                  <i class="bi bi-plus-circle me-1"></i>+ New Head
+                </button>
+              </div>
+              <select name="vendor_type" id="modalExpenseHead" class="ev-input" required>
+                <option value="">Select Expense Head</option>
+                @foreach($AccountHeads ?? [] as $head)
+                  <option value="{{ $head->id }}">{{ $head->name }}</option>
                 @endforeach
               </select>
             </div>
-            <div class="col-7 col-md-2">
-              <input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="0.00" required>
+          </div>
+
+          <hr class="my-3 text-muted">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-bold fs-6 text-dark"><i class="bi bi-list-stars me-1 text-primary"></i> Expense Lines</div>
+            <small class="text-muted">Select paying account for each item</small>
+          </div>
+
+          <div class="row g-2 text-muted small fw-bold text-uppercase mb-2 px-1 d-none d-md-flex align-items-center">
+            <div class="col-md-5"><i class="bi bi-card-text me-1"></i> Remark / Description</div>
+            <div class="col-md-3"><i class="bi bi-wallet2 me-1"></i> Paid From (Account)</div>
+            <div class="col-md-2"><i class="bi bi-cash me-1"></i> Amount (PKR)</div>
+            <div class="col-md-2 text-center"><i class="bi bi-gear me-1"></i> Action</div>
+          </div>
+
+          <div id="modalExpenseRows">
+            <div class="row g-2 mb-2 expense-row align-items-center">
+              <div class="col-12 col-md-5">
+                <input type="text" name="remarks[]" class="ev-input" placeholder="Remark / Description" required>
+              </div>
+              <div class="col-12 col-md-3">
+                <select name="row_account_id[]" class="ev-input row-account-select" required>
+                  <option value="">Select Account (Paid From)</option>
+                  @foreach($accounts ?? [] as $acc)
+                    <option value="{{ $acc->id }}">{{ $acc->title }} ({{ $acc->head->name ?? 'Account' }})</option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="col-7 col-md-2">
+                <input type="number" step="0.01" name="amount[]" class="ev-input expense-amount" placeholder="0.00" required>
+              </div>
+              <div class="col-5 col-md-2 d-flex align-items-center justify-content-end justify-content-md-center gap-2">
+                <button type="button" class="ev-row-btn ev-row-btn-add add-expense-row" title="Add Row">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="ev-row-btn ev-row-btn-remove remove-expense-row" title="Remove Row">
+                  <i class="bi bi-dash-lg"></i>
+                </button>
+              </div>
             </div>
-            <div class="col-5 col-md-2 d-flex align-items-center justify-content-end justify-content-md-center gap-2">
-              <button type="button" class="ev-row-btn ev-row-btn-add add-expense-row" title="Add Row">
-                <i class="bi bi-plus-lg"></i>
+          </div>
+          <div class="row mt-3 align-items-center">
+            <div class="col-md-6">
+              <button type="button" class="btn btn-sm btn-outline-primary add-expense-row rounded-2 px-3 py-2 fw-semibold">
+                <i class="bi bi-plus-circle me-1"></i> Add Another Line
               </button>
-              <button type="button" class="ev-row-btn ev-row-btn-remove remove-expense-row" title="Remove Row">
-                <i class="bi bi-dash-lg"></i>
-              </button>
+            </div>
+            <div class="col-md-4 offset-md-2">
+              <label class="ev-label">Total Amount (PKR)</label>
+              <input type="text" id="modalTotalAmount" class="ev-input fw-bold text-primary fs-5" value="0.00" readonly>
             </div>
           </div>
         </div>
-        <div class="row mt-3 align-items-center">
-          <div class="col-md-6">
-            <button type="button" class="btn btn-sm btn-outline-primary add-expense-row rounded-2 px-3 py-2 fw-semibold">
-              <i class="bi bi-plus-circle me-1"></i> Add Another Line
-            </button>
-          </div>
-          <div class="col-md-4 offset-md-2">
-            <label class="ev-label">Total Amount (PKR)</label>
-            <input type="text" id="modalTotalAmount" class="ev-input fw-bold text-primary fs-5" value="0.00" readonly>
-          </div>
-        </div>
-        <div class="d-flex gap-2 justify-content-end mt-4">
+        <div class="modal-footer p-2.5 p-md-3 bg-light border-top d-flex gap-2 justify-content-end">
           <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="ev-btn ev-btn-primary px-4">
             <i class="bi bi-save me-1"></i> Save Voucher
@@ -1373,7 +1388,8 @@ $(document).ready(function() {
             var total = $(tds[5]).text().trim();
             var date = $(tds[6]).text().trim();
             var user = $(tds[7]).text().trim();
-            var actions = $(tds[8]).html() || '';
+            var printUrl = $(tds[8]).find('a').attr('href') || '#';
+            var actions = '<a href="' + printUrl + '" target="_blank" class="evc-btn-print"><i class="bi bi-printer-fill me-1"></i> Print Voucher</a>';
 
             var itemCount = 0;
             var items = '';

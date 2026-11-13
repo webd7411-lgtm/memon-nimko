@@ -141,15 +141,39 @@
         color: #ffffff !important;
     }
 
-    .btn-outline-secondary, .btn-outline-danger, .btn-outline-warning {
+    .btn-outline-secondary {
         color: #334155 !important;
         border-color: #cbd5e1 !important;
         background: #ffffff !important;
     }
 
-    .btn-outline-secondary:hover, .btn-outline-danger:hover, .btn-outline-warning:hover {
+    .btn-outline-secondary:hover {
         background: #334155 !important;
         color: #ffffff !important;
+    }
+
+    .btn-outline-danger {
+        color: #dc2626 !important;
+        border-color: #fca5a5 !important;
+        background: #fef2f2 !important;
+    }
+
+    .btn-outline-danger:hover {
+        background: #dc2626 !important;
+        color: #ffffff !important;
+        border-color: #dc2626 !important;
+    }
+
+    .btn-outline-warning {
+        color: #b45309 !important;
+        border-color: #fde68a !important;
+        background: #fffbeb !important;
+    }
+
+    .btn-outline-warning:hover {
+        background: #d97706 !important;
+        color: #ffffff !important;
+        border-color: #d97706 !important;
     }
 
     /* Form Fields & Search Inputs */
@@ -366,8 +390,8 @@
                 left: 0 !important;
                 bottom: 0 !important;
                 right: auto !important;
-                width: 290px !important;
-                max-width: 84vw !important;
+                width: 318px !important;
+                max-width: 88vw !important;
                 height: 100vh !important;
                 max-height: 100vh !important;
                 background: #090d16 !important;
@@ -827,7 +851,7 @@
     /* Standard Submenu Dropdown (Scrollable for large lists like Reports) */
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu):hover > .submenu,
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu).show-submenu > .submenu {
-        min-width: 260px !important;
+        min-width: 295px !important;
         width: auto !important;
         left: 0 !important;
         padding: 10px 12px !important;
@@ -855,9 +879,24 @@
         background: #94a3b8 !important;
     }
 
-    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu-item li a {
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu-item li a,
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu ul li a {
         padding: 6px 10px !important;
         font-size: 0.84rem !important;
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        line-height: 1.35 !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu-item li a span,
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu ul li a span {
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        line-height: 1.35 !important;
     }
 
     /* Mega Menu Dropdown (Management) */
@@ -914,8 +953,8 @@
         left: 0 !important;
         bottom: 0 !important;
         right: auto !important;
-        width: 288px !important;
-        max-width: 84vw !important;
+        width: 318px !important;
+        max-width: 88vw !important;
         height: 100vh !important;
         height: 100dvh !important;
         max-height: 100dvh !important;
@@ -983,6 +1022,29 @@
         margin: 4px 0 6px !important;
         padding: 8px 10px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu ul li a,
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu-item li a {
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        line-height: 1.35 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 7px 10px !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu ul li a span,
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu-item li a span {
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        line-height: 1.35 !important;
+        flex: 1 1 auto !important;
     }
 }
 </style>
