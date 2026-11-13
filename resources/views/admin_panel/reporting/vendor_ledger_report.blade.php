@@ -281,18 +281,19 @@
 .vl-loader .spinner-border { color: var(--vl-primary); width: 2.2rem; height: 2.2rem; }
 
 /* ═══════ FULL MOBILE RESPONSIVE — CARD LEDGER (no horizontal scroll) ═══════ */
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
   body, html { overflow-x: hidden !important; }
-  .vl-page { overflow-x: hidden !important; padding-bottom: 2rem; }
+  .vl-page { overflow-x: hidden !important; max-width: 100% !important; padding-bottom: 2rem; }
+  .vl-page > .container-fluid { padding: 0.65rem 0.65rem 1.25rem !important; }
 
-  .vl-hdr { padding: 1rem 1rem; border-radius: 14px; gap: .75rem; }
+  .vl-hdr { padding: 0.85rem 1rem !important; border-radius: 14px; gap: .75rem; }
   .vl-hdr-title { gap: .6rem; }
   .vl-hdr-title h2 { font-size: 1.02rem; }
-  .vl-hdr-icon { width: 40px; height: 40px; font-size: 1.15rem; }
+  .vl-hdr-icon { width: 36px; height: 36px; font-size: 1.05rem; }
   .vl-hdr-badge { font-size: .6rem; padding: .25rem .6rem; }
-  .vl-btn { padding: .5rem .8rem; font-size: .76rem; }
-  .vl-card-body { padding: .9rem; }
-  .vl-input, .vl-select { min-height: 44px; font-size: .85rem; }
+  .vl-btn { padding: .4rem .75rem; font-size: .76rem; min-height: 34px !important; }
+  .vl-card-body { padding: .85rem; }
+  .vl-input, .vl-select { min-height: 36px !important; font-size: .82rem; }
 
   .vl-card-body .col-12 .d-flex { flex-wrap: wrap; }
   .vl-card-body .col-12 .d-flex .vl-btn { flex: 1 1 100%; justify-content: center; }

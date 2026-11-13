@@ -11,6 +11,17 @@
         background: #ffffff;
         border-bottom: 1px solid #e2e8f0;
         margin-bottom: 0.85rem;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .dist-nav-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.35rem 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
     }
     .dist-nav-tabs-scroller {
         display: flex;
@@ -20,6 +31,9 @@
         white-space: nowrap;
         scrollbar-width: none; /* Firefox */
         -ms-overflow-style: none; /* IE/Edge */
+        min-width: 0;
+        flex: 1 1 auto;
+        -webkit-overflow-scrolling: touch;
         margin-bottom: -1px;
     }
     .dist-nav-tabs-scroller::-webkit-scrollbar {
@@ -30,14 +44,16 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        padding: 9px 13px;
-        font-size: 0.84rem;
+        padding: 8px 12px;
+        font-size: 0.82rem;
         font-weight: 500;
         color: #626d80;
         text-decoration: none !important;
         transition: color 0.15s ease-in-out;
         border-bottom: 3px solid transparent;
         letter-spacing: -0.01em;
+        white-space: nowrap !important;
+        flex-shrink: 0;
     }
     .dist-nav-tab:hover {
         color: #1e293b;
@@ -52,25 +68,74 @@
         padding: 0.15rem 0.4rem;
         border-radius: 50rem;
     }
-    .dist-btn-action {
-        font-size: 0.74rem !important;
-        padding: 4px 11px !important;
-        border-radius: 50rem !important;
-        font-weight: 600 !important;
-        display: inline-flex;
+    .dist-nav-actions {
+        display: flex;
         align-items: center;
-        gap: 4px;
-        line-height: 1.4;
+        gap: 0.5rem;
+        flex-shrink: 0;
     }
-    @media (max-width: 767.98px) {
-        .dist-nav-container { padding-left: 0.5rem !important; padding-right: 0.5rem !important; margin-bottom: 0.65rem; }
-        .dist-nav-tab { padding: 7px 9px; font-size: 0.75rem; }
-        .dist-btn-action { font-size: 0.7rem !important; padding: 4px 9px !important; min-height: 30px !important; }
+    .dist-btn-action {
+        font-size: 0.75rem !important;
+        padding: 6px 12px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 5px;
+        line-height: 1.35;
+        white-space: nowrap !important;
+        min-height: 34px !important;
+        text-decoration: none !important;
+        flex-shrink: 0;
+    }
+
+    /* Tablet & Mobile Breakpoint (Below 992px) */
+    @media (max-width: 991.98px) {
+        .dist-nav-container {
+            padding: 0.45rem !important;
+            margin-bottom: 0.75rem;
+        }
+        .dist-nav-inner {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.55rem !important;
+            padding: 0 !important;
+        }
+        .dist-nav-tabs-scroller {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 auto !important;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 0.35rem;
+        }
+        .dist-nav-tab {
+            padding: 6px 10px;
+            font-size: 0.76rem;
+        }
+        .dist-nav-actions {
+            width: 100% !important;
+            max-width: 100% !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.45rem !important;
+        }
+        .dist-nav-actions > *:nth-child(3):last-child {
+            grid-column: 1 / -1 !important;
+        }
+        .dist-btn-action {
+            width: 100% !important;
+            min-height: 36px !important;
+            font-size: 0.74rem !important;
+            padding: 5px 8px !important;
+            text-align: center;
+            justify-content: center;
+        }
     }
 </style>
 
 <div class="dist-nav-container rounded-3 shadow-none">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-2.5 px-md-3 pt-1">
+    <div class="dist-nav-inner">
         <!-- Horizontal Tabs as per design -->
         <nav class="dist-nav-tabs-scroller">
             @canany(['Distributors', 'Distributor Management'])
@@ -165,7 +230,7 @@
         </nav>
 
         <!-- Right Side Quick Actions (Small, Compact Buttons) -->
-        <div class="d-flex align-items-center gap-2 py-1">
+        <div class="dist-nav-actions">
             <a href="{{ route('distributor.booker.create') }}" class="btn btn-outline-success dist-btn-action shadow-sm" title="Book Order for Shop">
                 <i class="fas fa-plus-circle" style="font-size: 0.7rem;"></i> + Book Order
             </a>

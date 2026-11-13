@@ -343,14 +343,54 @@
 }
 .sc-fade-in { animation: sc-fade-up .35s ease both; }
 
-/* ═══════ RESPONSIVE ═══════ */
-@media (max-width: 768px) {
-  .sc-hdr { padding: 1rem 1.25rem; }
-  .sc-hdr h2 { font-size: 1.1rem; }
-  .sc-stat { flex: 1 1 120px; min-width: 110px; padding: .8rem .9rem; }
-  .sc-stat-value { font-size: 1rem; }
-  .sc-detail-body { padding: .9rem; }
-  .sc-filter { padding: .8rem 1rem; }
+/* ═══════ FULL MOBILE RESPONSIVE ═══════ */
+@media (max-width: 991.98px) {
+  body, html { overflow-x: hidden !important; }
+  .sc-page { overflow-x: hidden !important; max-width: 100% !important; padding: 0.65rem 0.65rem 1.25rem !important; }
+
+  .sc-hdr {
+    padding: 0.85rem 1rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+    border-radius: 12px;
+  }
+  .sc-hdr h2 { font-size: 1.05rem !important; margin: 0; }
+  .sc-hdr-actions { width: 100%; }
+  .sc-hdr-actions .sc-btn { width: 100% !important; min-height: 34px !important; justify-content: center; }
+
+  .sc-filter { padding: 0.85rem !important; border-radius: 12px; margin-bottom: 0.75rem; }
+  #ClosingFilterForm {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
+  }
+  #ClosingFilterForm > div { width: 100% !important; max-width: 100% !important; }
+  #ClosingFilterForm .form-control,
+  #ClosingFilterForm .form-select {
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 0.82rem !important;
+    padding: 0.3rem 0.55rem !important;
+    border-radius: 8px !important;
+  }
+
+  .sc-stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .sc-stat {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0.65rem 0.75rem !important;
+    border-radius: 10px !important;
+  }
+  .sc-stat-value { font-size: 1.05rem !important; }
+  .sc-stat-label { font-size: 0.65rem !important; }
+
+  .sc-detail-body { padding: 0.75rem !important; }
 }
 </style>
 

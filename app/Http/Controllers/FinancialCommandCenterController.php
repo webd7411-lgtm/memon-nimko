@@ -328,13 +328,29 @@ class FinancialCommandCenterController extends Controller
         $totalReturns    = $directReturns + $distDispatchReturns;
         $netRevenue      = max(0, $totalGrossSales - $totalReturns);
 
-        // 4. Calculate COGS item-by-item from sold items in this period
+        // 4. Calculate COGS item-by-item from sold items in this period using BOM & Purchase Cost (Synced with Profit & Loss Report)
         $allPeriodSalesQ = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT]);
         if (!$isAll) $allPeriodSalesQ->where('branch_id', $branchId);
         $allPeriodSales = $allPeriodSalesQ->select('product', 'variant_id', 'qty')->get();
 
-        $variants = DB::table('product_variants')->get()->keyBy('id');
-        $products = DB::table('products')->get()->keyBy('id');
+        $productsWithBom = Product::with(['category_relation', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->get()->keyBy('id');
+        $bomProductCostMap = $this->buildBomProductCostMap($productsWithBom);
+        $variantsDict = ProductVariant::all()->keyBy('id');
+
+        $purchaseItems = DB::table('purchase_items')
+            ->select('product_id', 'variant_id', 'price')
+            ->orderBy('id', 'desc')
+            ->get();
+        $purchasePriceMap = [];
+        foreach ($purchaseItems as $pi) {
+            $vKey = $pi->product_id . '_' . ($pi->variant_id ?? 0);
+            if (!isset($purchasePriceMap[$vKey]) && (float)$pi->price > 0) {
+                $purchasePriceMap[$vKey] = (float)$pi->price;
+            }
+            if (!isset($purchasePriceMap[$pi->product_id . '_0']) && (float)$pi->price > 0) {
+                $purchasePriceMap[$pi->product_id . '_0'] = (float)$pi->price;
+            }
+        }
 
         $totalCogs = 0;
         foreach ($allPeriodSales as $s) {
@@ -348,17 +364,7 @@ class FinancialCommandCenterController extends Controller
                 $vid = trim($vids[$idx] ?? '0');
                 $qty = (float)($qtys[$idx] ?? 0);
 
-                $cost = 0;
-                if ($vid && isset($variants[$vid]) && (float)$variants[$vid]->cost_price > 0) {
-                    $cost = (float)$variants[$vid]->cost_price;
-                } elseif (isset($products[$pid])) {
-                    $firstV = DB::table('product_variants')->where('product_id', $pid)->first();
-                    if ($firstV && (float)$firstV->cost_price > 0) {
-                        $cost = (float)$firstV->cost_price;
-                    } elseif (isset($variants[$vid]) && (float)$variants[$vid]->price > 0) {
-                        $cost = (float)$variants[$vid]->price * 0.70;
-                    }
-                }
+                $cost = $this->resolveItemUnitCost($pid, $vid, $productsWithBom, $variantsDict, $bomProductCostMap, $purchasePriceMap);
                 $totalCogs += ($qty * $cost);
             }
         }
@@ -378,7 +384,7 @@ class FinancialCommandCenterController extends Controller
                 if (!$pid || !is_numeric($pid)) continue;
                 $vid = trim($vids[$idx] ?? '0');
                 $qty = (float)($qtys[$idx] ?? 0);
-                $cost = (isset($variants[$vid]) && (float)$variants[$vid]->cost_price > 0) ? (float)$variants[$vid]->cost_price : 0;
+                $cost = $this->resolveItemUnitCost($pid, $vid, $productsWithBom, $variantsDict, $bomProductCostMap, $purchasePriceMap);
                 $returnCostReduction += ($qty * $cost);
             }
         }
@@ -427,6 +433,121 @@ class FinancialCommandCenterController extends Controller
             'net_profit'              => $netProfit,
             'net_margin_pct'          => $netRevenue > 0 ? round(($netProfit / $netRevenue) * 100, 1) : 0,
         ];
+    }
+
+    /**
+     * Resolve unit cost using the exact hierarchy as Product-wise Profit & Loss report:
+     * BOM Manufactured Cost -> Purchase Price -> Variant Cost -> Wholesale Price.
+     */
+    private function resolveItemUnitCost($pid, $vid, $productsWithBom, $variantsDict, $bomProductCostMap, $purchasePriceMap): float
+    {
+        $vKey = $pid . '_' . $vid;
+        $pKey = $pid . '_0';
+        $p = $productsWithBom->get((int)$pid);
+        $vObj = ($vid && $variantsDict->has($vid)) ? $variantsDict->get($vid) : null;
+
+        if (isset($bomProductCostMap[$vKey]) && $bomProductCostMap[$vKey] > 0) {
+            return (float)$bomProductCostMap[$vKey];
+        }
+        if (isset($bomProductCostMap[$pKey]) && $bomProductCostMap[$pKey] > 0) {
+            if ($p && ($p->unit_type === 'kg') && $vObj) {
+                $sVal = (float)$vObj->size_value;
+                if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
+                    $sVal /= 1000;
+                }
+                return (float)$bomProductCostMap[$pKey] * ($sVal > 0 ? $sVal : 1);
+            }
+            return (float)$bomProductCostMap[$pKey];
+        }
+        if (isset($purchasePriceMap[$vKey]) && $purchasePriceMap[$vKey] > 0) {
+            return (float)$purchasePriceMap[$vKey];
+        }
+        if (isset($purchasePriceMap[$pKey]) && $purchasePriceMap[$pKey] > 0) {
+            return (float)$purchasePriceMap[$pKey];
+        }
+        if ($vObj && (float)$vObj->cost_price > 0) {
+            return (float)$vObj->cost_price;
+        }
+        if ($p && ($firstV = $p->variants->first()) && (float)$firstV->cost_price > 0) {
+            return (float)$firstV->cost_price;
+        }
+        if ($p && (float)$p->wholesale_price > 0) {
+            return (float)$p->wholesale_price;
+        }
+        return 0.0;
+    }
+
+    /**
+     * Build BOM product cost mapping identical to ReportingController.
+     */
+    private function buildBomProductCostMap($products): array
+    {
+        $bomProductCostMap = [];
+
+        foreach ($products as $pObj) {
+            $pBoms = $pObj->bom ?? collect();
+            if ($pBoms->isEmpty()) {
+                continue;
+            }
+
+            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
+            $baseCost = $this->computeBomItemsCost($pBoms->whereNull('variant_id'));
+
+            if ($baseCost > 0) {
+                $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
+            }
+
+            foreach ($pObj->variants as $vObj) {
+                $vBom = $pBoms->where('variant_id', $vObj->id);
+                if ($vBom->isNotEmpty()) {
+                    $vCost = $this->computeBomItemsCost($vBom);
+                    if ($vCost > 0) {
+                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
+                    }
+                } elseif ($baseCost > 0) {
+                    if ($isObjKg) {
+                        $sizeVal = (float)$vObj->size_value;
+                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
+                            $sizeVal /= 1000;
+                        }
+                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
+                    } else {
+                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
+                    }
+                }
+            }
+        }
+
+        return $bomProductCostMap;
+    }
+
+    /**
+     * Sum raw material and ingredient product costs for a collection of BOM rows.
+     */
+    private function computeBomItemsCost($bomItems): float
+    {
+        $cost = 0.0;
+
+        foreach ($bomItems as $bItem) {
+            $qty = (float)($bItem->qty_per_unit ?? $bItem->qty ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            if ($bItem->rawMaterial) {
+                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
+                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
+                if ($factor <= 0) {
+                    $factor = 1;
+                }
+                $cost += ($qty * ($rmCost / $factor));
+            } elseif ($bItem->ingredientProduct) {
+                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
+                $cost += ($qty * $ingCost);
+            }
+        }
+
+        return $cost;
     }
 
     /**

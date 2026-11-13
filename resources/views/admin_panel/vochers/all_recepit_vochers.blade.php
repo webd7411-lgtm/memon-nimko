@@ -231,9 +231,24 @@
 
 .rv-filter-group {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 0.65rem;
     flex-wrap: wrap;
+}
+.rv-filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+.rv-filter-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0;
+    line-height: 1.2;
 }
 
 .rv-filter-control {
@@ -465,23 +480,22 @@ table#voucherTable tbody tr:hover td {
     }
     .rv-filter-group {
         display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.45rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.5rem !important;
+        width: 100% !important;
     }
-    .rv-filter-group > div {
-        width: 100%;
-        min-width: 0;
-    }
-    .rv-filter-group > div:last-child:nth-child(odd) {
-        grid-column: 1 / -1;
+    .rv-filter-item {
+        width: 100% !important;
+        min-width: 0 !important;
     }
     .rv-filter-control {
-        width: 100%;
+        width: 100% !important;
         min-height: 36px !important;
         height: 36px !important;
         font-size: 0.78rem !important;
         padding: 0.25rem 0.55rem !important;
         border-radius: 8px !important;
+        box-sizing: border-box !important;
     }
 
     /* DataTables controls */
@@ -724,24 +738,30 @@ table#voucherTable tbody tr:hover td {
             {{-- Quick Filter Toolbar --}}
             <div class="rv-filter-bar">
                 <div class="rv-filter-group">
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="small text-muted fw-bold text-uppercase" style="letter-spacing:0.04em;">From:</label>
+                    <div class="rv-filter-item">
+                        <label class="rv-filter-label">From:</label>
                         <input type="date" id="filterFromDate" class="rv-filter-control">
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="small text-muted fw-bold text-uppercase" style="letter-spacing:0.04em;">To:</label>
+                    <div class="rv-filter-item">
+                        <label class="rv-filter-label">To:</label>
                         <input type="date" id="filterToDate" class="rv-filter-control">
                     </div>
-                    <select id="filterType" class="rv-filter-control">
-                        <option value="">All Types</option>
-                        <option value="Customer">Customer</option>
-                        <option value="Vendor">Vendor</option>
-                        <option value="Walk-in">Walk-in</option>
-                        <option value="Account">Account</option>
-                    </select>
-                    <button id="resetFilters" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" style="height:38px; border-radius:10px;">
-                        <i class="bi bi-arrow-counterclockwise"></i> Reset
-                    </button>
+                    <div class="rv-filter-item">
+                        <label class="rv-filter-label">Type:</label>
+                        <select id="filterType" class="rv-filter-control">
+                            <option value="">All Types</option>
+                            <option value="Customer">Customer</option>
+                            <option value="Vendor">Vendor</option>
+                            <option value="Walk-in">Walk-in</option>
+                            <option value="Account">Account</option>
+                        </select>
+                    </div>
+                    <div class="rv-filter-item">
+                        <label class="rv-filter-label d-none d-md-block">&nbsp;</label>
+                        <button id="resetFilters" class="btn btn-sm btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-1" style="min-height:36px; height:36px; border-radius:8px;">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
+                    </div>
                 </div>
 
                 <div class="text-muted small">

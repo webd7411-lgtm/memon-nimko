@@ -92,8 +92,8 @@
         </div>
     </div>
 
-    <!-- Orders Table -->
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+    <!-- Desktop Orders Table View -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 d-none d-md-block bg-white">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead style="background: #f8fafc; font-size: 0.8rem; text-transform: uppercase; color: #475569;">
@@ -212,6 +212,91 @@
 
         @if($orders->hasPages())
         <div class="card-footer bg-white py-3 border-top d-flex justify-content-end">
+            {{ $orders->links() }}
+        </div>
+        @endif
+    </div>
+
+    <!-- Mobile Orders Card View (Zero Horizontal Scroll) -->
+    <div class="d-block d-md-none mb-4">
+        @forelse($orders as $order)
+        <div class="card border-0 shadow-sm rounded-4 mb-3 bg-white p-3" style="border: 1px solid #edf2f7 !important;">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                <div>
+                    <span class="fw-bold font-monospace text-dark d-block" style="font-size: 0.95rem;">{{ $order->order_no }}</span>
+                    <span class="fw-bold text-dark d-block" style="font-size: 0.88rem;">{{ $order->distributor->name ?? 'Distributor' }}</span>
+                    <span class="text-muted d-block" style="font-size: 0.74rem;">{{ $order->distributor->code ?? '' }} • {{ \Carbon\Carbon::parse($order->order_date)->format('d M, Y') }}</span>
+                </div>
+                <div>
+                    @if($order->status === 'pending')
+                    <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning px-2 py-0.5" style="font-size: 0.72rem;">
+                        ⏳ Pending
+                    </span>
+                    @elseif($order->status === 'dispatched')
+                    <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-2 py-0.5" style="font-size: 0.72rem;">
+                        🚚 Dispatched
+                    </span>
+                    @elseif($order->status === 'delivered')
+                    <span class="badge rounded-pill bg-success-subtle text-success border border-success px-2 py-0.5" style="font-size: 0.72rem;">
+                        ✅ Delivered
+                    </span>
+                    @elseif($order->status === 'rejected')
+                    <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger px-2 py-0.5" style="font-size: 0.72rem;">
+                        ❌ Rejected
+                    </span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center py-2 px-2.5 rounded-3 bg-light my-2">
+                <span class="badge bg-white text-dark border px-2 py-1 small">
+                    <i class="fas fa-boxes me-1 text-muted"></i> {{ $order->total_items }} items • {{ (float)$order->total_qty }} pcs
+                </span>
+                <span class="fw-bold text-dark fs-6">Rs. {{ number_format($order->total_amount, 2) }}</span>
+            </div>
+
+            @if($order->notes)
+            <div class="text-muted small mb-2 p-1.5 rounded-2 bg-light border" style="font-size: 0.73rem;">
+                <i class="fas fa-comment-dots text-muted me-1"></i> {{ $order->notes }}
+            </div>
+            @endif
+
+            <div class="d-grid gap-1.5 pt-2 border-top" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                @if($order->status === 'pending')
+                <a href="{{ route('admin.distributors.orders.show', $order->id) }}"
+                   class="btn btn-sm rounded-pill text-white shadow-sm d-flex align-items-center justify-content-center"
+                   style="background: #0f766e; min-height: 34px; font-size: 0.76rem;">
+                    <i class="fas fa-box-open me-1"></i> Dispatch
+                </a>
+                <a href="{{ route('admin.distributors.orders.edit', $order->id) }}"
+                   class="btn btn-sm rounded-pill btn-outline-warning shadow-sm fw-semibold d-flex align-items-center justify-content-center"
+                   style="min-height: 34px; font-size: 0.76rem;">
+                    <i class="fas fa-edit me-1"></i> Edit
+                </a>
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger rounded-pill shadow-sm d-flex align-items-center justify-content-center"
+                        style="grid-column: 1 / -1; min-height: 32px; font-size: 0.74rem;"
+                        onclick="openRejectModal({{ $order->id }}, '{{ $order->order_no }}', '{{ addslashes($order->distributor->name ?? 'Distributor') }}')">
+                    <i class="fas fa-times-circle me-1"></i> Reject Order
+                </button>
+                @else
+                <a href="{{ route('admin.distributors.orders.show', $order->id) }}"
+                   class="btn btn-sm rounded-pill btn-outline-secondary d-flex align-items-center justify-content-center"
+                   style="grid-column: 1 / -1; min-height: 34px; font-size: 0.76rem;">
+                    <i class="fas fa-eye me-1"></i> View Order Details
+                </a>
+                @endif
+            </div>
+        </div>
+        @empty
+        <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted">
+            <i class="fas fa-clipboard-check fa-2x mb-2 text-secondary opacity-50"></i>
+            <p class="mb-0 small">No Demand Orders Found</p>
+        </div>
+        @endforelse
+
+        @if($orders->hasPages())
+        <div class="d-flex justify-content-center mt-3">
             {{ $orders->links() }}
         </div>
         @endif

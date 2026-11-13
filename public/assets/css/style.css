@@ -1308,10 +1308,12 @@ blockquote span:before {
 
 .rt_nav_header.horizontal-layout .rt-notification-list .rt-notification-item .rt-notification-subject {
     font-family: "Montserrat", sans-serif;
-    text-overflow: ellipsis;
-    overflow: hidden;
+    text-overflow: clip;
+    overflow: visible;
     max-width: 100%;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: normal;
+    line-height: 1.35;
     margin-bottom: 2px;
 }
 
@@ -1500,10 +1502,12 @@ blockquote span:before {
 
 .rt_nav_header.horizontal-layout .top_nav .nav_wrapper_main .navbar-nav .nav-item.dropdown .navbar-dropdown .dropdown-item .rt-notification-subject {
     font-family: "Montserrat", sans-serif;
-    text-overflow: ellipsis;
-    overflow: hidden;
+    text-overflow: clip;
+    overflow: visible;
     max-width: 100%;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: normal;
+    line-height: 1.35;
 }
 
 .rt_nav_header.horizontal-layout .top_nav .nav_wrapper_main .navbar-nav .nav-item.dropdown .navbar-dropdown .dropdown-item .rt-notification-icon {
@@ -1787,10 +1791,12 @@ blockquote span:before {
     text-decoration: none;
     text-align: left;
     margin: 4px 0;
-    text-overflow: ellipsis;
-    overflow: hidden;
+    text-overflow: clip;
+    overflow: visible;
     max-width: 100%;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: normal;
+    line-height: 1.35;
     transition-duration: 0.2s;
     transition-property: background;
     border-radius: 6px;

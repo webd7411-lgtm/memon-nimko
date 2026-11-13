@@ -166,17 +166,48 @@
     .kpi-val { font-size: 1.1rem !important; }
     .kpi-label { font-size: 0.62rem !important; }
 
-    .dist-card { border-radius: 12px !important; margin-bottom: 0.75rem !important; }
-    .dist-header { padding: 0.75rem 0.85rem !important; flex-wrap: wrap !important; gap: 0.45rem; }
+    .dist-card { border-radius: 12px !important; margin-bottom: 0.75rem !important; overflow: hidden !important; }
+    .dist-header { padding: 0.75rem 0.85rem !important; flex-wrap: wrap !important; gap: 0.5rem; }
     .dist-header h5 { font-size: 0.95rem !important; }
+    .dist-header-actions {
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.45rem !important;
+    }
+    .dist-bal-box {
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 0.5rem 0.65rem !important;
+    }
+    .dist-ledger-btn {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-height: 38px !important;
+        font-size: 0.82rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .booker-section { margin: 8px !important; padding: 10px !important; border-radius: 10px !important; }
+    .booker-title-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    .booker-title-bar > div:last-child {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
     .booker-pill-card { padding: 0.7rem 0.8rem !important; border-radius: 10px !important; }
 
     .table-responsive {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
+        overflow-x: hidden !important;
+        max-width: 100% !important;
     }
     .shop-table {
-        min-width: 540px;
         font-size: 0.76rem !important;
     }
 }
@@ -435,6 +466,7 @@ function renderHierarchy(distributors) {
         } else {
             d.bookers.forEach(b => {
                 let shopsRows = '';
+                let shopsCardsHtml = '';
                 if (!b.customers || b.customers.length === 0) {
                     shopsRows = `
                         <tr>
@@ -442,6 +474,11 @@ function renderHierarchy(distributors) {
                                 No retail shops mapped to this order booker yet.
                             </td>
                         </tr>
+                    `;
+                    shopsCardsHtml = `
+                        <div class="text-center py-3 text-muted small bg-light rounded-3">
+                            No retail shops mapped to this order booker yet.
+                        </div>
                     `;
                 } else {
                     b.customers.forEach(c => {
@@ -495,6 +532,42 @@ function renderHierarchy(distributors) {
                                 </td>
                             </tr>
                         `;
+
+                        // Mobile Shop Card (Zero horizontal scroll)
+                        shopsCardsHtml += `
+                            <div class="p-2.5 rounded-3 border bg-white mb-2 shadow-none" style="border-color: #e2e8f0 !important;">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-1.5">
+                                    <div style="min-width: 0; flex: 1 1 auto;">
+                                        <div class="fw-bold text-dark text-break" style="font-size: 0.88rem; line-height: 1.3;">${c.shop_name}</div>
+                                        <div class="text-muted small text-break" style="font-size: 0.73rem;">
+                                            Prop: <strong>${c.owner_name}</strong> • ${c.phone}
+                                        </div>
+                                    </div>
+                                    <div class="text-end flex-shrink-0">
+                                        <span class="text-muted small d-block" style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.3px;">UDHAAR</span>
+                                        <span class="${balanceClass}" style="font-size: 0.95rem;">${formatRs(c.current_balance)}</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-1.5 pt-1.5 border-top">
+                                    <div class="d-flex flex-wrap align-items-center gap-1">
+                                        <span class="badge bg-light text-dark border px-2 py-0.5" style="font-size: 0.68rem;">
+                                            <i class="fas fa-map-marker-alt me-1 text-muted"></i> ${c.area}
+                                        </span>
+                                        <span class="badge rounded-pill border px-2 py-0.5" style="background: rgba(15, 118, 110, 0.1); color: #0f766e; font-size: 0.68rem;">
+                                            ${c.approved_discount}% Max
+                                        </span>
+                                    </div>
+                                    <a href="${c.ledger_url}" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.72rem; min-height: 28px;">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i> Shop Ledger
+                                    </a>
+                                </div>
+                                ${c.recent_ledgers && c.recent_ledgers.length > 0 ? `
+                                <div class="mt-2 p-1.5 rounded-2 bg-light border small" style="font-size: 0.7rem;">
+                                    <span class="text-muted fw-bold d-block mb-1" style="font-size: 0.65rem;">Recent Activity:</span>
+                                    ${recentTxHtml}
+                                </div>` : ''}
+                            </div>
+                        `;
                     });
                 }
 
@@ -502,16 +575,16 @@ function renderHierarchy(distributors) {
                     <div class="booker-section">
                         <div class="booker-title-bar">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" 
                                      style="width: 32px; height: 32px; background: #0f766e; font-size: 0.85rem;">
                                     <i class="fas fa-user-tie"></i>
                                 </div>
-                                <div>
-                                    <h6 class="mb-0 fw-bold text-dark">${b.name}</h6>
+                                <div style="min-width: 0;">
+                                    <h6 class="mb-0 fw-bold text-dark text-break">${b.name}</h6>
                                     <span class="text-muted small" style="font-size: 0.72rem;">${b.email || 'Order Booker'}</span>
                                 </div>
                             </div>
-                            <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="badge bg-light text-dark border px-2.5 py-1">
                                     <i class="fas fa-store me-1"></i> ${b.shops_count} Retail Shops
                                 </span>
@@ -524,8 +597,8 @@ function renderHierarchy(distributors) {
                             </div>
                         </div>
 
-                        <!-- Retail Shops Table under this Booker -->
-                        <div class="table-responsive rounded-3 border bg-white">
+                        <!-- Retail Shops: Desktop Table View -->
+                        <div class="d-none d-md-block table-responsive rounded-3 border bg-white">
                             <table class="table table-hover align-middle mb-0 shop-table">
                                 <thead>
                                     <tr>
@@ -541,6 +614,11 @@ function renderHierarchy(distributors) {
                                     ${shopsRows}
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Retail Shops: Mobile Clean Cards View (Zero Horizontal Scroll) -->
+                        <div class="d-md-none">
+                            ${shopsCardsHtml}
                         </div>
                     </div>
                 `;
@@ -562,28 +640,28 @@ function renderHierarchy(distributors) {
                 <!-- Distributor Header -->
                 <div class="dist-header">
                     <div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge rounded-pill bg-light text-dark fw-bold px-2.5 py-1" style="font-size: 0.72rem;">
                                 ${d.code}
                             </span>
                             <h5 class="mb-0 fw-bold text-white">${d.name}</h5>
                             <span class="text-white-50 small">• ${d.city}</span>
                         </div>
-                        <div class="text-white-50 small mt-1">
+                        <div class="text-white-50 small mt-1 d-flex flex-wrap align-items-center gap-1.5">
                             <span><i class="fas fa-phone me-1"></i> Phone: <strong>${d.phone}</strong></span>
-                            <span class="mx-2">•</span>
+                            <span class="mx-1">•</span>
                             <span><i class="fas fa-users-gear me-1"></i> <strong>${d.bookers_count}</strong> Order Bookers</span>
-                            <span class="mx-2">•</span>
+                            <span class="mx-1">•</span>
                             <span><i class="fas fa-store me-1"></i> <strong>${d.shops_count}</strong> Retail Shops</span>
                         </div>
                     </div>
 
                     <!-- Distributor Balances & Action -->
-                    <div class="d-flex align-items-center gap-3">
+                    <div class="dist-header-actions">
                         <!-- Company -> Distributor Due -->
-                        <div class="text-end px-3 py-1.5 rounded-3" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                        <div class="dist-bal-box text-start text-md-end px-3 py-1.5 rounded-3" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
                             <span class="text-white-50 d-block" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px;">
-                                COMPANY RECEIVABLE FROM DISTRIBUTOR:
+                                COMPANY RECEIVABLE:
                             </span>
                             <span class="fw-bold ${d.company_receivable > 0 ? 'text-warning' : 'text-success'}" style="font-size: 1.15rem;">
                                 ${formatRs(d.company_receivable)}
@@ -591,16 +669,16 @@ function renderHierarchy(distributors) {
                         </div>
 
                         <!-- Distributor -> Total Market Retail Due -->
-                        <div class="text-end px-3 py-1.5 rounded-3" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4);">
+                        <div class="dist-bal-box text-start text-md-end px-3 py-1.5 rounded-3" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4);">
                             <span class="text-white-50 d-block" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px;">
-                                TOTAL MARKET UDHAAR (RETAILERS):
+                                TOTAL MARKET UDHAAR:
                             </span>
                             <span class="fw-bold text-white" style="font-size: 1.15rem;">
                                 ${formatRs(d.market_receivable)}
                             </span>
                         </div>
 
-                        <a href="${d.ledger_url}" class="btn btn-sm btn-light rounded-pill px-3 py-1.5 fw-bold shadow-sm" title="View Distributor Company Ledger Statement">
+                        <a href="${d.ledger_url}" class="btn btn-sm btn-light rounded-pill px-3 py-2 fw-bold shadow-sm dist-ledger-btn" title="View Distributor Company Ledger Statement">
                             <i class="fas fa-receipt me-1 text-teal"></i> Company Ledger
                         </a>
                     </div>

@@ -186,7 +186,7 @@
         .rp-card-body form.row > div { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
         .rp-card-body form .col-auto { padding-left: 0; padding-right: 0; }
         .rp-card-body form .d-flex { flex-wrap: wrap; width: 100%; }
-        .rp-btn { flex: 1 1 auto; justify-content: center; min-height: 44px; }
+        .rp-btn { flex: 1 1 auto; justify-content: center; min-height: 34px !important; }
 
         .rp-hdr { padding: 1.1rem 1.2rem; flex-direction: column; align-items: stretch; gap: .7rem; }
         .rp-hdr h2 { font-size: 1.12rem; }
@@ -358,17 +358,21 @@
                         <tbody>
                             @forelse($rows as $i => $row)
                             @php
-                                $isKg = $row->unit_type === 'kg';
+                                $isRm = !empty($row->raw_material_id);
+                                $isKg = !$isRm && $row->unit_type === 'kg';
                                 $qty = (float)$row->qty;
                                 if ($isKg) {
                                     $kg = floor($qty); $gm = round(($qty - $kg) * 1000);
                                     $qtyFmt = ($kg > 0 ? $kg.'kg ' : '') . ($gm > 0 ? $gm.'g' : ($kg > 0 ? '' : '0g'));
+                                    $sFmt = number_format($row->qty_stock, 0) . 'g';
+                                } elseif ($isRm) {
+                                    $qtyFmt = (floor($qty) == $qty ? number_format($qty, 0) : number_format($qty, 2)) . ' ' . $row->unit;
+                                    $stockQty = (float)$row->qty_stock;
+                                    $sFmt = (floor($stockQty) == $stockQty ? number_format($stockQty, 0) : number_format($stockQty, 2)) . ' ' . $row->unit;
                                 } else {
-                                    $qtyFmt = number_format($qty, 0) . ' ' . $row->unit;
+                                    $qtyFmt = (floor($qty) == $qty ? number_format($qty, 0) : number_format($qty, 2)) . ' ' . $row->unit;
+                                    $sFmt = number_format($row->qty_stock, 0) . ' ' . $row->unit;
                                 }
-                                $sFmt = $isKg
-                                    ? number_format($row->qty_stock, 0) . 'g'
-                                    : number_format($row->qty_stock, 0) . ' ' . $row->unit;
                             @endphp
                             <tr>
                                 <td class="rp-num">{{ $i + 1 }}</td>
@@ -384,6 +388,9 @@
                                 <td data-label="Reason">{{ $row->reason }}</td>
                                 <td data-label="Product">
                                     <strong>{{ $row->item_name }}</strong>
+                                    @if(!empty($row->raw_material_id))
+                                        <span class="badge bg-secondary-subtle text-secondary border ms-1" style="font-size:.65rem;">Raw Material</span>
+                                    @endif
                                     @if($row->size_label || $row->variant_name)
                                         <br><small class="text-muted">({{ $row->size_label ?: $row->variant_name }})</small>
                                     @endif

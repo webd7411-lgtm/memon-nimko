@@ -105,8 +105,8 @@ html, body {
         left: 0 !important;
         bottom: 0 !important;
         right: auto !important;
-        width: 288px !important;
-        max-width: 84vw !important;
+        width: 320px !important;
+        max-width: 88vw !important;
         height: 100vh !important;
         height: 100dvh !important;
         max-height: 100dvh !important;
@@ -235,6 +235,21 @@ html, body {
         font-size: .82rem;
         border-radius: 8px;
         color: #cbd5e1;
+        white-space: normal !important;
+        text-overflow: clip !important;
+        overflow: visible !important;
+        word-break: normal !important;
+        line-height: 1.35 !important;
+    }
+
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu-item li a span,
+    .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu ul li a span {
+        white-space: normal !important;
+        text-overflow: clip !important;
+        overflow: visible !important;
+        word-break: normal !important;
+        line-height: 1.35 !important;
+        flex: 1 1 auto !important;
     }
 
     .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu-item li a i,
@@ -331,7 +346,9 @@ html, body {
     .table th,
     .pc-tbl th,
     .pc-tbl td {
-        white-space: nowrap;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
     }
 
     /* Mobile table improvements - allow wrapping and smaller fonts */
@@ -501,12 +518,18 @@ html, body {
    Guarantees 100% responsive fit across all phone and tablet viewports
 ═════════════════════════════════════════════════════════════════════ */
 html, body {
-    max-width: 100% !important;
+    max-width: 100vw !important;
+    width: 100% !important;
     overflow-x: hidden !important;
-    position: relative;
+    position: relative !important;
+    margin: 0 !important;
 }
 
 @media (max-width: 991.98px) {
+    *, ::before, ::after {
+        box-sizing: border-box !important;
+    }
+
     .container-scroller,
     .main-content,
     .main-content-inner,
@@ -517,9 +540,30 @@ html, body {
     .rp-mgmt,
     .un-page,
     .tb-page,
-    .pos-wrap {
+    .pos-wrap,
+    .container-fluid,
+    .container,
+    .card,
+    .t-card,
+    .g-card,
+    .dist-card,
+    .pv-card,
+    .rv-card,
+    .ev-card {
         max-width: 100vw !important;
         overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Prevent negative margin from .row pushing outside viewport */
+    .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    .row > [class*="col-"] {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+        max-width: 100% !important;
         box-sizing: border-box !important;
     }
 
@@ -536,14 +580,34 @@ html, body {
     .dt-scroll,
     .rvf-table-container {
         max-width: 100% !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
     }
 
     /* Prevent any images, svg, canvas or iframes from pushing viewport width */
-    img, svg, canvas, iframe {
+    img, svg, canvas, iframe, .chartjs-render-monitor, .apexcharts-canvas, .c3 {
         max-width: 100% !important;
-        height: auto;
+        height: auto !important;
+        box-sizing: border-box !important;
+    }
+    .chart-box, .chart-container {
+        max-width: 100% !important;
+        overflow: hidden !important;
+        position: relative !important;
+    }
+
+    /* Form controls, input groups & filters wrap properly */
+    .input-group {
+        max-width: 100% !important;
+    }
+
+    /* Modals stay inside screen width */
+    .modal-dialog {
+        max-width: calc(100vw - 1rem) !important;
+        margin: 0.5rem auto !important;
+    }
+    .modal-content {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
     }
 
     /* Buttons flex nicely and don't overflow small screens */

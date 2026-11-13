@@ -359,9 +359,7 @@
 }
 
 /* ═══════ FULL MOBILE RESPONSIVE — CARD LAYOUT (no horizontal scroll) ═══════ */
-@media (max-width: 767.98px) {
-  body, html { overflow-x: hidden !important; }
-  .pc-page { overflow-x: hidden !important; padding-bottom: 1.5rem; }
+@media (max-width: 991.98px) {`r`n  body, html { overflow-x: hidden !important; }`r`n  .pc-page { overflow-x: hidden !important; max-width: 100% !important; padding-bottom: 1.5rem; }
 
   /* Header + tabs */
   .pc-hdr { padding: .75rem .85rem !important; flex-direction: column; align-items: stretch; gap: .5rem; }

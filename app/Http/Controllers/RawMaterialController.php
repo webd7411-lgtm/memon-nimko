@@ -8,12 +8,15 @@ use App\Models\RawMaterialPurchaseItem;
 use App\Models\RawMaterialPurchaseReturn;
 use App\Models\RawMaterialPurchaseReturnItem;
 use App\Models\RawMaterialStock;
+use App\Models\StockAdjustment;
+use App\Models\StockAdjustmentItem;
 use App\Models\Vendor;
 use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 use function active_branch_id;
 use function is_all_branches;
@@ -275,7 +278,8 @@ class RawMaterialController extends Controller
             return response()->json(['errors' => $validator->errors()]);
         }
 
-        if ($request->edit_id) {
+        $isEdit = !empty($request->edit_id);
+        if ($isEdit) {
             $material = RawMaterial::find($request->edit_id);
             if (!$material) {
                 return response()->json(['error' => 'Raw Material not found!']);
@@ -316,20 +320,82 @@ class RawMaterialController extends Controller
         $branchId = is_all_branches() ? null : active_branch_id();
         $openingQty = (float)($request->opening_stock ?? 0);
         $factor = (float)($material->conversion_factor ?? 1);
-        $openingQtyInConsumptionUnit = $openingQty * ($factor > 0 ? $factor : 1);
-        $stockRecord = RawMaterialStock::firstOrCreate(
-            [
-                'raw_material_id' => $material->id,
-                'branch_id' => $branchId,
-                'warehouse_id' => null,
-            ],
-            ['qty' => $openingQtyInConsumptionUnit]
-        );
-        // If opening stock provided, update it
-        if ($request->has('opening_stock') && $request->opening_stock !== null && $request->opening_stock !== '') {
-            $stockRecord->qty = $openingQtyInConsumptionUnit;
+        if ($factor <= 0) $factor = 1;
+        $openingQtyInConsumptionUnit = $openingQty * $factor;
+
+        $stockRecord = RawMaterialStock::where('raw_material_id', $material->id)
+            ->where(function($q) use ($branchId) {
+                if ($branchId) {
+                    $q->where('branch_id', $branchId);
+                } else {
+                    $q->whereNull('branch_id');
+                }
+            })
+            ->where(function($q) {
+                $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+            })
+            ->first();
+
+        $oldQtyInConsumptionUnit = $stockRecord ? (float)$stockRecord->qty : 0;
+        $oldQtyInPurchaseUnit = $factor > 0 ? ($oldQtyInConsumptionUnit / $factor) : $oldQtyInConsumptionUnit;
+
+        if (!$stockRecord) {
+            $stockRecord = new RawMaterialStock();
+            $stockRecord->raw_material_id = $material->id;
             $stockRecord->branch_id = $branchId;
+            $stockRecord->warehouse_id = null;
+            $stockRecord->qty = $openingQtyInConsumptionUnit;
             $stockRecord->save();
+        } else {
+            if ($request->has('opening_stock') && $request->opening_stock !== null && $request->opening_stock !== '') {
+                $stockRecord->qty = $openingQtyInConsumptionUnit;
+                $stockRecord->branch_id = $branchId;
+                $stockRecord->save();
+            }
+        }
+
+        // Auto create Stock Adjustment for the difference when editing
+        if ($isEdit && $request->has('opening_stock') && $request->opening_stock !== null && $request->opening_stock !== '') {
+            $diffPurchase = $openingQty - $oldQtyInPurchaseUnit;
+            if (abs($diffPurchase) > 0.0001) {
+                $adjType = $diffPurchase > 0 ? 'increase' : 'decrease';
+                $adjQtyPurchase = abs($diffPurchase);
+                $adjQtyConsumption = abs($openingQtyInConsumptionUnit - $oldQtyInConsumptionUnit);
+
+                $refNo = 'ADJ-' . date('Ymd') . '-' . str_pad(
+                    (StockAdjustment::whereDate('created_at', today())->count() + 1), 3, '0', STR_PAD_LEFT
+                ) . '-' . strtoupper(Str::random(3));
+
+                $unitName = strtoupper($material->unit);
+                $oldDisp = number_format($oldQtyInPurchaseUnit, 2);
+                $newDisp = number_format($openingQty, 2);
+
+                $adjId = DB::table('stock_adjustments')->insertGetId([
+                    'ref_no'          => $refNo,
+                    'adjustment_date' => now()->toDateString(),
+                    'type'            => $adjType,
+                    'reason'          => 'Raw Material Stock Adjustment',
+                    'notes'           => 'Updated Raw Material: ' . $material->name . ' (Old: ' . $oldDisp . ' ' . $unitName . ', New: ' . $newDisp . ' ' . $unitName . ')',
+                    'created_by'      => Auth::id(),
+                    'branch_id'       => active_branch_id(),
+                    'warehouse_id'    => null,
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+
+                DB::table('stock_adjustment_items')->insert([
+                    'adjustment_id'   => $adjId,
+                    'product_id'      => null,
+                    'raw_material_id' => $material->id,
+                    'variant_id'      => null,
+                    'unit'            => $material->unit ?? 'Unit',
+                    'qty'             => $adjQtyPurchase,
+                    'qty_stock'       => $adjQtyConsumption,
+                    'notes'           => 'Raw material stock edit adjustment',
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+            }
         }
 
         return response()->json($msg);

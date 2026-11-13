@@ -18,6 +18,11 @@ class RawMaterial extends Model
         return $this->hasMany(RawMaterialStock::class);
     }
 
+    public function stockAdjustmentItems()
+    {
+        return $this->hasMany(StockAdjustmentItem::class, 'raw_material_id');
+    }
+
     public function currentStock(?int $warehouseId = null, ?int $branchId = null)
     {
         if ($warehouseId) {

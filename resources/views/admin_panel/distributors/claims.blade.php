@@ -237,7 +237,7 @@
     </div>
 
     <!-- Claims Table Card -->
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block bg-white">
         <div class="card-header bg-white py-3 px-3 d-flex align-items-center justify-content-between border-bottom">
             <div class="fw-bold text-dark">
                 <i class="fas fa-list-check text-teal me-1" style="color: #0f766e;"></i> Claims Register
@@ -399,12 +399,89 @@
             {{ $claims->links() }}
         </div>
         @endif
+    
+    <!-- Mobile Claims Cards (Zero Horizontal Scroll) -->
+    <div class="d-block d-md-none mb-4">
+        @forelse($claims as $claim)
+        <div class="card border-0 shadow-sm rounded-4 mb-3 bg-white p-3" style="border: 1px solid #edf2f7 !important;">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                <div>
+                    <span class="fw-bold font-monospace text-dark d-block" style="font-size: 0.92rem;">{{ $claim->claim_no }}</span>
+                    <span class="text-muted small"><i class="far fa-calendar-alt me-1"></i> {{ $claim->claim_date ? $claim->claim_date->format('d M, Y') : '-' }}</span>
+                </div>
+                <div>
+                    @if($claim->status === 'approved')
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">Approved</span>
+                    @elseif($claim->status === 'rejected')
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">Rejected</span>
+                    @else
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">Pending</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <div class="fw-bold text-dark" style="font-size: 0.88rem;">{{ $claim->distributor->name ?? 'Distributor' }}</div>
+                <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                    <span class="badge bg-light text-dark border px-2 py-0.5" style="font-size: 0.68rem;">
+                        <i class="fas fa-tag me-1 text-teal"></i> {{ ucwords(str_replace('_', ' ', $claim->claim_type)) }}
+                    </span>
+                    <span class="badge bg-light text-muted border px-2 py-0.5" style="font-size: 0.68rem;">
+                        Settlement: {{ ucfirst($claim->settlement_mode ?? 'Credit Note') }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center py-2 px-2.5 rounded-3 bg-light my-2">
+                <div>
+                    <span class="text-muted d-block" style="font-size: 0.65rem; font-weight: 700;">CLAIMED</span>
+                    <span class="fw-bold text-dark">Rs. {{ number_format($claim->claimed_amount, 2) }}</span>
+                </div>
+                <div class="text-end">
+                    <span class="text-muted d-block" style="font-size: 0.65rem; font-weight: 700;">APPROVED</span>
+                    <span class="fw-bold text-success fs-6">Rs. {{ number_format($claim->approved_amount ?? 0, 2) }}</span>
+                </div>
+            </div>
+
+            @if($claim->description)
+            <div class="text-muted small mb-2 p-1.5 rounded-2 bg-light border" style="font-size: 0.72rem;">
+                {{ $claim->description }}
+            </div>
+            @endif
+
+            <div class="d-flex gap-1.5 pt-2 border-top">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill flex-fill d-flex align-items-center justify-content-center"
+                        style="min-height: 34px; font-size: 0.76rem;"
+                        data-bs-toggle="modal" data-bs-target="#viewClaimModal{{ $claim->id }}">
+                    <i class="fas fa-eye me-1"></i> View Details
+                </button>
+                @if($claim->status === 'pending')
+                    @can('Approve Distributor Claim')
+                    <button type="button" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm d-flex align-items-center justify-content-center"
+                            style="min-height: 34px; font-size: 0.76rem;"
+                            data-bs-toggle="modal" data-bs-target="#approveClaimModal{{ $claim->id }}">
+                        <i class="fas fa-check me-1"></i> Approve
+                    </button>
+                    @endcan
+                @endif
+            </div>
+        </div>
+        @empty
+        <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted">
+            <i class="fas fa-receipt fa-2x mb-2 text-secondary opacity-50"></i>
+            <p class="mb-0 small">No Claims Found</p>
+        </div>
+        @endforelse
+
+        @if($claims->hasPages())
+        <div class="d-flex justify-content-center mt-3">
+            {{ $claims->links() }}
+        </div>
+        @endif
     </div>
 </div>
 
-
-
-<!-- ============================================================== -->
+<!-- ==============================================================
 <!-- CLAIM MODALS (View, Approve, Reject, Delete)                    -->
 <!-- ============================================================== -->
 @foreach($claims as $claim)

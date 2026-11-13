@@ -16,7 +16,7 @@ class StockAdjustmentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = StockAdjustment::with(['user', 'items.product', 'items.variant', 'branch'])
+        $query = StockAdjustment::with(['user', 'items.product', 'items.variant', 'items.rawMaterial', 'branch'])
             ->orderBy('created_at', 'desc');
 
         if (!is_all_branches() && \Illuminate\Support\Facades\Schema::hasColumn('stock_adjustments', 'branch_id')) {
@@ -232,7 +232,7 @@ Stock::create([
 
     public function show($id)
     {
-        $adjustment = StockAdjustment::with(['user', 'items.product', 'items.variant', 'expenseVoucher'])->findOrFail($id);
+        $adjustment = StockAdjustment::with(['user', 'items.product', 'items.variant', 'items.rawMaterial', 'expenseVoucher'])->findOrFail($id);
         return view('admin_panel.stock_adjustment.show', compact('adjustment'));
     }
 
@@ -429,6 +429,28 @@ Stock::create([
 
             // Revert stock adjustment effects
             foreach ($adjustment->items as $oldItem) {
+                if ($oldItem->raw_material_id) {
+                    $rmStock = \App\Models\RawMaterialStock::where('raw_material_id', $oldItem->raw_material_id)
+                        ->where('branch_id', $oldBranchId)
+                        ->where(function($q) use ($oldWarehouseId) {
+                            if ($oldWarehouseId) {
+                                $q->where('warehouse_id', $oldWarehouseId);
+                            } else {
+                                $q->whereNull('warehouse_id')->orWhere('warehouse_id', 0);
+                            }
+                        })
+                        ->first();
+                    if ($rmStock) {
+                        if ($oldType === 'increase') {
+                            $rmStock->qty -= $oldItem->qty_stock;
+                        } else {
+                            $rmStock->qty += $oldItem->qty_stock;
+                        }
+                        $rmStock->save();
+                    }
+                    continue;
+                }
+
                 $oldProduct = $oldItem->product ?: Product::with('unit')->find($oldItem->product_id);
 
                 $unitName = strtolower($oldProduct->unit->name ?? '');
@@ -493,16 +515,20 @@ Stock::create([
 
         $query = DB::table('stock_adjustment_items as sai')
             ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
-            ->join('products as p', 'p.id', '=', 'sai.product_id')
+            ->leftJoin('products as p', 'p.id', '=', 'sai.product_id')
+            ->leftJoin('raw_materials as rm', 'rm.id', '=', 'sai.raw_material_id')
             ->leftJoin('product_variants as pv', 'pv.id', '=', 'sai.variant_id')
             ->leftJoin('users as u', 'u.id', '=', 'sa.created_by')
             ->whereBetween('sa.adjustment_date', [$from, $to])
             ->select(
                 'sa.ref_no', 'sa.adjustment_date', 'sa.type', 'sa.reason',
-                'p.item_name', 'p.item_code', 'p.unit_type',
+                DB::raw('COALESCE(p.item_name, rm.name) as item_name'),
+                DB::raw('COALESCE(p.item_code, CONCAT("RM-", rm.id)) as item_code'),
+                DB::raw('COALESCE(p.unit_type, rm.unit) as unit_type'),
                 'sai.qty', 'sai.qty_stock', 'sai.unit', 'sai.notes as item_note',
                 'sa.notes as adj_note', 'u.name as user_name',
-                'pv.size_label', 'pv.variant_name'
+                'pv.size_label', 'pv.variant_name',
+                'sai.raw_material_id'
             )
             ->orderBy('sa.adjustment_date', 'desc')
             ->orderBy('sa.id', 'desc');

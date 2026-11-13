@@ -320,6 +320,90 @@
   gap: 0.75rem;
 }
 
+/* ═══════ FULL MOBILE RESPONSIVE ═══════ */
+@media (max-width: 991.98px) {
+  body, html { overflow-x: hidden !important; }
+  .pl-page { overflow-x: hidden !important; max-width: 100% !important; padding-bottom: 1.5rem; }
+  .pl-page > .container-fluid { padding: 0.65rem 0.65rem 1.25rem !important; }
+
+  .pl-hdr {
+    padding: 0.85rem 1rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+    border-radius: 12px;
+  }
+  .pl-hdr-title { gap: 0.6rem; align-items: center; }
+  .pl-hdr-title h2 { font-size: 1.05rem; margin: 0; }
+  .pl-hdr-icon { width: 36px; height: 36px; font-size: 1rem; border-radius: 9px; }
+  .pl-hdr .d-flex { width: 100%; }
+  .pl-hdr .btn { width: 100% !important; min-height: 34px !important; justify-content: center; }
+
+  .pl-card-body { padding: 0.85rem !important; }
+  #ProfitLossFilterForm {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+  #ProfitLossFilterForm > div:first-child {
+    grid-column: 1 / -1 !important;
+  }
+  #ProfitLossFilterForm > div:last-child {
+    grid-column: 1 / -1 !important;
+  }
+  .pl-input {
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 0.82rem !important;
+    padding: 0.3rem 0.55rem !important;
+    border-radius: 8px !important;
+  }
+  .pl-btn {
+    min-height: 34px !important;
+    font-size: 0.8rem !important;
+    padding: 0.35rem 0.65rem !important;
+    border-radius: 8px !important;
+  }
+
+  /* 2-column KPI Cards */
+  #kpiCardsArea {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  #kpiCardsArea > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .kpi-card {
+    padding: 0.65rem 0.75rem !important;
+    border-radius: 10px !important;
+    gap: 0.4rem !important;
+  }
+  .kpi-title { font-size: 0.62rem !important; }
+  .kpi-value { font-size: 1.05rem !important; }
+  .kpi-sub { font-size: 0.6rem !important; }
+  .kpi-icon { width: 32px !important; height: 32px !important; font-size: 0.85rem !important; border-radius: 8px !important; }
+
+  /* Table Container Touch Scroll */
+  .pl-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-width: 100% !important;
+    border-radius: 8px;
+  }
+  .pl-table {
+    min-width: 680px;
+    font-size: 0.78rem !important;
+  }
+  .pl-table th, .pl-table td {
+    padding: 0.45rem 0.55rem !important;
+    font-size: 0.76rem !important;
+  }
+}
+
 /* Print Styles */
 @media print {
   .pl-hdr, .pl-card:first-of-type, .no-print, header, footer, .sidebar, #sidebar {

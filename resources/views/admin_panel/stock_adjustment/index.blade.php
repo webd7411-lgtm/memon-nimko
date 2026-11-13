@@ -284,12 +284,16 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
                 <div class="pc-items">
                   @foreach($adj->items as $item)
                   @php
-                    $isKg = optional($item->product)->unit_type === 'kg';
+                    $isRm = !empty($item->raw_material_id);
+                    $itemName = $isRm ? (optional($item->rawMaterial)->name ?: 'Raw Material #'.$item->raw_material_id) : (optional($item->product)->item_name ?: 'Product #'.$item->product_id);
+                    $isKg = !$isRm && optional($item->product)->unit_type === 'kg';
                     $qty = (float)$item->qty;
                     if ($isKg) { $kg = floor($qty); $gm = round(($qty - $kg) * 1000); $qtyFmt = ($kg > 0 ? $kg.'kg ' : '') . ($gm > 0 ? $gm.'g' : ($kg > 0 ? '' : '0g')); }
-                    else { $qtyFmt = number_format($qty, 0) . ' ' . $item->unit; }
+                    else { $qtyFmt = (floor($qty) == $qty ? number_format($qty, 0) : number_format($qty, 2)) . ' ' . $item->unit; }
                   @endphp
-                  <div><strong>{{ optional($item->product)->item_name }}</strong> : <span style="background:#f5f5f5;border-radius:4px;padding:1px 5px;font-weight:700;">{{ $qtyFmt }}</span>@if($item->variant) <span style="color:var(--pc-text-muted);font-size:.7rem;">({{ $item->variant->size_label ?: $item->variant->variant_name }})</span> @endif</div>
+                  <div>
+                    <strong>{{ $itemName }}</strong>@if($isRm) <span class="badge bg-secondary-subtle text-secondary border ms-1" style="font-size:.65rem;padding:1px 5px;">RM</span>@endif : <span style="background:#f5f5f5;border-radius:4px;padding:1px 5px;font-weight:700;">{{ $qtyFmt }}</span>@if($item->variant) <span style="color:var(--pc-text-muted);font-size:.7rem;">({{ $item->variant->size_label ?: $item->variant->variant_name }})</span> @endif
+                  </div>
                   @endforeach
                 </div>
               </td>
@@ -346,14 +350,16 @@ select.pc-fld { appearance: none; background-image: url("data:image/svg+xml,%3Cs
           </div>
           @foreach($adj->items as $item)
           @php
-            $isKg = optional($item->product)->unit_type === 'kg';
+            $isRm = !empty($item->raw_material_id);
+            $itemName = $isRm ? (optional($item->rawMaterial)->name ?: 'Raw Material #'.$item->raw_material_id) : (optional($item->product)->item_name ?: 'Product #'. $item->product_id);
+            $isKg = !$isRm && optional($item->product)->unit_type === 'kg';
             $qty = (float)$item->qty;
             if ($isKg) { $kg = floor($qty); $gm = round(($qty - $kg) * 1000); $qtyFmt = ($kg > 0 ? $kg.'kg ' : '') . ($gm > 0 ? $gm.'g' : ($kg > 0 ? '' : '0g')); }
-            else { $qtyFmt = number_format($qty, 0) . ' ' . $item->unit; }
+            else { $qtyFmt = (floor($qty) == $qty ? number_format($qty, 0) : number_format($qty, 2)) . ' ' . $item->unit; }
           @endphp
           <div class="adj-item">
             <div class="adj-item-nm">
-              {{ optional($item->product)->item_name ?: 'Product #'. $item->product_id }}
+              {{ $itemName }}@if($isRm) <span class="badge bg-secondary-subtle text-secondary border ms-1" style="font-size:.62rem;">RM</span>@endif
               @if($item->variant)
               <span class="adj-item-var">{{ $item->variant->size_label ?: $item->variant->variant_name }}</span>
               @endif

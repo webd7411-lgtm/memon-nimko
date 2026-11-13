@@ -454,6 +454,90 @@
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════ FULL MOBILE RESPONSIVE ═══════ */
+@media (max-width: 991.98px) {
+  body, html { overflow-x: hidden !important; }
+  .bs-page { overflow-x: hidden !important; max-width: 100% !important; padding-bottom: 1.5rem; }
+  .bs-page > .container-fluid { padding: 0.65rem 0.65rem 1.25rem !important; }
+
+  .bs-hdr {
+    padding: 0.85rem 1rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+    border-radius: 12px;
+  }
+  .bs-hdr-title { gap: 0.6rem; align-items: center; }
+  .bs-hdr-title h2 { font-size: 1.05rem; margin: 0; }
+  .hdr-icon { width: 36px; height: 36px; font-size: 1rem; border-radius: 9px; }
+  .bs-hdr-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+  }
+  .bs-hdr-actions .bs-btn {
+    width: 100% !important;
+    min-height: 34px !important;
+    font-size: 0.72rem !important;
+    padding: 0.3rem 0.4rem !important;
+    justify-content: center !important;
+  }
+
+  .bs-kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .bs-kpi-card {
+    padding: 0.65rem 0.75rem !important;
+    border-radius: 10px !important;
+  }
+  .bs-kpi-val { font-size: 1.05rem !important; }
+  .bs-kpi-title { font-size: 0.65rem !important; }
+  .bs-kpi-sub { font-size: 0.62rem !important; }
+
+  .bs-filter-card {
+    padding: 0.85rem !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .bs-filter-card .row.g-3 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+  .bs-filter-card .row.g-3 > div:last-child {
+    grid-column: 1 / -1 !important;
+  }
+  .bs-filter-card .form-control,
+  .bs-filter-card .form-select {
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 0.82rem !important;
+    padding: 0.3rem 0.55rem !important;
+    border-radius: 8px !important;
+  }
+  .bs-filter-card button[type="submit"] {
+    min-height: 34px !important;
+    font-size: 0.8rem !important;
+    padding: 0.35rem 0.65rem !important;
+    border-radius: 8px !important;
+  }
+
+  .bs-sheet-container {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  .bs-column-card { border-radius: 12px !important; }
+  .bs-column-header { padding: 0.75rem 0.9rem !important; }
+  .bs-column-body { padding: 0.75rem !important; gap: 0.75rem !important; }
+  .bs-column-footer { padding: 0.85rem 1rem !important; }
+  .bs-grand-title { font-size: 0.95rem !important; }
+  .bs-grand-val { font-size: 1.15rem !important; }
+}
 </style>
 
 <div class="bs-page">

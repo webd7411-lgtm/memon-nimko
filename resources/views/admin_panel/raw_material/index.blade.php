@@ -1337,7 +1337,7 @@
             </div>
             <div class="col-md-6">
               <label class="lbl"><i class="bi bi-box-seam-fill"></i> Current Stock (Purchase Unit)</label>
-              <input type="number" step="0.01" min="0" name="opening_stock" id="materialOpeningStock" class="fld" value="0" placeholder="e.g. 50" />
+              <input type="number" step="any" min="0" name="opening_stock" id="materialOpeningStock" class="fld" value="0" placeholder="e.g. 50" />
             </div>
             <div class="col-12 mt-1">
               <div class="p-2 rounded bg-light border text-muted" style="font-size:.74rem;">
@@ -1347,11 +1347,11 @@
             </div>
             <div class="col-md-6">
               <label class="lbl"><i class="bi bi-cash-stack"></i> Purchase Price / Cost (Rs)</label>
-              <input type="number" step="0.01" min="0" name="initial_price" id="materialPrice" class="fld" value="0" placeholder="e.g. 150.00" />
+              <input type="number" step="any" min="0" name="initial_price" id="materialPrice" class="fld" value="0" placeholder="e.g. 150.00" />
             </div>
             <div class="col-md-6">
               <label class="lbl"><i class="bi bi-exclamation-triangle-fill"></i> Alert Qty (Purchase Unit)</label>
-              <input type="number" step="0.01" min="0" name="alert_qty" id="materialAlert" class="fld" value="0" />
+              <input type="number" step="any" min="0" name="alert_qty" id="materialAlert" class="fld" value="0" />
             </div>
             <div class="col-12">
               <label class="lbl"><i class="bi bi-sticky-fill"></i> Notes</label>

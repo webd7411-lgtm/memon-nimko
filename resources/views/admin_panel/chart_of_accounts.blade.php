@@ -363,6 +363,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
 }
 .coac-btn {
+  width: 100% !important;
+  box-sizing: border-box !important;
   min-height: 34px !important;
   height: 34px !important;
   display: inline-flex !important;

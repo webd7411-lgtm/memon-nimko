@@ -241,7 +241,7 @@
 }
 
 /* Mobile App-Style Responsive Rules */
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
     html, body { overflow-x: hidden !important; max-width: 100% !important; }
     .fcc-container {
         padding: 0.65rem 0.65rem 1.75rem !important;
@@ -661,9 +661,19 @@
             <div class="fcc-kpi-card" style="border-left: 4px solid #10b981 !important;">
                 <div class="fcc-kpi-title">Period Net Profit</div>
                 <div class="fcc-kpi-value text-success" id="kpiNetProfit">Rs. 0.00</div>
-                <div class="d-flex align-items-center justify-content-between mt-2">
+                <div class="d-flex align-items-center justify-content-between mt-1">
                     <span class="fcc-delta-pill" id="deltaNetProfit"><i class="fas fa-minus"></i> 0%</span>
                     <span class="text-muted" style="font-size: 0.72rem;">P&L Bottom Line</span>
+                </div>
+                <div class="mt-2 pt-2 border-top" style="font-size: 0.71rem; line-height: 1.45;">
+                    <div class="d-flex justify-content-between align-items-center text-muted">
+                        <span title="Sale minus Product Cost (COGS)"><i class="fas fa-chart-line me-1 text-success"></i>Gross Profit:</span>
+                        <strong class="text-success fw-bold" id="kpiGrossProfit">Rs. 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted mt-1">
+                        <span title="Cost of Goods Sold (BOM & Purchases)"><i class="fas fa-boxes me-1 text-warning"></i>Product Cost (COGS):</span>
+                        <strong class="text-danger" id="kpiCOGS">Rs. 0.00</strong>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1392,6 +1402,12 @@ function loadFinancialSnapshot() {
             document.getElementById('kpiSales').innerText = formatCurrency(res.curr_pl.net_revenue ?? res.curr_pl.total_sales);
             document.getElementById('kpiExpenses').innerText = formatCurrency(res.curr_pl.total_expenses);
             document.getElementById('kpiNetProfit').innerText = formatCurrency(res.curr_pl.net_profit);
+            if (document.getElementById('kpiGrossProfit')) {
+                document.getElementById('kpiGrossProfit').innerText = formatCurrency(res.curr_pl.gross_profit);
+            }
+            if (document.getElementById('kpiCOGS')) {
+                document.getElementById('kpiCOGS').innerText = formatCurrency(res.curr_pl.cogs);
+            }
 
             // Capital Movement Card
             const netCap = res.curr_equity.net_movement;

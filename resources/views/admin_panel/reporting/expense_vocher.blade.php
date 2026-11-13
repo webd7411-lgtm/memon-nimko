@@ -198,7 +198,7 @@
         .rp-hdr p { font-size: .8rem; }
 
         .rp-card-body { padding: 1rem; }
-        .rp-card-body .col-md-2, .rp-card-body .col-md-3 { margin-bottom: .5rem; }
+        .rp-card-body .row.g-3 { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.5rem !important; }`r`n        .rp-card-body .row.g-3 > div:nth-child(1), .rp-card-body .row.g-3 > div:nth-child(2), .rp-card-body .row.g-3 > div:nth-child(5) { grid-column: 1 / -1 !important; width: 100% !important; max-width: 100% !important; }`r`n        .rp-card-body .row.g-3 > div { width: 100% !important; max-width: 100% !important; }`r`n        .rp-input { min-height: 36px !important; height: 36px !important; font-size: 0.82rem !important; }`r`n        .rp-btn { min-height: 34px !important; width: 100% !important; justify-content: center !important; }
 
         /* Hide table on mobile, render premium cards instead */
         .table-responsive { overflow: visible !important; padding: 0; }

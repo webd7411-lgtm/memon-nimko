@@ -17,11 +17,15 @@
         --erp-text-muted: #64748b;
     }
 
-    body {
+    html, body {
         font-family: var(--erp-font) !important;
         background-color: #f8fafc;
         color: var(--erp-text-dark);
         -webkit-font-smoothing: antialiased;
+        max-width: 100vw !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+        position: relative !important;
     }
 
     /* ════ GLOBAL ICON FONT FAMILY PROTECTOR ════ */
@@ -71,11 +75,15 @@
         --pc-warning: #334155;
     }
 
-    body {
+    html, body {
         font-family: var(--erp-font) !important;
         background-color: #f8fafc;
         color: var(--erp-text-dark);
         -webkit-font-smoothing: antialiased;
+        max-width: 100vw !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+        position: relative !important;
     }
 
     /* ═════════════════════════════════════════════════════════════════════

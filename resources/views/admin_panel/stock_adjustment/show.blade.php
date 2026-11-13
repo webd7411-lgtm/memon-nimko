@@ -212,23 +212,35 @@
             <tbody>
               @forelse($adjustment->items as $i => $item)
               @php
-                $isKg = optional($item->product)->unit_type === 'kg';
+                $isRm = !empty($item->raw_material_id);
+                $itemName = $isRm ? (optional($item->rawMaterial)->name ?: 'Raw Material #'.$item->raw_material_id) : (optional($item->product)->item_name ?: 'Product #'.$item->product_id);
+                $itemCode = $isRm ? ('RM-' . $item->raw_material_id) : optional($item->product)->item_code;
+                $isKg = !$isRm && optional($item->product)->unit_type === 'kg';
                 $qty = (float)$item->qty;
                 if ($isKg) {
                   $kg = floor($qty); $gm = round(($qty - $kg) * 1000);
                   $qtyFmt = ($kg > 0 ? $kg.'kg ' : '') . ($gm > 0 ? $gm.'g' : ($kg > 0 ? '' : '0g'));
+                  $stockFmt = number_format($item->qty_stock, 0) . ' g';
+                } elseif ($isRm) {
+                  $cUnit = optional($item->rawMaterial)->consumption_unit ?: $item->unit;
+                  $qtyFmt = (floor($qty) == $qty ? number_format($qty, 0) : number_format($qty, 2)) . ' ' . $item->unit;
+                  $stockQty = (float)$item->qty_stock;
+                  $stockFmt = (floor($stockQty) == $stockQty ? number_format($stockQty, 0) : number_format($stockQty, 2)) . ' ' . $cUnit;
                 } else {
-                  $qtyFmt = number_format($qty, 0) . ' ' . $item->unit;
+                  $qtyFmt = (floor($qty) == $qty ? number_format($qty, 0) : number_format($qty, 2)) . ' ' . $item->unit;
+                  $stockFmt = number_format($item->qty_stock, 0) . ' ' . $item->unit;
                 }
-                $stockFmt = $isKg ? number_format($item->qty_stock, 0) . ' g' : number_format($item->qty_stock, 0) . ' ' . $item->unit;
               @endphp
               <tr>
                 <td class="adj-num"><strong>{{ $i + 1 }}</strong></td>
                 <td data-label="Product">
-                  <strong>{{ optional($item->product)->item_name ?: 'Product #'.$item->product_id }}</strong>
+                  <strong>{{ $itemName }}</strong>
+                  @if($isRm)
+                    <span class="badge bg-secondary-subtle text-secondary border ms-1" style="font-size:.65rem;padding:2px 6px;">Raw Material</span>
+                  @endif
                   @if($item->variant)<div class="pc-var">{{ $item->variant->size_label ?: $item->variant->variant_name }}</div>@endif
                 </td>
-                <td data-label="Code">{{ optional($item->product)->item_code }}</td>
+                <td data-label="Code">{{ $itemCode }}</td>
                 <td data-label="Unit">{{ $item->unit }}</td>
                 <td data-label="Qty Entered"><strong>{{ $qtyFmt }}</strong></td>
                 <td data-label="Stock Impact">

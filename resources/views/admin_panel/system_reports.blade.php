@@ -312,8 +312,7 @@
     .modal-custom .modal-title { font-weight: 800; font-size: 15px; color: var(--text-primary); }
 
     /* ═══════ RESPONSIVE MOBILE POLISH & NO HORIZONTAL SCROLL ═══════ */
-    @media (max-width: 767.98px) {
-        .reports-page { padding: 10px; }
+    @media (max-width: 991.98px) {`r`n        html, body { overflow-x: hidden !important; }`r`n        .reports-page { padding: 10px; max-width: 100% !important; overflow-x: hidden !important; }
         .filter-card { padding: 12px 14px; }
         .filter-card .form-control, .filter-card .form-select { height: 38px; font-size: 13.5px; }
         .filter-card .btn-filter,

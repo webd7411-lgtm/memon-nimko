@@ -104,7 +104,7 @@
     </div>
 
     <!-- Sales Table -->
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 d-none d-md-block bg-white">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead style="background: #f8fafc; font-size: 0.8rem; text-transform: uppercase; color: #475569;">
@@ -244,6 +244,73 @@
 
         @if($sales->hasPages())
         <div class="card-footer bg-white py-3 border-top d-flex justify-content-end">
+            {{ $sales->links() }}
+        </div>
+        @endif
+    </div>
+
+    <!-- Mobile Secondary Sales Cards (Zero Horizontal Scroll) -->
+    <div class="d-block d-md-none mb-4">
+        @forelse($sales as $sale)
+        @php
+            $saleTO = (float) $sale->items->sum('trade_offer');
+        @endphp
+        <div class="card border-0 shadow-sm rounded-4 mb-3 bg-white p-3" style="border: 1px solid #edf2f7 !important;">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                <div>
+                    <span class="fw-bold font-monospace text-dark d-block" style="font-size: 0.92rem;">{{ $sale->invoice_no }}</span>
+                    <span class="text-muted small">{{ CarbonCarbon::parse($sale->sale_date)->format('d M, Y') }}</span>
+                </div>
+                <span class="badge bg-light text-dark border px-2 py-1 small">
+                    {{ $sale->items->count() }} items
+                </span>
+            </div>
+
+            <div class="mb-2">
+                <div class="fw-bold text-dark" style="font-size: 0.9rem;">
+                    {{ $sale->customer->shop_name ?? 'Retail Customer' }}
+                </div>
+                <span class="text-muted small">Distributor: {{ $sale->distributor->name ?? 'Distributor' }}</span>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center py-2 px-2.5 rounded-3 bg-light my-2">
+                <div>
+                    <span class="text-muted d-block" style="font-size: 0.65rem; font-weight: 700;">TOTAL</span>
+                    <span class="fw-bold text-dark">Rs. {{ number_format($sale->grand_total, 2) }}</span>
+                </div>
+                <div>
+                    <span class="text-muted d-block" style="font-size: 0.65rem; font-weight: 700;">PAID</span>
+                    <span class="fw-bold text-success">Rs. {{ number_format($sale->paid_amount, 2) }}</span>
+                </div>
+                <div class="text-end">
+                    <span class="text-muted d-block" style="font-size: 0.65rem; font-weight: 700;">DUE</span>
+                    <span class="fw-bold {{ $sale->due_amount > 0 ? 'text-danger' : 'text-success' }} fs-6">Rs. {{ number_format($sale->due_amount, 2) }}</span>
+                </div>
+            </div>
+
+            @if($saleTO > 0)
+            <div class="small text-primary mb-2 p-1.5 rounded-2 bg-primary-subtle border border-primary-subtle" style="font-size: 0.72rem;">
+                <i class="fas fa-gift me-1"></i> Trade Offer Schemes Given: <strong>{{ (float)$saleTO }} pcs free</strong>
+            </div>
+            @endif
+
+            <div class="pt-2 border-top">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill w-100 d-flex align-items-center justify-content-center"
+                        style="min-height: 34px; font-size: 0.76rem;"
+                        data-bs-toggle="modal" data-bs-target="#saleModal{{ $sale->id }}">
+                    <i class="fas fa-eye me-1"></i> View Invoice Breakdown
+                </button>
+            </div>
+        </div>
+        @empty
+        <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted">
+            <i class="fas fa-chart-line fa-2x mb-2 text-secondary opacity-50"></i>
+            <p class="mb-0 small">No Secondary Market Sales Recorded</p>
+        </div>
+        @endforelse
+
+        @if($sales->hasPages())
+        <div class="d-flex justify-content-center mt-3">
             {{ $sales->links() }}
         </div>
         @endif
