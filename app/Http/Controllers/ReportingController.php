@@ -3518,6 +3518,23 @@ class ReportingController extends Controller
 
         // Pre-fetch reference dictionaries
         $products = \App\Models\Product::with(['category_relation', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->get()->keyBy('id');
+        $productMapByName = [];
+        $productMapByCode = [];
+        foreach ($products as $prodItem) {
+            $cName = trim(strtolower($prodItem->item_name));
+            if ($cName !== '') $productMapByName[$cName] = $prodItem->id;
+            $cCode = trim(strtolower($prodItem->item_code ?? ''));
+            if ($cCode !== '') $productMapByCode[$cCode] = $prodItem->id;
+            if ($prodItem->variants) {
+                foreach ($prodItem->variants as $vItem) {
+                    $vLab = trim(strtolower($vItem->size_label ?: $vItem->variant_name));
+                    if ($vLab !== '') {
+                        $productMapByName[$cName . ' (' . $vLab . ')'] = $prodItem->id;
+                        $productMapByName[$vLab] = $prodItem->id;
+                    }
+                }
+            }
+        }
 
         // BOM Recipe Manufactured Cost mapping for Profit & Loss
         $bomProductCostMap = $this->buildBomProductCostMap($products);
@@ -3788,8 +3805,236 @@ class ReportingController extends Controller
             }
         }
 
+        // Deduct Sales Returns (Synced with 360 Report & Accounting Standards)
+        $returnsQuery = DB::table('sales_returns')
+            ->whereBetween('created_at', [$startDT, $endDT]);
+
+        if ($branchId && $branchId !== 'all') {
+            $returnsQuery->where('branch_id', $branchId);
+        } elseif (!is_all_branches()) {
+            $returnsQuery->where('branch_id', active_branch_id());
+        }
+
+        $salesReturns = $returnsQuery->select(
+            'id', 'sale_id', 'customer', 'product', 'variant_id', 'product_code', 'qty',
+            'per_price', 'per_discount', 'per_total', 'total_bill_amount',
+            'total_extradiscount', 'total_net', 'created_at', 'branch_id'
+        )->orderBy('created_at', 'asc')->get();
+
+        foreach ($salesReturns as $ret) {
+            $pids   = explode(',', $ret->product ?? '');
+            $qtys   = explode(',', $ret->qty ?? '');
+            $prices = explode(',', $ret->per_price ?? '');
+            $vids   = explode(',', $ret->variant_id ?? '');
+            $pcodes = explode(',', $ret->product_code ?? '');
+            $totals = explode(',', $ret->per_total ?? '');
+
+            $retDate = substr($ret->created_at, 0, 10);
+            $retHour = (int)date('H', strtotime($ret->created_at));
+            $custRaw = trim($ret->customer ?? '');
+
+            $custId = is_numeric($custRaw) ? (int)$custRaw : null;
+            $custObj = $custId ? $customersDict->get($custId) : null;
+            $custName = $custObj ? $custObj->customer_name : ($custRaw ?: 'Walk-in Customer');
+            $custPhone = $custObj ? ($custObj->customer_phone ?? '-') : 'Walk-in';
+
+            foreach ($pids as $idx => $rawPid) {
+                $rawPid = trim($rawPid);
+                if ($rawPid === '') continue;
+
+                $pid = null;
+                if (is_numeric($rawPid) && $products->has((int)$rawPid)) {
+                    $pid = (int)$rawPid;
+                } else {
+                    $rawCode = trim(strtolower($pcodes[$idx] ?? ''));
+                    $rawName = trim(strtolower($rawPid));
+                    if ($rawCode !== '' && isset($productMapByCode[$rawCode])) {
+                        $pid = $productMapByCode[$rawCode];
+                    } elseif ($rawName !== '' && isset($productMapByName[$rawName])) {
+                        $pid = $productMapByName[$rawName];
+                    }
+                }
+
+                if (!$pid) continue;
+
+                $qty       = (float)($qtys[$idx] ?? 0);
+                $unitPrice = (float)($prices[$idx] ?? 0);
+                $lineTotal = (float)($totals[$idx] ?? ($qty * $unitPrice));
+                $vid       = trim($vids[$idx] ?? '0');
+
+                $p = $products->get($pid);
+                $pName = $p ? $p->item_name : "Product #{$pid}";
+                $pCode = $p ? $p->item_code : "-";
+                $catId = $p ? ($p->category_id ?? 0) : 0;
+                $catObj = $categoriesDict->get($catId);
+                $catName = $catObj ? $catObj->name : ($p && $p->category_relation ? $p->category_relation->name : 'Uncategorized');
+
+                $vObj = ($vid && $variantsDict->has($vid)) ? $variantsDict->get($vid) : null;
+                if ($vObj) {
+                    $vLabel = $vObj->size_label ?: $vObj->variant_name;
+                    if ($vLabel) $pName .= " ({$vLabel})";
+                }
+
+                $unitCost = 0;
+                $vKey = $pid . '_' . $vid;
+                $pKey = $pid . '_0';
+
+                if (isset($bomProductCostMap[$vKey]) && $bomProductCostMap[$vKey] > 0) {
+                    $unitCost = (float)$bomProductCostMap[$vKey];
+                } elseif (isset($bomProductCostMap[$pKey]) && $bomProductCostMap[$pKey] > 0) {
+                    if ($p && ($p->unit_type === 'kg') && $vObj) {
+                        $sVal = (float)$vObj->size_value;
+                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
+                            $sVal /= 1000;
+                        }
+                        $unitCost = (float)$bomProductCostMap[$pKey] * ($sVal > 0 ? $sVal : 1);
+                    } else {
+                        $unitCost = (float)$bomProductCostMap[$pKey];
+                    }
+                } elseif (isset($purchasePriceMap[$vKey]) && $purchasePriceMap[$vKey] > 0) {
+                    $unitCost = $purchasePriceMap[$vKey];
+                } elseif (isset($purchasePriceMap[$pKey]) && $purchasePriceMap[$pKey] > 0) {
+                    $unitCost = $purchasePriceMap[$pKey];
+                } elseif ($vObj && $vObj->cost_price > 0) {
+                    $unitCost = (float)$vObj->cost_price;
+                } elseif ($p && ($firstV = $p->variants->first()) && $firstV->cost_price > 0) {
+                    $unitCost = (float)$firstV->cost_price;
+                } elseif ($p && (float)$p->wholesale_price > 0) {
+                    $unitCost = (float)$p->wholesale_price;
+                }
+
+                $lineCost = $qty * $unitCost;
+                $lineProfit = $lineTotal - $lineCost;
+
+                // Deduct from overall summary
+                $summary['total_sales']    -= $lineTotal;
+                $summary['total_cost']     -= $lineCost;
+                $summary['items_sold_qty'] -= $qty;
+
+                // Map vendor
+                $vendorId = $productVendorMap[$pid] ?? null;
+                $vendorObj = $vendorId ? $vendorsDict->get($vendorId) : null;
+                $vendorName = $vendorObj ? $vendorObj->name : 'In-house / Direct';
+
+                if ($reportType === 'product') {
+                    $key = $pid . '_' . $vid;
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'item_code'      => $pCode,
+                            'item_name'      => $pName,
+                            'category'       => $catName,
+                            'qty_sold'       => 0,
+                            'avg_sale_price' => $unitPrice,
+                            'cost_price'     => $unitCost,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['qty_sold']    -= $qty;
+                    $agg[$key]['total_sales'] -= $lineTotal;
+                    $agg[$key]['total_cost']  -= $lineCost;
+                    $agg[$key]['profit']      -= $lineProfit;
+                } elseif ($reportType === 'category') {
+                    $key = $catId ?: 0;
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'category_id'    => $key,
+                            'category_name'  => $catName,
+                            'items_count'    => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['qty_sold']    -= $qty;
+                    $agg[$key]['total_sales'] -= $lineTotal;
+                    $agg[$key]['total_cost']  -= $lineCost;
+                    $agg[$key]['profit']      -= $lineProfit;
+                } elseif ($reportType === 'customer') {
+                    $key = $custId ? 'cust_' . $custId : 'walk_in';
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'customer_name'  => $custName,
+                            'phone'          => $custPhone,
+                            'invoices'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['qty_sold']    -= $qty;
+                    $agg[$key]['total_sales'] -= $lineTotal;
+                    $agg[$key]['total_cost']  -= $lineCost;
+                    $agg[$key]['profit']      -= $lineProfit;
+                } elseif ($reportType === 'vendor') {
+                    $key = $vendorId ? 'vend_' . $vendorId : 'direct';
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'vendor_name'    => $vendorName,
+                            'products'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['qty_sold']    -= $qty;
+                    $agg[$key]['total_sales'] -= $lineTotal;
+                    $agg[$key]['total_cost']  -= $lineCost;
+                    $agg[$key]['profit']      -= $lineProfit;
+                } elseif ($reportType === 'date') {
+                    $key = $retDate;
+                    if (!isset($agg[$key])) {
+                        $agg[$key] = [
+                            'date'           => $retDate,
+                            'invoices'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'expenses'       => $dailyExpenses[$retDate] ?? 0,
+                            'gross_profit'   => 0,
+                            'net_profit'     => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['qty_sold']    -= $qty;
+                    $agg[$key]['total_sales'] -= $lineTotal;
+                    $agg[$key]['total_cost']  -= $lineCost;
+                } elseif ($reportType === 'time') {
+                    $key = $retHour;
+                    if (!isset($agg[$key])) {
+                        $startH = str_pad($retHour, 2, '0', STR_PAD_LEFT) . ':00';
+                        $endH = str_pad(($retHour + 1) % 24, 2, '0', STR_PAD_LEFT) . ':00';
+                        $agg[$key] = [
+                            'hour'           => $retHour,
+                            'time_slot'      => date('h:i A', strtotime($startH)) . ' - ' . date('h:i A', strtotime($endH)),
+                            'invoices'       => [],
+                            'qty_sold'       => 0,
+                            'total_sales'    => 0,
+                            'total_cost'     => 0,
+                            'profit'         => 0,
+                            'margin_percent' => 0,
+                        ];
+                    }
+                    $agg[$key]['qty_sold']    -= $qty;
+                    $agg[$key]['total_sales'] -= $lineTotal;
+                    $agg[$key]['total_cost']  -= $lineCost;
+                    $agg[$key]['profit']      -= $lineProfit;
+                }
+            }
+        }
+
         // Finalize rows calculation
         $rows = [];
+        $summary['total_sales']  = round($summary['total_sales'], 2);
+        $summary['total_cost']   = round($summary['total_cost'], 2);
         $summary['gross_profit'] = $summary['total_sales'] - $summary['total_cost'];
         $summary['net_profit']   = $summary['gross_profit'] - $summary['total_expenses'];
         $summary['margin_percent'] = $summary['total_sales'] > 0
