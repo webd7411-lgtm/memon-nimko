@@ -456,15 +456,12 @@ table.pvf-table tfoot th {
     table.pvf-table tbody td:nth-child(4) {
         grid-column: 1 / -1 !important;
     }
-    /* Discount & Amount side by side */
+    /* Amount */
     table.pvf-table tbody td:nth-child(5) {
-        grid-column: 1 / 2 !important;
-    }
-    table.pvf-table tbody td:nth-child(6) {
-        grid-column: 2 / 3 !important;
+        grid-column: 1 / -1 !important;
     }
     /* Delete button full width */
-    table.pvf-table tbody td:nth-child(7) {
+    table.pvf-table tbody td:nth-child(6) {
         grid-column: 1 / -1 !important;
         padding-top: 0.45rem !important;
         margin-top: 0.15rem !important;
@@ -764,12 +761,11 @@ table.pvf-table tfoot th {
                     <table class="table pvf-table align-middle" id="voucherTable">
                         <thead>
                             <tr>
-                                <th style="width:25%;">Narration / Detail</th>
+                                <th style="width:28%;">Narration / Detail</th>
                                 <th style="width:14%;">Reference#</th>
-                                <th style="width:18%;">Account Head</th>
-                                <th style="width:20%;">Disbursement Account</th>
-                                <th style="width:10%;">Discount</th>
-                                <th style="width:13%;" class="text-end">Amount (PKR)</th>
+                                <th style="width:20%;">Account Head</th>
+                                <th style="width:22%;">Disbursement Account</th>
+                                <th style="width:16%;" class="text-end">Amount (PKR)</th>
                                 <th style="width:50px;" class="text-center"><i class="bi bi-trash"></i></th>
                             </tr>
                         </thead>
@@ -796,10 +792,8 @@ table.pvf-table tfoot th {
                                         <option value="">Select Account</option>
                                     </select>
                                 </td>
-                                <td data-label="Discount">
-                                    <input name="discount_value[]" type="number" step="0.01" class="pvf-input text-end discountValue" value="0">
-                                </td>
                                 <td data-label="Amount (PKR)">
+                                    <input type="hidden" name="discount_value[]" value="0">
                                     <input name="amount[]" type="number" step="0.01" class="pvf-input text-end fw-bold text-danger amount" placeholder="0.00" required>
                                 </td>
                                 <td class="text-center" data-label="Action">
@@ -981,8 +975,10 @@ table.pvf-table tfoot th {
                     <option value="">Select Account</option>
                 </select>
             </td>
-            <td data-label="Discount"><input name="discount_value[]" type="number" step="0.01" class="pvf-input text-end discountValue" value="0"></td>
-            <td data-label="Amount (PKR)"><input name="amount[]" type="number" step="0.01" class="pvf-input text-end fw-bold text-danger amount" placeholder="0.00" required></td>
+            <td data-label="Amount (PKR)">
+                <input type="hidden" name="discount_value[]" value="0">
+                <input name="amount[]" type="number" step="0.01" class="pvf-input text-end fw-bold text-danger amount" placeholder="0.00" required>
+            </td>
             <td class="text-center" data-label="Action">
                 <button type="button" class="pvf-row-btn-del removeRow" title="Delete Row"><i class="bi bi-trash3-fill"></i></button>
             </td>
