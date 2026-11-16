@@ -570,7 +570,7 @@ class FinancialCommandCenterController extends Controller
                   ->orWhere('accounts.head_id', 2);
             });
         $cashAccounts = $cashAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.opening_balance')->get();
-        $totalCash = max(0, (float) $cashAccounts->sum('opening_balance'));
+        $totalCash = round((float) $cashAccounts->sum('opening_balance'), 2);
         $counterCashBalance = 0;
         $accountCashOpening = $totalCash;
 
@@ -644,7 +644,7 @@ class FinancialCommandCenterController extends Controller
         }
         $expenseCashOutflow = (float) $expenseCashQ->sum('total_amount');
 
-        $totalCash = max(0, (float) $cashAccounts->sum('opening_balance'));
+        $totalCash = round((float) $cashAccounts->sum('opening_balance'), 2);
         $counterCashBalance = 0;
 
         $cashAccountsDetailed = [];
@@ -713,7 +713,7 @@ class FinancialCommandCenterController extends Controller
             ];
             $totalBank += $curBal;
         }
-        $totalBank = max(0, $totalBank);
+        $totalBank = round($totalBank, 2);
         $cashAndBank = $totalCash + $totalBank;
 
         // 3. INVENTORY VALUE (EXACT RECONCILIATION WITH ITEM STOCK REPORT & BALANCE SHEET)

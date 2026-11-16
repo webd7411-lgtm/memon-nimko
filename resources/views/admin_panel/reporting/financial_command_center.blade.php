@@ -923,7 +923,7 @@
                         <strong class="text-white" id="eqClosingNetWorth">Rs. 0.00</strong>
                     </div>
                     <div class="d-flex justify-content-between small text-white-50 mt-1">
-                        <span>• Net Capital Invested:</span>
+                        <span>• Period Net Capital Invested:</span>
                         <strong class="text-white" id="eqNetInvested">Rs. 0.00</strong>
                     </div>
                     <div class="d-flex justify-content-between small text-white-50 mt-1">
@@ -1427,8 +1427,26 @@ function loadFinancialSnapshot() {
 
             // Asset Details
             document.getElementById('totalAssetsVal').innerText = formatCurrency(res.curr_bs.total_assets);
-            document.getElementById('rowCashInHand').innerText = formatCurrency(res.curr_bs.cash_in_hand);
-            document.getElementById('rowBankBalances').innerText = formatCurrency(res.curr_bs.bank_balances);
+            var cashVal = parseFloat(res.curr_bs.cash_in_hand) || 0;
+            var bankVal = parseFloat(res.curr_bs.bank_balances) || 0;
+            var elCash = document.getElementById('rowCashInHand');
+            var elBank = document.getElementById('rowBankBalances');
+            if (elCash) {
+                elCash.innerText = formatCurrency(cashVal);
+                if (cashVal < 0) {
+                    elCash.classList.add('text-danger', 'fw-bold');
+                } else {
+                    elCash.classList.remove('text-danger', 'fw-bold');
+                }
+            }
+            if (elBank) {
+                elBank.innerText = formatCurrency(bankVal);
+                if (bankVal < 0) {
+                    elBank.classList.add('text-danger', 'fw-bold');
+                } else {
+                    elBank.classList.remove('text-danger', 'fw-bold');
+                }
+            }
             document.getElementById('rowFinishedGoods').innerText = formatCurrency(res.curr_bs.inventory.finished_goods);
             document.getElementById('rowRawMaterials').innerText = formatCurrency(res.curr_bs.inventory.raw_materials);
             document.getElementById('rowCustomerReceivable').innerText = formatCurrency(res.curr_bs.receivables.direct_customers);
@@ -1473,7 +1491,12 @@ function loadFinancialSnapshot() {
                     document.getElementById('eqClosingNetWorth').innerText = formatCurrency(res.net_worth_summary.closing_net_worth);
                 }
             }
-            document.getElementById('eqNetInvested').innerText = formatCurrency(res.curr_bs.equity_breakdown.net_invested_capital);
+            var periodCap = (res.curr_equity && typeof res.curr_equity.net_movement !== 'undefined')
+                ? res.curr_equity.net_movement 
+                : ((res.curr_bs && res.curr_bs.equity_breakdown) ? res.curr_bs.equity_breakdown.net_invested_capital : 0);
+            if (document.getElementById('eqNetInvested')) {
+                document.getElementById('eqNetInvested').innerText = (periodCap > 0 ? '+ ' : '') + formatCurrency(periodCap);
+            }
             document.getElementById('eqRetainedEarnings').innerText = formatCurrency(res.curr_bs.equity_breakdown.retained_earnings);
 
             // ==========================================
@@ -1511,18 +1534,24 @@ function loadFinancialSnapshot() {
             }
             if (document.getElementById('modalAccountCash')) {
                 var accCashSum = (cashDet.accounts || []).reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0);
-                document.getElementById('modalAccountCash').innerText = formatCurrency(accCashSum);
+                var elAccCash = document.getElementById('modalAccountCash');
+                elAccCash.innerText = formatCurrency(accCashSum);
+                elAccCash.className = 'fw-bold mb-0 ' + (accCashSum < 0 ? 'text-danger' : 'text-success');
             }
             if (document.getElementById('modalTotalCashFooter')) {
-                document.getElementById('modalTotalCashFooter').innerText = formatCurrency(bs.cash_in_hand || 0);
+                var elCashFooter = document.getElementById('modalTotalCashFooter');
+                var totalCashVal = parseFloat(bs.cash_in_hand) || 0;
+                elCashFooter.innerText = formatCurrency(totalCashVal);
+                elCashFooter.className = totalCashVal < 0 ? 'text-danger fw-bold' : 'text-dark';
             }
             var cashHtml = '';
             (cashDet.accounts || []).forEach(function(ca, idx) {
+                var cBal = parseFloat(ca.balance) || 0;
                 cashHtml += `<tr>
                     <td data-label="#">${idx + 1}</td>
                     <td data-label="Account Title" class="fw-semibold text-dark">${ca.title || '-'}</td>
                     <td data-label="Code"><span class="badge bg-light text-muted border">${ca.code || '-'}</span></td>
-                    <td data-label="Balance" class="text-end fw-bold text-success">${formatCurrency(ca.balance)}</td>
+                    <td data-label="Balance" class="text-end fw-bold ${cBal < 0 ? 'text-danger' : 'text-success'}">${formatCurrency(ca.balance)}</td>
                 </tr>`;
             });
             if (!cashHtml) cashHtml = '<tr><td colspan="4" class="text-center text-muted py-3">No cash accounts found</td></tr>';
@@ -1531,6 +1560,7 @@ function loadFinancialSnapshot() {
             // 3. Bank Modal
             var bankHtml = '';
             (bs.bank_details || []).forEach(function(ba, idx) {
+                var bBal = parseFloat(ba.current_balance) || 0;
                 bankHtml += `<tr>
                     <td data-label="#">${idx + 1}</td>
                     <td data-label="Account" class="fw-semibold text-dark">${ba.title || '-'}</td>
@@ -1539,12 +1569,17 @@ function loadFinancialSnapshot() {
                     <td data-label="Opening" class="text-end text-muted">${formatCurrency(ba.opening_balance)}</td>
                     <td data-label="Inflow" class="text-end text-success">+ ${formatCurrency(ba.inflow)}</td>
                     <td data-label="Outflow" class="text-end text-danger">- ${formatCurrency(ba.outflow)}</td>
-                    <td data-label="Balance" class="text-end fw-bold text-primary">${formatCurrency(ba.current_balance)}</td>
+                    <td data-label="Balance" class="text-end fw-bold ${bBal < 0 ? 'text-danger' : 'text-primary'}">${formatCurrency(ba.current_balance)}</td>
                 </tr>`;
             });
             if (!bankHtml) bankHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No bank accounts configured</td></tr>';
             if (document.getElementById('bankTableBody')) document.getElementById('bankTableBody').innerHTML = bankHtml;
-            if (document.getElementById('modalTotalBankFooter')) document.getElementById('modalTotalBankFooter').innerText = formatCurrency(bs.bank_balances || 0);
+            if (document.getElementById('modalTotalBankFooter')) {
+                var elBankFooter = document.getElementById('modalTotalBankFooter');
+                var totalBankVal = parseFloat(bs.bank_balances) || 0;
+                elBankFooter.innerText = formatCurrency(totalBankVal);
+                elBankFooter.className = totalBankVal < 0 ? 'text-danger fw-bold' : 'text-primary';
+            }
 
             // 4. Finished Goods Stock Modal
             var stockItems = inv.finished_items || [];
