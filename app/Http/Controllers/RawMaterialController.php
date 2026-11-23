@@ -432,7 +432,7 @@ class RawMaterialController extends Controller
             'raw_material_id' => 'required|array',
             'raw_material_id.*' => 'required|exists:raw_materials,id',
             'qty' => 'required|array',
-            'qty.*' => 'required|numeric|min:0.01',
+            'qty.*' => 'required|numeric|min:0.0001',
             'price_per_unit' => 'required|array',
             'price_per_unit.*' => 'required|numeric|min:0',
         ]);

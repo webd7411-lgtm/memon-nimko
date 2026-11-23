@@ -609,8 +609,8 @@
                         @endforeach
                       </select>
                     </td>
-                    <td data-label="Qty"><input type="number" step="0.01" name="qty[]" class="fld pqty" placeholder="0" required /></td>
-                    <td data-label="Price/Unit"><input type="number" step="0.01" name="price_per_unit[]" class="fld pprice" placeholder="0" required /></td>
+                    <td data-label="Qty"><input type="number" step="any" min="0.0001" name="qty[]" class="fld pqty" placeholder="0" required /></td>
+                    <td data-label="Price/Unit"><input type="number" step="any" min="0" name="price_per_unit[]" class="fld pprice" placeholder="0" required /></td>
                     <td data-label="Total"><span class="ptotal fw-bold" style="font-size:.9rem;">0</span></td>
                     <td style="white-space:nowrap;" data-label="Action">
                       <button type="button" class="rm-btn rm-btn-success rm-btn-sm add-row-btn" id="addPurchaseRow"><i class="bi bi-plus-lg"></i></button>
@@ -2622,8 +2622,8 @@ $(document).on('click', '.editPurchaseBtn', function() {
       var row = $(
         '<tr class="ep-row">' +
           '<td data-label="Raw Material"><select name="raw_material_id[]" class="fld ep-mat-select" required>' + optionsHtml + '</select></td>' +
-          '<td data-label="Qty"><input type="number" step="0.01" name="qty[]" class="fld ep-qty" value="' + item.qty + '" placeholder="0" required /></td>' +
-          '<td data-label="Price/Unit"><input type="number" step="0.01" name="price_per_unit[]" class="fld ep-price" value="' + item.price_per_unit + '" placeholder="0" required /></td>' +
+          '<td data-label="Qty"><input type="number" step="any" min="0.0001" name="qty[]" class="fld ep-qty" value="' + item.qty + '" placeholder="0" required /></td>' +
+          '<td data-label="Price/Unit"><input type="number" step="any" min="0" name="price_per_unit[]" class="fld ep-price" value="' + item.price_per_unit + '" placeholder="0" required /></td>' +
           '<td data-label="Total"><span class="ep-row-total fw-bold" style="font-size:.9rem;">' + (item.qty * item.price_per_unit).toFixed(2) + '</span></td>' +
           '<td style="white-space:nowrap;" data-label="Action"><button type="button" class="rm-btn rm-btn-danger rm-btn-sm ep-remove-row"><i class="bi bi-x-lg"></i></button></td>' +
         '</tr>'
@@ -2645,8 +2645,8 @@ $(document).on('click', '#epAddRowBtn', function() {
   var row = $(
     '<tr class="ep-row">' +
       '<td data-label="Raw Material"><select name="raw_material_id[]" class="fld ep-mat-select" required>' + optionsHtml + '</select></td>' +
-      '<td data-label="Qty"><input type="number" step="0.01" name="qty[]" class="fld ep-qty" placeholder="0" required /></td>' +
-      '<td data-label="Price/Unit"><input type="number" step="0.01" name="price_per_unit[]" class="fld ep-price" placeholder="0" required /></td>' +
+      '<td data-label="Qty"><input type="number" step="any" min="0.0001" name="qty[]" class="fld ep-qty" placeholder="0" required /></td>' +
+      '<td data-label="Price/Unit"><input type="number" step="any" min="0" name="price_per_unit[]" class="fld ep-price" placeholder="0" required /></td>' +
       '<td data-label="Total"><span class="ep-row-total fw-bold" style="font-size:.9rem;">0</span></td>' +
       '<td style="white-space:nowrap;" data-label="Action"><button type="button" class="rm-btn rm-btn-danger rm-btn-sm ep-remove-row"><i class="bi bi-x-lg"></i></button></td>' +
     '</tr>'
@@ -2792,7 +2792,7 @@ $(document).on('click', '.openReturnModalBtn', function() {
                 (isFullyRet
                   ? '<span class="badge bg-danger-subtle text-danger border">Fully Returned</span><input type="hidden" name="qty[]" value="0" class="ret-qty">'
                   : '<div class="input-group input-group-sm">' +
-                      '<input type="number" step="0.01" min="0" max="' + item.available_qty + '" name="qty[]" class="fld ret-qty py-1 px-2" placeholder="0" value="0" style="font-weight:700;height:auto;" data-max="' + item.available_qty + '" data-stock="' + item.current_stock + '">' +
+                      '<input type="number" step="any" min="0" max="' + item.available_qty + '" name="qty[]" class="fld ret-qty py-1 px-2" placeholder="0" value="0" style="font-weight:700;height:auto;" data-max="' + item.available_qty + '" data-stock="' + item.current_stock + '">' +
                       '<button type="button" class="btn btn-outline-secondary btn-sm max-ret-btn" title="Return Max Available" style="font-size:.7rem;padding:2px 6px;">MAX</button>' +
                     '</div>'
                 ) +

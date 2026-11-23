@@ -95,16 +95,41 @@ class VendorController extends Controller
 
 
 
-    // Soft delete vendor and related ledger entry
-    public function delete($id)
+    // Delete vendor and related ledger entry
+    public function delete($id, Request $request = null)
     {
-        // Find the vendor by id, along with the related ledger entry using the 'ledger' relationship
-        $vendor = Vendor::with('ledger')->findOrFail($id);
+        try {
+            $vendor = Vendor::with('ledger')->findOrFail($id);
 
-        // The vendor's ledger will be automatically deleted due to cascading delete
-        $vendor->delete(); // Soft delete vendor
+            // Check if vendor has linked purchases or inward gatepasses
+            $hasPurchases = \App\Models\Purchase::where('vendor_id', $id)->exists();
+            $hasGatepasses = \Illuminate\Support\Facades\DB::table('inward_gatepasses')->where('vendor_id', $id)->exists();
 
-        return back()->with('success', 'Deleted Successfully');
+            if ($hasPurchases || $hasGatepasses) {
+                $errorMsg = 'Cannot delete vendor "' . $vendor->name . '" because there are purchases or gatepasses linked to this vendor.';
+                if ($request && ($request->ajax() || $request->wantsJson())) {
+                    return response()->json(['error' => $errorMsg], 422);
+                }
+                return redirect()->route('vendors')->with('error', $errorMsg);
+            }
+
+            $vendor->delete();
+
+            if ($request && ($request->ajax() || $request->wantsJson())) {
+                return response()->json([
+                    'success' => 'Vendor Deleted Successfully',
+                    'reload' => route('vendors'),
+                ]);
+            }
+
+            return redirect()->route('vendors')->with('success', 'Vendor Deleted Successfully');
+        } catch (\Throwable $e) {
+            $errorMsg = 'Unable to delete vendor: ' . $e->getMessage();
+            if ($request && ($request->ajax() || $request->wantsJson())) {
+                return response()->json(['error' => $errorMsg], 500);
+            }
+            return redirect()->route('vendors')->with('error', $errorMsg);
+        }
     }
 
 

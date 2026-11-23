@@ -261,6 +261,13 @@
   </div>
   @endif
 
+  @if(session('error'))
+  <div class="alert alert-danger alert-dismissible fade show mb-3" style="border:none;border-radius:var(--pc-radius-sm);font-size:.86rem;padding:.75rem 1rem;">
+    <strong><i class="bi bi-exclamation-triangle me-1"></i></strong> {{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  @endif
+
   <div class="pc-card">
     <div class="pc-card-body">
       <div class="pc-tbl-wrap">
@@ -302,9 +309,12 @@
                     data-address="{{ $v->address }}" title="Edit">
                     <i class="bi bi-pencil"></i>Edit
                   </button>
-                  <a href="{{ url('vendor/delete/'.$v->id) }}" class="pc-act pc-act-del" onclick="return confirm('Delete this vendor?')" title="Delete">
+                  <button type="button" class="pc-act pc-act-del delete-vendor-btn"
+                    data-url="{{ route('vendor.delete', $v->id) }}"
+                    data-name="{{ $v->name }}"
+                    title="Delete">
                     <i class="bi bi-trash3"></i>Del
-                  </a>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -386,6 +396,32 @@
       $('#vaddress').val($(this).data('address'));
       $('#vendorModalLabel').text('Edit Vendor');
       new bootstrap.Modal(document.getElementById('vendorModal')).show();
+    });
+
+    $(document).on('click', '.delete-vendor-btn', function(e) {
+      e.preventDefault();
+      var url = $(this).data('url');
+      var name = $(this).data('name') || 'this vendor';
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Delete Vendor?',
+          text: 'Are you sure you want to delete "' + name + '"?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc2626',
+          cancelButtonColor: '#6b7280',
+          confirmButtonText: 'Yes, delete',
+          cancelButtonText: 'Cancel'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.href = url;
+          }
+        });
+      } else {
+        if (confirm('Are you sure you want to delete "' + name + '"?')) {
+          window.location.href = url;
+        }
+      }
     });
   });
 </script>

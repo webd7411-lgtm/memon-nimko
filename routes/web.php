@@ -151,13 +151,13 @@ Route::middleware('auth')->group(function () {
     // Vendor Routes
     Route::get('/vendors', [VendorController::class, 'index'])->name('vendors')->middleware('permission:Vendor');
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
-    Route::delete('/vendor/delete/{id}', [VendorController::class, 'delete'])->name('vendor.delete')->middleware('permission:Vendor');
+    Route::match(['get', 'delete'], '/vendor/delete/{id}', [VendorController::class, 'delete'])->name('vendor.delete')->middleware('permission:Vendor');
     Route::get('/vendors-ledger', [VendorController::class, 'vendors_ledger'])->name('vendors-ledger');
     Route::get('/vendor/payments', [VendorController::class, 'vendor_payments'])->name('vendor.payments');
     Route::post('/vendor/payments', [VendorController::class, 'store_vendor_payment'])->name('vendor.payments.store');
     Route::get('/vendor/payments/{id}/edit', [VendorController::class, 'edit_vendor_payment'])->name('vendor.payments.edit');
     Route::put('/vendor/payments/{id}', [VendorController::class, 'update_vendor_payment'])->name('vendor.payments.update');
-    Route::delete('/vendor/payment/delete/{id}', [VendorController::class, 'destroy_payment'])->name('vendor.payment.delete');
+    Route::match(['get', 'delete'], '/vendor/payment/delete/{id}', [VendorController::class, 'destroy_payment'])->name('vendor.payment.delete');
     Route::get('/vendor/bilties', [VendorController::class, 'vendor_bilties'])->name('vendor.bilties');
     Route::post('/vendor/bilties', [VendorController::class, 'store_vendor_bilty'])->name('vendor.bilties.store');
     Route::get('vendor/payment-receipt/{id}', [VendorController::class, 'printReceipt'])->name('vendor.payment.receipt');
