@@ -24,3 +24,6 @@ yarn-error.log
 *.rar
 *.7z
 /vendor
+# Database backups - never commit
+database/backups/
+
