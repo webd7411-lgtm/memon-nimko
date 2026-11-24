@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-    <title>{{ sys_setting('software_name', 'ProWave Technologies') }} | {{ sys_setting('tagline', 'Sweets & Bakers') }}</title>
+    <title>{{ sys_setting('software_name', 'Shell Pakistan') }} | {{ sys_setting('shop_tagline', 'Fuel & Lubricants Retail Station') }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.png') }}?v={{ time() }}">
 
     <!-- Google font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,7 +56,7 @@
             padding: 90px 20px 60px;
         }
 
-        /* Fixed Background Bakery Photo */
+        /* Fixed Background Petroleum Photo */
         .hero-bg {
             position: fixed;
             top: 0;
@@ -64,8 +64,8 @@
             width: 100%;
             height: 100%;
             background-image:
-                linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.46)),
-                url('{{ asset("assets/images/petroleum_hero.jpg") }}');
+                linear-gradient(rgba(10, 10, 15, 0.70), rgba(10, 10, 15, 0.85)),
+                url('{{ asset("assets/images/petroleum_hero.jpg") }}?v={{ time() }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -436,7 +436,8 @@
 
         <!-- Top Navigation -->
         <header class="site-nav">
-            <a href="/" class="brand-link">
+            <a href="/" class="brand-link" style="display: inline-flex; align-items: center; gap: 12px; text-decoration: none;">
+                <img src="{{ asset('assets/images/logo.png') }}?v={{ time() }}" alt="Shell Logo" style="height: 44px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.7));">
                 <div class="brand-name">{{ shop_name() }}<span>.</span></div>
             </a>
             <div class="nav-actions">
@@ -451,9 +452,13 @@
 
         <!-- Pure Centered Floating Content -->
         <div class="hero-content">
+            <div class="shell-hero-badge" style="margin-bottom: 1.25rem;">
+                <img src="{{ asset('assets/images/logo.png') }}?v={{ time() }}" alt="Shell Pakistan" style="height: 90px; width: auto; object-fit: contain; filter: drop-shadow(0 6px 20px rgba(0,0,0,0.85));">
+            </div>
+
             <div class="brand-top">
                 <i class="fa-solid fa-gas-pump"></i>
-                <span>{{ shop_tagline() ?: 'Fueling Progress & Quality Energy' }}</span>
+                <span>{{ shop_tagline() ?: 'Fuel & Lubricants Retail Station' }}</span>
                 <i class="fa-solid fa-gas-pump"></i>
             </div>
 

@@ -784,7 +784,7 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <meta name="description" content="Zare Bootstrap 4 Admin Template">
 
-<link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/favicon.png') }}">
+<link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/favicon.png') }}?v={{ time() }}">
 
 <link rel="stylesheet" href="{{ asset('assets/css/bootstrap.min.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">

@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-    <title>Login | {{ sys_setting('software_name', 'ProWave Technologies') }}</title>
+    <title>Login | {{ sys_setting('software_name', 'Shell Pakistan') }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.png') }}?v={{ time() }}">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,7 +46,7 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* Fixed Ambient Bakery Background - Bright, Warm & Clear */
+        /* Fixed Ambient Petroleum Background */
         .bg-overlay {
             position: fixed;
             top: 0;
@@ -54,8 +54,8 @@
             width: 100%;
             height: 100%;
             background-image: 
-                linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.48)),
-                url('{{ asset("assets/images/petroleum_hero.jpg") }}');
+                linear-gradient(rgba(10, 10, 15, 0.70), rgba(10, 10, 15, 0.85)),
+                url('{{ asset("assets/images/petroleum_hero.jpg") }}?v={{ time() }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -399,7 +399,7 @@
         <div class="login-card">
             <!-- Brand Header -->
             <div class="brand-header">
-                <img src="{{ asset('assets/images/logo.png') }}" class="brand-logo-img" alt="{{ shop_name() }}" onerror="this.style.display='none'">
+                <img src="{{ asset('assets/images/logo.png') }}?v={{ time() }}" class="brand-logo-img" alt="{{ shop_name() }}" onerror="this.style.display='none'">
                 <h2>{{ shop_name() }}<span>.</span></h2>
                 <p>{{ shop_tagline() }}</p>
             </div>
