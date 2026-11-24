@@ -43,6 +43,34 @@ class WhatsAppService
     }
 
     /**
+     * Get target API URL for WhatsApp service (handles local port 3000 and live /wa seamlessly).
+     *
+     * @return string
+     */
+    public static function getApiUrl()
+    {
+        $configured = config('services.whatsapp.api_url');
+        if (!empty($configured) && !str_contains($configured, '127.0.0.1:3000')) {
+            return rtrim($configured, '/');
+        }
+
+        // Live domain auto-detection
+        $host = '';
+        if (function_exists('request') && request()) {
+            $host = request()->getHost();
+        }
+        if (empty($host) && isset($_SERVER['HTTP_HOST'])) {
+            $host = $_SERVER['HTTP_HOST'];
+        }
+
+        if (str_contains($host, 'binsultansweet.com') || str_contains(config('app.url', ''), 'binsultansweet.com')) {
+            return 'https://shell.binsultansweet.com/wa/send-message';
+        }
+
+        return !empty($configured) ? rtrim($configured, '/') : 'http://127.0.0.1:3000/send-message';
+    }
+
+    /**
      * Send automatic invoice message to customer WhatsApp upon saving sale.
      *
      * @param \App\Models\Sale $sale
@@ -126,8 +154,8 @@ class WhatsAppService
             }
             $message .= "_Thank you for shopping with Memon Nimko!_";
 
-            // Send to local Node.js WhatsApp microservice
-            $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
+            // Send to WhatsApp microservice (handles local port 3000 and live /wa)
+            $apiUrl = self::getApiUrl();
 
             $payload = [
                 'number'     => $formattedPhone,
@@ -136,7 +164,7 @@ class WhatsAppService
                 'filename'   => "Invoice-{$invoiceNo}.pdf",
             ];
 
-            Log::info("WhatsApp invoice payload prepared for Sale #{$sale->id} [Invoice: {$invoiceNo}] to {$formattedPhone}. Has PDF: " . ($hasPdf ? 'YES (' . strlen($pdfBase64) . ' bytes)' : 'NO'));
+            Log::info("WhatsApp invoice payload prepared for Sale #{$sale->id} [Invoice: {$invoiceNo}] to {$formattedPhone} via {$apiUrl}. Has PDF: " . ($hasPdf ? 'YES (' . strlen($pdfBase64) . ' bytes)' : 'NO'));
 
             $response = Http::withoutVerifying()->timeout(15)->post($apiUrl, $payload);
 
@@ -226,7 +254,7 @@ class WhatsAppService
                 return ['success' => false, 'message' => 'Invalid phone number format.'];
             }
 
-            $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
+            $apiUrl = self::getApiUrl();
             $payload = [
                 'number'  => $formattedPhone,
                 'message' => $message,
@@ -261,8 +289,7 @@ class WhatsAppService
     public static function getStatus()
     {
         try {
-            // Convert /send-message to /status or base url
-            $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
+            $apiUrl = self::getApiUrl();
             $statusUrl = preg_replace('/\/send-message$/', '/status', $apiUrl);
 
             $response = Http::withoutVerifying()->timeout(5)->get($statusUrl);
@@ -270,7 +297,7 @@ class WhatsAppService
                 return $response->json();
             }
 
-            return ['success' => false, 'connected' => false, 'error' => 'Service unreachable'];
+            return ['success' => false, 'connected' => false, 'error' => 'Service unreachable at ' . $statusUrl];
         } catch (\Exception $e) {
             return ['success' => false, 'connected' => false, 'error' => $e->getMessage()];
         }
@@ -284,10 +311,10 @@ class WhatsAppService
     public static function disconnect()
     {
         try {
-            $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
+            $apiUrl = self::getApiUrl();
             $logoutUrl = preg_replace('/\/send-message$/', '/logout', $apiUrl);
 
-            $response = Http::withoutVerifying()->timeout(5)->all()->post($logoutUrl);
+            $response = Http::withoutVerifying()->timeout(5)->post($logoutUrl);
             return ['success' => true, 'message' => 'WhatsApp disconnected successfully.'];
         } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
