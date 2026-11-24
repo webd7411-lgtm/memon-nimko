@@ -610,6 +610,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/dispose', [AssetController::class, 'dispose'])->name('dispose')->middleware('permission:Dispose Asset');
     });
 
+    // ==========================================
+    // WHATSAPP INVOICE AUTOMATION
+    // ==========================================
+    Route::get('/whatsapp', [\App\Http\Controllers\WhatsAppController::class, 'index'])->name('whatsapp.index');
+    Route::get('/whatsapp/status', [\App\Http\Controllers\WhatsAppController::class, 'status'])->name('whatsapp.status');
+    Route::post('/whatsapp/send-test', [\App\Http\Controllers\WhatsAppController::class, 'sendTest'])->name('whatsapp.send_test');
+    Route::post('/whatsapp/disconnect', [\App\Http\Controllers\WhatsAppController::class, 'disconnect'])->name('whatsapp.disconnect');
+
 });
 
 require __DIR__ . '/auth.php';

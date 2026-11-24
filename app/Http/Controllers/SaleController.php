@@ -16,6 +16,7 @@ use App\Models\ProductBooking;
 use App\Models\ExpenseVoucher;
 use App\Models\AccountHead;
 use App\Models\Account;
+use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
@@ -2213,6 +2214,11 @@ class SaleController extends Controller
 
             DB::commit();
 
+            // Auto-send WhatsApp Invoice
+            if ($model instanceof \App\Models\Sale && $action === 'sale') {
+                WhatsAppService::sendSaleInvoice($model);
+            }
+
             // Redirect logic
             if ($model instanceof \App\Models\Sale) {
                 $source = $request->input('source');
@@ -2552,6 +2558,11 @@ class SaleController extends Controller
             }
 
             DB::commit();
+
+            // Auto-send WhatsApp Invoice
+            if ($action === 'sale') {
+                WhatsAppService::sendSaleInvoice($sale);
+            }
 
             // Redirects
             $returnTo = route('sale.add');

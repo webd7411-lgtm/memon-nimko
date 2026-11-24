@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'whatsapp' => [
+        'enabled' => env('WHATSAPP_ENABLED', true),
+        'api_url' => env('WHATSAPP_API_URL', 'http://127.0.0.1:3000/send-message'),
+    ],
+
 ];

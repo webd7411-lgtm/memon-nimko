@@ -27,3 +27,7 @@ yarn-error.log
 # Database backups - never commit
 database/backups/
 
+# WhatsApp Service
+whatsapp-service/node_modules/
+whatsapp-service/auth_info/
+

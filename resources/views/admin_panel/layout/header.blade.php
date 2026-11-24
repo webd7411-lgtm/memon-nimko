@@ -319,6 +319,9 @@
                                     <i class="fas fa-sliders-h me-2 text-teal" style="color: #0f766e;"></i> System Settings
                                 </a>
                                 @endcan
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center text-secondary" href="{{ route('whatsapp.index') }}">
+                                    <i class="fab fa-whatsapp me-2 text-success" style="color: #25d366; font-size: 16px;"></i> WhatsApp Automation
+                                </a>
                                 @can('Profile Settings')
                                 <a class="dropdown-item rounded-2 py-2 d-flex align-items-center text-secondary" href="{{ route('profile.edit') }}">
                                     <i class="feather ft-user me-2 text-primary"></i> Profile Settings
