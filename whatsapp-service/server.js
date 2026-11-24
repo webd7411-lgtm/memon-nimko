@@ -288,6 +288,7 @@ app.post(['/send-message', '/wa/send-message'], async (req, res) => {
 
         // If PDF attachment is provided, send as native WhatsApp document
         if (pdf_base64) {
+            console.log(`📎 Sending PDF Document to ${cleanNumber} (${pdf_base64.length} chars)...`);
             const buffer = Buffer.from(pdf_base64, 'base64');
             await sock.sendMessage(jid, {
                 document: buffer,
@@ -295,9 +296,12 @@ app.post(['/send-message', '/wa/send-message'], async (req, res) => {
                 fileName: filename || `Invoice-${cleanNumber}.pdf`,
                 caption: message || ''
             });
+            console.log(`✅ PDF Document delivered successfully to ${cleanNumber}`);
         } else {
             // Text only message
+            console.log(`💬 Sending text-only message to ${cleanNumber}...`);
             await sock.sendMessage(jid, { text: message });
+            console.log(`✅ Text message delivered successfully to ${cleanNumber}`);
         }
 
         return res.json({

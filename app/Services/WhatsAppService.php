@@ -109,8 +109,9 @@ class WhatsAppService
 
             // Generate Native PDF for WhatsApp Attachment
             $pdfBase64 = self::generateInvoicePdf($sale);
+            $hasPdf = !empty($pdfBase64);
 
-            // Prepare Clean WhatsApp Message Body (No download links, direct PDF attachment)
+            // Prepare Clean WhatsApp Message Body
             $message  = "🏪 *MEMON NIMKO*\n";
             $message .= "Mohtaram *{$customerName}*, aapki purchase ka shukriya!\n\n";
             $message .= "📄 *Invoice No:* {$invoiceNo}\n";
@@ -120,7 +121,9 @@ class WhatsAppService
             if ((float)($sale->change ?? 0) > 0) {
                 $message .= "⚖️ *Change / Balance:* Rs. {$change}\n";
             }
-            $message .= "\n📎 _Aapka invoice PDF document sath attach kar diya gaya hai._\n\n";
+            if ($hasPdf) {
+                $message .= "\n📎 _Aapka invoice PDF document sath attach kar diya gaya hai._\n\n";
+            }
             $message .= "_Thank you for shopping with Memon Nimko!_";
 
             // Send to local Node.js WhatsApp microservice
@@ -133,7 +136,9 @@ class WhatsAppService
                 'filename'   => "Invoice-{$invoiceNo}.pdf",
             ];
 
-            $response = Http::withoutVerifying()->timeout(10)->post($apiUrl, $payload);
+            Log::info("WhatsApp invoice payload prepared for Sale #{$sale->id} [Invoice: {$invoiceNo}] to {$formattedPhone}. Has PDF: " . ($hasPdf ? 'YES (' . strlen($pdfBase64) . ' bytes)' : 'NO'));
+
+            $response = Http::withoutVerifying()->timeout(15)->post($apiUrl, $payload);
 
             if ($response->successful()) {
                 Log::info("WhatsApp invoice sent successfully for Invoice {$invoiceNo} to {$formattedPhone}");
