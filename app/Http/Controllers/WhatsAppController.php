@@ -13,7 +13,9 @@ class WhatsAppController extends Controller
     public function index()
     {
         $status = WhatsAppService::getStatus();
-        return view('admin_panel.whatsapp.index', compact('status'));
+        $template = WhatsAppService::getTemplate();
+        $defaultTemplate = WhatsAppService::getDefaultTemplate();
+        return view('admin_panel.whatsapp.index', compact('status', 'template', 'defaultTemplate'));
     }
 
     /**
@@ -67,5 +69,31 @@ class WhatsAppController extends Controller
     {
         $res = WhatsAppService::disconnect();
         return back()->with('info', 'WhatsApp disconnected. Scan the new QR code below to connect.');
+    }
+
+    /**
+     * Update WhatsApp invoice message template.
+     */
+    public function updateTemplate(Request $request)
+    {
+        $request->validate([
+            'template' => 'required|string',
+        ]);
+
+        \App\Models\Setting::updateOrCreate(
+            ['key' => 'whatsapp_invoice_template'],
+            ['value' => $request->template]
+        );
+
+        return back()->with('success', 'WhatsApp invoice message template saved successfully!');
+    }
+
+    /**
+     * Reset WhatsApp message template to default.
+     */
+    public function resetTemplate()
+    {
+        \App\Models\Setting::where('key', 'whatsapp_invoice_template')->delete();
+        return back()->with('info', 'WhatsApp message template reset to default!');
     }
 }

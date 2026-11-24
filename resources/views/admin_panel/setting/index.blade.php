@@ -375,12 +375,12 @@ textarea.set-fld { resize: vertical; min-height: 52px; }
           <div class="row g-2 mb-2">
             <div class="col-12 col-sm-6 col-lg-3">
               <label class="set-lbl"><i class="bi bi-shop"></i> Store / Company Name</label>
-              <input type="text" name="shop_name" class="set-fld fw-bold text-dark" value="{{ $settings['shop_name'] ?? ($settings['company_name'] ?? ($settings['software_name'] ?? 'Proteinzo')) }}" required placeholder="e.g. ProWave" />
+              <input type="text" name="shop_name" class="set-fld fw-bold text-dark" value="{{ $settings['shop_name'] ?? ($settings['company_name'] ?? ($settings['software_name'] ?? 'Shell Pakistan')) }}" required placeholder="e.g. Shell Pakistan" />
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
               <label class="set-lbl"><i class="bi bi-tag"></i> Store Tagline / Subtitle</label>
-              <input type="text" name="shop_tagline" class="set-fld" value="{{ $settings['shop_tagline'] ?? '' }}" placeholder="e.g. Sweets, Nimko & General Store" />
+              <input type="text" name="shop_tagline" class="set-fld" value="{{ $settings['shop_tagline'] ?? '' }}" placeholder="e.g. Fuel & Lubricants Station" />
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">

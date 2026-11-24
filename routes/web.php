@@ -617,6 +617,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/whatsapp/status', [\App\Http\Controllers\WhatsAppController::class, 'status'])->name('whatsapp.status');
     Route::post('/whatsapp/send-test', [\App\Http\Controllers\WhatsAppController::class, 'sendTest'])->name('whatsapp.send_test');
     Route::post('/whatsapp/disconnect', [\App\Http\Controllers\WhatsAppController::class, 'disconnect'])->name('whatsapp.disconnect');
+    Route::post('/whatsapp/template', [\App\Http\Controllers\WhatsAppController::class, 'updateTemplate'])->name('whatsapp.template.update');
+    Route::post('/whatsapp/template/reset', [\App\Http\Controllers\WhatsAppController::class, 'resetTemplate'])->name('whatsapp.template.reset');
 
 });
 

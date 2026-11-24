@@ -143,20 +143,23 @@ class WhatsAppService
             $pdfBase64 = self::generateInvoicePdf($sale);
             $hasPdf = !empty($pdfBase64);
 
-            // Prepare Clean WhatsApp Message Body
-            $message  = "🏪 *MEMON NIMKO*\n";
-            $message .= "Mohtaram *{$customerName}*, aapki purchase ka shukriya!\n\n";
-            $message .= "📄 *Invoice No:* {$invoiceNo}\n";
-            $message .= "📅 *Date:* {$date}\n";
-            $message .= "💰 *Total Bill:* Rs. {$totalBill}\n";
-            $message .= "💵 *Paid Amount:* Rs. {$paidAmount}\n";
-            if ((float)($sale->change ?? 0) > 0) {
-                $message .= "⚖️ *Change / Balance:* Rs. {$change}\n";
-            }
-            if ($hasPdf) {
-                $message .= "\n📎 _Aapka invoice PDF document sath attach kar diya gaya hai._\n\n";
-            }
-            $message .= "_Thank you for shopping with Memon Nimko!_";
+            // Prepare Clean WhatsApp Message Body from customizable template
+            $template = self::getTemplate();
+            $attachmentNote = $hasPdf ? "📎 _Aapka invoice PDF document sath attach kar diya gaya hai._" : "";
+
+            $replacements = [
+                '{company_name}'    => shop_name(),
+                '{customer_name}'   => $customerName,
+                '{invoice_no}'      => $invoiceNo,
+                '{date}'            => $date,
+                '{total_bill}'      => $totalBill,
+                '{paid_amount}'     => $paidAmount,
+                '{change}'          => $change,
+                '{attachment_note}' => $attachmentNote,
+            ];
+
+            $message = str_replace(array_keys($replacements), array_values($replacements), $template);
+            $message = preg_replace("/\n{3,}/", "\n\n", trim($message));
 
             // Send to WhatsApp microservice (handles local port 3000 and live /wa)
             $apiUrl = self::getApiUrl();
@@ -184,6 +187,35 @@ class WhatsAppService
             Log::error("WhatsAppService Error for Sale #{$sale->id}: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Default WhatsApp invoice message template.
+     *
+     * @return string
+     */
+    public static function getDefaultTemplate()
+    {
+        return "🏪 *{company_name}*\n"
+            . "Mohtaram *{customer_name}*, aapki purchase ka shukriya!\n\n"
+            . "📄 *Invoice No:* {invoice_no}\n"
+            . "📅 *Date:* {date}\n"
+            . "💰 *Total Bill:* Rs. {total_bill}\n"
+            . "💵 *Paid Amount:* Rs. {paid_amount}\n"
+            . "⚖️ *Change / Balance:* Rs. {change}\n\n"
+            . "{attachment_note}\n\n"
+            . "_Thank you for shopping with {company_name}!_";
+    }
+
+    /**
+     * Get active message template from settings or default.
+     *
+     * @return string
+     */
+    public static function getTemplate()
+    {
+        $custom = sys_setting('whatsapp_invoice_template');
+        return !empty($custom) ? $custom : self::getDefaultTemplate();
     }
 
     /**

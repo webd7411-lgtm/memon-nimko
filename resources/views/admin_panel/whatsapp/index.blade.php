@@ -241,6 +241,63 @@
                 </div>
             </div>
 
+            {{-- ==========================================
+                 MESSAGE TEMPLATE SETTINGS CARD
+                 ========================================== --}}
+            <div class="wa-card">
+                <div class="wa-header" style="background: linear-gradient(135deg, #075e54 0%, #128c7e 100%);">
+                    <div>
+                        <h4 class="mb-1 text-white fw-bold"><i class="fas fa-edit me-2"></i> WhatsApp Invoice Message Template</h4>
+                        <p class="mb-0 text-white-50 small">Sale complete hone par customer ko jo message text jata hai usko customize karein</p>
+                    </div>
+                    <span class="badge bg-light text-dark px-3 py-2 fw-bold" style="border-radius: 50px;">
+                        <i class="fas fa-magic text-warning me-1"></i> Customizable
+                    </span>
+                </div>
+
+                <div class="wa-body">
+                    <form action="{{ route('whatsapp.template.update') }}" method="POST">
+                        @csrf
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">
+                                <i class="fas fa-tags me-1 text-primary"></i> Available Dynamic Variables (Click to insert):
+                            </label>
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{company_name}')" title="Company Name (e.g. Shell Pakistan)">+ {company_name}</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{customer_name}')" title="Customer / Shop Name">+ {customer_name}</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{invoice_no}')" title="Invoice Number (e.g. SAL-001)">+ {invoice_no}</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{date}')" title="Invoice Date & Time">+ {date}</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{total_bill}')" title="Total Bill Amount">+ {total_bill}</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{paid_amount}')" title="Amount Paid by Customer">+ {paid_amount}</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{change}')" title="Balance or Change Return">+ {change}</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 text-monospace" onclick="insertTag('{attachment_note}')" title="PDF Attachment notification line">+ {attachment_note}</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Message Template Body:</label>
+                            <textarea id="templateTextarea" name="template" class="form-control" rows="9" style="font-family: Consolas, 'Courier New', monospace; font-size: 13.5px; line-height: 1.6;" required>{{ old('template', $template) }}</textarea>
+                            <div class="form-text small text-muted">
+                                <i class="fas fa-info-circle me-1"></i> WhatsApp formatting supported: <code>*Bold*</code>, <code>_Italic_</code>, <code>~Strikethrough~</code>, <code>```Monospace```</code>.
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+                            <button type="button" class="btn btn-outline-secondary" onclick="confirmResetTemplate()">
+                                <i class="fas fa-undo me-1"></i> Reset to Default Template
+                            </button>
+                            <button type="submit" class="btn btn-primary fw-bold px-4">
+                                <i class="fas fa-save me-1"></i> Save Message Template
+                            </button>
+                        </div>
+                    </form>
+
+                    <form id="template-reset-form" action="{{ route('whatsapp.template.reset') }}" method="POST" style="display: none;">
+                        @csrf
+                    </form>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
@@ -322,6 +379,36 @@
                     didOpen: () => { Swal.showLoading(); }
                 });
                 document.getElementById('admin-disconnect-form').submit();
+            }
+        });
+    }
+
+    // Insert Tag into Template Textarea at current cursor position
+    function insertTag(tag) {
+        const textarea = document.getElementById('templateTextarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        textarea.value = text.substring(0, start) + tag + text.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+        textarea.focus();
+    }
+
+    // Confirm Template Reset
+    function confirmResetTemplate() {
+        Swal.fire({
+            title: 'Reset Template?',
+            text: 'Aapka template default settings par reset ho jayega.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#6c757d',
+            cancelButtonColor: '#128c7e',
+            confirmButtonText: 'Yes, Reset',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('template-reset-form').submit();
             }
         });
     }
