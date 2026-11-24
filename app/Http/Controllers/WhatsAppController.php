@@ -36,7 +36,7 @@ class WhatsAppController extends Controller
         ]);
 
         $phone = $request->phone;
-        $message = $request->message ?: 'Memon Nimko: WhatsApp Invoice System is working!';
+        $message = $request->message ?: 'Shell Pakistan: WhatsApp Invoice System is working!';
         $pdfBase64 = null;
 
         if ($request->boolean('send_pdf')) {

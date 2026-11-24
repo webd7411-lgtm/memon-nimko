@@ -130,7 +130,7 @@
     <table class="header-table">
         <tr>
             <td style="width: 60%; vertical-align: top;">
-                <h1 class="company-title">{{ $branch ? $branch->name : 'MEMON NIMKO' }}</h1>
+                <h1 class="company-title">{{ $branch && $branch->name && !in_array(strtolower($branch->name), ['default', 'main branch']) ? $branch->name : shop_name() }}</h1>
                 <div class="company-info">{{ $branch->address ?? 'Main Market, Pakistan' }}</div>
                 <div class="company-info">Phone: {{ $branch->phone ?? '0300-0000000' }}</div>
             </td>
@@ -234,7 +234,7 @@
 
     {{-- FOOTER --}}
     <div class="footer">
-        <div>Thank you for choosing <b>{{ $branch ? $branch->name : 'Memon Nimko' }}</b>!</div>
+        <div>Thank you for choosing <b>{{ $branch && $branch->name && !in_array(strtolower($branch->name), ['default', 'main branch']) ? $branch->name : shop_name() }}</b>!</div>
         <div>Software Developed by ProWave Technologies</div>
         <div><i>This is a computer-generated invoice and requires no physical signature.</i></div>
     </div>

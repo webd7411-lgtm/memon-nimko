@@ -55,7 +55,7 @@
             height: 100%;
             background-image: 
                 linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.48)),
-                url('{{ asset("assets/images/memon_nimko_hero.png") }}');
+                url('{{ asset("assets/images/petroleum_hero.jpg") }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;

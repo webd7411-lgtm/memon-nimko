@@ -217,7 +217,7 @@
                                         </div>
                                         <div class="col-md-8">
                                             <label class="form-label small fw-bold">Message:</label>
-                                            <input type="text" name="message" class="form-control" value="{{ old('message', 'Memon Nimko: WhatsApp Invoice System is working perfectly!') }}" required>
+                                            <input type="text" name="message" class="form-control" value="{{ old('message', 'Shell Pakistan: WhatsApp Invoice System is working perfectly!') }}" required>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-check">

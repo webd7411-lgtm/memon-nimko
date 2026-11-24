@@ -33,7 +33,7 @@ async function startWhatsApp() {
             auth: state,
             printQRInTerminal: true,
             logger: pino({ level: 'silent' }),
-            browser: ['Memon Nimko POS', 'Chrome', '1.0.0'],
+            browser: ['Shell Pakistan POS', 'Chrome', '1.0.0'],
             syncFullHistory: false
         });
 
@@ -94,7 +94,7 @@ app.get(['/', '/wa', '/wa/'], (req, res) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Memon Nimko - WhatsApp Service</title>
+        <title>Shell Pakistan - WhatsApp Service</title>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 30px; display: flex; justify-content: center; }
@@ -117,7 +117,7 @@ app.get(['/', '/wa', '/wa/'], (req, res) => {
     </head>
     <body>
         <div class="card">
-            <h2>Memon Nimko WhatsApp</h2>
+            <h2>Shell Pakistan WhatsApp</h2>
             <div id="status-badge" class="badge ${isConnected ? 'badge-online' : 'badge-offline'}">
                 ${isConnected ? '✅ Connected: +' + connectedUser : '⏳ Disconnected / Scan QR'}
             </div>
@@ -147,7 +147,7 @@ app.get(['/', '/wa', '/wa/'], (req, res) => {
                     </div>
                     <div class="form-group">
                         <label>Message:</label>
-                        <textarea id="test-message" rows="3" required>Assalam-o-Alaikum! Test message from Memon Nimko WhatsApp Service.</textarea>
+                        <textarea id="test-message" rows="3" required>Assalam-o-Alaikum! Test message from Shell Pakistan WhatsApp Service.</textarea>
                     </div>
                     <button type="submit">Send Test Message</button>
                 </form>
@@ -358,7 +358,7 @@ app.all(['/logout', '/wa/logout'], async (req, res) => {
 // Start service
 app.listen(PORT, () => {
     console.log(`====================================================`);
-    console.log(`🚀 Memon Nimko WhatsApp Service running on port ${PORT}`);
+    console.log(`🚀 Shell Pakistan WhatsApp Service running on port ${PORT}`);
     console.log(`👉 Open http://localhost:${PORT} in browser to scan QR`);
     console.log(`====================================================`);
     startWhatsApp();

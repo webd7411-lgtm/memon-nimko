@@ -65,7 +65,7 @@
             height: 100%;
             background-image:
                 linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.46)),
-                url('{{ asset("assets/images/memon_nimko_hero.png") }}');
+                url('{{ asset("assets/images/petroleum_hero.jpg") }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -452,15 +452,15 @@
         <!-- Pure Centered Floating Content -->
         <div class="hero-content">
             <div class="brand-top">
-                <i class="fa-solid fa-crown"></i>
-                <span>{{ shop_tagline() }}</span>
-                <i class="fa-solid fa-crown"></i>
+                <i class="fa-solid fa-gas-pump"></i>
+                <span>{{ shop_tagline() ?: 'Fueling Progress & Quality Energy' }}</span>
+                <i class="fa-solid fa-gas-pump"></i>
             </div>
 
             <h1 class="hero-title">{{ shop_name() }}<span class="title-gold">.</span></h1>
 
             <p class="hero-desc">
-                Experience the fine art of baking with our handcrafted sweets, gourmet pastries, and traditional delicacies made with the finest ingredients and timeless passion.
+                Powering journeys with premium fuels, high-performance lubricants, and world-class retail customer convenience across Pakistan.
             </p>
 
             <div class="cta-container">

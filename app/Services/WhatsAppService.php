@@ -54,7 +54,7 @@ class WhatsAppService
             return rtrim($configured, '/');
         }
 
-        // Live domain auto-detection
+        // Live domain and environment auto-detection
         $host = '';
         if (function_exists('request') && request()) {
             $host = request()->getHost();
@@ -63,7 +63,11 @@ class WhatsAppService
             $host = $_SERVER['HTTP_HOST'];
         }
 
-        if (str_contains($host, 'binsultansweet.com') || str_contains(config('app.url', ''), 'binsultansweet.com')) {
+        $base = base_path();
+        if (str_contains($host, 'binsultansweet.com') || 
+            str_contains(config('app.url', ''), 'binsultansweet.com') ||
+            str_contains($base, 'binsultansweet.com') ||
+            str_contains($base, 'binsult1')) {
             return 'https://shell.binsultansweet.com/wa/send-message';
         }
 
@@ -166,7 +170,7 @@ class WhatsAppService
 
             Log::info("WhatsApp invoice payload prepared for Sale #{$sale->id} [Invoice: {$invoiceNo}] to {$formattedPhone} via {$apiUrl}. Has PDF: " . ($hasPdf ? 'YES (' . strlen($pdfBase64) . ' bytes)' : 'NO'));
 
-            $response = Http::withoutVerifying()->timeout(5)->post($apiUrl, $payload);
+            $response = Http::withoutVerifying()->timeout(10)->post($apiUrl, $payload);
 
             if ($response->successful()) {
                 Log::info("WhatsApp invoice sent successfully for Invoice {$invoiceNo} to {$formattedPhone}");
@@ -223,12 +227,21 @@ class WhatsAppService
                 ];
             }
 
+            $fontDir = storage_path('fonts');
+            if (!is_dir($fontDir)) {
+                @mkdir($fontDir, 0777, true);
+            }
+
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin_panel.sale.pdf_invoice', [
                 'sale'   => $sale,
                 'items'  => $items,
                 'branch' => $sale->branch,
             ]);
             $pdf->setPaper('a4', 'portrait');
+            $pdf->setOption('isRemoteEnabled', false);
+            $pdf->setOption('fontDir', $fontDir);
+            $pdf->setOption('fontCache', $fontDir);
+            $pdf->setOption('tempDir', sys_get_temp_dir());
 
             return base64_encode($pdf->output());
         } catch (\Throwable $e) {
