@@ -86,7 +86,8 @@ async function startWhatsApp() {
 // WEB UI ROUTES (Open in browser to scan QR & test)
 // -------------------------------------------------------------
 
-app.get('/', (req, res) => {
+app.get(['/', '/wa', '/wa/'], (req, res) => {
+    const basePath = req.baseUrl || (req.originalUrl.startsWith('/wa') ? '/wa' : '');
     res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -151,12 +152,14 @@ app.get('/', (req, res) => {
                     <button type="submit">Send Test Message</button>
                 </form>
 
-                <form id="logout-form" action="/logout" method="POST" style="display:none;"></form>
+                <form id="logout-form" action="${basePath}/logout" method="POST" style="display:none;"></form>
                 <button type="button" class="btn-danger" onclick="confirmDisconnect()">Disconnect / Change Number</button>
             </div>
         </div>
 
         <script>
+            const basePath = window.location.pathname.replace(/\\/$/, '');
+
             // Styled Disconnect Confirmation
             function confirmDisconnect() {
                 Swal.fire({
@@ -196,7 +199,7 @@ app.get('/', (req, res) => {
                 });
 
                 try {
-                    const res = await fetch('/send-message', {
+                    const res = await fetch(basePath + '/send-message', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ number, message })
@@ -230,7 +233,7 @@ app.get('/', (req, res) => {
             // Auto check connection status every 3 seconds
             setInterval(async () => {
                 try {
-                    const res = await fetch('/status');
+                    const res = await fetch(basePath + '/status');
                     const data = await res.json();
                     if (data.connected !== ${isConnected}) {
                         window.location.reload();
@@ -244,7 +247,7 @@ app.get('/', (req, res) => {
 });
 
 // Status API
-app.get('/status', (req, res) => {
+app.get(['/status', '/wa/status'], (req, res) => {
     res.json({
         success: true,
         connected: isConnected,
@@ -255,7 +258,7 @@ app.get('/status', (req, res) => {
 });
 
 // Endpoint for Laravel to send message
-app.post('/send-message', async (req, res) => {
+app.post(['/send-message', '/wa/send-message'], async (req, res) => {
     try {
         const { number, message } = req.body;
 
@@ -318,7 +321,7 @@ app.post('/test-send', async (req, res) => {
 });
 
 // Logout / Disconnect
-app.all('/logout', async (req, res) => {
+app.all(['/logout', '/wa/logout'], async (req, res) => {
     try {
         if (sock) {
             await sock.logout();
