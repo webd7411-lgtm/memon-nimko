@@ -107,15 +107,10 @@ class WhatsAppService
             $change     = number_format((float)($sale->change ?? 0), 2);
             $date       = $sale->created_at ? $sale->created_at->format('d-M-Y h:i A') : date('d-M-Y h:i A');
 
-            // Build Invoice Link (if routes exist)
-            $invoiceUrl = '';
-            try {
-                $invoiceUrl = route('sales.invoice', $sale->id);
-            } catch (\Exception $e) {
-                $invoiceUrl = url('/sales/invoice/' . $sale->id);
-            }
+            // Generate Native PDF for WhatsApp Attachment
+            $pdfBase64 = self::generateInvoicePdf($sale);
 
-            // Prepare Clean WhatsApp Message Body
+            // Prepare Clean WhatsApp Message Body (No download links, direct PDF attachment)
             $message  = "🏪 *MEMON NIMKO*\n";
             $message .= "Mohtaram *{$customerName}*, aapki purchase ka shukriya!\n\n";
             $message .= "📄 *Invoice No:* {$invoiceNo}\n";
@@ -125,16 +120,20 @@ class WhatsAppService
             if ((float)($sale->change ?? 0) > 0) {
                 $message .= "⚖️ *Change / Balance:* Rs. {$change}\n";
             }
-            $message .= "\n🔗 *View Invoice Online:*\n{$invoiceUrl}\n\n";
-            $message .= "_Memon Nimko - Thank you for your business!_";
+            $message .= "\n📎 _Aapka invoice PDF document sath attach kar diya gaya hai._\n\n";
+            $message .= "_Thank you for shopping with Memon Nimko!_";
 
             // Send to local Node.js WhatsApp microservice
             $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
 
-            $response = Http::withoutVerifying()->timeout(5)->post($apiUrl, [
-                'number'  => $formattedPhone,
-                'message' => $message,
-            ]);
+            $payload = [
+                'number'     => $formattedPhone,
+                'message'    => $message,
+                'pdf_base64' => $pdfBase64,
+                'filename'   => "Invoice-{$invoiceNo}.pdf",
+            ];
+
+            $response = Http::withoutVerifying()->timeout(10)->post($apiUrl, $payload);
 
             if ($response->successful()) {
                 Log::info("WhatsApp invoice sent successfully for Invoice {$invoiceNo} to {$formattedPhone}");
@@ -147,6 +146,61 @@ class WhatsAppService
             // Keep fail-safe: sale process should never be interrupted if WhatsApp service is unreachable
             Log::error("WhatsAppService Error for Sale #{$sale->id}: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Generate base64 PDF of the sale invoice.
+     *
+     * @param \App\Models\Sale $sale
+     * @return string|null
+     */
+    public static function generateInvoicePdf($sale)
+    {
+        try {
+            $products    = explode(',', $sale->product ?? '');
+            $codes       = explode(',', $sale->product_code ?? '');
+            $units       = explode(',', $sale->unit ?? '');
+            $prices      = explode(',', $sale->per_price ?? '');
+            $discounts   = explode(',', $sale->per_discount ?? '');
+            $tradeOffers = !empty($sale->trade_offer) ? explode(',', $sale->trade_offer) : [];
+            $qtys        = explode(',', $sale->qty ?? '');
+            $totals      = explode(',', $sale->per_total ?? '');
+            $variant_ids = explode(',', $sale->variant_id ?? '');
+
+            $items = [];
+            $productIds = array_unique(array_filter($products));
+            $productMap = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
+            $variantMap = \App\Models\ProductVariant::whereIn('id', array_filter($variant_ids))->get()->keyBy('id');
+
+            foreach ($products as $idx => $pid) {
+                if (empty($pid)) continue;
+                $prod = $productMap[$pid] ?? null;
+                $var  = !empty($variant_ids[$idx]) ? ($variantMap[$variant_ids[$idx]] ?? null) : null;
+                $items[] = [
+                    'name'        => $prod ? $prod->item_name : ($codes[$idx] ?? 'Item'),
+                    'code'        => $codes[$idx] ?? '',
+                    'unit'        => $units[$idx] ?? '',
+                    'qty'         => $qtys[$idx] ?? 0,
+                    'price'       => $prices[$idx] ?? 0,
+                    'discount'    => $discounts[$idx] ?? 0,
+                    'trade_offer' => $tradeOffers[$idx] ?? 0,
+                    'total'       => $totals[$idx] ?? 0,
+                    'variant'     => $var ? ($var->color ?: $var->size) : '',
+                ];
+            }
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin_panel.sale.pdf_invoice', [
+                'sale'   => $sale,
+                'items'  => $items,
+                'branch' => $sale->branch,
+            ]);
+            $pdf->setPaper('a4', 'portrait');
+
+            return base64_encode($pdf->output());
+        } catch (\Exception $e) {
+            Log::error("Invoice PDF generation error for Sale #{$sale->id}: " . $e->getMessage());
+            return null;
         }
     }
 

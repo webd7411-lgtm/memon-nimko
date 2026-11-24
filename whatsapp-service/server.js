@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const AUTH_DIR = path.join(__dirname, 'auth_info');
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 let sock = null;
 let currentQR = null;
@@ -257,10 +257,10 @@ app.get(['/status', '/wa/status'], (req, res) => {
     });
 });
 
-// Endpoint for Laravel to send message
+// Endpoint for Laravel to send message or document
 app.post(['/send-message', '/wa/send-message'], async (req, res) => {
     try {
-        const { number, message } = req.body;
+        const { number, message, pdf_base64, filename } = req.body;
 
         if (!isConnected || !sock) {
             return res.status(503).json({
@@ -269,10 +269,10 @@ app.post(['/send-message', '/wa/send-message'], async (req, res) => {
             });
         }
 
-        if (!number || !message) {
+        if (!number || (!message && !pdf_base64)) {
             return res.status(400).json({
                 success: false,
-                error: 'Both "number" and "message" are required.'
+                error: 'Both "number" and message or pdf are required.'
             });
         }
 
@@ -286,8 +286,19 @@ app.post(['/send-message', '/wa/send-message'], async (req, res) => {
 
         const jid = `${cleanNumber}@s.whatsapp.net`;
 
-        // Send WhatsApp Message
-        await sock.sendMessage(jid, { text: message });
+        // If PDF attachment is provided, send as native WhatsApp document
+        if (pdf_base64) {
+            const buffer = Buffer.from(pdf_base64, 'base64');
+            await sock.sendMessage(jid, {
+                document: buffer,
+                mimetype: 'application/pdf',
+                fileName: filename || `Invoice-${cleanNumber}.pdf`,
+                caption: message || ''
+            });
+        } else {
+            // Text only message
+            await sock.sendMessage(jid, { text: message });
+        }
 
         return res.json({
             success: true,
