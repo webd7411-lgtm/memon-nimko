@@ -131,7 +131,7 @@ class WhatsAppService
             // Send to local Node.js WhatsApp microservice
             $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
 
-            $response = Http::timeout(3)->post($apiUrl, [
+            $response = Http::withoutVerifying()->timeout(5)->post($apiUrl, [
                 'number'  => $formattedPhone,
                 'message' => $message,
             ]);
@@ -166,7 +166,7 @@ class WhatsAppService
             }
 
             $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
-            $response = Http::timeout(5)->post($apiUrl, [
+            $response = Http::withoutVerifying()->timeout(5)->post($apiUrl, [
                 'number'  => $formattedPhone,
                 'message' => $message,
             ]);
@@ -197,7 +197,7 @@ class WhatsAppService
             $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
             $statusUrl = preg_replace('/\/send-message$/', '/status', $apiUrl);
 
-            $response = Http::timeout(3)->get($statusUrl);
+            $response = Http::withoutVerifying()->timeout(5)->get($statusUrl);
             if ($response->successful()) {
                 return $response->json();
             }
@@ -219,7 +219,7 @@ class WhatsAppService
             $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
             $logoutUrl = preg_replace('/\/send-message$/', '/logout', $apiUrl);
 
-            $response = Http::timeout(4)->all()->post($logoutUrl);
+            $response = Http::withoutVerifying()->timeout(5)->all()->post($logoutUrl);
             return ['success' => true, 'message' => 'WhatsApp disconnected successfully.'];
         } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
