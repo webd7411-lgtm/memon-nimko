@@ -210,13 +210,15 @@ class WhatsAppService
     }
 
     /**
-     * Send any custom text message to a WhatsApp number.
+     * Send any custom text message or document to a WhatsApp number.
      *
      * @param string $phone
      * @param string $message
+     * @param string|null $pdfBase64
+     * @param string $filename
      * @return array ['success' => bool, 'message' => string]
      */
-    public static function sendCustomMessage($phone, $message)
+    public static function sendCustomMessage($phone, $message, $pdfBase64 = null, $filename = 'Invoice.pdf')
     {
         try {
             $formattedPhone = self::formatNumber($phone);
@@ -225,10 +227,17 @@ class WhatsAppService
             }
 
             $apiUrl = config('services.whatsapp.api_url', 'http://127.0.0.1:3000/send-message');
-            $response = Http::withoutVerifying()->timeout(5)->post($apiUrl, [
+            $payload = [
                 'number'  => $formattedPhone,
                 'message' => $message,
-            ]);
+            ];
+
+            if (!empty($pdfBase64)) {
+                $payload['pdf_base64'] = $pdfBase64;
+                $payload['filename']   = $filename;
+            }
+
+            $response = Http::withoutVerifying()->timeout(15)->post($apiUrl, $payload);
 
             if ($response->successful()) {
                 return ['success' => true, 'message' => "Message sent to {$formattedPhone} successfully."];

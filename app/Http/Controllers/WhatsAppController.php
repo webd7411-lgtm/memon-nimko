@@ -32,10 +32,26 @@ class WhatsAppController extends Controller
     {
         $request->validate([
             'phone'   => 'required|string',
-            'message' => 'required|string',
+            'message' => 'nullable|string',
         ]);
 
-        $res = WhatsAppService::sendCustomMessage($request->phone, $request->message);
+        $phone = $request->phone;
+        $message = $request->message ?: 'Memon Nimko: WhatsApp Invoice System is working!';
+        $pdfBase64 = null;
+
+        if ($request->boolean('send_pdf')) {
+            $latestSale = \App\Models\Sale::latest()->first();
+            if ($latestSale) {
+                $pdfBase64 = WhatsAppService::generateInvoicePdf($latestSale);
+                if (empty($pdfBase64)) {
+                    return back()->with('error', 'PDF Generation failed! Check storage/logs/laravel.log')->withInput();
+                }
+            } else {
+                return back()->with('error', 'No sale found in database to generate sample invoice PDF.')->withInput();
+            }
+        }
+
+        $res = WhatsAppService::sendCustomMessage($phone, $message, $pdfBase64, 'Sample-Invoice.pdf');
 
         if ($res['success']) {
             return back()->with('success', $res['message']);

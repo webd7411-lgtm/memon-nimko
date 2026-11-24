@@ -219,6 +219,14 @@
                                             <label class="form-label small fw-bold">Message:</label>
                                             <input type="text" name="message" class="form-control" value="{{ old('message', 'Memon Nimko: WhatsApp Invoice System is working perfectly!') }}" required>
                                         </div>
+                                        <div class="col-12">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="send_pdf" value="1" id="test-pdf-check" checked>
+                                                <label class="form-check-label small fw-bold text-dark" for="test-pdf-check">
+                                                    📄 Attach Sample Invoice PDF Document (Direct PDF Test)
+                                                </label>
+                                            </div>
+                                        </div>
                                         <div class="col-12 text-end">
                                             <button type="submit" class="btn btn-success fw-bold px-4">
                                                 <i class="fab fa-whatsapp me-1"></i> Send Test Message
