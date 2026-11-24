@@ -3318,6 +3318,8 @@ $(document).ready(function() {
             url: $(this).attr('action'),
             type: 'POST',
             data: formData,
+            dataType: 'json',
+            headers: { 'Accept': 'application/json' },
             beforeSend: function() {
                 $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> Saving Sale...');
             },
@@ -3355,8 +3357,27 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 $submitBtn.prop('disabled', false).html('<i class="fas fa-save me-2"></i> Save & Complete (F9)');
-                const err = xhr.responseJSON?.message || 'Error saving sale. Check quantities & inputs.';
-                Swal.fire({ icon: 'error', title: 'Sale Error', text: err });
+                let err = 'Error saving sale. Check quantities & inputs.';
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) {
+                        err = xhr.responseJSON.message;
+                    } else if (xhr.responseJSON.error) {
+                        err = xhr.responseJSON.error;
+                    } else if (xhr.responseJSON.errors) {
+                        err = Object.values(xhr.responseJSON.errors).flat().join('<br>');
+                    }
+                } else if (xhr.status === 419) {
+                    err = 'Session Expired / Page Timeout. Please refresh the page (F5) and try again.';
+                } else if (xhr.status === 500) {
+                    err = 'Server Error (500). Please check server logs or refresh.';
+                } else if (xhr.status === 0) {
+                    err = 'Network Error. Could not connect to the server.';
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: xhr.status ? `Sale Error (${xhr.status})` : 'Sale Error',
+                    html: err
+                });
             }
         });
     });

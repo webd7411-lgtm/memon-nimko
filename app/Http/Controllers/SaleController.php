@@ -2214,9 +2214,13 @@ class SaleController extends Controller
 
             DB::commit();
 
-            // Auto-send WhatsApp Invoice
+            // Auto-send WhatsApp Invoice (safely isolated so WhatsApp issues never fail the sale)
             if ($model instanceof \App\Models\Sale && $action === 'sale') {
-                WhatsAppService::sendSaleInvoice($model);
+                try {
+                    WhatsAppService::sendSaleInvoice($model);
+                } catch (\Throwable $waErr) {
+                    \Log::error("WhatsApp auto-send error on Sale #{$model->id}: " . $waErr->getMessage());
+                }
             }
 
             // Redirect logic
@@ -2559,9 +2563,13 @@ class SaleController extends Controller
 
             DB::commit();
 
-            // Auto-send WhatsApp Invoice
+            // Auto-send WhatsApp Invoice (safely isolated so WhatsApp issues never fail the sale)
             if ($action === 'sale') {
-                WhatsAppService::sendSaleInvoice($sale);
+                try {
+                    WhatsAppService::sendSaleInvoice($sale);
+                } catch (\Throwable $waErr) {
+                    \Log::error("WhatsApp auto-send error on updateRunningSale: " . $waErr->getMessage());
+                }
             }
 
             // Redirects

@@ -166,7 +166,7 @@ class WhatsAppService
 
             Log::info("WhatsApp invoice payload prepared for Sale #{$sale->id} [Invoice: {$invoiceNo}] to {$formattedPhone} via {$apiUrl}. Has PDF: " . ($hasPdf ? 'YES (' . strlen($pdfBase64) . ' bytes)' : 'NO'));
 
-            $response = Http::withoutVerifying()->timeout(15)->post($apiUrl, $payload);
+            $response = Http::withoutVerifying()->timeout(5)->post($apiUrl, $payload);
 
             if ($response->successful()) {
                 Log::info("WhatsApp invoice sent successfully for Invoice {$invoiceNo} to {$formattedPhone}");
@@ -175,7 +175,7 @@ class WhatsAppService
                 Log::warning("WhatsApp send failed for Invoice {$invoiceNo} [Status: " . $response->status() . "]: " . $response->body());
                 return false;
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Keep fail-safe: sale process should never be interrupted if WhatsApp service is unreachable
             Log::error("WhatsAppService Error for Sale #{$sale->id}: " . $e->getMessage());
             return false;
@@ -231,7 +231,7 @@ class WhatsAppService
             $pdf->setPaper('a4', 'portrait');
 
             return base64_encode($pdf->output());
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Invoice PDF generation error for Sale #{$sale->id}: " . $e->getMessage());
             return null;
         }
