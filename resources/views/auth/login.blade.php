@@ -46,27 +46,15 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* Fixed Ambient Bakery Background - Bright, Warm & Clear */
+        /* Fixed Clean Solid/Gradient Hero Background */
         .bg-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: 
-                linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.48)),
-                url('{{ asset("assets/images/memon_nimko_hero.png") }}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background: linear-gradient(135deg, #071324 0%, #0b2239 55%, #091a2e 100%);
             z-index: 0;
-            transform: scale(1.03);
-            animation: subtleZoom 25s infinite alternate ease-in-out;
-        }
-
-        @keyframes subtleZoom {
-            from { transform: scale(1.01); }
-            to { transform: scale(1.06); }
         }
 
         /* Centered Page Layout */
@@ -114,9 +102,10 @@
         }
 
         .brand-header .brand-logo-img {
-            max-height: 75px;
+            max-height: 82px;
             width: auto;
             margin-bottom: 12px;
+            border-radius: 14px;
             filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
             object-fit: contain;
         }

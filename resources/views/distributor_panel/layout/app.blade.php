@@ -92,9 +92,10 @@
         }
 
         .portal-brand-img {
-            max-height: 32px;
+            max-height: 40px;
             width: auto;
             object-fit: contain;
+            border-radius: 8px;
         }
 
         .portal-brand-icon {

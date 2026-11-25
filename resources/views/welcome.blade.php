@@ -56,27 +56,15 @@
             padding: 90px 20px 60px;
         }
 
-        /* Fixed Background Bakery Photo */
+        /* Fixed Clean Solid/Gradient Hero Background */
         .hero-bg {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-image:
-                linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.46)),
-                url('{{ asset("assets/images/memon_nimko_hero.png") }}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background: linear-gradient(135deg, #071324 0%, #0b2239 55%, #091a2e 100%);
             z-index: 1;
-            transform: scale(1.02);
-            animation: slowZoom 25s infinite alternate ease-in-out;
-        }
-
-        @keyframes slowZoom {
-            from { transform: scale(1.0); }
-            to { transform: scale(1.05); }
         }
 
         /* ══════════ FLOATING TOP NAVBAR ══════════ */
@@ -94,7 +82,17 @@
 
         .brand-link {
             text-decoration: none;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            height: 44px;
+            width: auto;
+            border-radius: 10px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
         }
 
         .brand-name {
@@ -431,12 +429,13 @@
 <body>
 
     <section class="hero-section">
-        <!-- 100% Unobstructed Vibrant Bakery Background -->
+        <!-- 100% Unobstructed Vibrant Background -->
         <div class="hero-bg"></div>
 
         <!-- Top Navigation -->
         <header class="site-nav">
             <a href="/" class="brand-link">
+                <img src="{{ asset('assets/images/logo.png') }}" alt="{{ shop_name() }}" class="brand-logo" onerror="this.style.display='none'">
                 <div class="brand-name">{{ shop_name() }}<span>.</span></div>
             </a>
             <div class="nav-actions">

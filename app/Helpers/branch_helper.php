@@ -95,7 +95,7 @@ if (!function_exists('shop_name')) {
         if (empty($name)) {
             $name = sys_setting('software_name');
         }
-        return !empty($name) ? $name : 'Proteinzo';
+        return !empty($name) ? $name : 'ProWave Technologies';
     }
 }
 

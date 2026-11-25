@@ -1800,7 +1800,7 @@ class SaleController extends Controller
                 $combined_variant_ids[] = $vId;
 
                 // Use pre-fetched stock 
-                // In Memon Nimko POS, we deduct stock for BOTH final sale and save_token
+                // In ProWave Technologies POS, we deduct stock for BOTH final sale and save_token
                 $currentBranchId = active_branch_id();
                 
                 $dbVariantId = $isGram ? null : ($vId ?: null);

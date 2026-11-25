@@ -375,7 +375,7 @@ textarea.set-fld { resize: vertical; min-height: 52px; }
           <div class="row g-2 mb-2">
             <div class="col-12 col-sm-6 col-lg-3">
               <label class="set-lbl"><i class="bi bi-shop"></i> Store / Company Name</label>
-              <input type="text" name="shop_name" class="set-fld fw-bold text-dark" value="{{ $settings['shop_name'] ?? ($settings['company_name'] ?? ($settings['software_name'] ?? 'Proteinzo')) }}" required placeholder="e.g. ProWave" />
+              <input type="text" name="shop_name" class="set-fld fw-bold text-dark" value="{{ $settings['shop_name'] ?? ($settings['company_name'] ?? ($settings['software_name'] ?? 'ProWave Technologies')) }}" required placeholder="e.g. ProWave Technologies" />
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">

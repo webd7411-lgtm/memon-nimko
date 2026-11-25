@@ -3,6 +3,7 @@
     max-height: 54px !important;
     width: auto !important;
     object-fit: contain;
+    border-radius: 8px;
     filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.22));
     transition: transform 0.2s ease;
 }

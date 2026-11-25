@@ -69,7 +69,7 @@
 
 <!-- Black Professional Stamp -->
 <div class="stamp">
-   <img src="{{ asset('assets/images/stampProWave Technologies.png') }}">
+   <img src="{{ asset('assets/images/logo_thermal.png') }}">
 </div>
 
 <!-- Main Receipt -->
