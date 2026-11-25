@@ -257,7 +257,7 @@ app.get(['/status', '/wa/status'], (req, res) => {
     });
 });
 
-// Endpoint for Laravel to send message or document
+// Endpoint for Laravel to send message or document (to individual numbers or groups)
 app.post(['/send-message', '/wa/send-message'], async (req, res) => {
     try {
         const { number, message, pdf_base64, filename } = req.body;
@@ -276,43 +276,98 @@ app.post(['/send-message', '/wa/send-message'], async (req, res) => {
             });
         }
 
-        // Clean number
-        let cleanNumber = String(number).replace(/[^0-9]/g, '');
-        if (cleanNumber.startsWith('03')) {
-            cleanNumber = '92' + cleanNumber.substring(1);
-        } else if (cleanNumber.startsWith('3') && cleanNumber.length === 10) {
-            cleanNumber = '92' + cleanNumber;
-        }
+        // Determine destination JID (Individual or Group)
+        let jid = '';
+        let targetLabel = '';
+        const trimmedTarget = String(number).trim();
 
-        const jid = `${cleanNumber}@s.whatsapp.net`;
+        if (trimmedTarget.endsWith('@g.us') || trimmedTarget.includes('@g.us')) {
+            // WhatsApp Group JID
+            jid = trimmedTarget.includes('@g.us') ? trimmedTarget.split('@g.us')[0] + '@g.us' : trimmedTarget;
+            targetLabel = `Group (${jid})`;
+        } else if (trimmedTarget.endsWith('@s.whatsapp.net')) {
+            jid = trimmedTarget;
+            targetLabel = jid.split('@')[0];
+        } else {
+            // Individual Pakistani or International phone number
+            let cleanNumber = trimmedTarget.replace(/[^0-9]/g, '');
+            if (cleanNumber.startsWith('0092')) {
+                cleanNumber = '92' + cleanNumber.substring(4);
+            } else if (cleanNumber.startsWith('03')) {
+                cleanNumber = '92' + cleanNumber.substring(1);
+            } else if (cleanNumber.startsWith('3') && cleanNumber.length === 10) {
+                cleanNumber = '92' + cleanNumber;
+            }
+            jid = `${cleanNumber}@s.whatsapp.net`;
+            targetLabel = cleanNumber;
+        }
 
         // If PDF attachment is provided, send as native WhatsApp document
         if (pdf_base64) {
-            console.log(`📎 Sending PDF Document to ${cleanNumber} (${pdf_base64.length} chars)...`);
+            console.log(`📎 Sending PDF Document to ${targetLabel} (${pdf_base64.length} chars)...`);
             const buffer = Buffer.from(pdf_base64, 'base64');
             await sock.sendMessage(jid, {
                 document: buffer,
                 mimetype: 'application/pdf',
-                fileName: filename || `Invoice-${cleanNumber}.pdf`,
+                fileName: filename || `Invoice-${targetLabel}.pdf`,
                 caption: message || ''
             });
-            console.log(`✅ PDF Document delivered successfully to ${cleanNumber}`);
+            console.log(`✅ PDF Document delivered successfully to ${targetLabel}`);
         } else {
             // Text only message
-            console.log(`💬 Sending text-only message to ${cleanNumber}...`);
+            console.log(`💬 Sending text-only message to ${targetLabel}...`);
             await sock.sendMessage(jid, { text: message });
-            console.log(`✅ Text message delivered successfully to ${cleanNumber}`);
+            console.log(`✅ Text message delivered successfully to ${targetLabel}`);
         }
 
         return res.json({
             success: true,
-            message: `Message sent successfully to ${cleanNumber}`
+            message: `Message sent successfully to ${targetLabel}`
         });
     } catch (err) {
         console.error('Error sending message:', err);
         return res.status(500).json({
             success: false,
             error: err.message || 'Failed to send WhatsApp message'
+        });
+    }
+});
+
+// Endpoint to fetch all participating WhatsApp groups
+app.get(['/groups', '/wa/groups'], async (req, res) => {
+    try {
+        if (!isConnected || !sock) {
+            return res.status(503).json({
+                success: false,
+                error: 'WhatsApp is not connected. Please scan QR code first.',
+                groups: []
+            });
+        }
+
+        console.log('📋 Fetching participating WhatsApp groups...');
+        const rawGroups = await sock.groupFetchAllParticipating();
+        const groupsList = Object.values(rawGroups).map(g => ({
+            id: g.id,
+            name: g.subject || 'Unnamed Group',
+            participants_count: g.participants ? g.participants.length : 0,
+            creation: g.creation || null
+        }));
+
+        // Sort alphabetically by group name
+        groupsList.sort((a, b) => a.name.localeCompare(b.name));
+
+        console.log(`✅ Found ${groupsList.length} groups.`);
+        return res.json({
+            success: true,
+            count: groupsList.length,
+            groups: groupsList
+        });
+    } catch (err) {
+        console.error('Error fetching WhatsApp groups:', err);
+        return res.status(500).json({
+            success: false,
+            error: err.message || 'Failed to fetch WhatsApp groups',
+            groups: []
         });
     }
 });

@@ -611,11 +611,15 @@ Route::middleware('auth')->group(function () {
     });
 
     // ==========================================
-    // WHATSAPP INVOICE AUTOMATION
+    // WHATSAPP INVOICE & NOTIFICATION AUTOMATION
     // ==========================================
     Route::get('/whatsapp', [\App\Http\Controllers\WhatsAppController::class, 'index'])->name('whatsapp.index');
     Route::get('/whatsapp/status', [\App\Http\Controllers\WhatsAppController::class, 'status'])->name('whatsapp.status');
+    Route::get('/whatsapp/groups', [\App\Http\Controllers\WhatsAppController::class, 'getGroups'])->name('whatsapp.groups');
+    Route::post('/whatsapp/notifications/update', [\App\Http\Controllers\WhatsAppController::class, 'updateNotificationSettings'])->name('whatsapp.notifications.update');
     Route::post('/whatsapp/send-test', [\App\Http\Controllers\WhatsAppController::class, 'sendTest'])->name('whatsapp.send_test');
+    Route::post('/whatsapp/test-group', [\App\Http\Controllers\WhatsAppController::class, 'sendGroupTest'])->name('whatsapp.test_group');
+    Route::post('/whatsapp/test-company', [\App\Http\Controllers\WhatsAppController::class, 'sendCompanyTest'])->name('whatsapp.test_company');
     Route::post('/whatsapp/disconnect', [\App\Http\Controllers\WhatsAppController::class, 'disconnect'])->name('whatsapp.disconnect');
     Route::post('/whatsapp/template', [\App\Http\Controllers\WhatsAppController::class, 'updateTemplate'])->name('whatsapp.template.update');
     Route::post('/whatsapp/template/reset', [\App\Http\Controllers\WhatsAppController::class, 'resetTemplate'])->name('whatsapp.template.reset');

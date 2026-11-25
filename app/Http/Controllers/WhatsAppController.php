@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\WhatsAppService;
+use App\Models\Setting;
 
 class WhatsAppController extends Controller
 {
@@ -15,7 +16,48 @@ class WhatsAppController extends Controller
         $status = WhatsAppService::getStatus();
         $template = WhatsAppService::getTemplate();
         $defaultTemplate = WhatsAppService::getDefaultTemplate();
-        return view('admin_panel.whatsapp.index', compact('status', 'template', 'defaultTemplate'));
+
+        $companyTemplate = WhatsAppService::getCompanyTemplate();
+        $defaultCompanyTemplate = WhatsAppService::getDefaultCompanyTemplate();
+
+        $groupTemplate = WhatsAppService::getGroupTemplate();
+        $defaultGroupTemplate = WhatsAppService::getDefaultGroupTemplate();
+
+        // Multi-recipient preferences
+        $notifyCustomer = sys_setting('whatsapp_notify_customer', '1');
+        $notifyCompany  = sys_setting('whatsapp_notify_company', '0');
+        $companyNumber  = sys_setting('whatsapp_company_number', '');
+        $companySendPdf = sys_setting('whatsapp_company_send_pdf', '1');
+
+        $notifyGroup    = sys_setting('whatsapp_notify_group', '0');
+        $groupJid       = sys_setting('whatsapp_group_jid', '');
+        $groupName      = sys_setting('whatsapp_group_name', '');
+        $groupSendPdf   = sys_setting('whatsapp_group_send_pdf', '0');
+
+        // Fetch groups if connected
+        $groups = [];
+        if (!empty($status['connected'])) {
+            $groups = WhatsAppService::fetchWhatsAppGroups();
+        }
+
+        return view('admin_panel.whatsapp.index', compact(
+            'status',
+            'template',
+            'defaultTemplate',
+            'companyTemplate',
+            'defaultCompanyTemplate',
+            'groupTemplate',
+            'defaultGroupTemplate',
+            'notifyCustomer',
+            'notifyCompany',
+            'companyNumber',
+            'companySendPdf',
+            'notifyGroup',
+            'groupJid',
+            'groupName',
+            'groupSendPdf',
+            'groups'
+        ));
     }
 
     /**
@@ -28,7 +70,115 @@ class WhatsAppController extends Controller
     }
 
     /**
-     * Send test message from Admin Panel.
+     * API endpoint to dynamically load participating WhatsApp groups.
+     */
+    public function getGroups()
+    {
+        $groups = WhatsAppService::fetchWhatsAppGroups();
+        return response()->json([
+            'success' => true,
+            'count'   => count($groups),
+            'groups'  => $groups,
+        ]);
+    }
+
+    /**
+     * Save multi-recipient notification settings.
+     */
+    public function updateNotificationSettings(Request $request)
+    {
+        $settings = [
+            'whatsapp_notify_customer'  => $request->has('whatsapp_notify_customer') ? '1' : '0',
+            'whatsapp_notify_company'   => $request->has('whatsapp_notify_company') ? '1' : '0',
+            'whatsapp_company_number'   => trim($request->input('whatsapp_company_number', '')),
+            'whatsapp_company_send_pdf' => $request->has('whatsapp_company_send_pdf') ? '1' : '0',
+            'whatsapp_notify_group'     => $request->has('whatsapp_notify_group') ? '1' : '0',
+            'whatsapp_group_jid'        => trim($request->input('whatsapp_group_jid', '')),
+            'whatsapp_group_name'       => trim($request->input('whatsapp_group_name', '')),
+            'whatsapp_group_send_pdf'   => $request->has('whatsapp_group_send_pdf') ? '1' : '0',
+        ];
+
+        if ($request->has('whatsapp_company_template')) {
+            $settings['whatsapp_company_template'] = $request->input('whatsapp_company_template');
+        }
+        if ($request->has('whatsapp_group_template')) {
+            $settings['whatsapp_group_template'] = $request->input('whatsapp_group_template');
+        }
+
+        foreach ($settings as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
+
+        return back()->with('success', 'WhatsApp notification recipients and preferences saved successfully!');
+    }
+
+    /**
+     * Send test alert to Company Official Number.
+     */
+    public function sendCompanyTest(Request $request)
+    {
+        $request->validate(['company_number' => 'required|string']);
+        $target = WhatsAppService::formatNumber($request->company_number);
+        if (!$target) {
+            return back()->with('error', 'Invalid company phone number format. Please provide a valid mobile number (e.g. 03001234567).');
+        }
+
+        $message = "🏢 *Shell Pakistan - Official Alert Test*\n"
+            . "━━━━━━━━━━━━━━━━━━━━━━\n"
+            . "Assalam-o-Alaikum! Yeh Company Official Number par sale alert notification ka successful test message hai.\n"
+            . "📅 Date: " . date('d-M-Y h:i A') . "\n"
+            . "━━━━━━━━━━━━━━━━━━━━━━\n"
+            . "✅ System is active & ready.";
+
+        $pdfBase64 = null;
+        if ($request->boolean('send_pdf')) {
+            $latestSale = \App\Models\Sale::latest()->first();
+            if ($latestSale) {
+                $pdfBase64 = WhatsAppService::generateInvoicePdf($latestSale);
+            }
+        }
+
+        $sent = WhatsAppService::sendDirectMessage($target, $message, $pdfBase64, 'Company-Test-Invoice.pdf');
+        if ($sent) {
+            return back()->with('success', "Test alert successfully sent to Company Number (+{$target})!");
+        }
+
+        return back()->with('error', "Failed to send alert to Company Number. Ensure WhatsApp service is connected.");
+    }
+
+    /**
+     * Send test alert to selected WhatsApp Group.
+     */
+    public function sendGroupTest(Request $request)
+    {
+        $request->validate(['group_jid' => 'required|string']);
+        $groupJid = trim($request->group_jid);
+
+        $message = "🔔 *Shell Pakistan - Group Alert Test*\n"
+            . "━━━━━━━━━━━━━━━━━━━━━━\n"
+            . "Assalam-o-Alaikum team! Yeh Sales WhatsApp Group par automated sale notification ka successful test message hai.\n"
+            . "📅 Date: " . date('d-M-Y h:i A') . "\n"
+            . "━━━━━━━━━━━━━━━━━━━━━━\n"
+            . "✅ Bot connected to this group successfully!";
+
+        $pdfBase64 = null;
+        if ($request->boolean('send_pdf')) {
+            $latestSale = \App\Models\Sale::latest()->first();
+            if ($latestSale) {
+                $pdfBase64 = WhatsAppService::generateInvoicePdf($latestSale);
+            }
+        }
+
+        $sent = WhatsAppService::sendDirectMessage($groupJid, $message, $pdfBase64, 'Group-Test-Invoice.pdf');
+        if ($sent) {
+            return back()->with('success', "Test message successfully delivered to WhatsApp Group!");
+        }
+
+        return back()->with('error', "Failed to deliver message to group. Ensure WhatsApp account is an active participant in this group.");
+    }
+
+    /**
+     * Send test message to any customer number.
      */
     public function sendTest(Request $request)
     {
@@ -80,7 +230,7 @@ class WhatsAppController extends Controller
             'template' => 'required|string',
         ]);
 
-        \App\Models\Setting::updateOrCreate(
+        Setting::updateOrCreate(
             ['key' => 'whatsapp_invoice_template'],
             ['value' => $request->template]
         );
@@ -93,7 +243,7 @@ class WhatsAppController extends Controller
      */
     public function resetTemplate()
     {
-        \App\Models\Setting::where('key', 'whatsapp_invoice_template')->delete();
+        Setting::where('key', 'whatsapp_invoice_template')->delete();
         return back()->with('info', 'WhatsApp message template reset to default!');
     }
 }
