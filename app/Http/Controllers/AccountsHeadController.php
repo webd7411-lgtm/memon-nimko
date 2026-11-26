@@ -47,14 +47,15 @@ class AccountsHeadController extends Controller
         $periodClosingBalance = $account ? (float) ($account->opening_balance ?? 0) : 0.0;
 
         if ($account) {
-            if ($startDate) {
-                $lastBefore = AccountLedger::where('account_id', $account->id)
-                    ->where('transaction_date', '<', $startDate . ' 00:00:00')
-                    ->orderBy('transaction_date', 'desc')
-                    ->orderBy('id', 'desc')
-                    ->first();
-                $periodOpeningBalance = $lastBefore ? (float) $lastBefore->balance : 0.0;
+            $liveBalance = round((float) ($account->opening_balance ?? 0), 2);
+            $afterEndNet = 0.0;
+            if ($endDate) {
+                $afterEndNet = (float) AccountLedger::where('account_id', $account->id)
+                    ->where('transaction_date', '>', $endDate . ' 23:59:59')
+                    ->selectRaw('COALESCE(SUM(credit), 0) - COALESCE(SUM(debit), 0) as net')
+                    ->value('net');
             }
+            $periodClosingBalance = round($liveBalance - $afterEndNet, 2);
 
             $baseQ = AccountLedger::with('user')
                 ->where('account_id', $account->id);
@@ -66,9 +67,17 @@ class AccountsHeadController extends Controller
                 $baseQ->where('transaction_date', '<=', $endDate . ' 23:59:59');
             }
 
-            $totalIn  = (float) (clone $baseQ)->sum('credit');
-            $totalOut = (float) (clone $baseQ)->sum('debit');
-            $periodClosingBalance = round($periodOpeningBalance + $totalIn - $totalOut, 2);
+            $totalsQ = clone $baseQ;
+            if (!$startDate) {
+                $totalsQ->where(function ($q) {
+                    $q->whereNull('reference_type')
+                      ->orWhere('reference_type', '!=', 'Account Opening');
+                });
+            }
+
+            $totalIn  = round((float) (clone $totalsQ)->sum('credit'), 2);
+            $totalOut = round((float) (clone $totalsQ)->sum('debit'), 2);
+            $periodOpeningBalance = round($periodClosingBalance - $totalIn + $totalOut, 2);
 
             if ($flow === 'in') {
                 $baseQ->where('credit', '>', 0);

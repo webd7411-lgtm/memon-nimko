@@ -4373,15 +4373,20 @@ class ReportingController extends Controller
         $cashAccountsQ = DB::table('accounts')
             ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
+            ->whereNull('accounts.distributor_id')
             ->where(function($q) {
                 $q->where('account_heads.name', 'like', '%Cash%')
                   ->orWhere('accounts.title', 'like', '%Cash%');
             });
         $cashAccounts = $cashAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.opening_balance')->get();
-        $accountCashOpening = (float)$cashAccounts->sum('opening_balance');
 
         $counterCashBalance = 0;
-        $totalCashInHand = max(0, $accountCashOpening);
+        $totalCashInHand = 0.0;
+        foreach ($cashAccounts as $ca) {
+            $summary = \App\Models\Account::summarizeBalanceAsOf($ca, $asOfDate);
+            $totalCashInHand += $summary['current_balance'];
+        }
+        $totalCashInHand = max(0, round($totalCashInHand, 2));
 
         // ==========================================
         // 2. ASSETS - BANK ACCOUNTS
@@ -4389,6 +4394,7 @@ class ReportingController extends Controller
         $bankAccountsQ = DB::table('accounts')
             ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
+            ->whereNull('accounts.distributor_id')
             ->where(function($q) {
                 $q->where('account_heads.name', 'like', '%Bank%')
                   ->orWhere('accounts.title', 'like', '%Bank%')
@@ -4397,77 +4403,23 @@ class ReportingController extends Controller
         $bankAccountsData = $bankAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.bank_name', 'accounts.opening_balance')->get();
 
         $bankAccountsList = [];
-        $totalBankBalances = 0;
+        $totalBankBalances = 0.0;
 
         foreach ($bankAccountsData as $ba) {
-            // Use account_ledgers as the source of truth for balance calculation.
-            $ledgerExists = \Illuminate\Support\Facades\Schema::hasTable('account_ledgers');
-
-            if ($ledgerExists) {
-                $ledgerInflow  = (float) DB::table('account_ledgers')->where('account_id', $ba->id)->sum('credit');
-                $ledgerOutflow = (float) DB::table('account_ledgers')->where('account_id', $ba->id)->sum('debit');
-
-                $hasOpeningEntry = DB::table('account_ledgers')
-                    ->where('account_id', $ba->id)->where('reference_type', 'Account Opening')->exists();
-
-                $op = $hasOpeningEntry ? 0.0 : (float)$ba->opening_balance;
-
-                $dpExtra = (float)DB::table('distributor_payments')
-                    ->where('account_id', $ba->id)->where('status', 'approved')
-                    ->whereNotIn('id', function($sub) use ($ba) {
-                        $sub->select('reference_id')->from('account_ledgers')
-                            ->where('account_id', $ba->id)->where('reference_type', 'Distributor Payment');
-                    })->sum('amount');
-
-                $vpExtra = (float)DB::table('vendor_payments')
-                    ->where('card_account_id', $ba->id)
-                    ->whereNotIn('id', function($sub) use ($ba) {
-                        $sub->select('reference_id')->from('account_ledgers')
-                            ->where('account_id', $ba->id)->where('reference_type', 'Vendor Payment');
-                    })->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
-
-                $inflow  = $ledgerInflow  + $dpExtra;
-                $outflow = $ledgerOutflow + $vpExtra;
-                $currentBal = $op + $inflow - $outflow;
-
-                $displayOp = $hasOpeningEntry
-                    ? (float) DB::table('account_ledgers')->where('account_id', $ba->id)
-                        ->where('reference_type', 'Account Opening')->sum('credit')
-                    : (float)$ba->opening_balance;
-
-                $displayInflow = (float) DB::table('account_ledgers')->where('account_id', $ba->id)
-                    ->where('reference_type', '!=', 'Account Opening')->sum('credit') + $dpExtra;
-                $displayOutflow = $outflow;
-            } else {
-                $op = (float)$ba->opening_balance;
-                $cpQ = DB::table('customer_payments')
-                    ->where('card_account_id', $ba->id)->where('payment_date', '<=', $asOfDate);
-                if (!$isAllBranch) $cpQ->where('branch_id', $activeBId);
-                $inflow = (float)$cpQ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
-
-                $vpQ = DB::table('vendor_payments')
-                    ->where('card_account_id', $ba->id)->where('payment_date', '<=', $asOfDate);
-                if (!$isAllBranch) $vpQ->where('branch_id', $activeBId);
-                $outflow = (float)$vpQ->sum(DB::raw('CASE WHEN card > 0 THEN card ELSE amount END'));
-
-                $currentBal = $op + $inflow - $outflow;
-                $displayOp = $op;
-                $displayInflow = $inflow;
-                $displayOutflow = $outflow;
-            }
-
+            $summary = \App\Models\Account::summarizeBalanceAsOf($ba, $asOfDate);
             $bankAccountsList[] = [
                 'id'              => $ba->id,
                 'title'           => $ba->title,
                 'account_code'    => $ba->account_code ?? ('ACC-' . $ba->id),
                 'bank_name'       => $ba->bank_name ?? 'Bank',
-                'opening_balance' => round($displayOp, 2),
-                'inflow'          => round($displayInflow, 2),
-                'outflow'         => round($displayOutflow, 2),
-                'current_balance' => round($currentBal, 2),
+                'opening_balance' => $summary['opening_balance'],
+                'inflow'          => $summary['inflow'],
+                'outflow'         => $summary['outflow'],
+                'current_balance' => $summary['current_balance'],
             ];
-            $totalBankBalances += $currentBal;
+            $totalBankBalances += $summary['current_balance'];
         }
+        $totalBankBalances = round($totalBankBalances, 2);
 
         // ==========================================
         // 3. ASSETS - ACCOUNTS RECEIVABLE (CUSTOMERS)

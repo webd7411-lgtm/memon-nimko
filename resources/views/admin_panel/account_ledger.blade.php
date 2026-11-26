@@ -582,7 +582,7 @@
         <div class="al-kpi opening">
           <div class="al-kpi-lbl"><i class="bi bi-door-open text-primary me-1"></i> Opening Balance (Pehle)</div>
           <div class="al-kpi-val text-primary">PKR {{ number_format($periodOpeningBalance, 2) }}</div>
-          <div class="al-kpi-sub">{{ $startDate ? 'Balance before ' . $startDate : 'Starting from 0.00' }}</div>
+          <div class="al-kpi-sub">{{ $startDate ? 'Balance before ' . $startDate : 'Initial / opening balance' }}</div>
         </div>
 
         <div class="al-kpi in">
@@ -662,14 +662,22 @@
                   </td>
                   <td class="text-end text-nowrap">
                     @if((float)$row->credit > 0)
-                      <span class="badge-in">+ {{ number_format((float)$row->credit, 2) }}</span>
+                      @if(!$startDate && $row->reference_type === 'Account Opening')
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">+ {{ number_format((float)$row->credit, 2) }} <small>(Opening)</small></span>
+                      @else
+                        <span class="badge-in">+ {{ number_format((float)$row->credit, 2) }}</span>
+                      @endif
                     @else
                       <span class="text-muted">-</span>
                     @endif
                   </td>
                   <td class="text-end text-nowrap">
                     @if((float)$row->debit > 0)
-                      <span class="badge-out">- {{ number_format((float)$row->debit, 2) }}</span>
+                      @if(!$startDate && $row->reference_type === 'Account Opening')
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">- {{ number_format((float)$row->debit, 2) }} <small>(Opening)</small></span>
+                      @else
+                        <span class="badge-out">- {{ number_format((float)$row->debit, 2) }}</span>
+                      @endif
                     @else
                       <span class="text-muted">-</span>
                     @endif

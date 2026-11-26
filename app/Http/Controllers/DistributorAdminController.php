@@ -1098,8 +1098,12 @@ class DistributorAdminController extends Controller
                 $account = Account::with('head')->find($accountId);
                 if ($account) {
                     // Automatically add the payment to Company Account balance!
-                    $account->opening_balance = (float)$account->opening_balance + (float)$payment->amount;
-                    $account->save();
+                    $account->adjustBalance((float)$payment->amount, [
+                        'reference_type' => 'Distributor Payment',
+                        'reference_no'   => $payment->payment_no,
+                        'reference_id'   => $payment->id,
+                        'description'    => "Distributor payment #{$payment->payment_no} approved ({$distributor->name})",
+                    ]);
                 }
             }
 
@@ -1223,12 +1227,6 @@ class DistributorAdminController extends Controller
             $newBalance = (float) $distributor->current_balance - $amount;
             $paymentNo = DistributorPayment::generatePaymentNo();
 
-            // Automatically credit funds to company Cash/Bank Account
-            if ($account) {
-                $account->opening_balance = (float)$account->opening_balance + $amount;
-                $account->save();
-            }
-
             // 1. Create Payment (auto-approved)
             $payment = DistributorPayment::create([
                 'payment_no'            => $paymentNo,
@@ -1247,6 +1245,16 @@ class DistributorAdminController extends Controller
                 'approved_at'           => now(),
                 'created_by'            => Auth::id(),
             ]);
+
+            // Automatically credit funds to company Cash/Bank Account
+            if ($account) {
+                $account->adjustBalance($amount, [
+                    'reference_type' => 'Distributor Payment',
+                    'reference_no'   => $payment->payment_no,
+                    'reference_id'   => $payment->id,
+                    'description'    => "Direct distributor payment #{$payment->payment_no} ({$distributor->name})",
+                ]);
+            }
 
             // 2. Post to Ledger
             $accountNote = $account ? " (Deposited into: {$account->title})" : '';
@@ -1346,20 +1354,32 @@ class DistributorAdminController extends Controller
                 $oldAccountId = $payment->account_id;
                 if ($oldAccountId == $accountId) {
                     if ($newAccount && $amountDiff != 0) {
-                        $newAccount->opening_balance += $amountDiff;
-                        $newAccount->save();
+                        $newAccount->adjustBalance((float)$amountDiff, [
+                            'reference_type' => 'Distributor Payment Adjustment',
+                            'reference_no'   => $payment->payment_no,
+                            'reference_id'   => $payment->id,
+                            'description'    => "Distributor payment #{$payment->payment_no} amount updated",
+                        ]);
                     }
                 } else {
                     if ($oldAccountId) {
                         $oldAcc = Account::find($oldAccountId);
                         if ($oldAcc) {
-                            $oldAcc->opening_balance -= $oldAmount;
-                            $oldAcc->save();
+                            $oldAcc->adjustBalance(-(float)$oldAmount, [
+                                'reference_type' => 'Distributor Payment Reversal',
+                                'reference_no'   => $payment->payment_no,
+                                'reference_id'   => $payment->id,
+                                'description'    => "Reversed distributor payment #{$payment->payment_no} on account change",
+                            ]);
                         }
                     }
                     if ($newAccount) {
-                        $newAccount->opening_balance += $newAmount;
-                        $newAccount->save();
+                        $newAccount->adjustBalance((float)$newAmount, [
+                            'reference_type' => 'Distributor Payment',
+                            'reference_no'   => $payment->payment_no,
+                            'reference_id'   => $payment->id,
+                            'description'    => "Distributor payment #{$payment->payment_no} moved to account",
+                        ]);
                     }
                 }
             }
@@ -1421,8 +1441,12 @@ class DistributorAdminController extends Controller
                 if ($payment->account_id) {
                     $account = Account::find($payment->account_id);
                     if ($account) {
-                        $account->opening_balance -= (float)$payment->amount;
-                        $account->save();
+                        $account->adjustBalance(-(float)$payment->amount, [
+                            'reference_type' => 'Distributor Payment Reversal',
+                            'reference_no'   => $payment->payment_no,
+                            'reference_id'   => $payment->id,
+                            'description'    => "Reversed deleted distributor payment #{$payment->payment_no}",
+                        ]);
                     }
                 }
             }
@@ -1783,21 +1807,16 @@ class DistributorAdminController extends Controller
 
             $customer->update(['current_balance' => $newCustomerBalance]);
 
-            // 2. Deposit into Company Bank / Cash Account
-            if ($account) {
-                $account->opening_balance = (float)$account->opening_balance + $amount;
-                $account->save();
-            }
-
-            // 3. Automatically credit Distributor's Company Ledger
+            // 2. Automatically credit Distributor's Company Ledger (if linked)
             $distributorUpdatedMsg = '';
+            $distPayment = null;
             if ($customer->distributor) {
                 $distributor = $customer->distributor;
                 $newDistBalance = (float) $distributor->current_balance - $amount;
                 $distPaymentNo = DistributorPayment::generatePaymentNo();
 
                 // Create approved DistributorPayment record
-                DistributorPayment::create([
+                $distPayment = DistributorPayment::create([
                     'payment_no'            => $distPaymentNo,
                     'distributor_id'        => $distributor->id,
                     'amount'                => $amount,
@@ -1838,6 +1857,16 @@ class DistributorAdminController extends Controller
 
                 $distributor->update(['current_balance' => $newDistBalance]);
                 $distributorUpdatedMsg = " & credited to '{$distributor->name}' company ledger";
+            }
+
+            // 3. Deposit into Company Bank / Cash Account
+            if ($account) {
+                $account->adjustBalance($amount, [
+                    'reference_type' => $distPayment ? 'Distributor Payment' : 'Retail Shop Recovery',
+                    'reference_no'   => $distPayment ? $distPayment->payment_no : $receiptNo,
+                    'reference_id'   => $distPayment ? $distPayment->id : $customer->id,
+                    'description'    => "Direct recovery from retail shop: {$customer->shop_name}" . ($distPayment ? " ({$distPayment->payment_no})" : ''),
+                ]);
             }
 
             DB::commit();
@@ -2067,8 +2096,13 @@ class DistributorAdminController extends Controller
                     ]);
 
                     if ($expenseAccount) {
-                        $expenseAccount->opening_balance = (float)$expenseAccount->opening_balance + $approvedAmount;
-                        $expenseAccount->save();
+                        $expenseAccount->adjustBalance((float)$approvedAmount, [
+                            'branch_id'      => $voucher->branch_id ?? null,
+                            'reference_type' => 'Expense / Claim Tracked',
+                            'reference_no'   => $voucher->evid ?? $claim->claim_no,
+                            'reference_id'   => $voucher->id ?? $claim->id,
+                            'description'    => "Claim #{$claim->claim_no} ({$claim->type_label}) approved for {$distributor->name}",
+                        ]);
                     }
                 } catch (\Throwable $ex) {
                     \Illuminate\Support\Facades\Log::warning('Claim expense voucher creation notice: ' . $ex->getMessage());

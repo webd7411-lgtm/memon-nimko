@@ -4308,15 +4308,25 @@ class SaleController extends Controller
             if ($oldCashAccountId && $oldCash > 0) {
                 $oldCAcc = \App\Models\Account::find($oldCashAccountId);
                 if ($oldCAcc) {
-                    $oldCAcc->opening_balance = (float)$oldCAcc->opening_balance - $oldCash;
-                    $oldCAcc->save();
+                    $oldCAcc->adjustBalance(-$oldCash, [
+                        'branch_id'      => $sale->branch_id ?? null,
+                        'reference_type' => 'Sale Edit Reversal',
+                        'reference_no'   => $sale->invoice_no,
+                        'reference_id'   => $sale->id,
+                        'description'    => 'Reversed cash on Sale #' . $sale->invoice_no . ' edit',
+                    ]);
                 }
             }
             if ($newCashAccountId && $newNetCash > 0) {
                 $newCAcc = \App\Models\Account::find($newCashAccountId);
                 if ($newCAcc) {
-                    $newCAcc->opening_balance = (float)$newCAcc->opening_balance + $newNetCash;
-                    $newCAcc->save();
+                    $newCAcc->adjustBalance($newNetCash, [
+                        'branch_id'      => $sale->branch_id ?? null,
+                        'reference_type' => 'Sale',
+                        'reference_no'   => $sale->invoice_no,
+                        'reference_id'   => $sale->id,
+                        'description'    => 'Cash received on Sale #' . $sale->invoice_no . ' (updated)',
+                    ]);
                 }
             }
 
@@ -4328,23 +4338,38 @@ class SaleController extends Controller
                 if ($oldCardAccountId && $oldCard > 0) {
                     $oldAcc = \App\Models\Account::find($oldCardAccountId);
                     if ($oldAcc) {
-                        $oldAcc->opening_balance = (float)$oldAcc->opening_balance - $oldCard;
-                        $oldAcc->save();
+                        $oldAcc->adjustBalance(-$oldCard, [
+                            'branch_id'      => $sale->branch_id ?? null,
+                            'reference_type' => 'Sale Edit Reversal',
+                            'reference_no'   => $sale->invoice_no,
+                            'reference_id'   => $sale->id,
+                            'description'    => 'Reversed Card / Bank on Sale #' . $sale->invoice_no . ' edit',
+                        ]);
                     }
                 }
                 if ($newCardAccountId && $newCard > 0) {
                     $newAcc = \App\Models\Account::find($newCardAccountId);
                     if ($newAcc) {
-                        $newAcc->opening_balance = (float)$newAcc->opening_balance + $newCard;
-                        $newAcc->save();
+                        $newAcc->adjustBalance($newCard, [
+                            'branch_id'      => $sale->branch_id ?? null,
+                            'reference_type' => 'Sale (Bank/Card)',
+                            'reference_no'   => $sale->invoice_no,
+                            'reference_id'   => $sale->id,
+                            'description'    => 'Card / Bank received on Sale #' . $sale->invoice_no . ' (updated)',
+                        ]);
                     }
                 }
             } else {
                 if ($newCardAccountId && $newCard > 0) {
                     $newAcc = \App\Models\Account::find($newCardAccountId);
                     if ($newAcc) {
-                        $newAcc->opening_balance = (float)$newAcc->opening_balance + $newCard;
-                        $newAcc->save();
+                        $newAcc->adjustBalance($newCard, [
+                            'branch_id'      => $sale->branch_id ?? null,
+                            'reference_type' => 'Sale (Bank/Card)',
+                            'reference_no'   => $sale->invoice_no,
+                            'reference_id'   => $sale->id,
+                            'description'    => 'Card / Bank received on Sale #' . $sale->invoice_no,
+                        ]);
                         $sale->is_account_credited = 1;
                     }
                 }
@@ -4953,8 +4978,13 @@ class SaleController extends Controller
                     $oldAmount = (float)$voucher->total_amount;
                     $diff = $totalTradeOfferAmount - $oldAmount;
                     if ($diff != 0) {
-                        $expenseAccount->opening_balance = (float)$expenseAccount->opening_balance + $diff;
-                        $expenseAccount->save();
+                        $expenseAccount->adjustBalance((float) $diff, [
+                            'branch_id'      => $voucher->branch_id ?? ($sale->branch_id ?? null),
+                            'reference_type' => 'Expense / Claim Tracked',
+                            'reference_no'   => $voucher->evid,
+                            'reference_id'   => $voucher->id,
+                            'description'    => $remarkText,
+                        ]);
                     }
 
                     $voucher->update([
@@ -4983,8 +5013,13 @@ class SaleController extends Controller
                         'total_amount' => $totalTradeOfferAmount,
                     ]);
 
-                    $expenseAccount->opening_balance = (float)$expenseAccount->opening_balance + $totalTradeOfferAmount;
-                    $expenseAccount->save();
+                    $expenseAccount->adjustBalance((float) $totalTradeOfferAmount, [
+                        'branch_id'      => $voucher->branch_id ?? ($sale->branch_id ?? null),
+                        'reference_type' => 'Expense / Claim Tracked',
+                        'reference_no'   => $voucher->evid,
+                        'reference_id'   => $voucher->id,
+                        'description'    => $remarkText,
+                    ]);
 
                     $sale->trade_offer_voucher_id = $voucher->id;
                 }
@@ -4995,6 +5030,13 @@ class SaleController extends Controller
                 // If previously there was a voucher but now trade offer is 0
                 if ($voucher) {
                     $oldAmount = (float)$voucher->total_amount;
+                    $expenseAccount->setLedgerMeta([
+                        'branch_id'      => $voucher->branch_id ?? ($sale->branch_id ?? null),
+                        'reference_type' => 'Expense / Claim Reversal',
+                        'reference_no'   => $voucher->evid,
+                        'reference_id'   => $voucher->id,
+                        'description'    => 'Reversed trade offer / trial expense for Sale #' . $sale->invoice_no,
+                    ]);
                     $expenseAccount->opening_balance = max(0, (float)$expenseAccount->opening_balance - $oldAmount);
                     $expenseAccount->save();
                     $voucher->delete();

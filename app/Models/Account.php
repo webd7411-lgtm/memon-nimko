@@ -40,6 +40,66 @@ class Account extends Model
         return $this;
     }
 
+    /**
+     * Adjust opening_balance with ledger metadata and persist via Eloquent hooks.
+     */
+    public function adjustBalance(float $delta, array $meta = []): self
+    {
+        if (!empty($meta)) {
+            $this->setLedgerMeta($meta);
+        }
+        $this->opening_balance = round((float) ($this->opening_balance ?? 0) + $delta, 2);
+        $this->save();
+        return $this;
+    }
+
+    /**
+     * Compute Opening, Inflow, Outflow, and Current Balance as of $asOfDate
+     * anchored to live accounts.opening_balance minus movements after $asOfDate.
+     * Guarantees Today's balance matches Chart of Accounts and avoids double-counting.
+     */
+    public static function summarizeBalanceAsOf(object $account, string $asOfDate): array
+    {
+        $liveBalance = round((float) ($account->opening_balance ?? 0), 2);
+        $endDT = $asOfDate . ' 23:59:59';
+
+        if (!static::hasLedgerTable()) {
+            return [
+                'opening_balance' => $liveBalance,
+                'inflow'          => 0.0,
+                'outflow'         => 0.0,
+                'current_balance' => $liveBalance,
+            ];
+        }
+
+        $afterEndNet = (float) \Illuminate\Support\Facades\DB::table('account_ledgers')
+            ->where('account_id', $account->id)
+            ->where('transaction_date', '>', $endDT)
+            ->selectRaw('COALESCE(SUM(credit), 0) - COALESCE(SUM(debit), 0) as net')
+            ->value('net');
+
+        $currentBalance = round($liveBalance - $afterEndNet, 2);
+
+        $baseQuery = \Illuminate\Support\Facades\DB::table('account_ledgers')
+            ->where('account_id', $account->id)
+            ->where('transaction_date', '<=', $endDT)
+            ->where(function ($q) {
+                $q->whereNull('reference_type')
+                  ->orWhere('reference_type', '!=', 'Account Opening');
+            });
+
+        $inflow = round((float) (clone $baseQuery)->sum('credit'), 2);
+        $outflow = round((float) (clone $baseQuery)->sum('debit'), 2);
+        $openingBalance = round($currentBalance - $inflow + $outflow, 2);
+
+        return [
+            'opening_balance' => $openingBalance,
+            'inflow'          => $inflow,
+            'outflow'         => $outflow,
+            'current_balance' => $currentBalance,
+        ];
+    }
+
     protected static function hasLedgerTable(): bool
     {
         static $exists = null;

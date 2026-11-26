@@ -358,15 +358,25 @@ class VendorController extends Controller
         if ($oldCardAccId && $oldCard > 0) {
             $oldAcc = \App\Models\Account::find($oldCardAccId);
             if ($oldAcc) {
-                $oldAcc->opening_balance = (float)$oldAcc->opening_balance + $oldCard;
-                $oldAcc->save();
+                $oldAcc->adjustBalance($oldCard, [
+                    'branch_id'      => $payment->branch_id ?? null,
+                    'reference_type' => 'Vendor Payment Reversal',
+                    'reference_no'   => $payment->payment_no ?? null,
+                    'reference_id'   => $payment->id,
+                    'description'    => 'Reversed vendor payment on edit #' . ($payment->payment_no ?? $payment->id),
+                ]);
             }
         }
         if ($cardAccountId && $cardAmount > 0) {
             $newAcc = \App\Models\Account::find($cardAccountId);
             if ($newAcc) {
-                $newAcc->opening_balance = (float)$newAcc->opening_balance - $cardAmount;
-                $newAcc->save();
+                $newAcc->adjustBalance(-$cardAmount, [
+                    'branch_id'      => $payment->branch_id ?? null,
+                    'reference_type' => 'Vendor Payment',
+                    'reference_no'   => $payment->payment_no ?? null,
+                    'reference_id'   => $payment->id,
+                    'description'    => 'Updated vendor payment (' . ($paymentMethod ?? 'Card') . ')' . ($validated['note'] ? ' - ' . $validated['note'] : ''),
+                ]);
             }
         }
 
@@ -468,6 +478,20 @@ class VendorController extends Controller
             
             $ledger->closing_balance = (float)$ledger->closing_balance + (float)$payment->amount; 
             $ledger->save();
+        }
+
+        // Reverse bank account deduction if payment was made via Card / Bank
+        if ($payment->card_account_id && (float)$payment->card > 0) {
+            $acc = \App\Models\Account::find($payment->card_account_id);
+            if ($acc) {
+                $acc->adjustBalance((float)$payment->card, [
+                    'branch_id'      => $payment->branch_id ?? null,
+                    'reference_type' => 'Vendor Payment Reversal',
+                    'reference_no'   => $payment->payment_no ?? null,
+                    'reference_id'   => $payment->id,
+                    'description'    => 'Reversed deleted vendor payment #' . ($payment->payment_no ?? $payment->id),
+                ]);
+            }
         }
 
         $payment->delete();

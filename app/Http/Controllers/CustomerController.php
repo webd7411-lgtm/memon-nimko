@@ -315,7 +315,7 @@ class CustomerController extends Controller
         $receivedNo = 'REC-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
 
         // Save payment
-        CustomerPayment::create([
+        $payment = CustomerPayment::create([
             'received_no'     => $receivedNo,
             'customer_id'     => $request->customer_id,
             'admin_or_user_id'=> $userId,
@@ -466,15 +466,25 @@ class CustomerController extends Controller
         if ($oldCardAccId && $oldCard > 0) {
             $oldAcc = \App\Models\Account::find($oldCardAccId);
             if ($oldAcc) {
-                $oldAcc->opening_balance = (float)$oldAcc->opening_balance - $oldCard;
-                $oldAcc->save();
+                $oldAcc->adjustBalance(-$oldCard, [
+                    'branch_id'      => $payment->branch_id ?? null,
+                    'reference_type' => 'Customer Recovery Reversal',
+                    'reference_no'   => $payment->received_no ?? null,
+                    'reference_id'   => $payment->id,
+                    'description'    => 'Reversed customer recovery on payment edit #' . ($payment->received_no ?? $payment->id),
+                ]);
             }
         }
         if ($cardAccountId && $cardAmount > 0) {
             $newAcc = \App\Models\Account::find($cardAccountId);
             if ($newAcc) {
-                $newAcc->opening_balance = (float)$newAcc->opening_balance + $cardAmount;
-                $newAcc->save();
+                $newAcc->adjustBalance($cardAmount, [
+                    'branch_id'      => $payment->branch_id ?? null,
+                    'reference_type' => 'Customer Recovery',
+                    'reference_no'   => $payment->received_no ?? null,
+                    'reference_id'   => $payment->id,
+                    'description'    => 'Updated customer recovery (' . ($paymentMethod ?? 'Card') . ')' . ($validated['note'] ? ' - ' . $validated['note'] : ''),
+                ]);
             }
         }
 
@@ -513,8 +523,13 @@ class CustomerController extends Controller
         if ($payment->card_account_id && (float)$payment->card > 0) {
             $acc = \App\Models\Account::find($payment->card_account_id);
             if ($acc) {
-                $acc->opening_balance = (float)$acc->opening_balance - (float)$payment->card;
-                $acc->save();
+                $acc->adjustBalance(-(float)$payment->card, [
+                    'branch_id'      => $payment->branch_id ?? null,
+                    'reference_type' => 'Customer Recovery Reversal',
+                    'reference_no'   => $payment->received_no ?? null,
+                    'reference_id'   => $payment->id,
+                    'description'    => 'Reversed deleted customer recovery #' . ($payment->received_no ?? $payment->id),
+                ]);
             }
         }
 

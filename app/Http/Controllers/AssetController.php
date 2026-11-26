@@ -478,8 +478,13 @@ class AssetController extends Controller
                 if ($oldAccountId) {
                     $oldAcc = Account::find($oldAccountId);
                     if ($oldAcc) {
-                        $oldAcc->opening_balance += $oldCost;
-                        $oldAcc->save();
+                        $oldAcc->adjustBalance($oldCost, [
+                            'branch_id'      => $asset->branch_id ?: active_branch_id(),
+                            'reference_type' => 'Asset Maintenance Reversal',
+                            'reference_no'   => $voucher->evid ?? null,
+                            'reference_id'   => $voucher->id ?? null,
+                            'description'    => "Reversed maintenance cost on edit: {$asset->name} ({$asset->asset_code})",
+                        ]);
                     }
                 }
 
@@ -487,8 +492,13 @@ class AssetController extends Controller
                 if ($newAccountId && $newCost > 0) {
                     $newAcc = Account::find($newAccountId);
                     if ($newAcc) {
-                        $newAcc->opening_balance -= $newCost;
-                        $newAcc->save();
+                        $newAcc->adjustBalance(-$newCost, [
+                            'branch_id'      => $asset->branch_id ?: active_branch_id(),
+                            'reference_type' => 'Asset Maintenance',
+                            'reference_no'   => $voucher->evid ?? null,
+                            'reference_id'   => $voucher->id ?? null,
+                            'description'    => "Asset Maintenance: {$asset->name} ({$asset->asset_code}) - {$request->service_type}",
+                        ]);
                     }
                     if ($voucher) {
                         $voucher->update([
@@ -512,9 +522,6 @@ class AssetController extends Controller
                 if ($newAccountId && $newCost > 0) {
                     $newAcc = Account::find($newAccountId);
                     if ($newAcc) {
-                        $newAcc->opening_balance -= $newCost;
-                        $newAcc->save();
-
                         $expenseHead = AccountHead::firstOrCreate(
                             ['name' => 'Machinery & Asset Maintenance'],
                             ['status' => 1]
@@ -531,6 +538,14 @@ class AssetController extends Controller
                             'remarks'      => ["Asset Maintenance: {$asset->name} ({$asset->asset_code}) - {$request->service_type}"],
                             'amount'       => [(string)$newCost],
                             'total_amount' => $newCost,
+                        ]);
+
+                        $newAcc->adjustBalance(-$newCost, [
+                            'branch_id'      => $asset->branch_id ?: active_branch_id(),
+                            'reference_type' => 'Asset Maintenance',
+                            'reference_no'   => $voucher->evid,
+                            'reference_id'   => $voucher->id,
+                            'description'    => "Asset Maintenance: {$asset->name} ({$asset->asset_code}) - {$request->service_type}",
                         ]);
 
                         $voucherId = $voucher->id;
@@ -582,8 +597,13 @@ class AssetController extends Controller
                 if ($voucher) {
                     $payingAccount = Account::find($voucher->party_id);
                     if ($payingAccount) {
-                        $payingAccount->opening_balance += (float)$m->cost;
-                        $payingAccount->save();
+                        $payingAccount->adjustBalance((float)$m->cost, [
+                            'branch_id'      => $voucher->branch_id ?? null,
+                            'reference_type' => 'Asset Maintenance Reversal',
+                            'reference_no'   => $voucher->evid ?? null,
+                            'reference_id'   => $voucher->id,
+                            'description'    => "Reversed deleted maintenance expense ({$voucher->evid})",
+                        ]);
                     }
                     $voucher->delete();
                 }
