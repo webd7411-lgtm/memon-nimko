@@ -542,6 +542,7 @@
             <div class="kpi-title">Total Cost (COGS)</div>
             <div class="kpi-value text-secondary" id="kpiTotalCost">Rs 0</div>
             <div class="kpi-sub" id="kpiItemsQty">0 Items Sold</div>
+            <div class="kpi-sub text-muted" id="kpiCostSplit" style="font-size:0.7rem;"></div>
           </div>
           <div class="kpi-icon" style="background:#f1f5f9;color:#64748b;">
             <i class="fas fa-boxes"></i>
@@ -704,6 +705,13 @@ $(document).ready(function() {
 
     $('#kpiInvoicesCount').text((summary.invoices_count || 0) + ' Invoices');
     $('#kpiItemsQty').text((parseFloat(summary.items_sold_qty) || 0).toLocaleString() + ' Units Sold');
+    var matCost = parseFloat(summary.total_material_cost || 0);
+    var labCost = parseFloat(summary.total_labour_cost || 0);
+    $('#kpiCostSplit').text(
+      labCost > 0
+        ? ('Mat: ' + formatMoney(matCost) + ' | Labour: ' + formatMoney(labCost))
+        : 'Material Only (Rs 0 Labour)'
+    );
 
     if (summary.gross_profit < 0) {
       $('#kpiProfitCard').css('border-left', '4px solid #ef4444');
@@ -713,8 +721,14 @@ $(document).ready(function() {
       $('#kpiGrossProfit').removeClass('text-danger').addClass('text-success');
     }
 
-    if (type === 'date' && summary.total_expenses > 0) {
-      $('#kpiNetProfitText').html('Net Profit: <strong class="' + (summary.net_profit >= 0 ? 'text-success' : 'text-danger') + '">' + formatMoney(summary.net_profit) + '</strong> (Exp: ' + formatMoney(summary.total_expenses) + ')');
+    var directLabVouch = parseFloat(summary.direct_labour_vouchers_excluded || 0);
+    var directLabNote = directLabVouch > 0
+      ? ' • Direct Labour Vouchers in COGS: ' + formatMoney(directLabVouch)
+      : '';
+    if (type === 'date' && (summary.total_expenses > 0 || directLabVouch > 0)) {
+      $('#kpiNetProfitText').html('Net Profit: <strong class="' + (summary.net_profit >= 0 ? 'text-success' : 'text-danger') + '">' + formatMoney(summary.net_profit) + '</strong> (Exp: ' + formatMoney(summary.total_expenses) + ')' + directLabNote);
+    } else if (directLabVouch > 0) {
+      $('#kpiNetProfitText').text('Revenue - Cost (Mat + Lab)' + directLabNote);
     } else {
       $('#kpiNetProfitText').text('Revenue - Purchase Cost');
     }
@@ -788,6 +802,12 @@ $(document).ready(function() {
           ? '<span class="badge-profit badge-profit-pos">Profitable</span>' 
           : (r.profit < 0 ? '<span class="badge-profit badge-profit-neg">Loss ⚠️</span>' : '<span class="badge-profit badge-profit-zero">Even</span>');
 
+        var labUnit = parseFloat(r.labour_cost || 0);
+        var matUnit = parseFloat(r.material_cost || r.cost_price || 0);
+        var costSubHtml = labUnit > 0
+          ? `<div style="font-size:0.7rem;" class="text-success">Mat: ${matUnit.toFixed(2)} + Lab: ${labUnit.toFixed(2)}</div>`
+          : '';
+
         $tbody.append(`
           <tr>
             <td class="text-muted small">${idx + 1}</td>
@@ -796,7 +816,7 @@ $(document).ready(function() {
             <td><span class="badge bg-light text-secondary border">${r.category}</span></td>
             <td class="text-end fw-semibold">${parseFloat(r.qty_sold).toLocaleString()}</td>
             <td class="text-end">Rs ${parseFloat(r.avg_sale_price).toFixed(2)}</td>
-            <td class="text-end text-muted">Rs ${parseFloat(r.cost_price).toFixed(2)}</td>
+            <td class="text-end text-muted">Rs ${parseFloat(r.cost_price).toFixed(2)}${costSubHtml}</td>
             <td class="text-end fw-bold text-dark">Rs ${parseFloat(r.total_sales).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
             <td class="text-end text-secondary">Rs ${parseFloat(r.total_cost).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
             <td class="text-end fw-bold ${profitClass}">Rs ${parseFloat(r.profit).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>

@@ -363,6 +363,12 @@
               <option value="{{ $head->id }}">{{ $head->name }}</option>
               @endforeach
             </select>
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="checkbox" name="is_manufacturing_labour" value="1" id="pageIsMfgLabour">
+              <label class="form-check-label small fw-semibold text-success" for="pageIsMfgLabour">
+                Manufacturing Labour / Factory Wages (Cash/Bank deduct hoga, P&amp;L Operating Expense me double count nahi hoga kyunki Labour COGS me shamil hai)
+              </label>
+            </div>
           </div>
         </div>
 
@@ -520,6 +526,12 @@ $(document).on('click', '.removeRow', function() {
     calculateTotal();
 });
 
+$(document).on('change', '#pageExpenseHead', function() {
+    var headText = ($(this).find('option:selected').text() || '').toLowerCase();
+    var isMfg = headText.includes('manufacturing labour') || headText.includes('factory labour') || headText.includes('direct labour');
+    $('#pageIsMfgLabour').prop('checked', isMfg);
+});
+
 // Add Expense Head AJAX Submission
 $('#addExpenseHeadForm').on('submit', function(e) {
     e.preventDefault();
@@ -545,7 +557,7 @@ $('#addExpenseHeadForm').on('submit', function(e) {
             // Add to Expense Head select and select it
             $('#pageExpenseHead').append(
                 $('<option>', { value: headId, text: newHead.name, selected: true })
-            );
+            ).trigger('change');
 
             $alert.removeClass('d-none').addClass('alert-success').text('Head "' + newHead.name + '" added successfully!');
             $('#newHeadName').val('');

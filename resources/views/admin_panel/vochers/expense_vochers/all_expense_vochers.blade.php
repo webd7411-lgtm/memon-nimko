@@ -960,9 +960,12 @@
                 </span>
               </td>
               <td>
-                <div class="d-flex align-items-center gap-1">
+                <div class="d-flex align-items-center flex-wrap gap-1">
                   <i class="bi bi-folder2-open text-primary fs-6 flex-shrink-0"></i>
                   <span class="fw-bold text-dark" style="font-size:0.84rem; line-height:1.35; word-break:break-word;">{{ $voucher->type_name }}</span>
+                  @if($voucher->is_manufacturing_labour)
+                    <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:0.68rem;">Mfg Labour (In COGS)</span>
+                  @endif
                 </div>
               </td>
               <td>
@@ -1201,6 +1204,12 @@
                   <option value="{{ $head->id }}">{{ $head->name }}</option>
                 @endforeach
               </select>
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="is_manufacturing_labour" value="1" id="modalIsMfgLabour">
+                <label class="form-check-label small fw-semibold text-success" for="modalIsMfgLabour" style="font-size:0.75rem;">
+                  Manufacturing Labour / Wages (Included in COGS, exclude from P&amp;L Operating Exp)
+                </label>
+              </div>
             </div>
           </div>
 
@@ -1507,6 +1516,13 @@ $(document).ready(function() {
         });
     });
 
+    // Auto-check Manufacturing Labour checkbox when relevant Expense Head is chosen
+    $(document).on('change', '#modalExpenseHead', function() {
+        var headText = ($(this).find('option:selected').text() || '').toLowerCase();
+        var isMfg = headText.includes('manufacturing labour') || headText.includes('factory labour') || headText.includes('direct labour');
+        $('#modalIsMfgLabour').prop('checked', isMfg);
+    });
+
     // Add Expense Head AJAX Submission
     var wasExpenseModalOpen = false;
     $('#addExpenseHeadModal').on('show.bs.modal', function() {
@@ -1547,7 +1563,7 @@ $(document).ready(function() {
                 // Add to Expense Head select in Voucher Modal and select it
                 $('#modalExpenseHead').append(
                     $('<option>', { value: headId, text: newHead.name, selected: true })
-                );
+                ).trigger('change');
 
                 $alert.removeClass('d-none').addClass('alert-success').text('Head "' + newHead.name + '" added successfully!');
                 $('#newHeadName').val('');

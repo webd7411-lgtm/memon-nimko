@@ -16,6 +16,7 @@ class ProductVariant extends Model
         'price'           => 'float',
         'wholesale_price' => 'float',
         'cost_price'      => 'float',
+        'labour_cost'     => 'float',
         'stock_qty'       => 'float',
         'is_default'      => 'boolean',
         'is_active'       => 'boolean',

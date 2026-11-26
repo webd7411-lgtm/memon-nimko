@@ -9,9 +9,13 @@ class ProductionEntryItem extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'qty_entered' => 'float',
-        'qty_kg'      => 'float',
-        'qty_stock'   => 'float',
+        'qty_entered'        => 'float',
+        'qty_kg'             => 'float',
+        'qty_stock'          => 'float',
+        'labour_cost_per_pc' => 'float',
+        'total_labour_cost'  => 'float',
+        'rm_cost'            => 'float',
+        'total_cost'         => 'float',
     ];
 
     public function productionEntry()

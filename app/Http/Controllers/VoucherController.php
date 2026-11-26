@@ -872,9 +872,10 @@ class VoucherController extends Controller
                 'type'           => $request->vendor_type, // Expense Head
                 'party_id'       => $request->vendor_id ?? $firstAccountId,
                 'row_account_id' => $request->row_account_id,
-                'remarks'        => $request->remarks,
-                'amount'         => $request->amount,
-                'total_amount'   => $totalAmount,
+                'remarks'                 => $request->remarks,
+                'amount'                  => $request->amount,
+                'total_amount'            => $totalAmount,
+                'is_manufacturing_labour' => $request->boolean('is_manufacturing_labour'),
             ]);
 
             // Track expense account balance if defined for head

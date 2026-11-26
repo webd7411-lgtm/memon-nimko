@@ -328,13 +328,15 @@ class FinancialCommandCenterController extends Controller
         $totalReturns    = $directReturns + $distDispatchReturns;
         $netRevenue      = max(0, $totalGrossSales - $totalReturns);
 
-        // 4. Calculate COGS item-by-item from sold items in this period using BOM & Purchase Cost (Synced with Profit & Loss Report)
+        // 4. Calculate COGS item-by-item from sold items in this period using BOM + Manufacturing Labour + Purchase Cost (Synced with Profit & Loss Report)
         $allPeriodSalesQ = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT]);
         if (!$isAll) $allPeriodSalesQ->where('branch_id', $branchId);
         $allPeriodSales = $allPeriodSalesQ->select('product', 'variant_id', 'qty')->get();
 
+        $costService = app(\App\Services\ProductCostService::class);
         $productsWithBom = Product::with(['category_relation', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->get()->keyBy('id');
-        $bomProductCostMap = $this->buildBomProductCostMap($productsWithBom);
+        $bomBreakdown = $costService->buildBomCostBreakdown($productsWithBom);
+        $latestProductionMap = $costService->buildLatestProductionCostMap();
         $variantsDict = ProductVariant::all()->keyBy('id');
 
         $purchaseItems = DB::table('purchase_items')
@@ -352,7 +354,9 @@ class FinancialCommandCenterController extends Controller
             }
         }
 
-        $totalCogs = 0;
+        $totalCogs = 0.0;
+        $totalCogsMaterial = 0.0;
+        $totalCogsLabour = 0.0;
         foreach ($allPeriodSales as $s) {
             $pids = explode(',', $s->product ?? '');
             $vids = explode(',', $s->variant_id ?? '');
@@ -364,8 +368,10 @@ class FinancialCommandCenterController extends Controller
                 $vid = trim($vids[$idx] ?? '0');
                 $qty = (float)($qtys[$idx] ?? 0);
 
-                $cost = $this->resolveItemUnitCost($pid, $vid, $productsWithBom, $variantsDict, $bomProductCostMap, $purchasePriceMap);
-                $totalCogs += ($qty * $cost);
+                $costInfo = $costService->resolveUnitCostWithBreakdown($pid, $vid, $productsWithBom, $variantsDict, $bomBreakdown, $purchasePriceMap, $latestProductionMap);
+                $totalCogsMaterial += ($qty * $costInfo['material_cost']);
+                $totalCogsLabour   += ($qty * $costInfo['labour_cost']);
+                $totalCogs         += ($qty * $costInfo['total_cost']);
             }
         }
 
@@ -374,7 +380,9 @@ class FinancialCommandCenterController extends Controller
         if (!$isAll) $returnItemsQ->where('branch_id', $branchId);
         $returnItems = $returnItemsQ->select('product', 'variant_id', 'qty')->get();
 
-        $returnCostReduction = 0;
+        $returnCostReduction = 0.0;
+        $returnMatReduction = 0.0;
+        $returnLabReduction = 0.0;
         foreach ($returnItems as $r) {
             $pids = explode(',', $r->product ?? '');
             $vids = explode(',', $r->variant_id ?? '');
@@ -384,31 +392,49 @@ class FinancialCommandCenterController extends Controller
                 if (!$pid || !is_numeric($pid)) continue;
                 $vid = trim($vids[$idx] ?? '0');
                 $qty = (float)($qtys[$idx] ?? 0);
-                $cost = $this->resolveItemUnitCost($pid, $vid, $productsWithBom, $variantsDict, $bomProductCostMap, $purchasePriceMap);
-                $returnCostReduction += ($qty * $cost);
+                $costInfo = $costService->resolveUnitCostWithBreakdown($pid, $vid, $productsWithBom, $variantsDict, $bomBreakdown, $purchasePriceMap, $latestProductionMap);
+                $returnMatReduction  += ($qty * $costInfo['material_cost']);
+                $returnLabReduction  += ($qty * $costInfo['labour_cost']);
+                $returnCostReduction += ($qty * $costInfo['total_cost']);
             }
         }
-        $cogs = max(0, $totalCogs - $returnCostReduction);
+        $cogs         = max(0, $totalCogs - $returnCostReduction);
+        $cogsMaterial = max(0, $totalCogsMaterial - $returnMatReduction);
+        $cogsLabour   = max(0, $totalCogsLabour - $returnLabReduction);
 
         // Fallback estimate if no item cost configured
         if ($cogs <= 0 && $netRevenue > 0) {
             $cogs = $netRevenue * 0.65;
+            $cogsMaterial = $cogs;
+            $cogsLabour = 0;
         }
 
         $grossProfit = max(0, $netRevenue - $cogs);
 
-        // 5. Operating Expenses in period (excluding stock write-off adjustments)
-        $expQ = DB::table('expense_vouchers')
+        // 5. Operating Expenses in period (excluding stock write-offs & direct manufacturing labour vouchers already in COGS)
+        $expBaseQ = DB::table('expense_vouchers')
             ->where(function($q) use ($startDT, $endDT, $startDate, $endDate) {
                 $q->whereBetween('created_at', [$startDT, $endDT])
                   ->orWhereBetween('date', [$startDate, $endDate]);
-            })
-            ->where(function($q) {
-                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', 0);
             });
 
         if (!$isAll && Schema::hasColumn('expense_vouchers', 'branch_id')) {
-            $expQ->where('branch_id', $branchId);
+            $expBaseQ->where('branch_id', $branchId);
+        }
+
+        $hasMfgLabourCol = Schema::hasColumn('expense_vouchers', 'is_manufacturing_labour');
+        $directLabourVouchers = $hasMfgLabourCol
+            ? (float) (clone $expBaseQ)->where('is_manufacturing_labour', 1)->sum('total_amount')
+            : 0.0;
+
+        $expQ = (clone $expBaseQ)
+            ->where(function($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', 0);
+            });
+        if ($hasMfgLabourCol) {
+            $expQ->where(function($q) {
+                $q->whereNull('is_manufacturing_labour')->orWhere('is_manufacturing_labour', 0);
+            });
         }
         $totalExpenses = (float) $expQ->sum('total_amount');
 
@@ -427,98 +453,39 @@ class FinancialCommandCenterController extends Controller
             'total_returns'           => $totalReturns,
             'total_sales'             => $netRevenue, // Standard alias for total net sales
             'net_revenue'             => $netRevenue,
-            'cogs'                    => $cogs,
+            'cogs_material'           => round($cogsMaterial, 2),
+            'cogs_labour'             => round($cogsLabour, 2),
+            'cogs'                    => round($cogs, 2),
             'gross_profit'            => $grossProfit,
             'total_expenses'          => $totalExpenses,
+            'direct_labour_vouchers'  => round($directLabourVouchers, 2),
             'net_profit'              => $netProfit,
             'net_margin_pct'          => $netRevenue > 0 ? round(($netProfit / $netRevenue) * 100, 1) : 0,
         ];
     }
 
     /**
-     * Resolve unit cost using the exact hierarchy as Product-wise Profit & Loss report:
-     * BOM Manufactured Cost -> Purchase Price -> Variant Cost -> Wholesale Price.
+     * Resolve unit cost using ProductCostService (Material + Manufacturing Labour).
      */
     private function resolveItemUnitCost($pid, $vid, $productsWithBom, $variantsDict, $bomProductCostMap, $purchasePriceMap): float
     {
-        $vKey = $pid . '_' . $vid;
-        $pKey = $pid . '_0';
-        $p = $productsWithBom->get((int)$pid);
-        $vObj = ($vid && $variantsDict->has($vid)) ? $variantsDict->get($vid) : null;
-
-        if (isset($bomProductCostMap[$vKey]) && $bomProductCostMap[$vKey] > 0) {
-            return (float)$bomProductCostMap[$vKey];
-        }
-        if (isset($bomProductCostMap[$pKey]) && $bomProductCostMap[$pKey] > 0) {
-            if ($p && ($p->unit_type === 'kg') && $vObj) {
-                $sVal = (float)$vObj->size_value;
-                if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
-                    $sVal /= 1000;
-                }
-                return (float)$bomProductCostMap[$pKey] * ($sVal > 0 ? $sVal : 1);
-            }
-            return (float)$bomProductCostMap[$pKey];
-        }
-        if (isset($purchasePriceMap[$vKey]) && $purchasePriceMap[$vKey] > 0) {
-            return (float)$purchasePriceMap[$vKey];
-        }
-        if (isset($purchasePriceMap[$pKey]) && $purchasePriceMap[$pKey] > 0) {
-            return (float)$purchasePriceMap[$pKey];
-        }
-        if ($vObj && (float)$vObj->cost_price > 0) {
-            return (float)$vObj->cost_price;
-        }
-        if ($p && ($firstV = $p->variants->first()) && (float)$firstV->cost_price > 0) {
-            return (float)$firstV->cost_price;
-        }
-        if ($p && (float)$p->wholesale_price > 0) {
-            return (float)$p->wholesale_price;
-        }
-        return 0.0;
+        $costService = app(\App\Services\ProductCostService::class);
+        return $costService->resolveUnitCostWithBreakdown(
+            $pid,
+            $vid,
+            $productsWithBom,
+            $variantsDict,
+            $costService->buildBomCostBreakdown($productsWithBom),
+            $purchasePriceMap
+        )['total_cost'];
     }
 
     /**
-     * Build BOM product cost mapping identical to ReportingController.
+     * Build BOM product cost mapping via ProductCostService.
      */
     private function buildBomProductCostMap($products): array
     {
-        $bomProductCostMap = [];
-
-        foreach ($products as $pObj) {
-            $pBoms = $pObj->bom ?? collect();
-            if ($pBoms->isEmpty()) {
-                continue;
-            }
-
-            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
-            $baseCost = $this->computeBomItemsCost($pBoms->whereNull('variant_id'));
-
-            if ($baseCost > 0) {
-                $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
-            }
-
-            foreach ($pObj->variants as $vObj) {
-                $vBom = $pBoms->where('variant_id', $vObj->id);
-                if ($vBom->isNotEmpty()) {
-                    $vCost = $this->computeBomItemsCost($vBom);
-                    if ($vCost > 0) {
-                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
-                    }
-                } elseif ($baseCost > 0) {
-                    if ($isObjKg) {
-                        $sizeVal = (float)$vObj->size_value;
-                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
-                            $sizeVal /= 1000;
-                        }
-                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
-                    } else {
-                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
-                    }
-                }
-            }
-        }
-
-        return $bomProductCostMap;
+        return app(\App\Services\ProductCostService::class)->buildBomProductCostMap($products);
     }
 
     /**
@@ -526,28 +493,7 @@ class FinancialCommandCenterController extends Controller
      */
     private function computeBomItemsCost($bomItems): float
     {
-        $cost = 0.0;
-
-        foreach ($bomItems as $bItem) {
-            $qty = (float)($bItem->qty_per_unit ?? $bItem->qty ?? 0);
-            if ($qty <= 0) {
-                continue;
-            }
-
-            if ($bItem->rawMaterial) {
-                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                if ($factor <= 0) {
-                    $factor = 1;
-                }
-                $cost += ($qty * ($rmCost / $factor));
-            } elseif ($bItem->ingredientProduct) {
-                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                $cost += ($qty * $ingCost);
-            }
-        }
-
-        return $cost;
+        return app(\App\Services\ProductCostService::class)->computeBomItemsCost($bomItems);
     }
 
     /**

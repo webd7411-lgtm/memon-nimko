@@ -95,8 +95,17 @@ class ReportingController extends Controller
             })
             ->toArray();
 
-        // Calculate Cost of Goods Manufactured (COGM) from Raw Materials (BOM) for each product & variant
-        $bomProductCostMap = $this->buildBomProductCostMap($products);
+        // Calculate Cost of Goods Manufactured (COGM = Raw Material + Manufacturing Labour)
+        $costService = app(\App\Services\ProductCostService::class);
+        $bomBreakdown = $costService->buildBomCostBreakdown($products);
+        $latestProductionMap = $costService->buildLatestProductionCostMap();
+        $productsById = $products->keyBy('id');
+        $variantsById = collect();
+        foreach ($products as $pTmp) {
+            foreach ($pTmp->variants as $vTmp) {
+                $variantsById->put((string) $vTmp->id, $vTmp);
+            }
+        }
 
         // 2. Bulk queries grouped by product_id AND variant_id with DATE filters
         $purchasesQuery = DB::table('purchase_items')
@@ -904,14 +913,19 @@ class ReportingController extends Controller
                         'balance'            => $closingStock,
                         'unit'               => $p->unit->name ?? ($is_kg ? 'KG' : 'PC'),
                     ];
-                    // Valuation price based on raw material cost (BOM), latest purchase price, or variant cost/wholesale price
-                    $vKey = $p->id . '_' . $v->id;
-                    $valPrice = (float)($bomProductCostMap[$vKey] ?? 0);
+                    // Valuation price based on BOM + Labour, latest prod/purchase cost, or variant cost/wholesale price
+                    $resolved = $costService->resolveUnitCostWithBreakdown(
+                        $p->id,
+                        $v->id,
+                        $productsById,
+                        $variantsById,
+                        $bomBreakdown,
+                        $latestProductPurchasePrices,
+                        $latestProductionMap
+                    );
+                    $valPrice = $resolved['total_cost'];
                     if ($valPrice <= 0) {
-                        $valPrice = (float)($latestProductPurchasePrices[$vKey] ?? $latestProductPurchasePrices[$p->id . '_0'] ?? 0);
-                    }
-                    if ($valPrice <= 0) {
-                        $valPrice = (float)($v->cost_price ?: $v->wholesale_price ?: $v->price ?: $p->wholesale_price ?: $p->price ?: 0);
+                        $valPrice = (float)($v->wholesale_price ?: $v->price ?: $p->wholesale_price ?: $p->price ?: 0);
                     }
 
                     $lineVal = ($closingStock > 0) ? ($closingStock * $valPrice) : 0;
@@ -1079,33 +1093,41 @@ class ReportingController extends Controller
                 ];
                 
                 $valPrice = 0;
-                // 1. Raw material BOM cost (production cost from recipe)
                 $baseKey = $p->id . '_0';
-                if (isset($bomProductCostMap[$baseKey]) && $bomProductCostMap[$baseKey] > 0) {
-                    $valPrice = (float)$bomProductCostMap[$baseKey];
-                }
-
-                // 2. Fallback to latest purchase price
-                if ($valPrice <= 0 && isset($latestProductPurchasePrices[$baseKey]) && $latestProductPurchasePrices[$baseKey] > 0) {
-                    $valPrice = (float)$latestProductPurchasePrices[$baseKey];
-                }
-
-                // 3. Fallback to variant cost price or sale/wholesale price
-                if ($valPrice <= 0) {
-                    if ($is_kg) {
-                        $defaultVar = $p->variants->where('is_default', 1)->first() ?? $p->variants->first();
+                if ($is_kg) {
+                    $matPerKg = (float)($bomBreakdown['material'][$baseKey] ?? 0);
+                    if ($matPerKg <= 0 && isset($latestProductPurchasePrices[$baseKey]) && $latestProductPurchasePrices[$baseKey] > 0) {
+                        $matPerKg = (float)$latestProductPurchasePrices[$baseKey];
+                    }
+                    $defaultVar = $p->variants->where('is_default', 1)->first() ?? $p->variants->first();
+                    if ($matPerKg <= 0) {
                         if ($defaultVar) {
-                            $sVal = (float)$defaultVar->size_value;
-                            $sUnit = strtolower(trim($defaultVar->size_unit ?? 'kg'));
-                            if (in_array($sUnit, ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
-                                $sVal = $sVal / 1000;
-                            }
+                            $sVal = \App\Services\ProductCostService::variantSizeInKg($defaultVar);
                             $varCost = (float)($defaultVar->cost_price ?: $defaultVar->wholesale_price ?: $defaultVar->price ?: 0);
-                            $valPrice = ($sVal > 0) ? ($varCost / $sVal) : $varCost;
+                            $matPerKg = ($sVal > 0) ? ($varCost / $sVal) : $varCost;
                         } else {
-                            $valPrice = (float)($p->wholesale_price ?: $p->price ?: 0);
+                            $matPerKg = (float)($p->wholesale_price ?: $p->price ?: 0);
                         }
-                    } else {
+                    }
+
+                    $labPerKg = (float)($bomBreakdown['labour'][$baseKey] ?? 0);
+                    if ($labPerKg <= 0 && $defaultVar && $defaultVar->labour_cost !== null && (float)$defaultVar->labour_cost > 0) {
+                        $sVal = \App\Services\ProductCostService::variantSizeInKg($defaultVar);
+                        $labPerKg = ($sVal > 0) ? ((float)$defaultVar->labour_cost / $sVal) : (float)$defaultVar->labour_cost;
+                    }
+                    $valPrice = $matPerKg + $labPerKg;
+                } else {
+                    $resolved = $costService->resolveUnitCostWithBreakdown(
+                        $p->id,
+                        0,
+                        $productsById,
+                        $variantsById,
+                        $bomBreakdown,
+                        $latestProductPurchasePrices,
+                        $latestProductionMap
+                    );
+                    $valPrice = $resolved['total_cost'];
+                    if ($valPrice <= 0) {
                         $valPrice = (float)($p->wholesale_price ?: $p->price ?: 0);
                     }
                 }
@@ -3536,8 +3558,10 @@ class ReportingController extends Controller
             }
         }
 
-        // BOM Recipe Manufactured Cost mapping for Profit & Loss
-        $bomProductCostMap = $this->buildBomProductCostMap($products);
+        // BOM Recipe + Manufacturing Labour Cost mapping for Profit & Loss
+        $costService = app(\App\Services\ProductCostService::class);
+        $bomBreakdown = $costService->buildBomCostBreakdown($products);
+        $latestProductionMap = $costService->buildLatestProductionCostMap();
         $variantsDict = \App\Models\ProductVariant::all()->keyBy('id');
         $categoriesDict = \App\Models\Category::all()->keyBy('id');
         $customersDict = \App\Models\Customer::all()->keyBy('id');
@@ -3566,16 +3590,39 @@ class ReportingController extends Controller
         }
 
         // Expenses in range for Date-wise calculation and Net Profit
-        $expenseQuery = DB::table('expense_vouchers')
+        // Exclude stock adjustments & direct manufacturing labour vouchers (already absorbed into COGS) to avoid double counting
+        $expenseBaseQ = DB::table('expense_vouchers')
             ->whereBetween('created_at', [$startDT, $endDT]);
         if ($branchId && $branchId !== 'all') {
             if (\Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
-                $expenseQuery->where('branch_id', $branchId);
+                $expenseBaseQ->where('branch_id', $branchId);
             }
         } elseif (!is_all_branches()) {
             if (\Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
-                $expenseQuery->where('branch_id', active_branch_id());
+                $expenseBaseQ->where('branch_id', active_branch_id());
             }
+        }
+
+        $hasMfgLabourCol = \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'is_manufacturing_labour');
+        $hasStockAdjCol  = \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'is_stock_adjustment');
+
+        $directLabourVouchersExcluded = 0.0;
+        if ($hasMfgLabourCol) {
+            $directLabourVouchersExcluded = (float) (clone $expenseBaseQ)
+                ->where('is_manufacturing_labour', 1)
+                ->sum('total_amount');
+        }
+
+        $expenseQuery = (clone $expenseBaseQ);
+        if ($hasStockAdjCol) {
+            $expenseQuery->where(function ($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', 0);
+            });
+        }
+        if ($hasMfgLabourCol) {
+            $expenseQuery->where(function ($q) {
+                $q->whereNull('is_manufacturing_labour')->orWhere('is_manufacturing_labour', 0);
+            });
         }
         $expenseRecords = $expenseQuery->select('id', 'total_amount', 'created_at', 'date')->get();
         $totalExpenses = (float)$expenseRecords->sum('total_amount');
@@ -3588,14 +3635,17 @@ class ReportingController extends Controller
 
         // Summary structures
         $summary = [
-            'total_sales'    => 0,
-            'total_cost'     => 0,
-            'gross_profit'   => 0,
-            'margin_percent' => 0,
-            'total_expenses' => $totalExpenses,
-            'net_profit'     => 0,
-            'invoices_count' => $sales->count(),
-            'items_sold_qty' => 0,
+            'total_sales'                     => 0,
+            'total_material_cost'             => 0,
+            'total_labour_cost'               => 0,
+            'total_cost'                      => 0,
+            'gross_profit'                    => 0,
+            'margin_percent'                  => 0,
+            'total_expenses'                  => $totalExpenses,
+            'direct_labour_vouchers_excluded' => round($directLabourVouchersExcluded, 2),
+            'net_profit'                      => 0,
+            'invoices_count'                  => $sales->count(),
+            'items_sold_qty'                  => 0,
         ];
 
         $agg = [];
@@ -3641,42 +3691,31 @@ class ReportingController extends Controller
                     if ($vLabel) $pName .= " ({$vLabel})";
                 }
 
-                // Cost Determination (BOM Recipe Manufactured Cost -> Purchase Price -> Variant Cost -> Wholesale)
-                $unitCost = 0;
-                $vKey = $pid . '_' . $vid;
-                $pKey = $pid . '_0';
+                // Cost Determination (BOM Material + Manufacturing Labour -> Latest Batch -> Purchase Price -> Variant Cost -> Wholesale)
+                $costInfo = $costService->resolveUnitCostWithBreakdown(
+                    $pid,
+                    $vid,
+                    $products,
+                    $variantsDict,
+                    $bomBreakdown,
+                    $purchasePriceMap,
+                    $latestProductionMap
+                );
+                $unitMaterialCost = $costInfo['material_cost'];
+                $unitLabourCost   = $costInfo['labour_cost'];
+                $unitCost         = $costInfo['total_cost'];
 
-                if (isset($bomProductCostMap[$vKey]) && $bomProductCostMap[$vKey] > 0) {
-                    $unitCost = (float)$bomProductCostMap[$vKey];
-                } elseif (isset($bomProductCostMap[$pKey]) && $bomProductCostMap[$pKey] > 0) {
-                    if ($p && ($p->unit_type === 'kg') && $vObj) {
-                        $sVal = (float)$vObj->size_value;
-                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
-                            $sVal /= 1000;
-                        }
-                        $unitCost = (float)$bomProductCostMap[$pKey] * ($sVal > 0 ? $sVal : 1);
-                    } else {
-                        $unitCost = (float)$bomProductCostMap[$pKey];
-                    }
-                } elseif (isset($purchasePriceMap[$vKey]) && $purchasePriceMap[$vKey] > 0) {
-                    $unitCost = $purchasePriceMap[$vKey];
-                } elseif (isset($purchasePriceMap[$pKey]) && $purchasePriceMap[$pKey] > 0) {
-                    $unitCost = $purchasePriceMap[$pKey];
-                } elseif ($vObj && $vObj->cost_price > 0) {
-                    $unitCost = (float)$vObj->cost_price;
-                } elseif ($p && ($firstV = $p->variants->first()) && $firstV->cost_price > 0) {
-                    $unitCost = (float)$firstV->cost_price;
-                } elseif ($p && (float)$p->wholesale_price > 0) {
-                    $unitCost = (float)$p->wholesale_price;
-                }
-
-                $lineCost = $qty * $unitCost;
-                $lineProfit = $lineTotal - $lineCost;
+                $lineMatCost    = $qty * $unitMaterialCost;
+                $lineLabourCost = $qty * $unitLabourCost;
+                $lineCost       = $qty * $unitCost;
+                $lineProfit     = $lineTotal - $lineCost;
 
                 // Accumulate overall summary
-                $summary['total_sales']    += $lineTotal;
-                $summary['total_cost']     += $lineCost;
-                $summary['items_sold_qty'] += $qty;
+                $summary['total_sales']         += $lineTotal;
+                $summary['total_material_cost'] += $lineMatCost;
+                $summary['total_labour_cost']   += $lineLabourCost;
+                $summary['total_cost']          += $lineCost;
+                $summary['items_sold_qty']      += $qty;
 
                 // Map vendor
                 $vendorId = $productVendorMap[(int)$pid] ?? null;
@@ -3688,22 +3727,26 @@ class ReportingController extends Controller
                     $key = $pid . '_' . $vid;
                     if (!isset($agg[$key])) {
                         $agg[$key] = [
-                            'item_code'      => $pCode,
-                            'item_name'      => $pName,
-                            'category'       => $catName,
-                            'qty_sold'       => 0,
-                            'avg_sale_price' => $unitPrice,
-                            'cost_price'     => $unitCost,
-                            'total_sales'    => 0,
-                            'total_cost'     => 0,
-                            'profit'         => 0,
-                            'margin_percent' => 0,
+                            'item_code'         => $pCode,
+                            'item_name'         => $pName,
+                            'category'          => $catName,
+                            'qty_sold'          => 0,
+                            'avg_sale_price'    => $unitPrice,
+                            'material_cost'     => $unitMaterialCost,
+                            'labour_cost'       => $unitLabourCost,
+                            'cost_price'        => $unitCost,
+                            'total_sales'       => 0,
+                            'total_labour_cost' => 0,
+                            'total_cost'        => 0,
+                            'profit'            => 0,
+                            'margin_percent'    => 0,
                         ];
                     }
-                    $agg[$key]['qty_sold']    += $qty;
-                    $agg[$key]['total_sales'] += $lineTotal;
-                    $agg[$key]['total_cost']  += $lineCost;
-                    $agg[$key]['profit']      += $lineProfit;
+                    $agg[$key]['qty_sold']          += $qty;
+                    $agg[$key]['total_sales']       += $lineTotal;
+                    $agg[$key]['total_labour_cost'] += $lineLabourCost;
+                    $agg[$key]['total_cost']        += $lineCost;
+                    $agg[$key]['profit']            += $lineProfit;
                 } elseif ($reportType === 'category') {
                     $key = $catId ?: 0;
                     if (!isset($agg[$key])) {
@@ -3875,41 +3918,30 @@ class ReportingController extends Controller
                     if ($vLabel) $pName .= " ({$vLabel})";
                 }
 
-                $unitCost = 0;
-                $vKey = $pid . '_' . $vid;
-                $pKey = $pid . '_0';
+                $costInfo = $costService->resolveUnitCostWithBreakdown(
+                    $pid,
+                    $vid,
+                    $products,
+                    $variantsDict,
+                    $bomBreakdown,
+                    $purchasePriceMap,
+                    $latestProductionMap
+                );
+                $unitMaterialCost = $costInfo['material_cost'];
+                $unitLabourCost   = $costInfo['labour_cost'];
+                $unitCost         = $costInfo['total_cost'];
 
-                if (isset($bomProductCostMap[$vKey]) && $bomProductCostMap[$vKey] > 0) {
-                    $unitCost = (float)$bomProductCostMap[$vKey];
-                } elseif (isset($bomProductCostMap[$pKey]) && $bomProductCostMap[$pKey] > 0) {
-                    if ($p && ($p->unit_type === 'kg') && $vObj) {
-                        $sVal = (float)$vObj->size_value;
-                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sVal > 0) {
-                            $sVal /= 1000;
-                        }
-                        $unitCost = (float)$bomProductCostMap[$pKey] * ($sVal > 0 ? $sVal : 1);
-                    } else {
-                        $unitCost = (float)$bomProductCostMap[$pKey];
-                    }
-                } elseif (isset($purchasePriceMap[$vKey]) && $purchasePriceMap[$vKey] > 0) {
-                    $unitCost = $purchasePriceMap[$vKey];
-                } elseif (isset($purchasePriceMap[$pKey]) && $purchasePriceMap[$pKey] > 0) {
-                    $unitCost = $purchasePriceMap[$pKey];
-                } elseif ($vObj && $vObj->cost_price > 0) {
-                    $unitCost = (float)$vObj->cost_price;
-                } elseif ($p && ($firstV = $p->variants->first()) && $firstV->cost_price > 0) {
-                    $unitCost = (float)$firstV->cost_price;
-                } elseif ($p && (float)$p->wholesale_price > 0) {
-                    $unitCost = (float)$p->wholesale_price;
-                }
-
-                $lineCost = $qty * $unitCost;
-                $lineProfit = $lineTotal - $lineCost;
+                $lineMatCost    = $qty * $unitMaterialCost;
+                $lineLabourCost = $qty * $unitLabourCost;
+                $lineCost       = $qty * $unitCost;
+                $lineProfit     = $lineTotal - $lineCost;
 
                 // Deduct from overall summary
-                $summary['total_sales']    -= $lineTotal;
-                $summary['total_cost']     -= $lineCost;
-                $summary['items_sold_qty'] -= $qty;
+                $summary['total_sales']         -= $lineTotal;
+                $summary['total_material_cost'] -= $lineMatCost;
+                $summary['total_labour_cost']   -= $lineLabourCost;
+                $summary['total_cost']          -= $lineCost;
+                $summary['items_sold_qty']      -= $qty;
 
                 // Map vendor
                 $vendorId = $productVendorMap[$pid] ?? null;
@@ -3920,22 +3952,26 @@ class ReportingController extends Controller
                     $key = $pid . '_' . $vid;
                     if (!isset($agg[$key])) {
                         $agg[$key] = [
-                            'item_code'      => $pCode,
-                            'item_name'      => $pName,
-                            'category'       => $catName,
-                            'qty_sold'       => 0,
-                            'avg_sale_price' => $unitPrice,
-                            'cost_price'     => $unitCost,
-                            'total_sales'    => 0,
-                            'total_cost'     => 0,
-                            'profit'         => 0,
-                            'margin_percent' => 0,
+                            'item_code'         => $pCode,
+                            'item_name'         => $pName,
+                            'category'          => $catName,
+                            'qty_sold'          => 0,
+                            'avg_sale_price'    => $unitPrice,
+                            'material_cost'     => $unitMaterialCost,
+                            'labour_cost'       => $unitLabourCost,
+                            'cost_price'        => $unitCost,
+                            'total_sales'       => 0,
+                            'total_labour_cost' => 0,
+                            'total_cost'        => 0,
+                            'profit'            => 0,
+                            'margin_percent'    => 0,
                         ];
                     }
-                    $agg[$key]['qty_sold']    -= $qty;
-                    $agg[$key]['total_sales'] -= $lineTotal;
-                    $agg[$key]['total_cost']  -= $lineCost;
-                    $agg[$key]['profit']      -= $lineProfit;
+                    $agg[$key]['qty_sold']          -= $qty;
+                    $agg[$key]['total_sales']       -= $lineTotal;
+                    $agg[$key]['total_labour_cost'] -= $lineLabourCost;
+                    $agg[$key]['total_cost']        -= $lineCost;
+                    $agg[$key]['profit']            -= $lineProfit;
                 } elseif ($reportType === 'category') {
                     $key = $catId ?: 0;
                     if (!isset($agg[$key])) {
@@ -4033,8 +4069,10 @@ class ReportingController extends Controller
 
         // Finalize rows calculation
         $rows = [];
-        $summary['total_sales']  = round($summary['total_sales'], 2);
-        $summary['total_cost']   = round($summary['total_cost'], 2);
+        $summary['total_sales']         = round($summary['total_sales'], 2);
+        $summary['total_material_cost'] = round($summary['total_material_cost'], 2);
+        $summary['total_labour_cost']   = round($summary['total_labour_cost'], 2);
+        $summary['total_cost']          = round($summary['total_cost'], 2);
         $summary['gross_profit'] = $summary['total_sales'] - $summary['total_cost'];
         $summary['net_profit']   = $summary['gross_profit'] - $summary['total_expenses'];
         $summary['margin_percent'] = $summary['total_sales'] > 0
@@ -4221,6 +4259,8 @@ class ReportingController extends Controller
         }
 
         $totalBatches = $entries->count();
+        $totalRmCostAll = 0;
+        $totalLabourCostAll = 0;
         $totalCost = 0;
         $totalFinishedUnits = 0;
         $totalRawMaterialsCount = 0;
@@ -4234,6 +4274,7 @@ class ReportingController extends Controller
 
             $finishedDetails = [];
             $batchQtyTotal = 0;
+            $itemsLabourSum = 0.0;
 
             foreach ($itemsForBatch as $fi) {
                 $pName = $fi->item_name ?? 'Unknown';
@@ -4245,15 +4286,21 @@ class ReportingController extends Controller
                 $batchQtyTotal += $qtyEntered;
                 $totalFinishedUnits += $qtyEntered;
 
+                $itemLabourPerPc = (float)($fi->labour_cost_per_pc ?? 0);
+                $itemLabourTotal = (float)($fi->total_labour_cost ?? 0);
+                $itemsLabourSum += $itemLabourTotal;
+
                 $finishedDetails[] = [
-                    'product_id' => $fi->product_id,
-                    'item_code'  => $fi->item_code,
-                    'item_name'  => $pName,
-                    'variant'    => $vName,
-                    'qty_entered'=> $qtyEntered,
-                    'qty_stock'  => (float)$fi->qty_stock,
-                    'unit'       => $isKg ? 'KG' : $unitName,
-                    'notes'      => $fi->notes,
+                    'product_id'         => $fi->product_id,
+                    'item_code'          => $fi->item_code,
+                    'item_name'          => $pName,
+                    'variant'            => $vName,
+                    'qty_entered'        => $qtyEntered,
+                    'qty_stock'          => (float)$fi->qty_stock,
+                    'unit'               => $isKg ? 'KG' : $unitName,
+                    'labour_cost_per_pc' => $itemLabourPerPc,
+                    'total_labour_cost'  => $itemLabourTotal,
+                    'notes'              => $fi->notes,
                 ];
             }
 
@@ -4277,26 +4324,36 @@ class ReportingController extends Controller
                 ];
             }
 
-            // If entry production_cost is 0 but raw materials have total cost, use batchRmCost
-            $finalCost = $batchCost > 0 ? $batchCost : $batchRmCost;
+            $storedRmCost = (float)($e->raw_material_cost ?? 0);
+            $effectiveRmCost = $storedRmCost > 0 ? $storedRmCost : $batchRmCost;
+            $storedLabourCost = (float)($e->labour_cost ?? 0);
+            $effectiveLabourCost = $storedLabourCost > 0 ? $storedLabourCost : $itemsLabourSum;
+
+            $finalCost = $batchCost > 0 ? $batchCost : ($effectiveRmCost + $effectiveLabourCost);
+            $totalRmCostAll += $effectiveRmCost;
+            $totalLabourCostAll += $effectiveLabourCost;
             $totalCost += $finalCost;
             $unitCost = ($batchQtyTotal > 0) ? ($finalCost / $batchQtyTotal) : 0;
+            $avgLabourPerUnit = ($batchQtyTotal > 0) ? ($effectiveLabourCost / $batchQtyTotal) : 0;
 
             $rows[] = [
-                'id'              => $e->id,
-                'entry_no'        => $e->entry_no,
-                'production_date' => $e->production_date,
-                'source'          => $e->source,
-                'branch_name'     => $e->branch_name ?? active_branch_name(),
-                'warehouse_name'  => $e->warehouse_name ?? '-',
-                'notes'           => $e->notes ?? '',
-                'user_name'       => $e->user_name ?? 'System',
-                'finished_items'  => $finishedDetails,
-                'total_qty'       => $batchQtyTotal,
-                'raw_materials'   => $rmDetails,
-                'production_cost' => $finalCost,
-                'unit_cost'       => $unitCost,
-                'gatepass_url'    => route('production.gatepass', $e->id),
+                'id'                  => $e->id,
+                'entry_no'            => $e->entry_no,
+                'production_date'     => $e->production_date,
+                'source'              => $e->source,
+                'branch_name'         => $e->branch_name ?? active_branch_name(),
+                'warehouse_name'      => $e->warehouse_name ?? '-',
+                'notes'               => $e->notes ?? '',
+                'user_name'           => $e->user_name ?? 'System',
+                'finished_items'      => $finishedDetails,
+                'total_qty'           => $batchQtyTotal,
+                'raw_materials'       => $rmDetails,
+                'raw_material_cost'   => round($effectiveRmCost, 2),
+                'labour_cost'         => round($effectiveLabourCost, 2),
+                'avg_labour_per_unit' => round($avgLabourPerUnit, 2),
+                'production_cost'     => round($finalCost, 2),
+                'unit_cost'           => round($unitCost, 2),
+                'gatepass_url'        => route('production.gatepass', $e->id),
             ];
         }
 
@@ -4305,7 +4362,9 @@ class ReportingController extends Controller
             'summary' => [
                 'total_batches'         => $totalBatches,
                 'total_finished_qty'    => $totalFinishedUnits,
-                'total_production_cost' => $totalCost,
+                'total_rm_cost'         => round($totalRmCostAll, 2),
+                'total_labour_cost'     => round($totalLabourCostAll, 2),
+                'total_production_cost' => round($totalCost, 2),
                 'total_rm_records'      => $totalRawMaterialsCount,
             ],
             'rows'    => $rows,
@@ -4654,6 +4713,16 @@ class ReportingController extends Controller
         $totalPurchasesCost = (float)$purchasesCostQ->sum('net_amount');
 
         $operatingExpensesQ = DB::table('expense_vouchers')->where('created_at', '<=', $endDT);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'is_stock_adjustment')) {
+            $operatingExpensesQ->where(function ($q) {
+                $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', 0);
+            });
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'is_manufacturing_labour')) {
+            $operatingExpensesQ->where(function ($q) {
+                $q->whereNull('is_manufacturing_labour')->orWhere('is_manufacturing_labour', 0);
+            });
+        }
         if (!$isAllBranch && \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id')) {
             $operatingExpensesQ->where('branch_id', $activeBId);
         }
@@ -5312,47 +5381,11 @@ class ReportingController extends Controller
     }
 
     /**
-     * Build a map of manufactured BOM recipe unit costs keyed by "{product_id}_{variant_id}".
+     * Build a map of manufactured BOM + Labour unit costs keyed by "{product_id}_{variant_id}".
      */
     private function buildBomProductCostMap($products): array
     {
-        $bomProductCostMap = [];
-
-        foreach ($products as $pObj) {
-            $pBoms = $pObj->bom ?? collect();
-            if ($pBoms->isEmpty()) {
-                continue;
-            }
-
-            $isObjKg = ($pObj->unit_type === 'kg') || str_contains(strtolower($pObj->unit->name ?? ''), 'kg');
-            $baseCost = $this->computeBomItemsCost($pBoms->whereNull('variant_id'));
-
-            if ($baseCost > 0) {
-                $bomProductCostMap[$pObj->id . '_0'] = $baseCost;
-            }
-
-            foreach ($pObj->variants as $vObj) {
-                $vBom = $pBoms->where('variant_id', $vObj->id);
-                if ($vBom->isNotEmpty()) {
-                    $vCost = $this->computeBomItemsCost($vBom);
-                    if ($vCost > 0) {
-                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $vCost;
-                    }
-                } elseif ($baseCost > 0) {
-                    if ($isObjKg) {
-                        $sizeVal = (float)$vObj->size_value;
-                        if (in_array(strtolower(trim($vObj->size_unit ?? '')), ['g', 'gm', 'gram', 'grams']) && $sizeVal > 0) {
-                            $sizeVal /= 1000;
-                        }
-                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost * ($sizeVal > 0 ? $sizeVal : 1);
-                    } else {
-                        $bomProductCostMap[$pObj->id . '_' . $vObj->id] = $baseCost;
-                    }
-                }
-            }
-        }
-
-        return $bomProductCostMap;
+        return app(\App\Services\ProductCostService::class)->buildBomProductCostMap($products);
     }
 
     /**
@@ -5360,28 +5393,6 @@ class ReportingController extends Controller
      */
     private function computeBomItemsCost($bomItems): float
     {
-        $cost = 0.0;
-
-        foreach ($bomItems as $bItem) {
-            // Column in product_raw_material_bom is qty_per_unit (fallback to qty if ever aliased)
-            $qty = (float)($bItem->qty_per_unit ?? $bItem->qty ?? 0);
-            if ($qty <= 0) {
-                continue;
-            }
-
-            if ($bItem->rawMaterial) {
-                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
-                $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
-                if ($factor <= 0) {
-                    $factor = 1;
-                }
-                $cost += ($qty * ($rmCost / $factor));
-            } elseif ($bItem->ingredientProduct) {
-                $ingCost = (float)($bItem->ingredientProduct->wholesale_price ?: $bItem->ingredientProduct->price ?: 0);
-                $cost += ($qty * $ingCost);
-            }
-        }
-
-        return $cost;
+        return app(\App\Services\ProductCostService::class)->computeBomItemsCost($bomItems);
     }
 }

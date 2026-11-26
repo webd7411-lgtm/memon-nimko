@@ -196,6 +196,8 @@
   .be-excel tbody tr.be-product-row td:nth-child(13) { order: 12; }
   .be-excel tbody tr.be-product-row td:nth-child(14) { order: 13; }
   .be-excel tbody tr.be-product-row td:nth-child(15) { order: 14; }
+  .be-excel tbody tr.be-product-row td:nth-child(16) { order: 15; }
+  .be-excel tbody tr.be-product-row td:nth-child(17) { order: 16; }
 
   /* Variant card ordering */
   .be-excel tbody tr.be-variant-row td:nth-child(1),
@@ -212,6 +214,7 @@
   .be-excel tbody tr.be-variant-row td:nth-child(7) { order: 4; }
   .be-excel tbody tr.be-variant-row td:nth-child(8) { order: 5; }
   .be-excel tbody tr.be-variant-row td:nth-child(9) { order: 6; }
+  .be-excel tbody tr.be-variant-row td:nth-child(11) { order: 7; }
 }
 </style>
 
@@ -273,6 +276,8 @@
               <th style="width:70px;">Cost Price</th>
               <th style="width:60px;">Stock</th>
               <th style="width:50px;">Def</th>
+              <th style="width:75px;">Default Labour</th>
+              <th style="width:75px;">Var Labour</th>
             </tr>
           </thead>
           <tbody>
@@ -336,6 +341,8 @@
               <td data-label="Stock"><input type="number" class="be-fld" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $firstVar->stock_qty }}"></td>
               @endif
               <td data-label="Default"><input type="radio" name="variant_default[{{ $pid }}]" value="0" {{ $firstVar->is_default ? 'checked' : '' }}></td>
+              <td data-label="Default Labour"><input type="number" class="be-fld" step="0.01" min="0" name="product_labour_cost[{{ $pid }}]" value="{{ number_format((float)($product->labour_cost ?? 0), 2, '.', '') }}"></td>
+              <td data-label="Var Labour"><input type="number" class="be-fld" step="0.01" min="0" name="variant_labour_cost[{{ $pid }}][]" placeholder="Auto" value="{{ $firstVar->labour_cost !== null ? number_format((float)$firstVar->labour_cost, 2, '.', '') : '' }}"></td>
               @else
               <td data-label="Variant" class="be-vh"><input type="text" class="be-fld" name="variant_name[{{ $pid }}][]" placeholder="-"><input type="hidden" name="variant_id[{{ $pid }}][]" value=""></td>
               <td data-label="Size" class="be-vh"><input type="hidden" name="variant_size_value[{{ $pid }}][]" value="0"></td>
@@ -344,6 +351,8 @@
               <td data-label="Cost Price" class="be-vh"><input type="hidden" name="variant_cost_price[{{ $pid }}][]" value="0"></td>
               <td data-label="Stock" class="be-vh"><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0"></td>
               <td data-label="Default" class="be-vh"></td>
+              <td data-label="Default Labour"><input type="number" class="be-fld" step="0.01" min="0" name="product_labour_cost[{{ $pid }}]" value="{{ number_format((float)($product->labour_cost ?? 0), 2, '.', '') }}"></td>
+              <td data-label="Var Labour" class="be-vh"><input type="hidden" name="variant_labour_cost[{{ $pid }}][]" value=""></td>
               @endif
             </tr>
             @foreach($product->variants->skip(1) as $v)
@@ -367,6 +376,8 @@
               <td data-label="Stock"><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $v->stock_qty }}"></td>
               @endif
               <td data-label="Default"><input type="radio" name="variant_default[{{ $pid }}]" value="{{ $loop->index + 1 }}" {{ $v->is_default ? 'checked' : '' }}></td>
+              <td class="be-vh"></td>
+              <td data-label="Var Labour"><input type="number" class="be-fld be-fld-sm" step="0.01" min="0" name="variant_labour_cost[{{ $pid }}][]" placeholder="Auto" value="{{ $v->labour_cost !== null ? number_format((float)$v->labour_cost, 2, '.', '') : '' }}"></td>
             </tr>
             @endforeach
             @endforeach

@@ -17,6 +17,11 @@ class Product extends Model
     use HasFactory, SoftDeletes;
     protected $guarded = [];
 
+    protected $casts = [
+        'recipe_batch_yield' => 'float',
+        'labour_cost'        => 'float',
+    ];
+
     public function variants()
     {
         return $this->hasMany(ProductVariant::class)->where('is_active', true);

@@ -271,6 +271,7 @@ class ProductController extends Controller
                 'alert_quantity'  => $request->input('alert_quantity') ? (int)$request->input('alert_quantity') : 0,
                 'note'            => $request->input('note'),
                 'recipe_batch_yield' => (float)($request->input('recipe_batch_yield', 1) ?: 1),
+                'labour_cost'     => max(0, round((float)($request->input('labour_cost', 0) ?: 0), 2)),
                 'image'           => $imagePath,
                 'created_at'      => now(),
                 'updated_at'      => now(),
@@ -282,6 +283,7 @@ class ProductController extends Controller
             $variantUnits = $request->input('variant_size_unit', []);
             $variantPrices = $request->input('variant_price', []);
             $variantCosts = $request->input('variant_cost_price', []);
+            $variantLabours = $request->input('variant_labour_cost', []);
             $variantStocks = $request->input('variant_stock', []);
             $variantBarcodes = $request->input('variant_barcode', []);
             $variantExpiries = $request->input('variant_expiry_date', []);
@@ -297,6 +299,10 @@ class ProductController extends Controller
                     $sizeVal  = floatval($variantSizes[$i] ?? 0);
                     $vPrice   = floatval($variantPrices[$i] ?? 0);
                     $vCost    = floatval($variantCosts[$i] ?? 0);
+                    $rawVarLabour = $variantLabours[$i] ?? null;
+                    $vLabour  = ($rawVarLabour !== null && trim((string)$rawVarLabour) !== '')
+                        ? max(0, round((float)$rawVarLabour, 2))
+                        : null;
                     $vStock   = floatval($variantStocks[$i] ?? 0);
                     $vBarcode = trim($variantBarcodes[$i] ?? '');
                     $vExpiry  = (!empty($variantExpiries[$i]) && trim((string)$variantExpiries[$i]) !== '') ? trim((string)$variantExpiries[$i]) : null;
@@ -330,6 +336,7 @@ class ProductController extends Controller
                         'price'           => $vPrice,
                         'wholesale_price' => 0,
                         'cost_price'      => $vCost,
+                        'labour_cost'     => $vLabour,
                         'stock_qty'       => $vStock,
                         'alert_quantity'  => 0,
                         'is_default'      => $isDefault,
@@ -504,6 +511,7 @@ class ProductController extends Controller
                 'alert_quantity'  => $request->input('alert_quantity') ? (int)$request->input('alert_quantity') : 0,
                 'note'            => $request->input('note'),
                 'recipe_batch_yield' => (float)($request->input('recipe_batch_yield', 1) ?: 1),
+                'labour_cost'     => max(0, round((float)($request->input('labour_cost', 0) ?: 0), 2)),
                 'image'           => $imagePath,
             ]);
 
@@ -514,6 +522,7 @@ class ProductController extends Controller
             $variantSizeUnits = $request->input('variant_size_unit', []);
             $variantPrices = $request->input('variant_price', []);
             $variantCostPrices = $request->input('variant_cost_price', []);
+            $variantLabours = $request->input('variant_labour_cost', []);
             $variantStocks = $request->input('variant_stock', []);
             $variantBarcodes = $request->input('variant_barcode', []);
             $variantExpiries = $request->input('variant_expiry_date', []);
@@ -549,6 +558,10 @@ class ProductController extends Controller
 
                     $vPrice = floatval($variantPrices[$index] ?? 0);
                     $vCost = floatval($variantCostPrices[$index] ?? 0);
+                    $rawVarLabour = $variantLabours[$index] ?? null;
+                    $vLabour = ($rawVarLabour !== null && trim((string)$rawVarLabour) !== '')
+                        ? max(0, round((float)$rawVarLabour, 2))
+                        : null;
                     $vStock = floatval($variantStocks[$index] ?? 0);
                     $vExpiry = (!empty($variantExpiries[$index]) && trim((string)$variantExpiries[$index]) !== '') ? trim((string)$variantExpiries[$index]) : null;
                     $isDefault = ((int)$variantDefault === $index);
@@ -573,6 +586,7 @@ class ProductController extends Controller
                         'price'           => $vPrice,
                         'wholesale_price' => 0,
                         'cost_price'      => $vCost,
+                        'labour_cost'     => $vLabour,
                         'alert_quantity'  => 0,
                         'is_default'      => $isDefault,
                         'is_active'       => true,
@@ -961,6 +975,7 @@ class ProductController extends Controller
             $unitTypes = $request->input('unit_type', []);
             $alertQtys = $request->input('alert_quantity', []);
             $brandIds = $request->input('brand_id', []);
+            $productLabours = $request->input('product_labour_cost', []);
 
             // Variant data arrays (keyed by product_id)
             $variantNames = $request->input('variant_name', []);
@@ -968,6 +983,7 @@ class ProductController extends Controller
             $variantSizeUnits = $request->input('variant_size_unit', []);
             $variantPrices = $request->input('variant_price', []);
             $variantCostPrices = $request->input('variant_cost_price', []);
+            $variantLabours = $request->input('variant_labour_cost', []);
             $variantStocks = $request->input('variant_stock', []);
             $variantIds = $request->input('variant_id', []);
             $variantDefaults = $request->input('variant_default', []);
@@ -984,6 +1000,7 @@ class ProductController extends Controller
                     'alert_quantity'  => isset($alertQtys[$pid]) ? (int)$alertQtys[$pid] : $product->alert_quantity,
                     'brand_id'        => isset($brandIds[$pid]) ? (int)$brandIds[$pid] : $product->brand_id,
                     'price'           => isset($prices[$pid]) ? (float)$prices[$pid] : $product->price,
+                    'labour_cost'     => isset($productLabours[$pid]) ? max(0, round((float)$productLabours[$pid], 2)) : $product->labour_cost,
                 ]);
 
                 // --- Sync Variants for this product ---
@@ -1009,6 +1026,10 @@ class ProductController extends Controller
                         $sizeUnit = $variantSizeUnits[$pid][$idx] ?? ($product->unit_type ?? 'piece');
                         $vPrice = (float)($variantPrices[$pid][$idx] ?? 0);
                         $vCost = (float)($variantCostPrices[$pid][$idx] ?? 0);
+                        $rawVarLabour = $variantLabours[$pid][$idx] ?? null;
+                        $vLabour = ($rawVarLabour !== null && trim((string)$rawVarLabour) !== '')
+                            ? max(0, round((float)$rawVarLabour, 2))
+                            : null;
                         // For KG products, use single product-level stock instead of per-variant
                         if ($product->unit_type == 'kg' && isset($kgStocks[$pid])) {
                             $vStockQty = (float)$kgStocks[$pid] * 1000;
@@ -1033,6 +1054,7 @@ class ProductController extends Controller
                             'price'           => $vPrice,
                             'wholesale_price' => 0,
                             'cost_price'      => $vCost,
+                            'labour_cost'     => $vLabour,
                             'alert_quantity'  => 0,
                             'is_default'      => $isDefault,
                             'is_active'       => true,

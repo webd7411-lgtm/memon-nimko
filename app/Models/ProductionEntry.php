@@ -9,7 +9,10 @@ class ProductionEntry extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'production_date' => 'date',
+        'production_date'   => 'date',
+        'production_cost'   => 'float',
+        'raw_material_cost' => 'float',
+        'labour_cost'       => 'float',
     ];
 
     public static function generateEntryNo()

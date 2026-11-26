@@ -497,6 +497,7 @@
             <th>Date</th>
             <th>Source</th>
             <th>Items Produced</th>
+            <th>Batch Cost (RM + Labour)</th>
             <th>Notes</th>
             <th>Created By</th>
             <th class="text-center" style="width: 160px;">Action</th>
@@ -527,6 +528,12 @@
               <div class="fw-semibold text-dark" title="{{ $e->product_details }}">
                 {{ \Illuminate\Support\Str::limit($e->product_details, 55) }}
                 <div class="small text-muted fw-normal"><i class="bi bi-box-seam me-1"></i> {{ $e->items_count }} item(s)</div>
+              </div>
+            </td>
+            <td data-order="{{ (float)($e->production_cost ?? 0) }}">
+              <div class="fw-bold text-success">Rs {{ number_format((float)($e->production_cost ?? 0), 2) }}</div>
+              <div class="small text-muted" style="font-size:0.74rem;">
+                RM: {{ number_format((float)($e->raw_material_cost ?? $e->production_cost ?? 0), 0) }} | Lab: {{ number_format((float)($e->labour_cost ?? 0), 0) }}
               </div>
             </td>
             <td><span class="text-muted small">{{ $e->notes ?? '-' }}</span></td>
@@ -587,6 +594,10 @@
 
       <div style="font-size: 0.78rem; font-weight: 600; color: #0f172a; line-height: 1.38;">
         {{ $e->product_details }}
+      </div>
+      <div class="mt-1 d-flex align-items-center flex-wrap gap-2" style="font-size: 0.74rem;">
+        <span class="badge bg-success-subtle text-success border border-success-subtle">Cost: Rs {{ number_format((float)($e->production_cost ?? 0), 2) }}</span>
+        <span class="text-muted">RM: Rs {{ number_format((float)($e->raw_material_cost ?? $e->production_cost ?? 0), 0) }} | Lab: Rs {{ number_format((float)($e->labour_cost ?? 0), 0) }}</span>
       </div>
 
       @if(!empty($e->creator_name) || !empty($e->notes))

@@ -343,11 +343,13 @@
         <table class="pc-table">
           <thead>
             <tr>
-              <th class="text-start" style="width:35%;">Product</th>
-              <th style="width:15%;">Code</th>
-              <th style="width:15%;">Unit</th>
-              <th style="width:18%;">Entered Qty (KG/Pc)</th>
-              <th style="width:17%;">Note</th>
+              <th class="text-start" style="width:28%;">Product</th>
+              <th style="width:10%;">Code</th>
+              <th style="width:9%;">Unit</th>
+              <th style="width:14%;">Entered Qty (KG/Pc)</th>
+              <th style="width:11%;">Labour / Pc</th>
+              <th style="width:12%;">Total Labour</th>
+              <th style="width:16%;">Note</th>
               <th style="width:50px;">Action</th>
             </tr>
           </thead>
@@ -374,6 +376,7 @@
                           data-code="{{ $code }}"
                           data-unit="{{ $unitName }}"
                           data-size-value="{{ $sizeVal }}"
+                          data-labour-cost="{{ number_format((float)($v->resolved_labour_cost ?? 0), 2, '.', '') }}"
                           data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}"
                           {{ $isSelected ? 'selected' : '' }}>
                           {{ $p->item_code }} - {{ $fullName }}
@@ -385,6 +388,7 @@
                         data-code="{{ $p->item_code }}"
                         data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
                         data-size-value="1"
+                        data-labour-cost="{{ number_format((float)($p->resolved_labour_cost ?? 0), 2, '.', '') }}"
                         data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}"
                         {{ $item->product_id == $p->id ? 'selected' : '' }}>
                         {{ $p->item_code }} - {{ $p->item_name }}
@@ -409,6 +413,14 @@
                 <input type="hidden" name="item_cost[]" class="item-cost" value="0">
               </td>
               <td>
+                <span class="mobile-lbl">Labour / Pc</span>
+                <input type="number" step="0.01" min="0" name="item_labour_per_pc[]" class="pc-input labour-per-pc-input text-center fw-bold text-success" value="{{ number_format((float)($item->labour_cost_per_pc ?? 0), 2, '.', '') }}" placeholder="0.00">
+              </td>
+              <td>
+                <span class="mobile-lbl">Total Labour</span>
+                <input type="number" step="0.01" min="0" name="item_labour_total[]" class="pc-input labour-total-input text-center fw-bold text-primary" value="{{ number_format((float)($item->total_labour_cost ?? 0), 2, '.', '') }}" placeholder="0.00">
+              </td>
+              <td>
                 <span class="mobile-lbl">Note</span>
                 <input type="text" name="item_note[]" class="pc-input" value="{{ $item->notes }}" placeholder="Item note...">
               </td>
@@ -423,10 +435,16 @@
         </table>
       </div>
 
-      <div class="mt-3">
+      <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
         <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 py-2" id="addRow" style="border-radius:6px;">
           <i class="bi bi-plus-lg me-1"></i> Add More Product Row
         </button>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:6px 10px;">
+          <span class="small fw-bold text-success"><i class="bi bi-people-fill me-1"></i> Split Lump-Sum Batch Labour:</span>
+          <input type="number" step="0.01" min="0" id="lumpSumLabourInput" class="pc-input" style="width:140px;" placeholder="Total Mazdoori Rs">
+          <button type="button" class="btn btn-success btn-sm fw-bold" id="splitLumpSumBtn" style="border-radius:6px;">Split Across Qty</button>
+        </div>
       </div>
     </div>
 
@@ -491,6 +509,27 @@
         </table>
       </div>
 
+      <div class="mt-3 p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+        <div class="d-flex align-items-center flex-wrap gap-4">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Raw Material Cost</div>
+            <div class="fw-bold fs-6 text-dark" id="totalRmCost">Rs 0.00</div>
+          </div>
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Labour Cost</div>
+            <div class="fw-bold fs-6 text-success" id="totalLabourCost">Rs 0.00</div>
+          </div>
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Total Batch Cost</div>
+            <div class="fw-bold fs-5 text-primary" id="totalProdCost">Rs 0.00</div>
+          </div>
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Avg Cost / Unit</div>
+            <div class="fw-bold fs-6 text-secondary" id="avgUnitCost">Rs 0.00</div>
+          </div>
+        </div>
+      </div>
+
       <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
         <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 py-2" id="addRmRow" style="border-radius:6px;">
           <i class="bi bi-plus-lg me-1"></i> Add More Raw Material / Ingredient
@@ -531,6 +570,7 @@
                   data-code="{{ $code }}"
                   data-unit="{{ $unitName }}"
                   data-size-value="{{ $sizeVal }}"
+                  data-labour-cost="{{ number_format((float)($v->resolved_labour_cost ?? 0), 2, '.', '') }}"
                   data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
                   {{ $p->item_code }} - {{ $fullName }}
                 </option>
@@ -541,6 +581,7 @@
                 data-code="{{ $p->item_code }}"
                 data-unit="{{ $p->unit_type === 'kg' ? 'KG' : ($p->unit->name ?? 'Pc') }}"
                 data-size-value="1"
+                data-labour-cost="{{ number_format((float)($p->resolved_labour_cost ?? 0), 2, '.', '') }}"
                 data-is-gram="{{ $p->unit_type === 'kg' || str_contains(strtolower($p->item_name), 'gram') || str_contains(strtolower($p->unit->name ?? ''), 'gram') ? '1' : '0' }}">
                 {{ $p->item_code }} - {{ $p->item_name }}
               </option>
@@ -562,6 +603,14 @@
         <input type="number" step="0.001" name="qty[]" class="pc-input qty-input text-center fw-bold" required min="0.001" placeholder="0.000" disabled>
         <small class="text-muted d-block conversion-display" style="font-size:0.75rem;"></small>
         <input type="hidden" name="item_cost[]" class="item-cost" value="0" disabled>
+      </td>
+      <td>
+        <span class="mobile-lbl">Labour / Pc</span>
+        <input type="number" step="0.01" min="0" name="item_labour_per_pc[]" class="pc-input labour-per-pc-input text-center fw-bold text-success" value="0.00" placeholder="0.00" disabled>
+      </td>
+      <td>
+        <span class="mobile-lbl">Total Labour</span>
+        <input type="number" step="0.01" min="0" name="item_labour_total[]" class="pc-input labour-total-input text-center fw-bold text-primary" value="0.00" placeholder="0.00" disabled>
       </td>
       <td>
         <span class="mobile-lbl">Note</span>
@@ -619,9 +668,35 @@
 $(document).ready(function() {
   $('.select2').select2({ width: '100%', placeholder: 'Select product...' });
 
+  function formatRs(val) {
+    return 'Rs ' + (parseFloat(val) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+
+  function syncRowLabourFromRate(row) {
+    var qty = parseFloat(row.find('.qty-input').val()) || 0;
+    var rate = parseFloat(row.find('.labour-per-pc-input').val()) || 0;
+    row.find('.labour-total-input').val((qty * rate).toFixed(2));
+  }
+
+  function syncRowLabourFromTotal(row) {
+    var qty = parseFloat(row.find('.qty-input').val()) || 0;
+    var totalLab = parseFloat(row.find('.labour-total-input').val()) || 0;
+    var rate = qty > 0 ? (totalLab / qty) : 0;
+    row.find('.labour-per-pc-input').val(rate.toFixed(2));
+  }
+
   function calcTotalCost() {
-    var total = 0;
-    $('.item-cost:not(:disabled)').each(function() { total += parseFloat($(this).val()) || 0; });
+    var rmTotal = 0;
+    var labourTotal = 0;
+    var extraItemCost = 0;
+    var totalQty = 0;
+
+    $('.item-cost:not(:disabled)').each(function() { extraItemCost += parseFloat($(this).val()) || 0; });
+    $('#productionItems tr').each(function() {
+      totalQty += parseFloat($(this).find('.qty-input').val()) || 0;
+      labourTotal += parseFloat($(this).find('.labour-total-input').val()) || 0;
+    });
+
     $('#rmUsageBody .rm-row').each(function() {
       var qty = parseFloat($(this).find('.rm-qty').val()) || 0;
       var cost = parseFloat($(this).find('.rm-cost').val()) || 0;
@@ -629,13 +704,56 @@ $(document).ready(function() {
       if (factor <= 0) factor = 1;
       var rowTotal = qty * (cost / factor);
       $(this).find('.rm-total').text(rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-      total += rowTotal;
+      rmTotal += rowTotal;
     });
-    $('#totalProdCost').text('Rs ' + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+    var total = rmTotal + labourTotal + extraItemCost;
+    var avgUnit = totalQty > 0 ? (total / totalQty) : 0;
+    $('#totalRmCost').text(formatRs(rmTotal));
+    $('#totalLabourCost').text(formatRs(labourTotal));
+    $('#totalProdCost').text(formatRs(total));
+    $('#avgUnitCost').text(formatRs(avgUnit));
   }
 
   $(document).on('input', '.item-cost', calcTotalCost);
   $(document).on('input', '.rm-qty, .rm-cost', function() {
+    calcTotalCost();
+  });
+
+  $(document).on('input', '.labour-per-pc-input', function() {
+    syncRowLabourFromRate($(this).closest('tr'));
+    calcTotalCost();
+  });
+
+  $(document).on('input', '.labour-total-input', function() {
+    syncRowLabourFromTotal($(this).closest('tr'));
+    calcTotalCost();
+  });
+
+  $('#splitLumpSumBtn').click(function() {
+    var lump = parseFloat($('#lumpSumLabourInput').val()) || 0;
+    var rows = [];
+    var totalQty = 0;
+    $('#productionItems tr').each(function() {
+      var q = parseFloat($(this).find('.qty-input').val()) || 0;
+      if (q > 0) {
+        rows.push({ row: $(this), qty: q });
+        totalQty += q;
+      }
+    });
+    if (totalQty <= 0 || rows.length === 0) {
+      alert('Please enter product quantities first before splitting lump-sum labour.');
+      return;
+    }
+    var assigned = 0;
+    rows.forEach(function(item, idx) {
+      var share = (idx === rows.length - 1)
+        ? Math.round((lump - assigned) * 100) / 100
+        : Math.round(((item.qty / totalQty) * lump) * 100) / 100;
+      assigned += share;
+      item.row.find('.labour-total-input').val(share.toFixed(2));
+      item.row.find('.labour-per-pc-input').val((share / item.qty).toFixed(2));
+    });
     calcTotalCost();
   });
 
@@ -685,8 +803,12 @@ $(document).ready(function() {
     row.find('.code-display').val(opt.data('code') || '');
     row.find('.unit-display').val(opt.data('unit') || 'Pc');
     row.find('.selected-variant-id').val(opt.data('variant-id') || '');
+    let defaultLab = parseFloat(opt.data('labour-cost') || 0);
+    row.find('.labour-per-pc-input').val(defaultLab.toFixed(2));
+    syncRowLabourFromRate(row);
     updateConversion(row);
     loadBomForRow(row);
+    calcTotalCost();
   });
 
   var pendingBomAjax = {};
@@ -767,8 +889,11 @@ $(document).ready(function() {
   }
 
   $(document).on('input', '.qty-input', function() {
-    updateConversion($(this).closest('tr'));
-    loadBomForRow($(this).closest('tr'));
+    let row = $(this).closest('tr');
+    syncRowLabourFromRate(row);
+    updateConversion(row);
+    loadBomForRow(row);
+    calcTotalCost();
   });
 
   function updateConversion(row) {
@@ -795,6 +920,8 @@ $(document).ready(function() {
     let newRowId = 'prow_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
     newRow.attr('data-row-id', newRowId);
     newRow.find('input, select, button').removeAttr('disabled');
+    newRow.find('.labour-per-pc-input').val('0.00');
+    newRow.find('.labour-total-input').val('0.00');
     $('#productionItems').append(newRow);
     newRow.find('.select2').select2({ width: '100%', placeholder: 'Select product...' });
     calcTotalCost();

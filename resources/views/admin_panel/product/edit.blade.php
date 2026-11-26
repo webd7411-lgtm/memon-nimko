@@ -815,6 +815,28 @@
                                              </div>
                                          </div>
                                      </div>
+                                     <div class="card mb-3 border-0 shadow-sm" style="background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:12px;">
+                                         <div class="card-body p-3">
+                                             <div class="row align-items-center g-2">
+                                                 <div class="col-md-5">
+                                                     <label class="pz-label fw-bold text-dark mb-1"><i class="las la-hard-hat text-success fs-5"></i> Default Labour / Pc (Mazdoori)</label>
+                                                     <div class="text-muted small"><i class="las la-info-circle"></i> Per manufactured unit/pc default labour rate. Variants inherit this (scaled by KG for KG products) unless overridden in Step 2.</div>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <div class="input-group">
+                                                         <span class="input-group-text bg-white fw-semibold text-success">Rs / Pc</span>
+                                                         <input type="number" step="0.01" min="0" name="labour_cost" id="defaultLabourCost" class="form-control fw-bold text-success" value="{{ number_format((float)($product->labour_cost ?? 0), 2, '.', '') }}" placeholder="0.00">
+                                                     </div>
+                                                 </div>
+                                                 <div class="col-md-4">
+                                                     <div class="input-group">
+                                                         <input type="number" step="0.01" min="0" id="batchLabourHelper" class="form-control" placeholder="Batch Labour Rs">
+                                                         <button type="button" class="btn btn-outline-success fw-semibold" id="applyBatchLabourBtn" title="Divide Batch Labour by Batch Yield">Split &div; Yield</button>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     </div>
                                      <div class="pz-bom-card">
                                          <div class="pz-bom-head">
                                              <span class="pz-bom-title"><i class="las la-list-ul"></i> Recipe Ingredients / Raw Materials</span>
@@ -1008,6 +1030,7 @@
                                                 <table class="pz-review-table">
                                                     <tr><th>Alert Qty</th><td id="revAlert">—</td></tr>
                                                     <tr><th>Unit Type</th><td id="revUnit">—</td></tr>
+                                                    <tr><th>Labour / Pc (Default)</th><td id="revLabour">Rs 0.00</td></tr>
                                                 </table>
                                             </div>
                                         </div>
@@ -1427,7 +1450,7 @@ $(document).ready(function() {
             </div>
             <div class="variant-barcode-row">
                 <div class="row g-2 align-items-center">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="pz-label small fw-bold mb-1"><i class="las la-barcode"></i> Barcode</label>
                         <div class="pz-barcode-group">
                             <input type="text" name="variant_barcode[]" class="pz-control variant-barcode-input"
@@ -1435,10 +1458,15 @@ $(document).ready(function() {
                             <button type="button" class="pz-barcode-btn variant-barcode-btn" title="Generate barcode"><i class="la la-barcode"></i></button>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="pz-label small fw-bold mb-1"><i class="las la-calendar-times text-danger"></i> Expiry Date (Optional)</label>
                         <input type="date" name="variant_expiry_date[]" class="pz-control variant-expiry-input"
                             value="${data.expiry_date ? String(data.expiry_date).substring(0, 10) : ''}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="pz-label small fw-bold mb-1"><i class="las la-hard-hat text-success"></i> Labour / Pc (Override)</label>
+                        <input type="number" step="0.01" min="0" name="variant_labour_cost[]" class="pz-control variant-labour-input"
+                            placeholder="Auto (inherit)" value="${(data.labour_cost !== null && data.labour_cost !== undefined && data.labour_cost !== '') ? Number(data.labour_cost).toFixed(2) : ''}">
                     </div>
                 </div>
             </div>
@@ -1667,6 +1695,8 @@ function buildReview() {
     const unitMap = { kg: 'KG (Weight)', piece: 'Pieces', pound: 'Pound (Bakery)' };
     const unitText = unitChecked ? (unitMap[unitChecked.value] || unitChecked.value) : '—';
     document.getElementById('revUnit').textContent = unitText;
+    const defLabour = parseFloat(document.getElementById('defaultLabourCost')?.value) || 0;
+    document.getElementById('revLabour').textContent = 'Rs ' + defLabour.toFixed(2);
 
     const heroMetaParts = [catText, brandText].filter(function(v) { return v !== '—'; });
     document.getElementById('revHeroMeta').textContent = heroMetaParts.length ? heroMetaParts.join('  •  ') : 'No category or brand selected';
@@ -1686,10 +1716,13 @@ function buildReview() {
             const vStock = r.querySelector('input[name="variant_stock[]"]').value;
             const vBarcode = r.querySelector('input[name="variant_barcode[]"]').value;
             const vExpiry = r.querySelector('input[name="variant_expiry_date[]"]')?.value;
+            const vLabourRaw = r.querySelector('input[name="variant_labour_cost[]"]')?.value;
+            const vLabourTxt = (vLabourRaw !== '' && vLabourRaw !== undefined) ? ' | Labour: Rs ' + parseFloat(vLabourRaw).toFixed(2) : '';
             html += '<span class="pz-review-chip">' + (i+1) + '. ' + (vName || '?') +
                 (vSize && parseFloat(vSize) > 0 ? ' (' + vSize + ')' : '') +
                 ' — Rs ' + (vPrice || 0) +
                 (vStock && parseFloat(vStock) > 0 ? ' | Stock: ' + vStock : '') +
+                vLabourTxt +
                 (vExpiry ? ' | Exp: ' + vExpiry : '') +
                 (vBarcode ? ' <span class="pz-review-mono">| BC: ' + vBarcode + '</span>' : '') + '</span>';
         });
@@ -1876,6 +1909,13 @@ $(document).on('change', '.custom-bom-item-select', function() {
 $(document).on('change', '.custom-variant-select', function() {
     const vName = $(this).find(':selected').data('name') || $(this).find(':selected').text().trim();
     $(this).attr('data-selected-name', vName);
+});
+
+$(document).on('click', '#applyBatchLabourBtn', function() {
+    var batchTotal = parseFloat($('#batchLabourHelper').val()) || 0;
+    var yieldQty = parseFloat($('#recipeBatchYield').val()) || 1;
+    if (yieldQty <= 0) yieldQty = 1;
+    $('#defaultLabourCost').val((batchTotal / yieldQty).toFixed(2));
 });
 
 $(document).ready(function() {

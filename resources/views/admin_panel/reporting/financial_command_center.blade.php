@@ -877,7 +877,10 @@
                     <span class="fcc-row-val fw-bold text-dark" id="plTotalRevenue">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item text-danger">
-                    <span class="fcc-row-label text-danger">Less: Cost of Goods Sold (COGS)</span>
+                    <span class="fcc-row-label text-danger">
+                        Less: Cost of Goods Sold (COGS)
+                        <small class="d-block text-muted fw-normal" id="plCogsBreakdown" style="font-size:0.7rem;"></small>
+                    </span>
                     <span class="fcc-row-val text-danger" id="plCOGS">- Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item">
@@ -885,7 +888,10 @@
                     <span class="fcc-row-val fw-bold text-success" id="plGrossProfit">Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item text-danger">
-                    <span class="fcc-row-label text-danger">Less: Operating Expenses</span>
+                    <span class="fcc-row-label text-danger">
+                        Less: Operating Expenses
+                        <small class="d-block text-muted fw-normal" id="plExpDirectLabourNote" style="font-size:0.7rem;"></small>
+                    </span>
                     <span class="fcc-row-val text-danger" id="plExpenses">- Rs. 0.00</span>
                 </div>
                 <div class="fcc-row-item p-2 rounded mt-2" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
@@ -1475,8 +1481,23 @@ function loadFinancialSnapshot() {
             }
             document.getElementById('plTotalRevenue').innerText = formatCurrency(res.curr_pl.net_revenue ?? res.curr_pl.total_sales);
             document.getElementById('plCOGS').innerText = '- ' + formatCurrency(res.curr_pl.cogs);
+            var cogsMat = parseFloat(res.curr_pl.cogs_material || 0);
+            var cogsLab = parseFloat(res.curr_pl.cogs_labour || 0);
+            var plCogsEl = document.getElementById('plCogsBreakdown');
+            if (plCogsEl) {
+                plCogsEl.innerText = cogsLab > 0
+                    ? ('Material: ' + formatCurrency(cogsMat) + ' + Mfg Labour: ' + formatCurrency(cogsLab))
+                    : 'Material Only (Rs. 0.00 Mfg Labour)';
+            }
             document.getElementById('plGrossProfit').innerText = formatCurrency(res.curr_pl.gross_profit);
             document.getElementById('plExpenses').innerText = '- ' + formatCurrency(res.curr_pl.total_expenses);
+            var directLabVouch = parseFloat(res.curr_pl.direct_labour_vouchers || 0);
+            var plExpNoteEl = document.getElementById('plExpDirectLabourNote');
+            if (plExpNoteEl) {
+                plExpNoteEl.innerText = directLabVouch > 0
+                    ? ('Excludes ' + formatCurrency(directLabVouch) + ' Direct Mfg Labour vouchers (already in COGS)')
+                    : '';
+            }
             document.getElementById('plNetProfit').innerText = formatCurrency(res.curr_pl.net_profit);
 
             // Net Worth Equation

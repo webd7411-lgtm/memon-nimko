@@ -17,6 +17,7 @@ class ExpenseVoucher extends Model
         'amount' => 'array',
         'remarks' => 'array',
         'is_stock_adjustment' => 'boolean',
+        'is_manufacturing_labour' => 'boolean',
     ];
 
     /**

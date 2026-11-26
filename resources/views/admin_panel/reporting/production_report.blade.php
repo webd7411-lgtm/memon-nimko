@@ -567,6 +567,7 @@
       <div>
         <p class="rp-kpi-label">Total Production Cost</p>
         <h3 class="rp-kpi-val text-success" id="kpiCost">Rs 0</h3>
+        <small class="text-muted d-block mt-1" id="kpiCostBreakdown" style="font-size:0.72rem;font-weight:600;">RM: Rs 0 | Labour: Rs 0</small>
       </div>
       <div class="rp-kpi-icon green">
         <i class="fas fa-money-bill-wave"></i>
@@ -680,15 +681,25 @@ $(document).ready(function() {
         $('#kpiBatches').text((res.summary.total_batches || 0).toLocaleString());
         $('#kpiQty').text((res.summary.total_finished_qty || 0).toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 3}));
         $('#kpiCost').text('Rs ' + (res.summary.total_production_cost || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+        var sumRm = parseFloat(res.summary.total_rm_cost || res.summary.total_production_cost || 0);
+        var sumLab = parseFloat(res.summary.total_labour_cost || 0);
+        $('#kpiCostBreakdown').text(
+          'RM: Rs ' + sumRm.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) +
+          ' | Labour: Rs ' + sumLab.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+        );
         $('#kpiRm').text((res.summary.total_rm_records || 0) + ' Used');
         $('#recordCountText').text('Showing ' + res.rows.length + ' batch(es)');
 
         // Populate Table Rows
         let grandCost = 0;
+        let grandRmCost = 0;
+        let grandLabourCost = 0;
         let grandQty = 0;
 
         res.rows.forEach(function(r) {
           grandCost += parseFloat(r.production_cost) || 0;
+          grandRmCost += parseFloat(r.raw_material_cost || r.production_cost) || 0;
+          grandLabourCost += parseFloat(r.labour_cost) || 0;
           grandQty += parseFloat(r.total_qty) || 0;
 
           // Finished Products HTML
@@ -697,9 +708,15 @@ $(document).ready(function() {
             r.finished_items.forEach(function(fi) {
               let qtyDisp = parseFloat(fi.qty_entered).toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 3});
               let variantDisp = fi.variant ? ' (' + fi.variant + ')' : '';
+              let labPerPc = parseFloat(fi.labour_cost_per_pc || 0);
+              let labTot = parseFloat(fi.total_labour_cost || 0);
+              let labChip = labTot > 0
+                ? ' <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:0.68rem;">Lab: Rs ' + labPerPc.toFixed(2) + '/pc (Rs ' + labTot.toFixed(2) + ')</span>'
+                : '';
               finishedHtml += '<div class="item-chip">' +
                 '<strong>' + fi.item_name + '</strong>' + variantDisp +
                 ' — <span class="text-success fw-bold">' + qtyDisp + ' ' + fi.unit + '</span>' +
+                labChip +
                 '</div>';
             });
           } else {
@@ -727,7 +744,10 @@ $(document).ready(function() {
 
           let dateDisp = r.production_date ? new Date(r.production_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
           let costDisp = (parseFloat(r.production_cost) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          let rmCostDisp = (parseFloat(r.raw_material_cost ?? r.production_cost) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          let labCostDisp = (parseFloat(r.labour_cost) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
           let unitCostDisp = (parseFloat(r.unit_cost) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          let avgLabDisp = (parseFloat(r.avg_labour_per_unit) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
           let tr = '<tr>' +
             '<td>' +
@@ -741,8 +761,14 @@ $(document).ready(function() {
             '</td>' +
             '<td>' + finishedHtml + '</td>' +
             '<td>' + rmHtml + '</td>' +
-            '<td class="text-end fw-bold text-success fs-6">Rs ' + costDisp + '</td>' +
-            '<td class="text-end fw-semibold text-dark">Rs ' + unitCostDisp + '</td>' +
+            '<td class="text-end">' +
+              '<div class="fw-bold text-success fs-6">Rs ' + costDisp + '</div>' +
+              '<div class="small text-muted" style="font-size:0.72rem;">RM: Rs ' + rmCostDisp + ' | Lab: Rs ' + labCostDisp + '</div>' +
+            '</td>' +
+            '<td class="text-end">' +
+              '<div class="fw-semibold text-dark">Rs ' + unitCostDisp + '</div>' +
+              (parseFloat(r.labour_cost || 0) > 0 ? '<div class="small text-success" style="font-size:0.72rem;">Lab: Rs ' + avgLabDisp + '/u</div>' : '') +
+            '</td>' +
             '<td class="text-center">' +
               '<a href="' + r.gatepass_url + '" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-2" title="Print Gatepass">' +
                 '<i class="fas fa-print me-1"></i> Pass' +
@@ -755,7 +781,10 @@ $(document).ready(function() {
 
         // Footers
         $('#footTotalQty').text(grandQty.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 3}) + ' Units/KG');
-        $('#footTotalCost').text('Rs ' + grandCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+        $('#footTotalCost').html(
+          '<div>Rs ' + grandCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</div>' +
+          '<div style="font-size:0.7rem;color:#94a3b8;font-weight:600;">RM: Rs ' + grandRmCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' | Lab: Rs ' + grandLabourCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</div>'
+        );
         let overallAvg = grandQty > 0 ? (grandCost / grandQty) : 0;
         $('#footAvgCost').text('Rs ' + overallAvg.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' / unit');
         $('#reportTableFoot').show();

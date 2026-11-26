@@ -4886,7 +4886,8 @@ class SaleController extends Controller
                 $variantIds = !empty($sale->variant_id) ? explode(',', $sale->variant_id) : [];
             }
 
-            // Option B: Cost Price (Purchase Rate) calculation for Free Samples / Trade Offers
+            // Option B: Cost Price (Purchase Rate or Manufactured BOM + Labour Cost) for Free Samples / Trade Offers
+            $costService = app(\App\Services\ProductCostService::class);
             $totalTradeOfferAmount = 0.0;
             foreach ($tradeOffers as $idx => $toQty) {
                 $to = floatval($toQty);
@@ -4900,6 +4901,16 @@ class SaleController extends Controller
                     $vModel = \App\Models\ProductVariant::find($vId);
                     if ($vModel && (float)$vModel->cost_price > 0) {
                         $costPrice = (float)$vModel->cost_price;
+                    }
+                }
+                if ($costPrice <= 0 && !empty($pId)) {
+                    $pModel = \App\Models\Product::with(['variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->find($pId);
+                    if ($pModel) {
+                        $breakdown = $costService->buildBomCostBreakdown(collect([$pModel]));
+                        $resolved = $costService->resolveUnitCostWithBreakdown($pId, $vId ?: 0, collect([$pModel->id => $pModel]), $pModel->variants->keyBy('id'), $breakdown, []);
+                        if ($resolved['total_cost'] > 0) {
+                            $costPrice = (float)$resolved['total_cost'];
+                        }
                     }
                 }
                 if ($costPrice <= 0 && !empty($pId)) {

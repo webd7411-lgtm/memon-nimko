@@ -8,6 +8,8 @@ use App\Models\Stock;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialStock;
 use App\Models\ProductRawMaterialBom;
+use App\Models\ProductVariant;
+use App\Services\ProductCostService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -77,6 +79,7 @@ class ProductionController extends Controller
     public function create()
     {
         $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
+        $this->attachResolvedLabourCosts($products);
         $rawMaterials = RawMaterial::with('stock')->orderBy('name')->get();
         return view('admin_panel.production.create', compact('products', 'rawMaterials'));
     }
@@ -92,41 +95,6 @@ class ProductionController extends Controller
         try {
             DB::beginTransaction();
 
-            // Calculate total production cost from items
-            $totalItemCost = 0;
-            $itemCosts = [];
-            if ($request->has('item_cost')) {
-                foreach ($request->item_cost as $ic) {
-                    $itemCosts[] = (float)($ic ?? 0);
-                }
-                $totalItemCost = array_sum($itemCosts);
-            }
-
-            // Calculate total raw material cost used
-            $totalRmCost = 0;
-            if ($request->has('rm_id')) {
-                foreach ($request->rm_id as $ri => $rmId) {
-                    if ($rmId && isset($request->rm_qty[$ri]) && (float)$request->rm_qty[$ri] > 0) {
-                        $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
-                        $rmType = $request->rm_type[$ri] ?? 'rm';
-                        if ($costPerUnit <= 0) {
-                            if ($rmType === 'product') {
-                                $pModel = Product::find($rmId);
-                                $costPerUnit = (float)($pModel->price ?? 0);
-                            } else {
-                                $rmModel = RawMaterial::find($rmId);
-                                $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
-                            }
-                        }
-                        $qtyUsed = (float)$request->rm_qty[$ri];
-                        $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
-                        if ($factor <= 0) $factor = 1;
-                        $totalRmCost += ($costPerUnit / $factor) * $qtyUsed;
-                    }
-                }
-            }
-
-            $totalProductionCost = $totalItemCost + $totalRmCost;
             $currentBranchId = active_branch_id();
             $targetWarehouseId = !empty($request->warehouse_id) ? (int)$request->warehouse_id : null;
 
@@ -137,185 +105,25 @@ class ProductionController extends Controller
                 'source' => $request->source ?? 'kitchen',
                 'warehouse_id' => $targetWarehouseId,
                 'notes' => $request->notes,
-                'production_cost' => $totalProductionCost,
+                'production_cost' => 0,
+                'raw_material_cost' => 0,
+                'labour_cost' => 0,
                 'created_by' => Auth::id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            // Insert production items and update finished goods stock
-            foreach ($request->product_id as $index => $productId) {
-                $qtyTyped = (float)($request->qty[$index] ?? 0);
-                if ($qtyTyped <= 0) continue;
+            $costs = $this->syncProductionItemsAndMaterials($entryId, $request, $currentBranchId, $targetWarehouseId);
 
-                $variantId = $request->variant_id[$index] ?? null;
-                if ($variantId === '') $variantId = null;
-
-                $product = Product::with('unit')->find($productId);
-                if (!$product) continue;
-
-                $unitName = strtolower($product->unit->name ?? '');
-                $prodName = strtolower($product->item_name);
-                $isGram = str_contains($unitName, 'gram') || str_contains($unitName, 'gm') ||
-                          str_contains($prodName, 'gram') || str_contains($prodName, ' gm') ||
-                          $product->unit_type === 'kg';
-
-                $qtyStock = $qtyTyped;
-                $dbVariantId = $variantId;
-
-                if ($isGram) {
-                    if ($variantId) {
-                        $vModel = \App\Models\ProductVariant::find($variantId);
-                        if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
-                                $qtyStock = ($kgSize * $qtyTyped * 1000);
-                            } else {
-                                $qtyStock = ($kgSize * $qtyTyped);
-                            }
-                        }
-                    } else {
-                        $qtyStock = $qtyTyped * 1000;
-                    }
-                }
-
-                DB::table('production_entry_items')->insert([
-                    'production_entry_id' => $entryId,
-                    'product_id' => $productId,
-                    'variant_id' => $variantId,
-                    'branch_id' => $currentBranchId,
-                    'unit' => $product->unit->name ?? ($product->unit_type ? strtoupper($product->unit_type) : 'Pc'),
-                    'qty_entered' => $qtyTyped,
-                    'qty_stock' => $qtyStock,
-                    'notes' => $request->item_note[$index] ?? null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                // Update Stock (target selected warehouse, not always shop)
-                $qtyToAdd = $qtyTyped;
-                if (!$dbVariantId && $isGram) {
-                    $qtyToAdd = $qtyStock; // in grams for loose product
-                }
-
-                $stockQuery = Stock::where('product_id', $productId)
-                    ->where('branch_id', $currentBranchId)
-                    ->where('warehouse_id', $targetWarehouseId);
-
-                if ($dbVariantId) {
-                    $stockQuery->where('variant_id', $dbVariantId);
-                } else {
-                    $stockQuery->whereNull('variant_id');
-                }
-
-                $stock = $stockQuery->first();
-
-                if ($stock) {
-                    $stock->qty += $qtyToAdd;
-                    $stock->save();
-                } else {
-                    Stock::create([
-                        'product_id' => $productId,
-                        'variant_id' => $dbVariantId,
-                        'branch_id' => $currentBranchId,
-                        'warehouse_id' => $targetWarehouseId,
-                        'qty' => $qtyToAdd,
-                    ]);
-                }
-            }
-
-            // Insert raw material / product ingredient usage and deduct stock
-            if ($request->has('rm_id')) {
-                foreach ($request->rm_id as $ri => $rmId) {
-                    if (!$rmId) continue;
-                    $qtyUsed = (float)($request->rm_qty[$ri] ?? 0);
-                    if ($qtyUsed <= 0) continue;
-
-                    $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
-                    $rmType = $request->rm_type[$ri] ?? 'rm';
-                    if ($costPerUnit <= 0) {
-                        if ($rmType === 'product') {
-                            $pModel = Product::find($rmId);
-                            $costPerUnit = (float)($pModel->price ?? 0);
-                        } else {
-                            $rmModel = RawMaterial::find($rmId);
-                            $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
-                        }
-                    }
-                    $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
-                    if ($factor <= 0) $factor = 1;
-                    $totalCost = $qtyUsed * ($costPerUnit / $factor);
-
-                    if ($rmType === 'product') {
-                        DB::table('production_raw_material_usage')->insert([
-                            'production_entry_id' => $entryId,
-                            'raw_material_id' => null,
-                            'ingredient_product_id' => $rmId,
-                            'qty_used' => $qtyUsed,
-                            'cost_per_unit' => $costPerUnit,
-                            'total_cost' => $totalCost,
-                            'branch_id' => $currentBranchId,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-
-                        $pModel = Product::find($rmId);
-                        $isKg = $pModel && ($pModel->unit_type === 'kg');
-                        $deductStockQty = $isKg ? ($qtyUsed * 1000) : $qtyUsed;
-
-                        $prodStock = Stock::firstOrCreate(
-                            [
-                                'product_id' => $rmId,
-                                'branch_id' => $currentBranchId,
-                                'warehouse_id' => $targetWarehouseId,
-                                'variant_id' => null,
-                            ],
-                            ['qty' => 0]
-                        );
-                        $prodStock->qty -= $deductStockQty;
-                        $prodStock->save();
-                    } else {
-                        DB::table('production_raw_material_usage')->insert([
-                            'production_entry_id' => $entryId,
-                            'raw_material_id' => $rmId,
-                            'ingredient_product_id' => null,
-                            'qty_used' => $qtyUsed,
-                            'cost_per_unit' => $costPerUnit,
-                            'total_cost' => $totalCost,
-                            'branch_id' => $currentBranchId,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-
-                        if ($targetWarehouseId) {
-                            $rmStock = RawMaterialStock::firstOrCreate(
-                                [
-                                    'raw_material_id' => $rmId,
-                                    'warehouse_id' => $targetWarehouseId,
-                                ],
-                                [
-                                    'branch_id' => $currentBranchId,
-                                    'qty' => 0
-                                ]
-                            );
-                        } else {
-                            $rmStock = RawMaterialStock::firstOrCreate(
-                                [
-                                    'raw_material_id' => $rmId,
-                                    'warehouse_id' => null,
-                                    'branch_id' => $currentBranchId,
-                                ],
-                                ['qty' => 0]
-                            );
-                        }
-                        $rmStock->qty -= $qtyUsed;
-                        $rmStock->save();
-                    }
-                }
-            }
+            DB::table('production_entries')->where('id', $entryId)->update([
+                'raw_material_cost' => $costs['raw_material_cost'],
+                'labour_cost' => $costs['labour_cost'],
+                'production_cost' => $costs['production_cost'],
+                'updated_at' => now(),
+            ]);
 
             DB::commit();
-            return redirect()->route('production.index')->with('success', 'Production entry saved with raw material consumption!');
+            return redirect()->route('production.index')->with('success', 'Production entry saved with raw material & labour costing!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['Error: ' . $e->getMessage()]);
@@ -340,6 +148,7 @@ class ProductionController extends Controller
             ->get();
 
         $products = Product::with(['unit', 'variants'])->orderBy('item_name')->get();
+        $this->attachResolvedLabourCosts($products);
         $rawMaterials = RawMaterial::with('stock')->orderBy('name')->get();
 
         return view('admin_panel.production.edit', compact('entry', 'items', 'products', 'rawMaterials', 'rawMaterialUsage'));
@@ -366,9 +175,6 @@ class ProductionController extends Controller
             // 1. Reverse old finished goods stock from OLD warehouse/branch location
             $oldItems = DB::table('production_entry_items')->where('production_entry_id', $id)->get();
             foreach ($oldItems as $oi) {
-                $oldProduct = Product::find($oi->product_id);
-                $oldIsGram = $oldProduct && ($oldProduct->unit_type === 'kg' || str_contains(strtolower($oldProduct->item_name), 'gram'));
-
                 $stockQuery = Stock::where('product_id', $oi->product_id)
                     ->where('branch_id', $oldBranchId);
 
@@ -424,7 +230,7 @@ class ProductionController extends Controller
                             'qty' => $addStockQty,
                         ]);
                     }
-                } else if ($rmu->raw_material_id) {
+                } elseif ($rmu->raw_material_id) {
                     if (!empty($oldWarehouseId)) {
                         $rmStock = RawMaterialStock::firstOrCreate(
                             [
@@ -455,215 +261,20 @@ class ProductionController extends Controller
             DB::table('production_entry_items')->where('production_entry_id', $id)->delete();
             DB::table('production_raw_material_usage')->where('production_entry_id', $id)->delete();
 
-            // Calculate costs
-            $totalItemCost = 0;
-            if ($request->has('item_cost')) {
-                foreach ($request->item_cost as $ic) {
-                    $totalItemCost += (float)($ic ?? 0);
-                }
-            }
-            $totalRmCost = 0;
-            if ($request->has('rm_id')) {
-                foreach ($request->rm_id as $ri => $rmId) {
-                    if ($rmId && isset($request->rm_qty[$ri]) && (float)$request->rm_qty[$ri] > 0) {
-                        $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
-                        $rmType = $request->rm_type[$ri] ?? 'rm';
-                        if ($costPerUnit <= 0) {
-                            if ($rmType === 'product') {
-                                $pModel = Product::find($rmId);
-                                $costPerUnit = (float)($pModel->price ?? 0);
-                            } else {
-                                $rmModel = RawMaterial::find($rmId);
-                                $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
-                            }
-                        }
-                        $qtyUsed = (float)$request->rm_qty[$ri];
-                        $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
-                        if ($factor <= 0) $factor = 1;
-                        $totalRmCost += ($costPerUnit / $factor) * $qtyUsed;
-                    }
-                }
-            }
+            // 4. Re-insert items, RM consumption & compute RM + Labour costs
+            $costs = $this->syncProductionItemsAndMaterials((int)$id, $request, $currentBranchId, $targetWarehouseId);
 
-            // 4. Update entry header
+            // 5. Update entry header
             DB::table('production_entries')->where('id', $id)->update([
                 'production_date' => $request->production_date,
                 'source' => $request->source ?? 'kitchen',
                 'warehouse_id' => $targetWarehouseId,
                 'notes' => $request->notes,
-                'production_cost' => $totalItemCost + $totalRmCost,
+                'raw_material_cost' => $costs['raw_material_cost'],
+                'labour_cost' => $costs['labour_cost'],
+                'production_cost' => $costs['production_cost'],
                 'updated_at' => now(),
             ]);
-
-            // 5. Insert new items + update stock
-            foreach ($request->product_id as $index => $productId) {
-                $qtyTyped = (float)($request->qty[$index] ?? 0);
-                if ($qtyTyped <= 0) continue;
-
-                $variantId = $request->variant_id[$index] ?? null;
-                if ($variantId === '') $variantId = null;
-
-                $product = Product::with('unit')->find($productId);
-                if (!$product) continue;
-
-                $unitName = strtolower($product->unit->name ?? '');
-                $prodName = strtolower($product->item_name);
-                $isGram = str_contains($unitName, 'gram') || str_contains($unitName, 'gm') ||
-                          str_contains($prodName, 'gram') || str_contains($prodName, ' gm') ||
-                          $product->unit_type === 'kg';
-
-                $qtyStock = $qtyTyped;
-                $dbVariantId = $variantId;
-
-                if ($isGram) {
-                    if ($variantId) {
-                        $vModel = \App\Models\ProductVariant::find($variantId);
-                        if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
-                                $qtyStock = ($kgSize * $qtyTyped * 1000);
-                            } else {
-                                $qtyStock = ($kgSize * $qtyTyped);
-                            }
-                        }
-                    } else {
-                        $qtyStock = $qtyTyped * 1000;
-                    }
-                }
-
-                DB::table('production_entry_items')->insert([
-                    'production_entry_id' => $id,
-                    'product_id' => $productId,
-                    'variant_id' => $variantId,
-                    'branch_id' => $currentBranchId,
-                    'unit' => $product->unit->name ?? ($product->unit_type ? strtoupper($product->unit_type) : 'Pc'),
-                    'qty_entered' => $qtyTyped,
-                    'qty_stock' => $qtyStock,
-                    'notes' => $request->item_note[$index] ?? null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                $qtyToAdd = $qtyTyped;
-                if (!$dbVariantId && $isGram) {
-                    $qtyToAdd = $qtyStock; // in grams for loose product
-                }
-
-                $stockQuery = Stock::where('product_id', $productId)
-                    ->where('branch_id', $currentBranchId)
-                    ->where('warehouse_id', $targetWarehouseId);
-
-                if ($dbVariantId) {
-                    $stockQuery->where('variant_id', $dbVariantId);
-                } else {
-                    $stockQuery->whereNull('variant_id');
-                }
-
-                $stock = $stockQuery->first();
-                if ($stock) {
-                    $stock->qty += $qtyToAdd;
-                    $stock->save();
-                } else {
-                    Stock::create([
-                        'product_id' => $productId,
-                        'variant_id' => $dbVariantId,
-                        'branch_id' => $currentBranchId,
-                        'warehouse_id' => $targetWarehouseId,
-                        'qty' => $qtyToAdd,
-                    ]);
-                }
-            }
-
-            // 6. Insert raw material / product ingredient usage + deduct stock
-            if ($request->has('rm_id')) {
-                foreach ($request->rm_id as $ri => $rmId) {
-                    if (!$rmId) continue;
-                    $qtyUsed = (float)($request->rm_qty[$ri] ?? 0);
-                    if ($qtyUsed <= 0) continue;
-
-                    $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
-                    $rmType = $request->rm_type[$ri] ?? 'rm';
-                    if ($costPerUnit <= 0) {
-                        if ($rmType === 'product') {
-                            $pModel = Product::find($rmId);
-                            $costPerUnit = (float)($pModel->price ?? 0);
-                        } else {
-                            $rmModel = RawMaterial::find($rmId);
-                            $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
-                        }
-                    }
-                    $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
-                    if ($factor <= 0) $factor = 1;
-                    $totalCost = $qtyUsed * ($costPerUnit / $factor);
-
-                    if ($rmType === 'product') {
-                        DB::table('production_raw_material_usage')->insert([
-                            'production_entry_id' => $id,
-                            'raw_material_id' => null,
-                            'ingredient_product_id' => $rmId,
-                            'qty_used' => $qtyUsed,
-                            'cost_per_unit' => $costPerUnit,
-                            'total_cost' => $totalCost,
-                            'branch_id' => $currentBranchId,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-
-                        $pModel = Product::find($rmId);
-                        $isKg = $pModel && ($pModel->unit_type === 'kg');
-                        $deductStockQty = $isKg ? ($qtyUsed * 1000) : $qtyUsed;
-
-                        $prodStock = Stock::firstOrCreate(
-                            [
-                                'product_id' => $rmId,
-                                'branch_id' => $currentBranchId,
-                                'warehouse_id' => $targetWarehouseId,
-                                'variant_id' => null,
-                            ],
-                            ['qty' => 0]
-                        );
-
-                        $prodStock->qty -= $deductStockQty;
-                        $prodStock->save();
-                    } else {
-                        DB::table('production_raw_material_usage')->insert([
-                            'production_entry_id' => $id,
-                            'raw_material_id' => $rmId,
-                            'ingredient_product_id' => null,
-                            'qty_used' => $qtyUsed,
-                            'cost_per_unit' => $costPerUnit,
-                            'total_cost' => $totalCost,
-                            'branch_id' => $currentBranchId,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-
-                        if ($targetWarehouseId) {
-                            $rmStock = RawMaterialStock::firstOrCreate(
-                                [
-                                    'raw_material_id' => $rmId,
-                                    'warehouse_id' => $targetWarehouseId,
-                                ],
-                                [
-                                    'branch_id' => $currentBranchId,
-                                    'qty' => 0
-                                ]
-                            );
-                        } else {
-                            $rmStock = RawMaterialStock::firstOrCreate(
-                                [
-                                    'raw_material_id' => $rmId,
-                                    'warehouse_id' => null,
-                                    'branch_id' => $currentBranchId,
-                                ],
-                                ['qty' => 0]
-                            );
-                        }
-                        $rmStock->qty -= $qtyUsed;
-                        $rmStock->save();
-                    }
-                }
-            }
 
             DB::commit();
             return redirect()->route('production.index')->with('success', 'Production entry updated successfully!');
@@ -671,6 +282,277 @@ class ProductionController extends Controller
             DB::rollBack();
             return back()->withErrors('Error: ' . $e->getMessage());
         }
+    }
+
+    private function attachResolvedLabourCosts($products): void
+    {
+        $costService = app(ProductCostService::class);
+        foreach ($products as $p) {
+            $p->resolved_labour_cost = $costService->resolveLabourCost($p, null);
+            foreach ($p->variants as $v) {
+                $v->resolved_labour_cost = $costService->resolveLabourCost($p, $v);
+            }
+        }
+    }
+
+    /**
+     * Persist finished goods, raw material usage, and per-item/batch RM + labour costs.
+     */
+    private function syncProductionItemsAndMaterials(int $entryId, Request $request, $currentBranchId, ?int $targetWarehouseId): array
+    {
+        $costService = app(ProductCostService::class);
+        $totalItemLegacyCost = 0.0;
+        if ($request->has('item_cost')) {
+            foreach ((array)$request->item_cost as $ic) {
+                $totalItemLegacyCost += max(0, (float)($ic ?? 0));
+            }
+        }
+
+        // 1. Insert raw material / product ingredient usage & deduct stock, summing total RM cost
+        $totalRmCost = 0.0;
+        if ($request->has('rm_id')) {
+            foreach ($request->rm_id as $ri => $rmId) {
+                if (!$rmId) continue;
+                $qtyUsed = (float)($request->rm_qty[$ri] ?? 0);
+                if ($qtyUsed <= 0) continue;
+
+                $costPerUnit = (float)($request->rm_cost[$ri] ?? 0);
+                $rmType = $request->rm_type[$ri] ?? 'rm';
+                if ($costPerUnit <= 0) {
+                    if ($rmType === 'product') {
+                        $pModel = Product::find($rmId);
+                        $costPerUnit = (float)($pModel->price ?? 0);
+                    } else {
+                        $rmModel = RawMaterial::find($rmId);
+                        $costPerUnit = $rmModel ? (float)$rmModel->lastPurchaseCost() : 0;
+                    }
+                }
+                $factor = isset($request->rm_factor[$ri]) ? (float)$request->rm_factor[$ri] : 1;
+                if ($factor <= 0) $factor = 1;
+                $rowRmCost = $qtyUsed * ($costPerUnit / $factor);
+                $totalRmCost += $rowRmCost;
+
+                if ($rmType === 'product') {
+                    DB::table('production_raw_material_usage')->insert([
+                        'production_entry_id' => $entryId,
+                        'raw_material_id' => null,
+                        'ingredient_product_id' => $rmId,
+                        'qty_used' => $qtyUsed,
+                        'cost_per_unit' => $costPerUnit,
+                        'total_cost' => $rowRmCost,
+                        'branch_id' => $currentBranchId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    $pModel = Product::find($rmId);
+                    $isKg = $pModel && ($pModel->unit_type === 'kg');
+                    $deductStockQty = $isKg ? ($qtyUsed * 1000) : $qtyUsed;
+
+                    $prodStock = Stock::firstOrCreate(
+                        [
+                            'product_id' => $rmId,
+                            'branch_id' => $currentBranchId,
+                            'warehouse_id' => $targetWarehouseId,
+                            'variant_id' => null,
+                        ],
+                        ['qty' => 0]
+                    );
+                    $prodStock->qty -= $deductStockQty;
+                    $prodStock->save();
+                } else {
+                    DB::table('production_raw_material_usage')->insert([
+                        'production_entry_id' => $entryId,
+                        'raw_material_id' => $rmId,
+                        'ingredient_product_id' => null,
+                        'qty_used' => $qtyUsed,
+                        'cost_per_unit' => $costPerUnit,
+                        'total_cost' => $rowRmCost,
+                        'branch_id' => $currentBranchId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    if ($targetWarehouseId) {
+                        $rmStock = RawMaterialStock::firstOrCreate(
+                            [
+                                'raw_material_id' => $rmId,
+                                'warehouse_id' => $targetWarehouseId,
+                            ],
+                            [
+                                'branch_id' => $currentBranchId,
+                                'qty' => 0
+                            ]
+                        );
+                    } else {
+                        $rmStock = RawMaterialStock::firstOrCreate(
+                            [
+                                'raw_material_id' => $rmId,
+                                'warehouse_id' => null,
+                                'branch_id' => $currentBranchId,
+                            ],
+                            ['qty' => 0]
+                        );
+                    }
+                    $rmStock->qty -= $qtyUsed;
+                    $rmStock->save();
+                }
+            }
+        }
+
+        // 2. Collect produced finished items, calculate labour costs, and update finished stock
+        $preparedItems = [];
+        $totalLabourCost = 0.0;
+
+        foreach ($request->product_id as $index => $productId) {
+            $qtyTyped = (float)($request->qty[$index] ?? 0);
+            if ($qtyTyped <= 0) continue;
+
+            $variantId = $request->variant_id[$index] ?? null;
+            if ($variantId === '') $variantId = null;
+
+            $product = Product::with(['unit', 'bom.rawMaterial', 'bom.ingredientProduct', 'variants'])->find($productId);
+            if (!$product) continue;
+
+            $vModel = $variantId ? ProductVariant::find($variantId) : null;
+
+            $unitName = strtolower($product->unit->name ?? '');
+            $prodName = strtolower($product->item_name);
+            $isGram = str_contains($unitName, 'gram') || str_contains($unitName, 'gm') ||
+                      str_contains($prodName, 'gram') || str_contains($prodName, ' gm') ||
+                      $product->unit_type === 'kg';
+
+            $qtyStock = $qtyTyped;
+            $dbVariantId = $variantId;
+
+            if ($isGram) {
+                if ($vModel) {
+                    $kgSize = floatval($vModel->size_value);
+                    if ($vModel->size_unit === 'kg') {
+                        $qtyStock = ($kgSize * $qtyTyped * 1000);
+                    } else {
+                        $qtyStock = ($kgSize * $qtyTyped);
+                    }
+                } else {
+                    $qtyStock = $qtyTyped * 1000;
+                }
+            }
+
+            // Resolve labour cost (form input override -> default configured rate)
+            $hasPerPcInput = $request->has("item_labour_per_pc.$index") && $request->item_labour_per_pc[$index] !== null && $request->item_labour_per_pc[$index] !== '';
+            $hasTotalInput = $request->has("item_labour_total.$index") && $request->item_labour_total[$index] !== null && $request->item_labour_total[$index] !== '';
+
+            $labourPerPc = $hasPerPcInput
+                ? max(0, round((float)$request->item_labour_per_pc[$index], 2))
+                : $costService->resolveLabourCost($product, $vModel);
+
+            if ($hasTotalInput) {
+                $itemLabourTotal = max(0, round((float)$request->item_labour_total[$index], 2));
+                $labourPerPc = $qtyTyped > 0 ? round($itemLabourTotal / $qtyTyped, 2) : $labourPerPc;
+            } else {
+                $itemLabourTotal = round($qtyTyped * $labourPerPc, 2);
+            }
+            $totalLabourCost += $itemLabourTotal;
+
+            // Compute expected BOM RM weight for proportional RM allocation across multiple items in one batch
+            $bomWeight = 0.0;
+            $breakdown = $costService->buildBomCostBreakdown(collect([$product]));
+            $vKey = $product->id . '_' . ($variantId ?: 0);
+            $pKey = $product->id . '_0';
+            $unitBomMat = (float)($breakdown['material'][$vKey] ?? $breakdown['material'][$pKey] ?? 0);
+            if ($unitBomMat > 0) {
+                $bomWeight = $unitBomMat * $qtyTyped;
+            }
+
+            $preparedItems[] = [
+                'product_id' => $productId,
+                'variant_id' => $variantId,
+                'unit' => $product->unit->name ?? ($product->unit_type ? strtoupper($product->unit_type) : 'Pc'),
+                'qty_entered' => $qtyTyped,
+                'qty_stock' => $qtyStock,
+                'labour_cost_per_pc' => $labourPerPc,
+                'total_labour_cost' => $itemLabourTotal,
+                'notes' => $request->item_note[$index] ?? null,
+                'bom_weight' => $bomWeight,
+            ];
+
+            // Update Stock (target selected warehouse, not always shop)
+            $qtyToAdd = $qtyTyped;
+            if (!$dbVariantId && $isGram) {
+                $qtyToAdd = $qtyStock; // in grams for loose product
+            }
+
+            $stockQuery = Stock::where('product_id', $productId)
+                ->where('branch_id', $currentBranchId)
+                ->where('warehouse_id', $targetWarehouseId);
+
+            if ($dbVariantId) {
+                $stockQuery->where('variant_id', $dbVariantId);
+            } else {
+                $stockQuery->whereNull('variant_id');
+            }
+
+            $stock = $stockQuery->first();
+            if ($stock) {
+                $stock->qty += $qtyToAdd;
+                $stock->save();
+            } else {
+                Stock::create([
+                    'product_id' => $productId,
+                    'variant_id' => $dbVariantId,
+                    'branch_id' => $currentBranchId,
+                    'warehouse_id' => $targetWarehouseId,
+                    'qty' => $qtyToAdd,
+                ]);
+            }
+        }
+
+        // 3. Allocate batch RM cost across prepared items and insert production_entry_items
+        $totalRmRounded = round($totalRmCost, 2);
+        $totalBomWeight = array_sum(array_column($preparedItems, 'bom_weight'));
+        $totalQtyWeight = array_sum(array_column($preparedItems, 'qty_entered'));
+        $itemCount = count($preparedItems);
+        $allocatedSum = 0.0;
+
+        foreach ($preparedItems as $idx => $pi) {
+            if ($idx === $itemCount - 1) {
+                $rmShare = round($totalRmRounded - $allocatedSum, 2);
+            } elseif ($totalBomWeight > 0) {
+                $rmShare = round($totalRmRounded * ($pi['bom_weight'] / $totalBomWeight), 2);
+                $allocatedSum += $rmShare;
+            } elseif ($totalQtyWeight > 0) {
+                $rmShare = round($totalRmRounded * ($pi['qty_entered'] / $totalQtyWeight), 2);
+                $allocatedSum += $rmShare;
+            } else {
+                $rmShare = 0.0;
+            }
+
+            DB::table('production_entry_items')->insert([
+                'production_entry_id' => $entryId,
+                'product_id' => $pi['product_id'],
+                'variant_id' => $pi['variant_id'],
+                'branch_id' => $currentBranchId,
+                'unit' => $pi['unit'],
+                'qty_entered' => $pi['qty_entered'],
+                'qty_stock' => $pi['qty_stock'],
+                'labour_cost_per_pc' => $pi['labour_cost_per_pc'],
+                'total_labour_cost' => $pi['total_labour_cost'],
+                'rm_cost' => $rmShare,
+                'total_cost' => round($rmShare + $pi['total_labour_cost'], 2),
+                'notes' => $pi['notes'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $totalLabourRounded = round($totalLabourCost, 2);
+        $totalProdCost = round($totalRmRounded + $totalLabourRounded + $totalItemLegacyCost, 2);
+
+        return [
+            'raw_material_cost' => $totalRmRounded,
+            'labour_cost' => $totalLabourRounded,
+            'production_cost' => $totalProdCost,
+        ];
     }
 
     public function gatepass($id)
