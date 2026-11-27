@@ -2548,15 +2548,11 @@ class ReportingController extends Controller
 
         $users = \App\Models\User::orderBy('name')->get();
 
-        // 💵 Strictly load all active Company Cash Accounts (excludes distributors and bank accounts)
+        // 💵 Strictly load all active Company Cash Accounts (based on account_heads.name containing 'Cash')
         $companyCashAccounts = \App\Models\Account::whereNull('distributor_id')
             ->where('status', 1)
-            ->where(function($q) {
-                $q->where('head_id', 2)
-                  ->orWhereHas('head', function($h) {
-                      $h->where('name', 'like', '%Cash%');
-                  })
-                  ->orWhere('title', 'like', '%Cash%');
+            ->whereHas('head', function($h) {
+                $h->where('name', 'like', '%Cash%');
             })
             ->where('account_code', 'not like', '%CLAIM%')
             ->where('title', 'not like', '%Claim%')
@@ -4374,18 +4370,19 @@ class ReportingController extends Controller
             ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
             ->whereNull('accounts.distributor_id')
-            ->where(function($q) {
-                $q->where('account_heads.name', 'like', '%Cash%')
-                  ->orWhere('accounts.title', 'like', '%Cash%');
-            });
+            ->where('account_heads.name', 'like', '%Cash%');
         $cashAccounts = $cashAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.opening_balance')->get();
+        $cashAccountIds = $cashAccounts->pluck('id')->all();
 
         $counterCashBalance = 0;
+        $accountCashOpening = 0.0;
         $totalCashInHand = 0.0;
         foreach ($cashAccounts as $ca) {
             $summary = \App\Models\Account::summarizeBalanceAsOf($ca, $asOfDate);
+            $accountCashOpening += $summary['opening_balance'];
             $totalCashInHand += $summary['current_balance'];
         }
+        $accountCashOpening = round($accountCashOpening, 2);
         $totalCashInHand = max(0, round($totalCashInHand, 2));
 
         // ==========================================
@@ -4395,10 +4392,9 @@ class ReportingController extends Controller
             ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
             ->whereNull('accounts.distributor_id')
-            ->where(function($q) {
-                $q->where('account_heads.name', 'like', '%Bank%')
-                  ->orWhere('accounts.title', 'like', '%Bank%')
-                  ->orWhere('accounts.head_id', 1);
+            ->where('account_heads.name', 'like', '%Bank%')
+            ->when(!empty($cashAccountIds), function ($q) use ($cashAccountIds) {
+                $q->whereNotIn('accounts.id', $cashAccountIds);
             });
         $bankAccountsData = $bankAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.bank_name', 'accounts.opening_balance')->get();
 

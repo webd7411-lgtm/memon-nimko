@@ -1112,8 +1112,8 @@
             <span class="badge bg-light text-secondary border" style="font-size:0.68rem;">Share</span>
           </div>
           <div class="d-flex flex-column justify-content-between" style="flex:1;">
-            <div class="erp-chart-wrap">
-              <div id="channelShareDonutChart" style="min-height: 180px;"></div>
+            <div class="erp-chart-wrap d-flex align-items-center justify-content-center">
+              <div id="channelShareDonutChart" style="min-height: 225px; width: 100%;"></div>
             </div>
             <div class="pt-2 border-top">
               <div class="d-flex align-items-center justify-content-between py-1 border-bottom" style="font-size:0.8rem;">
@@ -1781,25 +1781,52 @@ document.addEventListener('DOMContentLoaded', function() {
   const totalChannelVal = channelRetailVal + channelDistributorVal;
 
   const channelDonutOpts = {
-    chart: { type: 'donut', height: 180 },
+    chart: { type: 'donut', height: 225 },
     series: totalChannelVal > 0 ? channelSeries : [1],
     labels: totalChannelVal > 0 ? ['Retail POS Sales', 'Distributor Demand'] : ['No Recorded Sales'],
     colors: ['#0f766e', '#d97706'],
     legend: { show: false },
-    dataLabels: { enabled: true, formatter: (val) => Math.round(val) + '%' },
+    stroke: { width: 2, colors: ['#ffffff'] },
+    dataLabels: {
+      enabled: true,
+      style: { fontSize: '11px', fontWeight: 700 },
+      dropShadow: { enabled: false },
+      formatter: (val) => Math.round(val) + '%'
+    },
+    tooltip: {
+      y: {
+        formatter: (val) => 'Rs ' + Math.round(Number(val) || 0).toLocaleString()
+      }
+    },
     plotOptions: {
       pie: {
         donut: {
-          size: '72%',
+          size: '74%',
           labels: {
             show: true,
+            name: {
+              show: true,
+              fontSize: '10px',
+              fontWeight: 700,
+              color: '#64748b',
+              offsetY: -6
+            },
+            value: {
+              show: true,
+              fontSize: '14px',
+              fontWeight: 800,
+              color: '#0f172a',
+              offsetY: 4,
+              formatter: (val) => 'Rs ' + Math.round(Number(val) || 0).toLocaleString()
+            },
             total: {
               show: true,
+              showAlways: true,
               label: 'TOTAL DEMAND',
               fontSize: '9px',
               fontWeight: 700,
               color: '#64748b',
-              formatter: () => 'Rs ' + totalChannelVal.toLocaleString()
+              formatter: () => 'Rs ' + Math.round(totalChannelVal).toLocaleString()
             }
           }
         }

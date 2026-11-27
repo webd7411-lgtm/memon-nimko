@@ -358,7 +358,7 @@ class HomeController extends Controller
         if (!is_all_branches()) {
             $totalExpensesQuery->where('expense_vouchers.branch_id', active_branch_id());
         }
-        $totalExpenses = $totalExpensesQuery->sum('total_amount');
+        // $totalExpenses is synced below with $currDashboardPL['total_expenses'] (excludes stock adjustments)
 
         $expenseRawQuery = DB::table('expense_vouchers')
            ->join('accounts', 'expense_vouchers.party_id', '=', 'accounts.id')
@@ -381,10 +381,19 @@ class HomeController extends Controller
            ];
         }
 
-        // Profit/Loss Calculation
+        // Profit/Loss Calculation (Synced with 360 Report & P&L using COGS, not total purchases)
         $netSales = $totalSales - $totalSalesReturns;
         $netPurchases = $totalPurchases - $totalPurchaseReturns;
-        $grossProfit = $netSales - $netPurchases - $totalExpenses;
+        $fccCtrl = app(\App\Http\Controllers\FinancialCommandCenterController::class);
+        $plCostContext = $fccCtrl->buildPlCostContext();
+        $currDashboardPL = $fccCtrl->calculatePeriodPL(
+            $startObj->format('Y-m-d'),
+            $endObj->format('Y-m-d'),
+            is_all_branches() ? 'all' : active_branch_id(),
+            $plCostContext
+        );
+        $grossProfit = $currDashboardPL['gross_profit'];
+        $totalExpenses = $currDashboardPL['total_expenses'];
 
         // Additional Metrics for New Dashboard Design
         $suppliersQuery = DB::table('vendors');
@@ -415,8 +424,16 @@ class HomeController extends Controller
 
         $prevSales = $prevSalesQ->sum('total_net');
         $prevPurchases = $prevPurchasesQ->sum('net_amount');
-        $prevExpenses = $prevExpensesQ->sum('total_amount');
-        $prevGrossProfit = ($prevSales) - ($prevPurchases) - ($prevExpenses);
+        $prevExpenses = null; // synced below with $prevDashboardPL
+        $prevDashboardPL = $fccCtrl->calculatePeriodPL(
+            Carbon::now()->subMonth()->startOfMonth()->format('Y-m-d'),
+            Carbon::now()->subMonth()->endOfMonth()->format('Y-m-d'),
+            is_all_branches() ? 'all' : active_branch_id(),
+            $plCostContext
+        );
+        $prevGrossProfit = $prevDashboardPL['gross_profit'];
+        $prevNetProfit   = $prevDashboardPL['net_profit'];
+        $prevExpenses    = $prevDashboardPL['total_expenses'];
 
         $calcGrowth = function($current, $previous) {
             if ($previous > 0) {
@@ -429,8 +446,8 @@ class HomeController extends Controller
         $purchaseGrowth = $calcGrowth($totalPurchases, $prevPurchases);
         $grossProfitGrowth = $calcGrowth($grossProfit, $prevGrossProfit);
         $expenseGrowth = $calcGrowth($totalExpenses, $prevExpenses);
-        $netProfit = $grossProfit;
-        $netProfitGrowth = $grossProfitGrowth;
+        $netProfit = $currDashboardPL['net_profit'];
+        $netProfitGrowth = $calcGrowth($netProfit, $prevNetProfit);
 
         $prevRawPurchasesQ = DB::table('raw_material_purchases')
             ->whereBetween('date', [
@@ -718,25 +735,31 @@ class HomeController extends Controller
             $meezanBalance    = $branchBankBal;
             $easyPaisaBalance = 0;
         } else {
-            $cashInHand = DB::table('accounts')
-                ->where('title', 'like', '%Cash%')
-                ->sum('opening_balance');
+            $cashInHand = (float) DB::table('accounts')
+                ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+                ->where('accounts.status', 1)
+                ->whereNull('accounts.distributor_id')
+                ->where('account_heads.name', 'like', '%Cash%')
+                ->sum('accounts.opening_balance');
 
-            $easyPaisaBalance = DB::table('accounts')
+            $easyPaisaBalance = (float) DB::table('accounts')
+                ->where('status', 1)
+                ->whereNull('distributor_id')
                 ->where(function($q) {
                     $q->where('title', 'like', '%Easy%')
                       ->orWhere('title', 'like', '%Jazz%');
                 })
                 ->sum('opening_balance');
 
-            $meezanBalance = DB::table('accounts')
-                ->where(function($q) {
-                    $q->where('title', 'like', '%Bank%')
-                      ->orWhere('title', 'like', '%Meezan%');
-                })
-                ->sum('opening_balance');
+            $meezanBalance = (float) DB::table('accounts')
+                ->join('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+                ->where('accounts.status', 1)
+                ->whereNull('accounts.distributor_id')
+                ->where('account_heads.name', 'like', '%Bank%')
+                ->where('account_heads.name', 'not like', '%Cash%')
+                ->sum('accounts.opening_balance');
 
-            $cashBalance = DB::table('accounts')->sum('opening_balance');
+            $cashBalance = $cashInHand + $meezanBalance;
         }
 
         // Recent Activities List

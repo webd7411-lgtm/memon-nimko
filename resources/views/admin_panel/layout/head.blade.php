@@ -1055,4 +1055,144 @@
         flex: 1 1 auto !important;
     }
 }
+
+/* ═════════════════════════════════════════════════════════════════════
+   PROWAVE TECHNOLOGIES — GLOBAL PREMIUM ANIMATION SYSTEM
+═════════════════════════════════════════════════════════════════════ */
+#erpTopProgress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    z-index: 999999;
+    background: linear-gradient(90deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%);
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.65);
+    opacity: 0;
+    pointer-events: none;
+    transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+}
+
+#erpTopProgress.is-active {
+    opacity: 1;
+}
+
+@keyframes erpPageEnter {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes erpCardReveal {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes erpDropdownIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes erpShimmer {
+    0% {
+        background-position: -400px 0;
+    }
+    100% {
+        background-position: 400px 0;
+    }
+}
+
+.main-content,
+.main-panel > .content-wrapper {
+    animation: erpPageEnter 0.24s ease-out;
+    transition: opacity 0.15s ease;
+}
+
+body.erp-page-leaving .main-content,
+body.erp-page-leaving .main-panel > .content-wrapper {
+    opacity: 0.55;
+}
+
+/* Premium Card Hover & Subtle Reveal */
+.card,
+.erp-card-surface {
+    transition: box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.erp-card-surface:hover,
+.kpi-card:hover {
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -4px rgba(15, 118, 110, 0.08) !important;
+}
+
+/* Staggered Entrance for Top-Level Grid Cards */
+.row > [class*="col-"]:nth-child(1) > .card,
+.row > [class*="col-"]:nth-child(1) > .erp-card-surface { animation: erpCardReveal 0.26s ease-out 0.02s backwards; }
+.row > [class*="col-"]:nth-child(2) > .card,
+.row > [class*="col-"]:nth-child(2) > .erp-card-surface { animation: erpCardReveal 0.26s ease-out 0.05s backwards; }
+.row > [class*="col-"]:nth-child(3) > .card,
+.row > [class*="col-"]:nth-child(3) > .erp-card-surface { animation: erpCardReveal 0.26s ease-out 0.08s backwards; }
+.row > [class*="col-"]:nth-child(4) > .card,
+.row > [class*="col-"]:nth-child(4) > .erp-card-surface { animation: erpCardReveal 0.26s ease-out 0.11s backwards; }
+.row > [class*="col-"]:nth-child(5) > .card,
+.row > [class*="col-"]:nth-child(5) > .erp-card-surface { animation: erpCardReveal 0.26s ease-out 0.14s backwards; }
+.row > [class*="col-"]:nth-child(6) > .card,
+.row > [class*="col-"]:nth-child(6) > .erp-card-surface { animation: erpCardReveal 0.26s ease-out 0.17s backwards; }
+
+/* Tactile Button Micro-Interactions */
+.btn {
+    transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease !important;
+}
+
+.btn:active:not(:disabled) {
+    transform: scale(0.97) !important;
+}
+
+/* Smooth Table Row Hover */
+table.table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+/* Smooth Dropdown Reveal */
+.dropdown-menu.show {
+    animation: erpDropdownIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Shimmer Skeleton Helper */
+.erp-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 800px 100%;
+    animation: erpShimmer 1.3s infinite linear;
+    border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media print {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+    #erpTopProgress {
+        display: none !important;
+    }
+}
 </style>

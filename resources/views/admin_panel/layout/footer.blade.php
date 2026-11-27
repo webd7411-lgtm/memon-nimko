@@ -343,3 +343,128 @@
     </script>
     @endif
 
+    {{-- Global Premium Page Transition & Progress Bar --}}
+    <div id="erpTopProgress" aria-hidden="true"></div>
+    <script>
+        (function() {
+            var bar = document.getElementById('erpTopProgress');
+            if (!bar) return;
+
+            var activeCount = 0;
+            var trickleTimer = null;
+            var currentWidth = 0;
+
+            function startProgress() {
+                activeCount++;
+                if (activeCount > 1) return;
+                clearInterval(trickleTimer);
+                currentWidth = 18;
+                bar.style.width = currentWidth + '%';
+                bar.classList.add('is-active');
+                trickleTimer = setInterval(function() {
+                    if (currentWidth < 86) {
+                        currentWidth += Math.max(1, (88 - currentWidth) * 0.14);
+                        bar.style.width = currentWidth.toFixed(1) + '%';
+                    }
+                }, 160);
+            }
+
+            function finishProgress(force) {
+                if (force) activeCount = 0;
+                else activeCount = Math.max(0, activeCount - 1);
+                if (activeCount > 0) return;
+                clearInterval(trickleTimer);
+                bar.style.width = '100%';
+                setTimeout(function() {
+                    bar.classList.remove('is-active');
+                    setTimeout(function() {
+                        if (activeCount === 0) bar.style.width = '0%';
+                    }, 220);
+                }, 140);
+            }
+
+            // Reset state when navigating back via browser history cache
+            window.addEventListener('pageshow', function() {
+                document.body.classList.remove('erp-page-leaving');
+                finishProgress(true);
+            });
+
+            // Ensure Bootstrap modals always render at body level (screen-centered, above backdrop)
+            if (window.jQuery) {
+                $(document).on('show.bs.modal', '.modal', function() {
+                    if (this.parentElement !== document.body) {
+                        document.body.appendChild(this);
+                    }
+                });
+            } else {
+                document.addEventListener('show.bs.modal', function(e) {
+                    if (e.target && e.target.classList && e.target.classList.contains('modal') && e.target.parentElement !== document.body) {
+                        document.body.appendChild(e.target);
+                    }
+                });
+            }
+
+            // Smooth exit + progress bar on internal link clicks
+            document.addEventListener('click', function(e) {
+                var link = e.target.closest('a');
+                if (!link) return;
+                if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
+
+                var href = link.getAttribute('href') || '';
+                if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+                if (link.hasAttribute('download') || link.getAttribute('target') === '_blank') return;
+                if (link.hasAttribute('data-bs-toggle') || link.hasAttribute('data-toggle')) return;
+                if (link.classList.contains('no-loader')) return;
+
+                try {
+                    var targetUrl = new URL(link.href, window.location.origin);
+                    if (targetUrl.origin !== window.location.origin) return;
+                } catch (err) {
+                    return;
+                }
+
+                document.body.classList.add('erp-page-leaving');
+                startProgress();
+            });
+
+            // Show progress bar on standard form submissions
+            document.addEventListener('submit', function(e) {
+                var form = e.target;
+                if (!form || e.defaultPrevented) return;
+                if (form.getAttribute('target') === '_blank' || form.classList.contains('no-loader')) return;
+                startProgress();
+            });
+
+            // Hook jQuery AJAX (skip silent background notification polling)
+            if (window.jQuery) {
+                $(document).ajaxSend(function(_evt, _xhr, settings) {
+                    var url = (settings && settings.url) ? String(settings.url) : '';
+                    if (url.indexOf('notifications/check') !== -1 || url.indexOf('notifications/mark') !== -1) return;
+                    startProgress();
+                });
+                $(document).ajaxComplete(function(_evt, _xhr, settings) {
+                    var url = (settings && settings.url) ? String(settings.url) : '';
+                    if (url.indexOf('notifications/check') !== -1 || url.indexOf('notifications/mark') !== -1) return;
+                    finishProgress();
+                });
+            }
+
+            // Hook window.fetch (used by 360 Report and modern endpoints)
+            if (window.fetch) {
+                var origFetch = window.fetch;
+                window.fetch = function() {
+                    var reqUrl = arguments[0] ? String(arguments[0].url || arguments[0]) : '';
+                    var isSilent = reqUrl.indexOf('notifications/check') !== -1 || reqUrl.indexOf('notifications/mark') !== -1;
+                    if (!isSilent) startProgress();
+                    return origFetch.apply(this, arguments).then(function(res) {
+                        if (!isSilent) finishProgress();
+                        return res;
+                    }, function(err) {
+                        if (!isSilent) finishProgress();
+                        throw err;
+                    });
+                };
+            }
+        })();
+    </script>
+

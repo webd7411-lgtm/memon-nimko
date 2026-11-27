@@ -24,6 +24,17 @@ use Illuminate\Support\Facades\Schema;
 
 class FinancialCommandCenterController extends Controller
 {
+    private array $columnExistsCache = [];
+
+    private function tableHasColumn(string $table, string $column): bool
+    {
+        $key = $table . '.' . $column;
+        if (!array_key_exists($key, $this->columnExistsCache)) {
+            $this->columnExistsCache[$key] = Schema::hasColumn($table, $column);
+        }
+        return $this->columnExistsCache[$key];
+    }
+
     /**
      * Display the main Executive Financial Command Center page.
      */
@@ -93,8 +104,10 @@ class FinancialCommandCenterController extends Controller
         }
 
         // 1. Compute Period Metrics (P&L: Sales, Returns, Net Revenue, COGS, Expenses, Net Profit)
-        $currPL = $this->calculatePeriodPL($currStart, $currEnd, $branchId);
-        $basePL = $this->calculatePeriodPL($baseStart, $baseEnd, $branchId);
+        // Build shared product/BOM/purchase cost context once for both periods
+        $plCostContext = $this->buildPlCostContext();
+        $currPL = $this->calculatePeriodPL($currStart, $currEnd, $branchId, $plCostContext);
+        $basePL = $this->calculatePeriodPL($baseStart, $baseEnd, $branchId, $plCostContext);
 
         // 2. Compute Capital / Equity Movements (Outsource Injections vs Owner Drawings)
         $currEquityMovements = $this->calculateEquityMovements($currStart, $currEnd, $branchId);
@@ -203,19 +216,17 @@ class FinancialCommandCenterController extends Controller
             });
         }
 
-        if ($branchId !== 'all' && Schema::hasColumn($table, 'branch_id')) {
+        if ($branchId !== 'all' && $this->tableHasColumn($table, 'branch_id')) {
             $q->where('branch_id', $branchId);
         }
 
-        $rows = $q->orderByDesc('id')->get();
-        $total = 0.0;
+        $total = (float) (clone $q)->sum('total_amount');
         $history = [];
 
-        foreach ($rows as $row) {
-            $amt = (float) ($row->total_amount ?? 0);
-            $total += $amt;
-
-            if ($withHistory && count($history) < 10) {
+        if ($withHistory) {
+            $rows = $q->orderByDesc('id')->limit(10)->get();
+            foreach ($rows as $row) {
+                $amt = (float) ($row->total_amount ?? 0);
                 $history[] = [
                     'id'      => $row->id,
                     $refCol   => $row->{$refCol} ?? (strtoupper(substr($refCol, 0, 2)) . '-' . $row->id),
@@ -265,9 +276,36 @@ class FinancialCommandCenterController extends Controller
     }
 
     /**
+     * Build shared product, BOM, variant, and purchase-price cost lookup maps once per request.
+     */
+    public function buildPlCostContext(): array
+    {
+        $productsWithBom = Product::with(['category_relation', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->get()->keyBy('id');
+        $bomProductCostMap = $this->buildBomProductCostMap($productsWithBom);
+        $variantsDict = ProductVariant::all()->keyBy('id');
+
+        $purchaseItems = DB::table('purchase_items')
+            ->select('product_id', 'variant_id', 'price')
+            ->orderBy('id', 'desc')
+            ->get();
+        $purchasePriceMap = [];
+        foreach ($purchaseItems as $pi) {
+            $vKey = $pi->product_id . '_' . ($pi->variant_id ?? 0);
+            if (!isset($purchasePriceMap[$vKey]) && (float)$pi->price > 0) {
+                $purchasePriceMap[$vKey] = (float)$pi->price;
+            }
+            if (!isset($purchasePriceMap[$pi->product_id . '_0']) && (float)$pi->price > 0) {
+                $purchasePriceMap[$pi->product_id . '_0'] = (float)$pi->price;
+            }
+        }
+
+        return compact('productsWithBom', 'bomProductCostMap', 'variantsDict', 'purchasePriceMap');
+    }
+
+    /**
      * Compute Period-Specific Profit & Loss (Sales, Deductions, COGS, Expenses, Net Profit).
      */
-    private function calculatePeriodPL(string $startDate, string $endDate, $branchId): array
+    public function calculatePeriodPL(string $startDate, string $endDate, $branchId, ?array $costContext = null): array
     {
         $startDT = $startDate . ' 00:00:00';
         $endDT   = $endDate   . ' 23:59:59';
@@ -333,24 +371,11 @@ class FinancialCommandCenterController extends Controller
         if (!$isAll) $allPeriodSalesQ->where('branch_id', $branchId);
         $allPeriodSales = $allPeriodSalesQ->select('product', 'variant_id', 'qty')->get();
 
-        $productsWithBom = Product::with(['category_relation', 'variants', 'bom.rawMaterial', 'bom.ingredientProduct', 'unit'])->get()->keyBy('id');
-        $bomProductCostMap = $this->buildBomProductCostMap($productsWithBom);
-        $variantsDict = ProductVariant::all()->keyBy('id');
-
-        $purchaseItems = DB::table('purchase_items')
-            ->select('product_id', 'variant_id', 'price')
-            ->orderBy('id', 'desc')
-            ->get();
-        $purchasePriceMap = [];
-        foreach ($purchaseItems as $pi) {
-            $vKey = $pi->product_id . '_' . ($pi->variant_id ?? 0);
-            if (!isset($purchasePriceMap[$vKey]) && (float)$pi->price > 0) {
-                $purchasePriceMap[$vKey] = (float)$pi->price;
-            }
-            if (!isset($purchasePriceMap[$pi->product_id . '_0']) && (float)$pi->price > 0) {
-                $purchasePriceMap[$pi->product_id . '_0'] = (float)$pi->price;
-            }
-        }
+        $costContext       = $costContext ?? $this->buildPlCostContext();
+        $productsWithBom   = $costContext['productsWithBom'];
+        $bomProductCostMap = $costContext['bomProductCostMap'];
+        $variantsDict      = $costContext['variantsDict'];
+        $purchasePriceMap  = $costContext['purchasePriceMap'];
 
         $totalCogs = 0;
         foreach ($allPeriodSales as $s) {
@@ -407,7 +432,7 @@ class FinancialCommandCenterController extends Controller
                 $q->whereNull('is_stock_adjustment')->orWhere('is_stock_adjustment', 0);
             });
 
-        if (!$isAll && Schema::hasColumn('expense_vouchers', 'branch_id')) {
+        if (!$isAll && $this->tableHasColumn('expense_vouchers', 'branch_id')) {
             $expQ->where('branch_id', $branchId);
         }
         $totalExpenses = (float) $expQ->sum('total_amount');
@@ -535,7 +560,12 @@ class FinancialCommandCenterController extends Controller
             }
 
             if ($bItem->rawMaterial) {
-                $rmCost = (float)$bItem->rawMaterial->lastPurchaseCost();
+                static $rmCostCache = [];
+                $rmId = $bItem->rawMaterial->id;
+                if (!array_key_exists($rmId, $rmCostCache)) {
+                    $rmCostCache[$rmId] = (float)$bItem->rawMaterial->lastPurchaseCost();
+                }
+                $rmCost = $rmCostCache[$rmId];
                 $factor = (float)($bItem->rawMaterial->conversion_factor ?? 1);
                 if ($factor <= 0) {
                     $factor = 1;
@@ -676,7 +706,7 @@ class FinancialCommandCenterController extends Controller
 
         // 4. ACCOUNTS RECEIVABLE (Direct Customers + Distributors + Market Retail Shops)
         $custRecQ = DB::table('customers');
-        if (!$isAll && Schema::hasColumn('customers', 'branch_id')) {
+        if (!$isAll && $this->tableHasColumn('customers', 'branch_id')) {
             $custRecQ->where('branch_id', $branchId);
         }
         $customersList = $custRecQ->select('id', 'customer_name', 'mobile', 'opening_balance')->get();
@@ -688,6 +718,26 @@ class FinancialCommandCenterController extends Controller
             ->unique('customer_id')
             ->keyBy('customer_id');
 
+        $missingCustIds = $customersList->pluck('id')->reject(fn($id) => isset($latestCustomerLedgers[$id]))->values()->all();
+        $fallbackCustSales = [];
+        $fallbackCustPays  = [];
+        if (!empty($missingCustIds)) {
+            $fallbackCustSales = DB::table('sales')
+                ->whereIn('customer', $missingCustIds)
+                ->where('created_at', '<=', $endDT)
+                ->selectRaw('customer, SUM(COALESCE(total_net, total_bill_amount)) as total')
+                ->groupBy('customer')
+                ->pluck('total', 'customer')
+                ->all();
+            $fallbackCustPays = DB::table('customer_payments')
+                ->whereIn('customer_id', $missingCustIds)
+                ->where('payment_date', '<=', $asOfDate)
+                ->selectRaw('customer_id, SUM(amount) as total')
+                ->groupBy('customer_id')
+                ->pluck('total', 'customer_id')
+                ->all();
+        }
+
         $custReceivable = 0;
         $customersDetailed = [];
         foreach ($customersList as $cust) {
@@ -696,8 +746,8 @@ class FinancialCommandCenterController extends Controller
                 $bal = (float)$latestCustomerLedgers[$cust->id]->closing_balance;
             } else {
                 $init = (float)($cust->opening_balance ?? 0);
-                $cSales = (float)DB::table('sales')->where('customer', $cust->id)->where('created_at', '<=', $endDT)->sum(DB::raw('COALESCE(total_net, total_bill_amount)'));
-                $cPay = (float)DB::table('customer_payments')->where('customer_id', $cust->id)->where('payment_date', '<=', $asOfDate)->sum('amount');
+                $cSales = (float)($fallbackCustSales[$cust->id] ?? 0);
+                $cPay = (float)($fallbackCustPays[$cust->id] ?? 0);
                 $bal = $init + $cSales - $cPay;
             }
             if ($bal > 0) {
@@ -797,7 +847,7 @@ class FinancialCommandCenterController extends Controller
 
         // 5. FIXED ASSETS
         $assetsQ = Asset::whereNull('deleted_at')->where('status', '!=', 'disposed');
-        if (!$isAll && Schema::hasColumn('assets', 'branch_id')) {
+        if (!$isAll && $this->tableHasColumn('assets', 'branch_id')) {
             $assetsQ->where('branch_id', $branchId);
         }
         $assetsList = $assetsQ->with('category')->get();
@@ -833,6 +883,21 @@ class FinancialCommandCenterController extends Controller
             ->unique('vendor_id')
             ->keyBy('vendor_id');
 
+        $missingVendorIds = $vendorsList->pluck('id')->reject(fn($id) => isset($latestVendorLedgers[$id]))->values()->all();
+        $vPurMap = $vRmPurMap = $vRetMap = $vRmRetMap = $vPayMap = [];
+        if (!empty($missingVendorIds)) {
+            $vPurMap = DB::table('purchases')->whereIn('vendor_id', $missingVendorIds)->where('purchase_date', '<=', $asOfDate)
+                ->selectRaw('vendor_id, SUM(net_amount) as total')->groupBy('vendor_id')->pluck('total', 'vendor_id')->all();
+            $vRmPurMap = DB::table('raw_material_purchases')->whereIn('vendor_id', $missingVendorIds)->where('date', '<=', $asOfDate)
+                ->selectRaw('vendor_id, SUM(total_cost) as total')->groupBy('vendor_id')->pluck('total', 'vendor_id')->all();
+            $vRetMap = DB::table('purchase_returns')->whereIn('vendor_id', $missingVendorIds)->where('return_date', '<=', $asOfDate)
+                ->selectRaw('vendor_id, SUM(net_amount) as total')->groupBy('vendor_id')->pluck('total', 'vendor_id')->all();
+            $vRmRetMap = DB::table('raw_material_purchase_returns')->whereIn('vendor_id', $missingVendorIds)->where('return_date', '<=', $asOfDate)
+                ->selectRaw('vendor_id, SUM(total_cost) as total')->groupBy('vendor_id')->pluck('total', 'vendor_id')->all();
+            $vPayMap = DB::table('vendor_payments')->whereIn('vendor_id', $missingVendorIds)->where('payment_date', '<=', $asOfDate)
+                ->selectRaw('vendor_id, SUM(amount) as total')->groupBy('vendor_id')->pluck('total', 'vendor_id')->all();
+        }
+
         $totalPayables = 0;
         $vendorsDetailed = [];
         foreach ($vendorsList as $vnd) {
@@ -840,12 +905,12 @@ class FinancialCommandCenterController extends Controller
             if (isset($latestVendorLedgers[$vnd->id])) {
                 $bal = (float)$latestVendorLedgers[$vnd->id]->closing_balance;
             } else {
-                $init = (float)($vnd->opening_balance ?? 0);
-                $vPur = (float)DB::table('purchases')->where('vendor_id', $vnd->id)->where('purchase_date', '<=', $asOfDate)->sum('net_amount');
-                $vRmPur = (float)DB::table('raw_material_purchases')->where('vendor_id', $vnd->id)->where('date', '<=', $asOfDate)->sum('total_cost');
-                $vRet = (float)DB::table('purchase_returns')->where('vendor_id', $vnd->id)->where('return_date', '<=', $asOfDate)->sum('net_amount');
-                $vRmRet = (float)DB::table('raw_material_purchase_returns')->where('vendor_id', $vnd->id)->where('return_date', '<=', $asOfDate)->sum('total_cost');
-                $vPay = (float)DB::table('vendor_payments')->where('vendor_id', $vnd->id)->where('payment_date', '<=', $asOfDate)->sum('amount');
+                $init   = (float)($vnd->opening_balance ?? 0);
+                $vPur   = (float)($vPurMap[$vnd->id] ?? 0);
+                $vRmPur = (float)($vRmPurMap[$vnd->id] ?? 0);
+                $vRet   = (float)($vRetMap[$vnd->id] ?? 0);
+                $vRmRet = (float)($vRmRetMap[$vnd->id] ?? 0);
+                $vPay   = (float)($vPayMap[$vnd->id] ?? 0);
                 $bal = $init + $vPur + $vRmPur - $vRet - $vRmRet - $vPay;
             }
             if ($bal > 0) {

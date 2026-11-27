@@ -49,9 +49,28 @@
     .badge-cond-repair { background: #fff7ed; color: #c2410c; }
     .badge-cond-damaged { background: #fef2f2; color: #dc2626; }
 
-    .ast-table thead th { background: #0f172a; color: #cbd5e1; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: .75rem .9rem; border: none; white-space: nowrap; }
-    .ast-table tbody td { padding: .75rem .9rem; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: .83rem; color: #334155; }
+    .ast-card .table-responsive { overflow-x: auto !important; -webkit-overflow-scrolling: touch; width: 100%; }
+    .ast-table { min-width: 960px; width: 100%; }
+    .ast-table thead th { background: #0f172a; color: #cbd5e1; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: .75rem .9rem; border: none; white-space: nowrap !important; word-break: normal !important; }
+    .ast-table tbody td { padding: .75rem .9rem; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: .83rem; color: #334155; white-space: nowrap; word-break: normal !important; overflow-wrap: normal !important; }
     .ast-table tbody tr:hover td { background: #f8fafc; }
+
+    /* Mobile Responsive Asset Cards */
+    .ast-mobile-cards { display: none; padding: .85rem; gap: .75rem; flex-direction: column; background: #f8fafc; }
+    .ast-mcard { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: .95rem; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04); }
+    .ast-mcard-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; margin-bottom: .7rem; }
+    .ast-mcard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem .75rem; padding: .65rem 0; border-top: 1px dashed #e2e8f0; border-bottom: 1px dashed #e2e8f0; font-size: .78rem; }
+    .ast-mcard-lbl { font-size: .65rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: .4px; }
+    .ast-mcard-val { font-weight: 700; color: #0f172a; word-break: break-word; }
+    .ast-mcard-acts { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .7rem; }
+    .ast-mcard-acts .btn { flex: 1 1 auto; }
+
+    @media (max-width: 767.98px) {
+        .ast-hdr { padding: 1.15rem; border-radius: 14px; }
+        .ast-hdr h2 { font-size: 1.15rem; }
+        .ast-desktop-table { display: none !important; }
+        .ast-mobile-cards { display: flex !important; }
+    }
 </style>
 
 <div class="ast-mgmt">
@@ -202,8 +221,8 @@
                 </div>
             </form>
 
-            <!-- Table View -->
-            <div class="table-responsive">
+            <!-- Table View (Desktop / Tablet) -->
+            <div class="table-responsive ast-desktop-table">
                 <table class="table ast-table align-middle mb-0">
                     <thead>
                         <tr>
@@ -347,6 +366,89 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="ast-mobile-cards">
+                @forelse($assets as $asset)
+                <div class="ast-mcard">
+                    <div class="ast-mcard-top">
+                        <div class="d-flex align-items-center gap-2" style="min-width:0;">
+                            @if($asset->image)
+                                <img src="{{ asset($asset->image) }}" alt="{{ $asset->name }}" class="rounded-2 border flex-shrink-0" style="width: 40px; height: 40px; object-fit: cover;">
+                            @else
+                                <div class="rounded-2 d-flex align-items-center justify-content-center bg-light border text-secondary flex-shrink-0" style="width: 40px; height: 40px;">
+                                    @if($asset->category && str_contains(strtolower($asset->category->name), 'machin'))
+                                        <i class="fas fa-industry"></i>
+                                    @elseif($asset->category && str_contains(strtolower($asset->category->name), 'furnit'))
+                                        <i class="fas fa-chair"></i>
+                                    @else
+                                        <i class="fas fa-box"></i>
+                                    @endif
+                                </div>
+                            @endif
+                            <div style="min-width:0;">
+                                <a href="{{ route('assets.show', $asset->id) }}" class="fw-bold text-dark text-decoration-none d-block text-truncate">
+                                    {{ $asset->name }}
+                                </a>
+                                <a href="{{ route('assets.show', $asset->id) }}" class="fw-bold text-primary text-decoration-none font-monospace" style="font-size:.74rem;">
+                                    {{ $asset->asset_code }}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            @if($asset->status === 'active')
+                                <span class="ast-badge badge-active"><i class="fas fa-check-circle"></i> Active</span>
+                            @elseif($asset->status === 'under_maintenance')
+                                <span class="ast-badge badge-repair"><i class="fas fa-wrench"></i> In Repair</span>
+                            @elseif($asset->status === 'idle')
+                                <span class="ast-badge badge-idle"><i class="fas fa-pause-circle"></i> Idle</span>
+                            @else
+                                <span class="ast-badge badge-disposed"><i class="fas fa-times-circle"></i> {{ ucfirst($asset->status) }}</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="ast-mcard-grid">
+                        <div>
+                            <div class="ast-mcard-lbl">Category</div>
+                            <div class="ast-mcard-val">{{ $asset->category->name ?? 'Uncategorized' }}</div>
+                        </div>
+                        <div>
+                            <div class="ast-mcard-lbl">Branch / Location</div>
+                            <div class="ast-mcard-val">{{ $asset->branch->name ?? 'Head Office' }}</div>
+                        </div>
+                        <div>
+                            <div class="ast-mcard-lbl">Purchase Cost</div>
+                            <div class="ast-mcard-val">Rs. {{ number_format($asset->purchase_cost, 0) }}</div>
+                            <div class="text-muted" style="font-size:.68rem;">{{ $asset->purchase_date ? $asset->purchase_date->format('d M Y') : 'N/A' }}</div>
+                        </div>
+                        <div>
+                            <div class="ast-mcard-lbl">Est. Book Value</div>
+                            <div class="ast-mcard-val text-success">Rs. {{ number_format($asset->estimated_current_value, 0) }}</div>
+                            <div class="text-muted" style="font-size:.68rem;">Depr: {{ $asset->depreciation_rate }}%</div>
+                        </div>
+                    </div>
+
+                    <div class="ast-mcard-acts">
+                        <a href="{{ route('assets.show', $asset->id) }}" class="btn btn-sm btn-info text-white"><i class="fas fa-eye me-1"></i> View</a>
+                        <a href="{{ route('assets.barcode', $asset->id) }}" target="_blank" class="btn btn-sm btn-dark"><i class="fas fa-barcode me-1"></i> Tag</a>
+                        <a href="{{ route('assets.edit', $asset->id) }}" class="btn btn-sm btn-primary"><i class="fas fa-edit me-1"></i> Edit</a>
+                        <form action="{{ route('assets.destroy', $asset->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete asset {{ $asset->name }}?');" class="d-inline flex-fill">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-danger w-100"><i class="fas fa-trash-alt"></i></button>
+                        </form>
+                    </div>
+                </div>
+                @empty
+                <div class="text-center py-4 bg-white rounded-3 border">
+                    <i class="fas fa-boxes fa-2x mb-2 text-secondary opacity-50"></i>
+                    <h6 class="mb-1">No Assets Registered Yet</h6>
+                    <p class="small text-muted mb-2">Register your first machinery, furniture or equipment item.</p>
+                    <a href="{{ route('assets.create') }}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Add New Asset</a>
+                </div>
+                @endforelse
             </div>
         </div>
 
