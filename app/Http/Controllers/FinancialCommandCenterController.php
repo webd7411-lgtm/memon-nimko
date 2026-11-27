@@ -559,17 +559,14 @@ class FinancialCommandCenterController extends Controller
         $isAll = ($branchId === 'all');
         $activeBranchId = $isAll ? null : (int)$branchId;
 
-        // 1. CASH IN HAND & ACCOUNTS
+        // 1. CASH IN HAND & ACCOUNTS (based on account_heads.name containing 'Cash')
         $cashAccountsQ = DB::table('accounts')
             ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
             ->whereNull('accounts.distributor_id')
-            ->where(function($q) {
-                $q->where('account_heads.name', 'like', '%Cash%')
-                  ->orWhere('accounts.title', 'like', '%Cash%')
-                  ->orWhere('accounts.head_id', 2);
-            });
+            ->where('account_heads.name', 'like', '%Cash%');
         $cashAccounts = $cashAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.opening_balance')->get();
+        $cashAccountIds = $cashAccounts->pluck('id')->all();
 
         $totalCash = 0.0;
         $counterCashBalance = 0;
@@ -586,15 +583,14 @@ class FinancialCommandCenterController extends Controller
         }
         $totalCash = round($totalCash, 2);
 
-        // 2. BANK BALANCES
+        // 2. BANK BALANCES (based on account_heads.name containing 'Bank', excluding any already in Cash)
         $bankAccountsQ = DB::table('accounts')
             ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('accounts.status', 1)
             ->whereNull('accounts.distributor_id')
-            ->where(function($q) {
-                $q->where('account_heads.name', 'like', '%Bank%')
-                  ->orWhere('accounts.title', 'like', '%Bank%')
-                  ->orWhere('accounts.head_id', 1);
+            ->where('account_heads.name', 'like', '%Bank%')
+            ->when(!empty($cashAccountIds), function ($q) use ($cashAccountIds) {
+                $q->whereNotIn('accounts.id', $cashAccountIds);
             });
         $bankAccountsData = $bankAccountsQ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'accounts.bank_name', 'accounts.opening_balance')->get();
 
